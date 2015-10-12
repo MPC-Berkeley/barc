@@ -13,6 +13,7 @@ import signal
 import traceback
 from pyfirmata import Arduino, util
 import threading
+from IMU_sensor_model import estimate_position, signal, compute_yaw_rate
 
 
 global file2
@@ -120,7 +121,40 @@ def parse_data_message_rpyimu(data_message):
     
     sequence_number, roll, pitch, yaw, accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z, mag_x, mag_y, mag_z, temperature = (float(x) for x in fields[1:])
     return (int(sequence_number), roll, pitch, yaw, accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z, mag_x, mag_y, mag_z, temperature)
+##################################################################
+# Initialize IMU model classes.
+
+# filter parameters
+# aph   := smoothing factor, (all filtered)   0 <=   aph   <= 1  (no filter)
+# n     := size of moving average block
+a1          = 0.005
+a2          = 0.05
+n           = 200
+
+g = 9.81
+t0 = 0
+
+Y_data      = signal(y0 = [0,0,0,0], a = [a1,a1,1,a2], method = 'lp')
+BF_data     = signal(y0 = [0,0], n = n, method = 'mvg')
+GF_data     = signal(y0 = [0,0,0,0], method = None)
+X_estimate  = (BF_data, GF_data)
+
+##################################################################
+def sensorModelupdate(dt,a_x,a_y,psi):
+    #Updates signal class models, Y_data, BF_data, GF_data.
+    a_x_new     = a_x_RAW[i] * g 
+    a_y_new     = -a_y_RAW[i] * g
+    psi_new     = -psi_RAW[i] * (pi/180.0)
+        
+    psi_prev    = Y_data.getSignal('raw')[2]
+    w_z_new     = compute_yaw_rate(psi_prev, psi_new, dt)
+
+    # filter signals
+    Y_data.update( [a_x_new, a_y_new, psi_new, w_z_new] )
     
+    # estimate position
+    estimate_position(Y_data, X_estimate, dt)
+
 ##################################################################
 def IMUThreadInit():
     global serial_device
@@ -160,28 +194,35 @@ def IMUThreadInit():
 
 ###################################################################
 def IMUThread():
-    rsp=send_command(serial_port, 'trig')
-    print rsp
-    
-    #
-    # wait for data message 
-    #
-    line = serial_port.readline().strip()
-    print 'DATA MESSAGE : <%s>'%line
-    
-    #
-    # parse data message
-    #
-    items = parse_data_message_rpyimu(line)
-    #
-    # display output 
-    #
-    if(items):
-        sequence_number, roll, pitch, yaw, accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z, mag_x, mag_y, mag_z, temperature = items
-        #print '## roll %.2f, pitch %.2f, yaw %.2f, ax %.4f, ay %.4f, az %.4f, gx %.4f, gy %.4f, gz %.4f, mx %.4f, my %.4f, mz %.4f, temp %.1f'%(roll, pitch, yaw, accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z, mag_x, mag_y, mag_z, temperature)
+    t_prev = time.time()
+
+    while True:
+        rsp=send_command(serial_port, 'trig')
+        print rsp
         
-        file1.write('rpy,%.2f,%.2f,%.2f,a_xyz,%.4f,%.4f,%.4f,g_xyz%.4f,%.4f,%.4f,t_s,%.4f\n'%(roll, pitch, yaw, accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z, time.time()-tzero))
+        #
+        # wait for data message 
+        #
+        line = serial_port.readline().strip()
+        print 'DATA MESSAGE : <%s>'%line
         
+        #
+        # parse data message
+        #
+        items = parse_data_message_rpyimu(line)
+        #
+        # display output 
+        #
+        if(items):
+            sequence_number, roll, pitch, yaw, accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z, mag_x, mag_y, mag_z, temperature = items
+            #print '## roll %.2f, pitch %.2f, yaw %.2f, ax %.4f, ay %.4f, az %.4f, gx %.4f, gy %.4f, gz %.4f, mx %.4f, my %.4f, mz %.4f, temp %.1f'%(roll, pitch, yaw, accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z, mag_x, mag_y, mag_z, temperature)
+            
+            time_now = time.time()
+            sensorModelupdate(time_now-t_prev, accel_x, accel_y, gyro_z)
+            file1.write('rpy,%.2f,%.2f,%.2f,a_xyz,%.4f,%.4f,%.4f,g_xyz,%.4f,%.4f,%.4f,t_s,%.4f, BFxy, %.4f, %.4f, GFxy, %.4f, %.4f\n'%(roll, pitch, yaw, accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z, time.time()-tzero, BF_data.getSignal(), GF_data.getSignal()))
+
+            t_prev = time_now
+            
 ####################################################################
 
 def encoderThreadInit():
