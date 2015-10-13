@@ -24,6 +24,8 @@ global encoderBR
 global Sample_Rate
 global time_curr
 
+Sample_Rate = .3 ##in seconds
+
 global serial_port
 global file1
 
@@ -31,6 +33,22 @@ global RPM_FL_global
 global RPM_FR_global
 global RPM_BL_global
 global RPM_BR_global
+
+RPM_FL_global = 0
+RPM_FR_global = 0
+RPM_BL_global = 0
+RPM_BR_global = 0
+
+global rpmFL
+global rpmFR
+global rpmBL
+global rpmBR
+
+
+rpmFL =0
+rpmFR =0
+rpmBL =0
+rpmBR =0
 
 # create a PyMata instance
 board = Arduino('/dev/ttyACM99')
@@ -42,7 +60,8 @@ NEUTRAL = 92
 tzero = time.time()
 escval = 0
 servoval = 0
-PID_controller = PID.PID(P=0.001, I=0.0001, D=0.0003)
+PID_controller = PID.PID(P=0.1, I=0.0001, D=0.0003)
+PID_controller.setPoint(1000)
 max_throttle = 140
 min_throttle = 93
 
@@ -214,8 +233,7 @@ def encoderThreadInit():
     encoderBR = EncoderObject(board.digital[9])
 
 
-    global Sample_Rate
-    Sample_Rate = .1 ##in seconds
+    
     
     global time_curr
     time_curr = time.time()
@@ -225,6 +243,7 @@ def encoderThreadInit():
 
 #################################################
 def encoderThread():
+    global rpmFL, rpmFR, rpmBL, rpmBR
     global encoderFL
     encoderFL.update()
     
@@ -245,7 +264,7 @@ def encoderThread():
         rpmFR = encoderFR.report()*(60/Sample_Rate)/4
         rpmBL = encoderBL.report()*(60/Sample_Rate)/4
         rpmBR = encoderBR.report()*(60/Sample_Rate)/4
-        print 'RPM: %d,\t%d,\t%d,\t%d;\n'%(rpmFL, rpmFR, rpmBL, rpmBR)
+        print 'RPM:%d,%d;\n'%(rpmBL, rpmBR)
         # global file2
         # file2.write("Time,%d,FL,%d,FR,%d,BR,%d,BL,%d"%(time_curr,rpmFL,rpmFR,rpmBL,rpmBR))
     global RPM_FL_global, RPM_BL_global, RPM_FR_global, RPM_BR_global
@@ -256,8 +275,7 @@ def encoderThread():
 
 #################################################################
 def PIDThreadInit():
-    
-
+    return
 
 #################################################################
 def PIDThread():
@@ -269,11 +287,12 @@ def PIDThread():
     FR_speed = RPM_FR_global
     BL_speed = RPM_BL_global
     BR_speed = RPM_BR_global
-    current_speed = (FL_speed + FR_speed + BL_speed + BR_speed)*0.25
+    current_speed = (BL_speed + BR_speed)*0.50
     next_ESC = PID_controller.update(current_speed, Sample_Rate)
+    print "Error is: ", PID_controller.getError(), "\n"
     if (next_ESC >= max_throttle):
         next_ESC = max_throttle
-    elif (next_ESC <= min_throttle)
+    elif (next_ESC <= min_throttle):
         next_ESC = min_throttle
     print "next ESC is ",next_ESC,"\n"
     board.digital[ESC1].write(next_ESC)
@@ -325,7 +344,7 @@ if __name__ == '__main__':
 
     #####run car
     board.digital[5].write(NEUTRAL)
-    board.digital[3].write(100)
+    board.digital[3].write(95)
     print("Now driving")
     # start IMU data collection
     it = util.Iterator(board)
@@ -344,8 +363,9 @@ if __name__ == '__main__':
 
     for thread in threads:
         thread.start()
-
-    # while (True):
+    
+    while (True):
+        time.sleep(1)
         # for i in range(0,100):
             # board.digital[5].write(NEUTRAL + 60*sawtooth(i,100))
             # time.sleep(0.01)
