@@ -11,9 +11,10 @@ import time
 import serial 
 import signal
 import traceback
+from numpy import pi
 from pyfirmata import Arduino, util
 import threading
-from IMU_sensor_model import estimate_position, signal, compute_yaw_rate
+from IMU_sensor_model import estimate_position, imuSignal, compute_yaw_rate
 
 
 global file2
@@ -78,18 +79,21 @@ class EncoderObject():
 
 
 #############################################################
-def sawtooth(t,period):
-    #0<t<period, produces a sawtooth wave of amplitude 2
-    #The wave starts at neutral->positive->neutral->negative->neutral
-    if t>period or t<0:
-        return 0
-    if t<period/4:
-        return t/(period/4)
-    if t> period*(3/4):
-        return (t-period*(3/4))/(period/4) - 1
-    else:
-        return -(t-period/4)/(period/4) + 1
-        
+##def sawtooth(t,period):
+##    #0<t<period, produces a sawtooth wave of amplitude 2
+##    #The wave starts at neutral->positive->neutral->negative->neutral
+##    if t>period or t<0:
+##        return 0
+##    if t<period/4:
+##        print ((float) t)/(period/4)
+##        return (float t)/(period/4)
+##    if t> period*(3/4):
+##        print ((float t)-period*(3/4))/(period/4) - 1
+##        return ((float t)-period*(3/4))/(period/4) - 1
+##    else:
+##        print -((float t)-period/4)/(period/4) + 1
+##        return -((float t)-period/4)/(period/4) + 1
+##        
 
 
 #############################################################
@@ -134,17 +138,17 @@ n           = 200
 g = 9.81
 t0 = 0
 
-Y_data      = signal(y0 = [0,0,0,0], a = [a1,a1,1,a2], method = 'lp')
-BF_data     = signal(y0 = [0,0], n = n, method = 'mvg')
-GF_data     = signal(y0 = [0,0,0,0], method = None)
+Y_data      = imuSignal(y0 = [0,0,0,0], a = [a1,a1,1,a2], method = 'lp')
+BF_data     = imuSignal(y0 = [0,0], n = n, method = 'mvg')
+GF_data     = imuSignal(y0 = [0,0,0,0], method = None)
 X_estimate  = (BF_data, GF_data)
 
 ##################################################################
 def sensorModelupdate(dt,a_x,a_y,psi):
     #Updates signal class models, Y_data, BF_data, GF_data.
-    a_x_new     = a_x_RAW[i] * g 
-    a_y_new     = -a_y_RAW[i] * g
-    psi_new     = -psi_RAW[i] * (pi/180.0)
+    a_x_new     = a_x * g 
+    a_y_new     = -a_y* g
+    psi_new     = -psi * (pi/180.0)
         
     psi_prev    = Y_data.getSignal('raw')[2]
     w_z_new     = compute_yaw_rate(psi_prev, psi_new, dt)
@@ -195,7 +199,10 @@ def IMUThreadInit():
 ###################################################################
 def IMUThread():
     t_prev = time.time()
-
+    
+    angle = NEUTRAL
+    DIR = 1
+    
     while True:
         rsp=send_command(serial_port, 'trig')
         print rsp
@@ -213,13 +220,23 @@ def IMUThread():
         #
         # display output 
         #
+        if angle==129:
+            DIR = -1
+        if angle ==51:
+            DIR = 1
+        angle+= DIR
+        board.digital[5].write(angle)
         if(items):
             sequence_number, roll, pitch, yaw, accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z, mag_x, mag_y, mag_z, temperature = items
-            #print '## roll %.2f, pitch %.2f, yaw %.2f, ax %.4f, ay %.4f, az %.4f, gx %.4f, gy %.4f, gz %.4f, mx %.4f, my %.4f, mz %.4f, temp %.1f'%(roll, pitch, yaw, accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z, mag_x, mag_y, mag_z, temperature)
+            print '## roll %.2f, pitch %.2f, yaw %.2f, ax %.4f, ay %.4f, az %.4f, gx %.4f, gy %.4f, gz %.4f, mx %.4f, my %.4f, mz %.4f, temp %.1f'%(
+                roll, pitch, yaw, accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z, mag_x, mag_y, mag_z, temperature)
             
             time_now = time.time()
             sensorModelupdate(time_now-t_prev, accel_x, accel_y, gyro_z)
-            file1.write('rpy,%.2f,%.2f,%.2f,a_xyz,%.4f,%.4f,%.4f,g_xyz,%.4f,%.4f,%.4f,t_s,%.4f, BFxy, %.4f, %.4f, GFxy, %.4f, %.4f\n'%(roll, pitch, yaw, accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z, time.time()-tzero, BF_data.getSignal(), GF_data.getSignal()))
+            BF_temp = BF_data.getSignal()
+            GF_temp = GF_data.getSignal()
+            file1.write('rpy,%.2f,%.2f,%.2f,a_xyz,%.4f,%.4f,%.4f,g_xyz,%.4f,%.4f,%.4f,t_s,%.4f, BFxy, %.4f, %.4f, GFxy, %.4f, %.4f, %d\n'%(
+                roll, pitch, yaw, accel_x, accel_y, accel_z, gyro_x, gyro_y, gyro_z, time.time()-tzero, BF_temp[0], BF_temp[1], GF_temp[0], GF_temp[1],angle))
 
             t_prev = time_now
             
@@ -329,7 +346,7 @@ if __name__ == '__main__':
 
     #####run car
     board.digital[5].write(NEUTRAL)
-    board.digital[3].write(100)
+    board.digital[3].write(95)
     print("Now driving")
     # start IMU data collection
     it = util.Iterator(board)
@@ -337,8 +354,8 @@ if __name__ == '__main__':
 
     
 
-    thread1 = KillableThread(encoderThreadInit, encoderThread)
-    threads.append(thread1)
+    #thread1 = KillableThread(encoderThreadInit, encoderThread)
+    #threads.append(thread1)
     thread2 = KillableThread(IMUThreadInit, IMUThread)
     threads.append(thread2)
 
@@ -346,8 +363,16 @@ if __name__ == '__main__':
 
     for thread in threads:
         thread.start()
-
+    
+    ##angle=NEUTRAL
+    ##DIR = 1
     while (True):
-        for i in range(0,100):
-            board.digital[5].write(NEUTRAL + 60*sawtooth(i,100))
-            time.sleep(0.01)
+        time.sleep(1)
+##            if angle==129:
+##                DIR = -1
+##            if angle ==51:
+##                DIR = 1
+##            angle+= DIR
+##            board.digital[5].write(angle)
+##            #board.digital[5].write(NEUTRAL + 40*sawtooth(i,100))
+##            time.sleep(0.01)
