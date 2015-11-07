@@ -1,0 +1,22 @@
+<launch>
+	<node 
+		pkg="barc"
+		type="data_acq.py"
+		name="DAQ"
+	></node>
+	<node 
+		pkg="teleop_twist_keyboard"
+		type="teleop_twist_keyboard.py"
+		name="manual_commands"
+	></node>
+	<node 
+		pkg="barc"
+		type="auto_mode.py"
+		name="autonomous_settings"
+	></node>
+	<node 
+		pkg="barc"
+		type="LL_ctrl.jl"
+		name="NMPC_controller"
+	></node>
+</launch>
