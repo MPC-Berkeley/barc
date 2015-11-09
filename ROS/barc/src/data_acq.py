@@ -10,7 +10,7 @@ from geometry_msgs.msg import Vector3
 from IMU_sensor_model import estimate_position, imuSignal
 
 # IMU sensor port
-serial_device 	= '/dev/ttyACM0'        
+serial_device 	= '/dev/ttyACM0'
 
 ##################################################################
 def sensorModelupdate(Y_data, X_estimate, dt, a_x, a_y, psi, w_z):
@@ -127,10 +127,10 @@ def IMUThreadInit(serial_device):
 def data_acq():
 	# launch node, publish to two topics
 	rospy.init_node('data_acq', anonymous=True)
-	imu_data_pub 	= rospy.Publisher('imu_data', TimeData, queue_size = 10)
-	obs_pub 	= rospy.Publisher('state_estimate', Vector3, queue_size = 10)
-	smp_rate        = 20	# set publishing (sampling) rate [Hz]	
-	rate            = rospy.Rate(smp_rate)
+	imu_data_pub   = rospy.Publisher('imu_data', TimeData, queue_size = 10)
+	obs_pub 	   = rospy.Publisher('state_estimate', Vector3, queue_size = 10)
+	smp_rate       = 20	# set publishing (sampling) rate [Hz]
+	rate           = rospy.Rate(smp_rate)
 
 	## initialziation for IMU device
 	serial_port 	= IMUThreadInit(serial_device)
@@ -144,7 +144,7 @@ def data_acq():
 	p_ax        = 0.02          # filter parameter for a_x
 	p_ay        = p_ax          # filter parameter for a_y
 	p_wz        = 0.9           # filter parameter for w_z
-        n_v         = 100           # moving average filter parameter for v_x, v_y
+    n_v         = 100           # moving average filter parameter for v_x, v_y
 
 	# Initialize estimation of states
 	# Y_data 	:= object to hold filtered sensor data
@@ -154,8 +154,10 @@ def data_acq():
 	v_hat_BF    = imuSignal(y0 = [0,0], n = n_v, method = 'mvg')
 	X_hat_GF    = imuSignal(y0 = [0,0,0,0], method = None)
 	X_estimate  = (v_hat_BF, X_hat_GF)
-        
-        t0 = True               # initial time
+
+    t0          = True               # initial time
+    t_now       = 0
+    t_prev      = 0
 
 	# Collect data
 	while not rospy.is_shutdown():
@@ -164,14 +166,14 @@ def data_acq():
             line        = serial_port.readline().strip()
             items       = parse_data_message_rpyimu(line)
 
-            time_now	= time.time()       # get current time
+            t_now	      = time.time()       # get current time
 
             if items and not t0:
                 # update state estimates
                 (a_x, a_y, psi, w_z) = (items[4], items[5], items[3], items[9])
-                dt  			= time.time() - time_now
+                dt  			     = t_now - t_prev
                 sensorModelupdate(Y_data, X_estimate, dt, a_x, a_y, psi, w_z)
-                (v_x, v_y)		= v_hat_BF.getSignal()
+                (v_x, v_y)		     = v_hat_BF.getSignal()
 
                 # make a time data
                 time_data 			= TimeData()
@@ -189,14 +191,15 @@ def data_acq():
                 if stored_k == stored_N:
                         print 'Storing IMU Data ....\n'
 
-                        # File storing 
+                        # File storing
                         file_store(stored_items)
                         stored_k = 0
                         stored_items.series = []
 
                         # Cloud Storing # cloud_store(stored_items)
-            
-            t0 = False
+
+            t0          = False
+            t_prev      = t_now
             rate.sleep()
 
 	serial_port.close()
