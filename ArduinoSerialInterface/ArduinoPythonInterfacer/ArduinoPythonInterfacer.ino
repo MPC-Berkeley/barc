@@ -6,8 +6,8 @@ volatile int countA = 0; //number of encoder counts on encoder A
 volatile int countB = 0;
 
 //encoder pins: pins 2,3 are hardware interrupts
-const int encoderA = 2; 
-const int encoderB = 3;
+const int hardwareEncoderA = 2; 
+const int hardwareEncoderB = 3;
 
 //actuator pins: pins 3,5,6,9,10,11 are capable of hardware pwm
 Servo motor;
@@ -29,13 +29,13 @@ int i;
 
 void setup() {
   // put your setup code here, to run once:
-  pinMode(encoderA, INPUT_PULLUP);
-  pinMode(encoderB, INPUT_PULLUP);
+  pinMode(hardwareEncoderA, INPUT_PULLUP);
+  pinMode(hardwareEncoderB, INPUT_PULLUP);
   motor.attach(motorPin);
   steering.attach(servoPin);
   
-  attachInterrupt(digitalPinToInterrupt(encoderA), incA, CHANGE);
-  attachInterrupt(digitalPinToInterrupt(encoderB), incB, CHANGE);
+  attachInterrupt(0, incA, RISING);
+  attachInterrupt(1, incB, RISING);
   curr_time = millis();
   Serial.begin(250000);
   Serial.println("Running");
