@@ -2,7 +2,8 @@
 
 
 
-volatile int count = 0; //number of encoder counts (using a quadrature encoder)
+volatile int countA = 0; //number of encoder counts on encoder A
+volatile int countB = 0;
 
 //encoder pins: pins 2,3 are hardware interrupts
 const int encoderA = 2; 
@@ -28,13 +29,13 @@ int i;
 
 void setup() {
   // put your setup code here, to run once:
-  pinMode(encoderA, INPUT);
-  pinMode(encoderB, INPUT);
+  pinMode(encoderA, INPUT_PULLUP);
+  pinMode(encoderB, INPUT_PULLUP);
   motor.attach(motorPin);
   steering.attach(servoPin);
   
-  attachInterrupt(digitalPinToInterrupt(encoderA), inc, CHANGE);
-  attachInterrupt(digitalPinToInterrupt(encoderB), inc, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(encoderA), incA, CHANGE);
+  attachInterrupt(digitalPinToInterrupt(encoderB), incB, CHANGE);
   curr_time = millis();
   Serial.begin(250000);
   Serial.println("Running");
@@ -45,8 +46,10 @@ void loop() {
   // put your main code here, to run repeatedly:
   temp = millis()-curr_time;
   if (temp > 2) {
-    Serial.println(count/temp * 1000); //prints velocity out to the serial port
-    count = 0;
+    Serial.println(countA);
+    Serial.println(countB);
+    //Serial.println(count/temp * 1000); //prints velocity out to the serial port
+    //count = 0;
     curr_time = millis();
   }
 
@@ -71,8 +74,12 @@ void loop() {
   delay(1);
 }
 
-void inc() {
-  count++;
+void incA() {
+  countA++;
+}
+
+void incB() {
+  countB++;
 }
 
 float saturate(float value) {
