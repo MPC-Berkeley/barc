@@ -34,11 +34,17 @@ void setup() {
   motor.attach(motorPin);
   steering.attach(servoPin);
   
-  attachInterrupt(0, incA, RISING);
-  attachInterrupt(1, incB, RISING);
+  attachInterrupt(0, incA, CHANGE); //pin 0 = INT0, which is pin D2
+  attachInterrupt(1, incB, CHANGE); //pin 1 = INT1, which is pin D3
   curr_time = millis();
   Serial.begin(250000);
   Serial.println("Running");
+  
+  
+  motor.write(92);
+  steering.write(92);
+  delay(2);
+  Serial.println("ESC armed");
   
 }
 

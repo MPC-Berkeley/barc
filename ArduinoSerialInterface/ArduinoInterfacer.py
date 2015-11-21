@@ -5,6 +5,7 @@ from time import sleep
 
 def signal_handler(signal, frame): ##lets you use ctrl-C to terminate
         print('Terminating')
+        ser.write("90,90f")
         ser.close()
         sys.exit(0)
 signal.signal(signal.SIGINT, signal_handler)
@@ -25,5 +26,5 @@ while True:
         ##Sometimes, a partial message is read, so we read the second-to-last data package
         if (len(b)>1):
                 print(b[-2])
-        ser.write("100,100f")
+        ser.write("95,95f")
         sleep(.01) ##We read from the Arduino a little slower than it parses data
