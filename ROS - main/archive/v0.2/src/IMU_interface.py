@@ -1,7 +1,6 @@
 #!/usr/bin/python
 import serial
 import traceback
-from math import pi
 
 #############################################################
 def send_command(serial_port, cmd_msg):
@@ -27,16 +26,6 @@ def parse_IMU_data(data):
 		return None
 
 	_, roll, pitch, yaw, a_x, a_y, a_z, w_x, w_y, w_z, _, _, _, _= (float(x) for x in fields[1:])
-
-	# Use coordinate system with +x pointing forward, +y point to the left,
-	# and +z point upward
-	# Covert units to [rad] and [rad/s]
-	pitch 	*= -(pi/180)
-	yaw 	*= -(pi/180)
-	w_y 	*= -(pi/180)
-	w_z 	*= -(pi/180)
-	a_y 	*= -1
-	a_z 	*= -1
 	return (roll, pitch, yaw, a_x, a_y, a_z, w_x, w_y, w_z)
 
 ##################################################################

@@ -43,8 +43,8 @@ def angle_2_servo(x):
 
 # [PWM] -> [deg]
 def servo_2_angle(x):
-    d_f   = -(39.2945 - 0.3013*x  - 0.0014*x**2)
-    return d_f
+    d_F   = 39.2945 + 0.3018*x  - 0.0014*x**2
+    return d_F
 L_TURN 	    = angle_2_servo(10) 
 R_TURN 	    = angle_2_servo(-10)
 Z_TURN 	    = angle_2_servo(0)
@@ -175,7 +175,6 @@ def DoubleLaneChange(t_i, rate):
     return (TURNcmd, SPEEDcmd)
 
 
-#############################################################
 def LQR_drift(init_sequence, t_i, rate):
 
 	oneSecCount = rate
@@ -198,14 +197,13 @@ def LQR_drift(init_sequence, t_i, rate):
 		TURNcmd  = Z_TURN 
 		SPEEDcmd    = NEUTRAL
 
-	#print "time step ", t_i, " with speed " , SPEEDcmd, " and steering angle ", TURNcmd
+	print "time step ", t_i, " with speed " , SPEEDcmd
 	return (TURNcmd, SPEEDcmd)
 
 #############################################################
 def main_auto():
 	rospy.init_node('auto_mode', anonymous=True)
 	rospy.Subscriber('imu_data',TimeData, saveData_callback)
-	enc_data_pub = rospy.Publisher('enc_data', Vector3, queue_size = 10)
 
     # specify tests
 	test_opt    = { 0 : CircularTest,
@@ -237,14 +235,14 @@ def main_auto():
 	
 	n_dt = 0.0
 	while not rospy.is_shutdown():
-		# determine test mode: open-loop or closed-loop
+        # determine inputs
 		if test_sel in [0,1,2,3]:
+			print "open loop test"
 			(TURNcmd, SPEEDcmd) = test_mode(t_i, rateHz)
 		else:
 			(TURNcmd, SPEEDcmd) = test_mode(initial_sequence, t_i, rateHz)
 			
-		# get input commands 
-		d_F 	= servo_2_angle(TURNcmd)  # [deg]
+		d_F 	= servo_2_angle(TURNcmd)
 		FxR     = SPEEDcmd
 
         # send command signal 
@@ -252,7 +250,7 @@ def main_auto():
 		ser.write( ESC_CMD ) 
 
 		######################################################################
-		# ENCODER CODE 
+		# ENCODE CODE 
 		#####################################################################
 
         # read encoders and estimate speed
@@ -291,10 +289,6 @@ def main_auto():
 		#############################################################################
 		# END ENCODER CODE
 		#############################################################################
-
-		# publish speed and steering angle
-		print d_F
-		enc_data_pub.publish( Vector3(vx_enc, 0, d_F*pi/180 ) )
                 
         # increment counter, and wait
 		t_i += 1 
