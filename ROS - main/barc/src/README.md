@@ -1,0 +1,14 @@
+# Nodes
+auto_mode_arduino    : sends commands to the arduino, which controls the RC motor and servo
+imu_data_acq         : collects data from the myAHRS+ IMU sensor
+state_estimation     : estimates the state given IMU data, encoder reading, and steering angle
+
+# Topics
+imu_data             : raw data (roll, pitch, yaw, a_x, a_y, a_x, w_x, w_y, w_z) from IMU
+enc_data             : steering angle from servo and v_x from encoder  (d_F, v_x)
+state_estimation     : estimate of state Z = [ v_x, v_y, w_z ]
+
+# Modules
+IMU_interface       : establish communication with the myAHRS+ IMU sensor
+filtering           : filter signals from sensors / state estimation
+kinematic_equations : compute velocity and position from kinematic equations and coordinate transformation
