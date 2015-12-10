@@ -8,13 +8,13 @@ import time
 
 # communication scheme
 # ODROID -> Arduino -> actuators (servo, motor)
-SERVO_MODE  = 4    		# servo mode, sends PWM signals 
+SERVO_MODE  = 4    		# servo mode, sends PWM signals
 ESC_PIN     = 3   		# motor (throttle) pin
 SRV_PIN     = 5  		# servo (steering wheel) pin
 
 SPD         = 98       	        # initial speed PWN signal value
-BRAKE       = 50         	# brake PWN signal value 
-NEUTRAL     = 90         	# neutral PWN signal value 
+BRAKE       = 50         	# brake PWN signal value
+NEUTRAL     = 90         	# neutral PWN signal value
 STOPPED     = False
 
 board       = Arduino('/dev/ttyACM99') 	# connect to arduino
@@ -43,7 +43,9 @@ def angle_2_servo(x):
 def servo_2_angle(x):
     d_F   = 39.2945 - 0.3018*x  - 0.0014*x**2
     return d_F
-L_TURN 	    = angle_2_servo(20) 
+
+# Note: left turns
+L_TURN 	    = angle_2_servo(20)
 R_TURN 	    = angle_2_servo(-20)
 Z_TURN 	    = angle_2_servo(0)
 
@@ -63,7 +65,7 @@ def CircularTest(t_i):
         TURNcmd         = Z_TURN
     # turn left and move
     elif (t_i >= t_0) and (t_i <= t_f):
-        TURNcmd     = L_TURN
+        TURNcmd     = R_TURN
         SPEEDcmd    = SPD
     # set straight and stop
     else:
@@ -127,7 +129,7 @@ def main_auto():
 
     rate 	= rospy.Rate(10)		# set the rate to one Hert
     t_i         = 0
-     
+
     global d_F, FxR
 
     while not rospy.is_shutdown():
@@ -136,12 +138,12 @@ def main_auto():
 	d_F 	= servo_2_angle(TURNcmd)
 	FxR     = SPEEDcmd
 
-        # send command signal 
+        # send command signal
         board.digital[SRV_PIN].write(TURNcmd)
         board.digital[ESC_PIN].write(SPEEDcmd)
 
         # increment counter, and wait
-        t_i += 1 
+        t_i += 1
         rate.sleep()
 
 #############################################################

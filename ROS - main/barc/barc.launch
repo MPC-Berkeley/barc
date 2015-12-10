@@ -1,0 +1,12 @@
+<launch>
+	<node 
+		pkg="barc"
+		type="data_acq.py"
+		name="DAQ"
+	></node>
+	<node 
+		pkg="barc"
+		type="auto_mode_arduino.py"
+		name="autonomous_settings"
+	></node>
+</launch>
