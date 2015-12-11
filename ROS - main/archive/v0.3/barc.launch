@@ -1,0 +1,20 @@
+<launch>
+	<node 
+		pkg="barc"
+		type="imu_data_acq.py"
+		name="DAQ"
+	></node>
+	
+	<node 
+		pkg="barc"
+		type="auto_mode_arduino.py"
+		name="autonomous_settings"
+	></node>
+	
+	<node 
+		pkg="barc"
+		type="state_estimation.py"
+		name="autonomous_settings"
+	></node>
+	
+</launch>
