@@ -9,7 +9,7 @@ def estimateAngularAcceleration(imu_data, w_z_prev, dt):
     return (dwz, w_z_new)
 
 # estimate velocity in the vehicle frame
-def estimateVelocity(imu_data, v_BF, vx_enc, dwz, mdl, dt):
+def estimateVelocity(imu_data, v_BF, vx_enc, dwz, d_F, mdl, dt):
     
     # unpack filtered imu data
     # note: km1 = k minus 1, kp1 = k plus one
@@ -19,7 +19,7 @@ def estimateVelocity(imu_data, v_BF, vx_enc, dwz, mdl, dt):
     
     # compute v_x
     # 1. project encoder reading for front wheel to body frame x-axis (via cosine term)
-    vx_CoG_k = vx_enc
+    vx_CoG_k = 2*vx_enc*cos(d_F)
     
     # estimate v_x and v_y at CoG_
     if vx_CoG_k != 0:

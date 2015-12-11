@@ -1,0 +1,4 @@
+TimeSignal time_signal
+CustomSignal custom_signal
+---
+string response

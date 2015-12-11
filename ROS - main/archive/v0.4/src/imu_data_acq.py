@@ -4,6 +4,8 @@ import serial
 import time
 from numpy import pi
 from barc.msg import TimeData
+from barc.srv import *
+#from data_connection import *
 from imu_interface import IMU_initialization, send_command, parse_IMU_data
 
 #############################################################
@@ -11,11 +13,11 @@ def imu_data_acq():
     # launch node, publish to two topics
 	rospy.init_node('imu_data_acq', anonymous=True)
 	imu_data_pub 	= rospy.Publisher('imu_data', TimeData, queue_size = 10)
-	smp_rate        = 50	# set publishing (sampling) rate [Hz]	
+	smp_rate        = 20	# set publishing (sampling) rate [Hz]	
 	rate            = rospy.Rate(smp_rate)
 
 	## initialziation for IMU device
-	serial_device 	= '/dev/ttyACM0'        
+	serial_device 	= '/dev/ttyACM1'        
 	serial_port 	= IMU_initialization(serial_device)
 
 	# Collect data

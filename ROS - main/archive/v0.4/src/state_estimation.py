@@ -29,15 +29,16 @@ X_GF     	= filteredSignal(y0 = [0,0,0,0], method = None)
 
 # encoder and steering angle readings
 v_x_ENC 	= 0
+d_f 		= 0
 w_z_prev 	= 0
-dt 			= 1.0/50   		# imu_data_acq node is publishing at 50 Hz
 
 def imu_callback(data):
 	# load global variable/objects
 	global imu_data, v_BF, X_GF
-	global w_z_prev, v_x_ENC, dt
+	global w_z_prev, d_f, v_x_ENC
 
 	# get data
+	dt 			= 1.0/20   		# imu_data_acq node is publishing at 50 Hz
 	raw_data	= data.value
 	(roll, pitch, yaw, a_x, a_y, a_z, w_x, w_y, w_z) = raw_data
 
@@ -49,12 +50,13 @@ def imu_callback(data):
 
 	# estimate velocity in body frame
 	# estimate position in global frame
-	estimateVelocity(imu_data, v_BF, v_x_ENC, dwz, vh_dims, dt)
+	estimateVelocity(imu_data, v_BF, v_x_ENC, dwz, d_f, vh_dims, dt)
 	estimatePosition(v_BF, X_GF, yaw, v_x_ENC, dt)
 
 def enc_callback(data):
-	global v_x_ENC
+	global v_x_ENC, d_f
 	v_x_ENC = data.x
+	d_f 	= data.z
 
 def state_estimation():
 	# initialize node
@@ -64,7 +66,7 @@ def state_estimation():
 	state_pub 	= rospy.Publisher('state_estimate', Vector3, queue_size = 10)
 
 	# set node rate
-	loop_rate 	= 50
+	loop_rate 	= 20
 	rate 		= rospy.Rate(loop_rate)
 
 	# load global objects

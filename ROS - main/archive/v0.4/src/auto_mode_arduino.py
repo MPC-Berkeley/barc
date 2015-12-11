@@ -5,10 +5,11 @@ from barc.msg import TimeData
 from math import pi,sin
 import time
 import serial
-from numpy import genfromtxt, zeros, hstack, cos, array, dot, arctan
+from numpy import genfromtxt, zeros, hstack
 
 # communication scheme
 # ODROID -> Arduino -> actuators (servo, motor)
+
 SPD         = 99       	        # initial speed PWN signal value
 BRAKE       = 50         	# brake PWN signal value NEUTRAL     = 90         	# neutral PWN signal value 
 NEUTRAL     = 90         	# brake PWN signal value NEUTRAL     = 90         	# neutral PWN signal value 
@@ -21,36 +22,18 @@ if ser.isOpen():
 ser.open()
 ser.write("90,90f") #for phyton 3 useser.write("90,90f".encode())
 
+
 # open file for data collection
 BASE_PATH   		= "/home/odroid/Data/"
 data_file_name   	= BASE_PATH + time.strftime("%Y-%m-%d_%H-%M-%S") + '.csv'
 data_file     		= open(data_file_name, 'a')
-data_file.write('t_s,roll,pitch,yaw,a_x,a_y,a_z,w_x,w_y,w_z,d_F,FxR,vx_enc,enc_count\n')
+data_file.write('t_s,roll,pitch,yaw,a_x,a_y,a_z,w_x,w_y,w_z,vx_est,vy_est,X_est,Y_est,d_F,FxR,vx_enc, enc_count\n')
 
-# input command signals
-d_F 		= 0
-FxR     	= 0
-
-# encoder measurement data
-vx_enc 		= 0
-old_enc_pos = 0
+# input commands
+d_F 	= 0
+FxR     = 0
+vx_enc = 0
 new_enc_pos = 0
-radius  		= 0.036
-dist_between_magnets = 2*pi*radius/4    # four magnets equally spaced along perimeter of tire rim
-
-# state estimate
-x_hat = zeros(3)
-
-# open loop drift maneuver - STEERING WHEEL COMMAND
-# driver straight, then perform manuever to enter drift
-rateHz  = 50						# same rate as imu_data collection 
-drive_straight 			= zeros(rateHz * 2)
-dir_path = '/home/odroid/catkin_ws/src/barc/data'
-start_drift_maneuver 	= genfromtxt(dir_path + '/startDriftManeuver',delimiter=',')
-initial_sequence 		= hstack((drive_straight, start_drift_maneuver)) 
-
-# LQR gain
-K_lqr = genfromtxt(dir_path + '/K_lqr', delimiter=',') 
 
 #############################################################
 # [deg] -> [PWM]
@@ -67,13 +50,9 @@ R_TURN 	    = angle_2_servo(-10)
 Z_TURN 	    = angle_2_servo(0)
 
 #############################################################
-# Save IMU data to disk
-# record time stamp, imu estimates, and inputs
-def saveData_callback(imu_data):
-	all_data = (time.time(),) + tuple(imu_data.value) + (d_F, FxR, vx_enc, new_enc_pos)
-	N = len(all_data)
-	str_fmt = '%.4f,'*N 
-	data_file.write((str_fmt[0:-1] + '\n') % all_data)
+def saveData_callback(data):
+	all_data = (time.time(),) + tuple(data.value) + (d_F, FxR,vx_enc, new_enc_pos)
+	data_file.write('%.3f,%.2f,%.2f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f,%.4f, %.3f, %.3f, %.3f, %d\n' % all_data)
 
 #############################################################
 def CircularTest(t_i, rate):
@@ -197,58 +176,24 @@ def DoubleLaneChange(t_i, rate):
 
 
 #############################################################
-# get estimate of x_hat = [v_x , v_y, w_z]
-def updateState_callback(data):
-	global x_hat
-
-	# update fields
-	x_hat[0] = data.x 		# v_x  longitudinal velocity 
-	x_hat[1] = data.y 		# v_y  lateral velocity
-	x_hat[2] = data.z		# w_z  angular velocity about z-axis
-
-#############################################################
 def LQR_drift(init_sequence, t_i, rate):
 
-	# initial setting
 	oneSecCount = rate
-	t_f 		= 7*oneSecCount 		# final time
-	N 			= init_sequence.size 	# length of opening sequence
+	t_f 		= 7*oneSecCount 		# final time after ten seconds
+	
+	# determine length of initial opening drift maneuver
+	N = init_sequence.size
 
-	# get current state estimate
-	global x_hat, K_lqr
-	v_x 	= x_hat[0]
-	v_y 	= x_hat[1]
-	w_z 	= x_hat[2]
-
-	# compute slip angle beta
-	if v_x == 0:
-		beta = 0
-	else:
-		beta  	= arctan(v_y/v_x)
-
-	# define lqr state [beta, w_z, v_x]
-	x_lqr 	= array([beta, w_z, v_x])
-
-	# OPEN LOOP CONTROL 
+	# if still at start, perform open loop control
 	if t_i < N:
 		d_f 	= init_sequence[t_i] * 180/pi
 		TURNcmd  = angle_2_servo(d_f) 
 		SPEEDcmd = SPD
-
-	# FEEDBACK CONTROL
 	elif t_i < t_f:
-		# compute LQR gain
-		u 		= dot(K_lqr, x_lqr)
-
-		# extract individual inputs
-		d_f 		= u[0]*180/pi	
-		v_x_ref 	= u[1]
-		
-		# TO DO -- NEED MAPPING FROM v_x_ref to ESC PWM signal
+		# u = K * x
+		d_f 		= 0	
 		TURNcmd  = angle_2_servo(d_f) 
-		SPEEDcmd = 0 
-	
-	# END EXPERIMENT
+		SPEEDcmd = SPD
 	else:
 		TURNcmd  = Z_TURN 
 		SPEEDcmd    = NEUTRAL
@@ -258,10 +203,8 @@ def LQR_drift(init_sequence, t_i, rate):
 
 #############################################################
 def main_auto():
-	# initial ROS node
 	rospy.init_node('auto_mode', anonymous=True)
 	rospy.Subscriber('imu_data',TimeData, saveData_callback)
-	rospy.Subscriber('state_estimate', Vector3, updateState_callback)
 	enc_data_pub = rospy.Publisher('enc_data', Vector3, queue_size = 10)
 
     # specify tests
@@ -274,7 +217,7 @@ def main_auto():
 	test_sel    = 4
 	test_mode   = test_opt.get(test_sel)
 
-	rateHz  = 50						# same rate as imu_data collection 
+	rateHz  = 10 
 	rate 	= rospy.Rate(rateHz)		# set the rate to one Hert
 	t_i     = 0
      
@@ -285,6 +228,12 @@ def main_auto():
 	vx_enc 			= 0
 	radius  		= 0.036
    	dist_between_magnets = 2*pi*radius/4    # four magnets equally spaced along perimeter of tire rim
+
+	# open loop drift maneuver - STEERING WHEEL COMMAND
+	# driver straight, then perform manuever to enter drift
+	drive_straight 			= zeros(rateHz * 2)
+	start_drift_maneuver 	= 1.5*genfromtxt('startDriftManeuver',delimiter=',')
+	initial_sequence 		= hstack((drive_straight, start_drift_maneuver)) 
 	
 	n_dt = 0.0
 	while not rospy.is_shutdown():
@@ -301,19 +250,19 @@ def main_auto():
         # send command signal 
 		ESC_CMD = str(SPEEDcmd)+','+str(int(TURNcmd))+'f'
 		ser.write( ESC_CMD ) 
-	
-		###################################################################
-		# ENCODER CODE
-		##################################################################
 
-		# send command to get encoder data
+		######################################################################
+		# ENCODER CODE 
+		#####################################################################
+
+        # read encoders and estimate speed
 		num_of_bytes = 12
 		parsed_data = ser.read(num_of_bytes).splitlines()
+		# print parsed_data
 
 		# number of loop iterations between valid readings
 		n_dt += 1
 
-		print "here"
 		# ensure read sizeable buffer
 		if (len(parsed_data)>1):
 
@@ -326,24 +275,25 @@ def main_auto():
 				# assuming that the car moves only forward !!!!
 				latest_measurement = int(latest_measurement)
 				if latest_measurement >= new_enc_pos:
+					new_enc_pos = latest_measurement
 					# time elapsed
 					dt 			= n_dt / rateHz
 
 					# dividing by two since measurement is a sum of two encoder readings 
-					# project velocity onto vehicle x-axis
-					new_enc_pos = latest_measurement
-					v_enc = (new_enc_pos - old_enc_pos)*dist_between_magnets/(2*dt)
-					vx_enc = v_enc*cos(d_F*pi/180)
+					vx_enc = (new_enc_pos - old_enc_pos)*dist_between_magnets/(2*dt)
 
 					# update old encoder position, reset dt counter
 					old_enc_pos = new_enc_pos
 					n_dt = 0.0
+					# print "avg position = ", new_enc_pos
+					# print "velocity = ", vx_enc
 
-		###################################################################
+		#############################################################################
 		# END ENCODER CODE
-		##################################################################
+		#############################################################################
 
 		# publish speed and steering angle
+		print d_F
 		enc_data_pub.publish( Vector3(vx_enc, 0, d_F*pi/180 ) )
                 
         # increment counter, and wait

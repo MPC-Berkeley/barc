@@ -13,7 +13,6 @@ from base import *
 from barc.srv import *
 from barc.msg import *
 
-
 configurator = init_configurator()
 data_connection = DataConnection(configurator)
 

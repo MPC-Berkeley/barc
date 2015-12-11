@@ -14,7 +14,7 @@
 	<node 
 		pkg="barc"
 		type="state_estimation.py"
-		name="x_hat"
+		name="autonomous_settings"
 	></node>
 	
 </launch>
