@@ -10,9 +10,8 @@ from std_msgs.msg import Float64MultiArray
 from data_connection import *
 from base import *
 
-from data_service.srv import *
-from data_service.msg import *
-
+from barc.srv import *
+from barc.msg import *
 
 configurator = init_configurator()
 data_connection = DataConnection(configurator)
