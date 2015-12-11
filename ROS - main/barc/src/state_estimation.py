@@ -1,7 +1,7 @@
 #!/usr/bin/python
 import rospy
 import time
-from data_service.msg import *
+from barc.msg import TimeData
 from filtering import filteredSignal
 from kinematic_equations import estimateAngularAcceleration, estimateVelocity, estimatePosition
 from geometry_msgs.msg import Vector3
