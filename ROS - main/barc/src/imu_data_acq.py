@@ -4,7 +4,7 @@ import serial
 import time
 from numpy import pi
 from barc.msg import TimeData
-from data_service.srv import *
+from barc.srv import *
 #from data_connection import *
 from imu_interface import IMU_initialization, send_command, parse_IMU_data
 
