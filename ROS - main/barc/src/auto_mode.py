@@ -95,15 +95,18 @@ def main_auto():
 	rate 	= rospy.Rate(rateHz)
 	t_i     = 0
 
+	# get node parameters
+	test_sel 	= rospy.get_param("auto_node/test_sel")
+	v_x_pwm 	= rospy.get_param("auto_node/v_x_pwm")
+
     # specify test and test options
 	test_opt    = { 0 : CircularTest,
                     1 : Straight,
 		    		2 : SineSweep,   
                     3 : DoubleLaneChange,
 					4 : LQR_drift }
-	test_sel    = 4
 	test_mode   = test_opt.get(test_sel)
-	test_opt 	= TestSettings(SPD = 98, L_turn = 10, R_turn = -10)
+	test_opt 	= TestSettings(SPD = v_x_pwm, L_turn = 10, R_turn = -10)
 	
 	# get initial OL sequence for feedback control
 	if test_sel == 4:

@@ -32,7 +32,7 @@ class TestSettings:
 def CircularTest(test_opt, rate, t_i):
     oneSec 		= rate
     t_0         = 5*oneSec
-    t_f         = t_0 + 5*oneSec
+    t_f         = t_0 + 10*oneSec
 
     # do nothing initially
     if (t_i < t_0):

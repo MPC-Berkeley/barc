@@ -17,7 +17,7 @@ def imu_data_acq():
 	rate            = rospy.Rate(smp_rate)
 
 	## initialziation for IMU device
-	serial_device 	= '/dev/ttyACM0'        
+	serial_device	= rospy.get_param("imu_node/port")
 	serial_port 	= IMU_initialization(serial_device)
 
 	# Collect data

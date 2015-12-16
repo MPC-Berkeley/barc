@@ -32,6 +32,7 @@ const int noAction = 0;
 // Not sure if constraints should be active on motor as well
 int d_theta_max = 50; 
 int theta_center = 90;
+int motor_neutral = 90;
 int theta_max = theta_center + d_theta_max;
 int theta_min = theta_center - d_theta_max;
 int motor_max = 120;
@@ -135,7 +136,7 @@ int saturateMotor(int x)
 {
   
   if (x  == noAction ){
-    return x;
+    return motor_neutral;
   }
   
   if (x  >  motor_max) {
@@ -151,7 +152,7 @@ int saturateServo(int x)
 {
   
   if (x  == noAction ){
-    return x;
+    return theta_center;
   }
   
   if (x  >  theta_max) {
