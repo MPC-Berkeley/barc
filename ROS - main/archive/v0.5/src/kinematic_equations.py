@@ -16,6 +16,9 @@ def estimateVelocity(imu_data, v_BF, vx_enc, dwz, mdl, dt):
     (a,_) = mdl
     (_, ay_IMU, _, w_z)    = imu_data.getFilteredSignal()
     (_ , vy_CoG_km1)         = v_BF.getRawSignal()
+    
+    # compute v_x
+    # 1. project encoder reading for front wheel to body frame x-axis (via cosine term)
     vx_CoG_k = vx_enc
     
     # estimate v_x and v_y at CoG_

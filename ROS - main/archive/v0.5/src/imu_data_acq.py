@@ -11,9 +11,7 @@ def imu_data_acq():
     # launch node, publish to two topics
 	rospy.init_node('imu_data_acq', anonymous=True)
 	imu_data_pub 	= rospy.Publisher('imu_data', TimeData, queue_size = 10)
-	
-	# set node rate
-	smp_rate        = 50
+	smp_rate        = 50	# set publishing (sampling) rate [Hz]	
 	rate            = rospy.Rate(smp_rate)
 
 	## initialziation for IMU device
@@ -39,7 +37,6 @@ def imu_data_acq():
             # publish data
 			imu_data_pub.publish(time_data)
             
-		# wait
 		rate.sleep()
 	
 	# close imu connection
