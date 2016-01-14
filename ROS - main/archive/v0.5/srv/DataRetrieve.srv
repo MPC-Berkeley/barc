@@ -1,4 +1,0 @@
-string id
-bool is_time
----
-CustomSignal signal
