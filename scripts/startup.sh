@@ -11,13 +11,14 @@
 #
 # By default this script does nothing.
 
-touch /home/odroid/testestestestest
+#touch /home/odroid/testestestestest
 
 
-source /home/odroid/.local/bin/virtualenvwrapper.sh
+#source /home/odroid/.local/bin/virtualenvwrapper.sh
+source /usr/local/bin/virtualenvwrapper.sh
 export WORKON_HOME=$HOME/.virtualenvs
 
 
-cd /home/odroid/barc/Dator
+#cd /home/odroid/barc/Dator
 workon barc
-supervisord -c /home/odroid/barc/Dator/supervisor.conf
+#supervisord -c /home/odroid/barc/Dator/supervisor.conf
