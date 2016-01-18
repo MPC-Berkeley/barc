@@ -1,0 +1,5 @@
+TimeSignal time_signal
+CustomSignal custom_signal
+string experiment_id
+---
+string response
