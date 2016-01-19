@@ -1,4 +1,4 @@
-#!/home/mpc/.virtualenvs/research/bin/python
+#!/usr/bin/env python
 
 import rospy
 import json

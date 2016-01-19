@@ -169,7 +169,7 @@ class ExperimentResource(ModelResource):
 
 
     class Meta:
-        Queryset = Experiment.objects.all()
+        queryset = Experiment.objects.all()
         authorization = Authorization()
         authentication = Authentication()
         resource_name = 'experiment'

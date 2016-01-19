@@ -129,26 +129,18 @@ class DataConnection(object):
         config = self.configurator.get_config()
 
         url = self._api_url('experiment')
-
-        params = {'name': experiment}
+        params = {'name' : 'sdfsdf'}
 
         print url
 
+        response = self.client.post(url, data=json.dumps(params), headers=self.post_header())
+        print response
+
         # response = requests.post(url, data=json.dumps(params), headers=self.post_header())
-        response = requests.post(url, headers=self.post_header())
+        # print response.content
+        return "OK"
 
-        # response = self.client.get(url, params=params, headers=self.sec_header())
-
-        # # print response.content
-        # if len(json.loads(response.content)['objects']) == 0:
-        #     self.client.post(url, data=json.dumps(params), headers=self.post_header())
-        #     response = self.client.get(url, params=params, headers=self.sec_header())
-
-        # return json.loads(response.content)['objects'][0]
-
-        print response.content
-
-        return json.loads(response.content)
+        # return json.loads(response.content)
 
 
         # response = self.client.post(url, data=json.dumps(signal_points), headers=self.post_header())
@@ -344,4 +336,5 @@ class DataConnection(object):
 
     @classmethod
     def utc_to_millisec(cls, dt):
-        return delorean.Delorean(dt, timezone="UTC").epoch()
+        return delorean.Delorean(dt, timezone="UTC")
+#        return delorean.Delorean(dt, timezone="UTC").epoch()

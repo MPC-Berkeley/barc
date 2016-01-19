@@ -20,6 +20,7 @@ v1_api.register(SignalResource())
 v1_api.register(SettingResource())
 v1_api.register(EventResource())
 v1_api.register(BlobResource())
+v1_api.register(ExperimentResource())
 
 urlpatterns = [
     url(r'^admin/', include(admin.site.urls)),

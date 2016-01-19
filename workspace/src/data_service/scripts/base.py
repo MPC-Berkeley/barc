@@ -18,8 +18,9 @@ class Configurator(object):
                 self.config = json.loads(input.read())
         else:
             self.config = {
-                'server': 'http://104.131.132.100:8009',
-                # 'server': ' http://ec2-54-210-24-92.compute-1.amazonaws.com',
+#                'server': 'http://104.131.132.100:8009',
+                'server': 'localhost:8009',
+                'server': 'http://ec2-52-22-139-24.compute-1.amazonaws.com/',
                 'secret_uuid': str(uuid4()),
                 'registration_token': 'abcd',
                 'id': "1"
@@ -39,12 +40,11 @@ class Configurator(object):
         self.config = config
 
 
-CONFIG_LOCATION = "/home/mpc/default.cfg"
+CONFIG_LOCATION = "/home/odroid/default.cfg"
 
 
 def init_configurator():
-    """
-    Register local computer if not done previously.
+    """ Register local computer if not done previously.
     :return: The configurator for this local computer
     """
     if os.path.isfile(CONFIG_LOCATION):
@@ -159,6 +159,7 @@ if __name__ == '__main__':
     """
     Main loop.  Handle commands until done.
     """
+
     configurator = init_configurator()
     data_connection = DataConnection(configurator)
     data_connection.update_config(CONFIG_LOCATION)
