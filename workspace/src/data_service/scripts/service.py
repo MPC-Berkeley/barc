@@ -43,16 +43,22 @@ def get_blob_signal(signal_id):
 
 
 def send_time_signal(time_signal, experiment_id):
-    signal = get_time_signal(time_signal.id)
+    signal_id = time_signal.id
+    #signal_id = 'sig_mpc3'
+    signal = get_time_signal(signal_id)
     response = response_ok
 
     try:
         timestamps = time_signal.timestamps
-        signals = time_signal.signal
+        signals = json.loads(time_signal.signal)
         signal_points = []
 
-        for sig, ts in zip(timestamps, signals):
-            signal_points.append(sig.append(ts))
+        for ts, sig in zip(timestamps, signals):
+#        for ts in timestamps:
+            sig.append(ts)
+            signal_points.append(sig)
+
+        print signal_points
 
         data_connection.add_signal_points(signal['id'],
                                           signal_points,
@@ -79,14 +85,15 @@ def handle_send_data(req):
     response = response_ok
 
     if req.time_signal != None and req.time_signal.id != '':
-        response = send_time_signal(req.time_signal)
+        print 'SENDING DATAAA'
+        response = send_time_signal(req.time_signal, req.experiment_id)
         if response != response_ok:
             return DataForwardResponse(response)
 
-    if req.custom_signal != None and req.custom_signal.id != '':
-        response = send_custom_signal(req.custom_signal)
-        if response != response_ok:
-            return DataForwardResponse(response)
+#    if req.custom_signal != None and req.custom_signal.id != '':
+#        response = send_custom_signal(req.custom_signal)
+#        if response != response_ok:
+#            return DataForwardResponse(response)
 
     return DataForwardResponse(response)
 
