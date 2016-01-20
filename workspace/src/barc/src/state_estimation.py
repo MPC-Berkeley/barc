@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 import rospy
 import time
 from barc.msg import TimeData
@@ -8,6 +8,12 @@ from geometry_msgs.msg import Vector3
 from numpy import pi, cos, sin
 from input_map import angle_2_servo, servo_2_angle
 import os
+
+
+from data_service.srv import *
+from data_service.msg import *
+
+import json
 
 # input variables
 d_f 	= 0
@@ -91,6 +97,7 @@ def state_estimation():
 	state_pub 	= rospy.Publisher('state_estimate', Vector3, queue_size = 10)
 
 	# get system parameters
+	"""
 	test_sel 	= rospy.get_param("auto_node/test_sel")
 	test_opt  	= {0 : "CRC_",
 				   1 : "STR_",
@@ -98,16 +105,17 @@ def state_estimation():
 				   3 : "DLC_",
 				   4 : "LQR_"}
 	test_name 	= test_opt.get(test_sel)
+	"""
+
+	# get vehicle dimension parameters
+	a = rospy.get_param("state_estimation/L_a")
+	b = rospy.get_param("state_estimation/L_b")
+	vh_dims = (a,b)
 
 	# set node rate
 	loop_rate 	= 50
-	dt 			= 1.0 / loop_rate
+	dt 		= 1.0 / loop_rate
 	rate 		= rospy.Rate(loop_rate)
-
-	#  Vehicle parameters
-	a       = 0.14          # distance from CoG to front axel [m]
-	b       = 0.14          # distance from CoG to rear axel [m]
-	vh_dims = (a,b)
 
 	# filter parameters
 	# aph   := smoothing factor, (all filtered)   0 <=   aph   <= 1  (no filter)
@@ -137,12 +145,20 @@ def state_estimation():
 		os.makedirs(BASE_PATH)
 
 	# create file
+	"""
 	data_file_name   	= BASE_PATH + test_name + time.strftime("%H.%M.%S") + '.csv'
 	data_file     		= open(data_file_name, 'a')
 	data_file.write('t_s,test_mode,roll_imu,pitch_imu,yaw_imu,w_x_imu,w_y_imu,w_z_imu,a_x_imu,a_y_imu,a_z_imu,FL_enc_count,FR_enc_count,v_x_enc,v_y_enc,v_x_pwm,d_f_pwm,d_f,v_x_hat,v_y_hat,w_z_hat\n')
+	"""
 	t0 				= time.time()
 
+	samples_buffer_length = 50
+	samples_counter = 0
+	data_to_flush = []
+	timestamps = []
+	send_data = rospy.ServiceProxy('send_data', DataForward)
 	while not rospy.is_shutdown():
+		samples_counter += 1
 		# measurements from imu and encoder
 		global test_mode, roll, pitch, yaw, w_x, w_y, w_z, a_x, a_y, a_z
 		global FL_count, FR_count, v_x, v_y, v_x_pwm, d_f_pwm, d_f
@@ -167,16 +183,33 @@ def state_estimation():
 
 		# save data (maybe should use rosbag in the future)
 		t  	= time.time() - t0
-		all_data = (t,test_mode,roll,pitch,yaw,w_x,w_y,w_z,a_x,a_y,a_z,FL_count,FR_count,v_x,v_y,v_x_pwm,d_f_pwm,d_f,v_x_hat,v_y_hat,w_z_hat)
+		all_data = [t,roll,pitch,yaw,w_x,w_y,w_z,a_x,a_y,a_z,FL_count,FR_count,v_x,v_y,v_x_pwm,d_f_pwm,d_f,v_x_hat,v_y_hat,w_z_hat]
+		timestamps.append(t)
+		data_to_flush.append(all_data)
+		"""
 		N = len(all_data)
 		str_fmt = '%.4f,'*N
 		data_file.write( (str_fmt[0:-1]+'\n') % all_data)
+		"""
+
+		if samples_counter == samples_buffer_length:
+			time_signal = TimeSignal()
+			time_signal.id = 'dummy_test'
+			time_signal.timestamps = timestamps
+			time_signal.signal = json.dumps(data_to_flush)
+			print data_to_flush
+
+			send_data(time_signal, None, '')
+			timestamps = []
+			data_to_flush = []
+			samples_counter = 0
 
 		# wait
 		rate.sleep()
 
 if __name__ == '__main__':
 	try:
+		rospy.wait_for_service('send_data')
 		state_estimation()
 	except rospy.ROSInterruptException:
 		pass

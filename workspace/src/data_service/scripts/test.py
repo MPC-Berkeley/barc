@@ -45,7 +45,7 @@ if __name__ == '__main__':
 		
         send_data = rospy.ServiceProxy('send_data', DataForward)
         time_signal = TimeSignal()
-        time_signal.id = 'sig15'
+        time_signal.id = 'sig16'
         time_signal.timestamps = tsvec
         time_signal.signal = json.dumps(signal_vs)
 		
@@ -53,7 +53,7 @@ if __name__ == '__main__':
         print "Experiment ID", experiment_id
 		
 		# Send signal
-        response = send_data(time_signal, None, experiment_id)
+        response = send_data(time_signal, None, '')
     except rospy.ServiceException, e:
         print 'Call to service failed: %s' %e
     

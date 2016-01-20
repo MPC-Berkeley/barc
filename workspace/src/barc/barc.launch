@@ -1,4 +1,12 @@
 <launch>
+	<!-- DATA SERVICE-->
+	<node 
+		pkg="data_service"
+		type="service.py"
+		name="data_service"
+	>
+	</node>
+	
 	<!-- IMU NODE -->
 	<node 
 		pkg="barc"
@@ -7,8 +15,6 @@
 	>
 		<param name="port" value="/dev/ttyACM1" />
 	</node>
-
-
 
 	<!-- ARDUINO NODE -->
 	<node 
@@ -19,14 +25,15 @@
 		<param name="port" value="/dev/ttyUSB0" />	
 	</node>
 
-
-
 	<!-- STATE ESTIMATION NODE -->
 	<node 
 		pkg="barc"
 		type="state_estimation.py"
 		name="state_estimation"
-	></node>
+	>
+		<param name="L_a" value="0.14" />	
+		<param name="L_b" value="0.14" />	
+	</node>
 	
 
 	<!-- AUTONOMOUS DRIVE NODE -->

@@ -18,8 +18,8 @@ class Configurator(object):
                 self.config = json.loads(input.read())
         else:
             self.config = {
-                'server': 'http://104.131.132.100:8009',
-#                'server': 'localhost:8009',
+#                'server': 'http://104.131.132.100:8009',
+                'server': 'http://localhost:8000',
 #                'server': 'http://ec2-52-22-139-24.compute-1.amazonaws.com/',
                 'secret_uuid': str(uuid4()),
                 'registration_token': 'abcd',

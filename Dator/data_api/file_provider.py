@@ -6,7 +6,7 @@ __author__ = 'brucewootton'
 Simple blob store with file lock and appending support.
 """
 
-DATA_DIR = "/home/vagrant/data_rep".format(os.path.dirname(os.path.abspath(__file__)))
+DATA_DIR = "/home/odroid/data_rep".format(os.path.dirname(os.path.abspath(__file__)))
 
 def startup():
     if not os.path.isdir(DATA_DIR):

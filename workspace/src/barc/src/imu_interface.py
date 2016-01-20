@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 import serial
 import traceback
 from math import pi
