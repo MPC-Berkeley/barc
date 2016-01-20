@@ -149,6 +149,7 @@ class DataConnection(object):
         """
         config = self.configurator.get_config()
         url = self._data_item_url('signal', signal_id)
+        print 'URL:', url
         response = self.client.post(url, data=json.dumps(signal_points), headers=self.post_header())
         if not DataConnection.check_response_ok(response):
             print "Error posting signal data {}".format(response.content)

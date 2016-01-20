@@ -61,9 +61,9 @@ def send_time_signal(time_signal, experiment_id):
         print signal_points
 
         data_connection.add_signal_points(signal['id'],
-                                          signal_points,
-                                          experiment_id)
+                                          signal_points)
     except Exception as e:
+        print e
         response = str(e)
 
     return response

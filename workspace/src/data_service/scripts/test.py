@@ -30,6 +30,8 @@ if __name__ == '__main__':
     #    print e
 
     # generate and send signal
+
+    
     try:
 		# generate data
         t = datetime.datetime.now(tz=pytz.UTC)
@@ -39,21 +41,13 @@ if __name__ == '__main__':
         signal_vs = []
 
         for s in signal_vector:
-            signal_vs.append([s])
+            signal_vs.append([s, 3])
 		
-		# generate CustomSignal
-        #custom_signal = CustomSignal()
-        #custom_signal.id = 'Custom Signal Test'
-        #custom_signal.signal = 'This is a test' 
-	    # json.dumps({'sig1': [-1, -2, -3, -4], 'sig2': [1, 2, 3, 4]})
-
-		# generate TimeSignal
         send_data = rospy.ServiceProxy('send_data', DataForward)
         time_signal = TimeSignal()
-        time_signal.id = 'sig5'
+        time_signal.id = 'sig15'
         time_signal.timestamps = tsvec
         time_signal.signal = json.dumps(signal_vs)
-        #time_signal.signal.layout.dim = 1
 		
         print "Time Signal", time_signal
         print "Experiment ID", experiment_id
@@ -62,8 +56,10 @@ if __name__ == '__main__':
         response = send_data(time_signal, None, experiment_id)
     except rospy.ServiceException, e:
         print 'Call to service failed: %s' %e
+    
+    
 
-	"""
+    """
     # Send custom data
     try:
         send_data = rospy.ServiceProxy('send_data', DataForward)
@@ -76,13 +72,17 @@ if __name__ == '__main__':
         print 'Call to service failed: %s' %e
 	"""
 
-    # # Retrieve time data
-    # try:
-    #     retrieve_data = rospy.ServiceProxy('retrieve_data', DataRetrieve)
-    #     response = retrieve_data(time_signal_id, True)
-    #     print response
-    # except rospy.ServiceException, e:
-    #     print 'Call to service failed: %s' %e
+    """
+    time_signal_id = 'sig10'
+ 
+    # Retrieve time data
+    try:
+        retrieve_data = rospy.ServiceProxy('retrieve_data', DataRetrieve)
+        response = retrieve_data(time_signal_id, True)
+        print response
+    except rospy.ServiceException, e:
+        print 'Call to service failed: %s' %e
+    """
 
     # Retrieve custom data
     # try:
