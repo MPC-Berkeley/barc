@@ -45,7 +45,7 @@ if __name__ == '__main__':
 		
         send_data = rospy.ServiceProxy('send_data', DataForward)
         time_signal = TimeSignal()
-        time_signal.id = 'sig16'
+        time_signal.id = 'mpc_sig1'
         time_signal.timestamps = tsvec
         time_signal.signal = json.dumps(signal_vs)
 		

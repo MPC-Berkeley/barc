@@ -12,7 +12,7 @@ import delorean
 
 
 class SystemModel(models.Model):
-    created_at = models.DateTimeField(auto_now_add=True)
+    created_at = models.DateTimeField(auto_now_add=True,blank=True,null=True)
     updated_at = models.DateTimeField(auto_now=True)
     uuid = models.CharField(max_length=128, db_index=True)
 

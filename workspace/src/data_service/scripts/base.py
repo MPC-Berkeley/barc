@@ -19,8 +19,8 @@ class Configurator(object):
         else:
             self.config = {
 #                'server': 'http://104.131.132.100:8009',
-                'server': 'http://localhost:8000',
-#                'server': 'http://ec2-52-22-139-24.compute-1.amazonaws.com/',
+#                'server': 'http://localhost:8000',
+                'server': 'http://ec2-52-22-139-24.compute-1.amazonaws.com/',
                 'secret_uuid': str(uuid4()),
                 'registration_token': 'abcd',
                 'id': "1"
@@ -43,7 +43,7 @@ class Configurator(object):
 CONFIG_LOCATION = "/home/odroid/default.cfg"
 
 
-def init_configurator():
+def init_configurator(CONFIG_LOCATION=CONFIG_LOCATION):
     """ Register local computer if not done previously.
     :return: The configurator for this local computer
     """

@@ -97,15 +97,15 @@ def state_estimation():
 	state_pub 	= rospy.Publisher('state_estimate', Vector3, queue_size = 10)
 
 	# get system parameters
-	"""
-	test_sel 	= rospy.get_param("auto_node/test_sel")
-	test_opt  	= {0 : "CRC_",
-				   1 : "STR_",
-				   2 : "SWP_",
-				   3 : "DLC_",
-				   4 : "LQR_"}
-	test_name 	= test_opt.get(test_sel)
-	"""
+	username = rospy.get_param("auto_node/user")
+	experiment_sel 	= rospy.get_param("auto_node/experiment_sel")
+	experiment_opt 	= {0 : "Circular",
+				       1 : "Straight",
+				       2 : "Sweep",
+				       3 : "Double Lane Change",
+				       4 : "LQR"}
+	experiment_type = experiment_opt.get(experiment_sel)
+	signal_ID = username + " - " + experiment_type
 
 	# get vehicle dimension parameters
 	a = rospy.get_param("state_estimation/L_a")
@@ -136,6 +136,7 @@ def state_estimation():
 	# variable for angular acceleration estimate
 	w_z_prev 	= 0
 
+	"""
 	# save data to file
 	date 				= time.strftime("%Y.%m.%d")
 	BASE_PATH   		= "/home/odroid/Data/" + date + "/"
@@ -145,7 +146,6 @@ def state_estimation():
 		os.makedirs(BASE_PATH)
 
 	# create file
-	"""
 	data_file_name   	= BASE_PATH + test_name + time.strftime("%H.%M.%S") + '.csv'
 	data_file     		= open(data_file_name, 'a')
 	data_file.write('t_s,test_mode,roll_imu,pitch_imu,yaw_imu,w_x_imu,w_y_imu,w_z_imu,a_x_imu,a_y_imu,a_z_imu,FL_enc_count,FR_enc_count,v_x_enc,v_y_enc,v_x_pwm,d_f_pwm,d_f,v_x_hat,v_y_hat,w_z_hat\n')
@@ -194,7 +194,7 @@ def state_estimation():
 
 		if samples_counter == samples_buffer_length:
 			time_signal = TimeSignal()
-			time_signal.id = 'dummy_test'
+			time_signal.id = signal_ID
 			time_signal.timestamps = timestamps
 			time_signal.signal = json.dumps(data_to_flush)
 			print data_to_flush

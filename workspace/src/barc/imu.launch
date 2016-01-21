@@ -1,4 +1,11 @@
 <launch>
+	<!-- DATA SERVICE-->
+	<node 
+		pkg="data_service"
+		type="service.py"
+		name="data_service"
+	>
+	</node>
 	
 	<!-- IMU NODE -->
 	<node 

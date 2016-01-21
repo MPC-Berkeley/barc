@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 import rospy
 from geometry_msgs.msg import Vector3, Twist
 from barc.msg import TimeData
@@ -96,20 +96,20 @@ def main_auto():
 	t_i     = 0
 
 	# get node parameters
-	test_sel 	= rospy.get_param("auto_node/test_sel")
+	experiment_sel 	= rospy.get_param("auto_node/experiment_sel")
 	v_x_pwm 	= rospy.get_param("auto_node/v_x_pwm")
 
     # specify test and test options
-	test_opt    = { 0 : CircularTest,
+	experiment_opt    = { 0 : CircularTest,
                     1 : Straight,
 		    		2 : SineSweep,   
                     3 : DoubleLaneChange,
 					4 : LQR_drift }
-	test_mode   = test_opt.get(test_sel)
+	test_mode   = experiment_opt.get(experiment_sel)
 	test_opt 	= TestSettings(SPD = v_x_pwm, L_turn = 10, R_turn = -10)
 	
 	# get initial OL sequence for feedback control
-	if test_sel == 4:
+	if experiment_sel == 4:
 		# open loop drift maneuver - driver straigh, then perform manuever to enter drift
 		dir_path = '/home/odroid/catkin_ws/src/barc/data'
 		start_drift_maneuver 	= genfromtxt(dir_path + '/startDriftManeuver',delimiter=',')
@@ -121,13 +121,13 @@ def main_auto():
 
 	while not rospy.is_shutdown():
 		# get command signal
-		if test_sel in [0,1,2,3]:
+		if experiment_sel in [0,1,2,3]:
 			(TURNcmd, SPEEDcmd) = test_mode(test_opt, rateHz, t_i)
 		else:
 			(TURNcmd, SPEEDcmd) = test_mode(test_opt, initial_sequence, K_LQR, rateHz, t_i)
 			
         # send command signal 
-		esc_cmd = Vector3(SPEEDcmd, TURNcmd, test_sel)
+		esc_cmd = Vector3(SPEEDcmd, TURNcmd, 0)
 		nh.publish(esc_cmd)
 	
         # wait
