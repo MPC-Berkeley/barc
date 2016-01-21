@@ -22,7 +22,6 @@ def updateState_callback(data):
 
 #############################################################
 def LQR_drift(test_opt, init_sequence, K_LQR, rate, t_i):
-
 	# initial setting
 	oneSecCount = rate
 	N 			= init_sequence.size 	# length of opening sequence
@@ -50,15 +49,15 @@ def LQR_drift(test_opt, init_sequence, K_LQR, rate, t_i):
 	# OPEN LOOP CONTROL 
 	# get to speed, then apply open loop steering sequence
 	if t_i < t_0:
-		TURNcmd  	= test_opt.Z_turn
-		SPEEDcmd 	= test_opt.speed
+		servoCMD  	= test_opt.Z_turn
+		motorCMD 	= test_opt.speed
 
 	# start
 	elif t_i < t_OL:
 		k 		 = t_i - t_0
 		d_f 	 = init_sequence[k] * 180/pi
-		TURNcmd  = angle_2_servo(d_f) 
-		SPEEDcmd = test_opt.speed
+		servoCMD  = angle_2_servo(d_f) 
+		motorCMD = test_opt.speed
 
 	# FEEDBACK CONTROL
 	elif t_i < t_f:
@@ -70,22 +69,22 @@ def LQR_drift(test_opt, init_sequence, K_LQR, rate, t_i):
 		v_x_ref 	= u[1]
 		
 		# TO DO -- NEED MAPPING FROM v_x_ref to ESC PWM signal
-		TURNcmd  = angle_2_servo(d_f) 
-		SPEEDcmd = test_opt.speed
+		servoCMD  = angle_2_servo(d_f) 
+		motorCMD = test_opt.speed
 	
     # set straight and stop
 	else:
-		TURNcmd     	= test_opt.Z_turn
-		SPEEDcmd        = test_opt.neutral
+		servoCMD     	= test_opt.Z_turn
+		motorCMD        = test_opt.neutral
 		if not test_opt.stopped:
-			SPEEDcmd    	 = test_opt.brake
+			motorCMD    	 = test_opt.brake
 			test_opt.stopped = True
 
-	return (TURNcmd, SPEEDcmd)
+	return (motorCMD, servoCMD)
 
 #############################################################
 def main_auto():
-	# initial ROS node
+	# initialize ROS node
 	rospy.init_node('auto_mode', anonymous=True)
 	rospy.Subscriber('state_estimate', Vector3, updateState_callback)
 	nh = rospy.Publisher('esc_cmd', Vector3, queue_size = 10)
@@ -98,6 +97,7 @@ def main_auto():
 	# get node parameters
 	experiment_sel 	= rospy.get_param("auto_node/experiment_sel")
 	v_x_pwm 	= rospy.get_param("auto_node/v_x_pwm")
+	t_exp 		= rospy.get_param("auto_node/t_exp")
 
     # specify test and test options
 	experiment_opt    = { 0 : CircularTest,
@@ -106,7 +106,8 @@ def main_auto():
                     3 : DoubleLaneChange,
 					4 : LQR_drift }
 	test_mode   = experiment_opt.get(experiment_sel)
-	test_opt 	= TestSettings(SPD = v_x_pwm, L_turn = 10, R_turn = -10)
+	str_ang 	= rospy.get_param("auto_node/steering_angle")
+	test_opt 	= TestSettings(SPD = v_x_pwm, L_turn = str_ang, R_turn =-str_ang, dt=t_exp)
 	
 	# get initial OL sequence for feedback control
 	if experiment_sel == 4:
@@ -122,12 +123,12 @@ def main_auto():
 	while not rospy.is_shutdown():
 		# get command signal
 		if experiment_sel in [0,1,2,3]:
-			(TURNcmd, SPEEDcmd) = test_mode(test_opt, rateHz, t_i)
+			(motorCMD, servoCMD) = test_mode(test_opt, rateHz, t_i)
 		else:
-			(TURNcmd, SPEEDcmd) = test_mode(test_opt, initial_sequence, K_LQR, rateHz, t_i)
+			(motorCMD, servoCMD) = test_mode(test_opt, initial_sequence, K_LQR, rateHz, t_i)
 			
         # send command signal 
-		esc_cmd = Vector3(SPEEDcmd, TURNcmd, 0)
+		esc_cmd = Vector3(motorCMD, servoCMD, 0)
 		nh.publish(esc_cmd)
 	
         # wait
@@ -136,7 +137,6 @@ def main_auto():
 
 #############################################################
 if __name__ == '__main__':
-	print('starting test ...')
 	try:
 		main_auto()
 	except rospy.ROSInterruptException:

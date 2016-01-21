@@ -101,11 +101,11 @@ def state_estimation():
 	experiment_sel 	= rospy.get_param("auto_node/experiment_sel")
 	experiment_opt 	= {0 : "Circular",
 				       1 : "Straight",
-				       2 : "Sweep",
-				       3 : "Double Lane Change",
+				       2 : "SineSweep",
+				       3 : "DoubleLaneChange",
 				       4 : "LQR"}
 	experiment_type = experiment_opt.get(experiment_sel)
-	signal_ID = username + " - " + experiment_type
+	signal_ID = username + "-" + experiment_type
 
 	# get vehicle dimension parameters
 	a = rospy.get_param("state_estimation/L_a")
@@ -136,7 +136,6 @@ def state_estimation():
 	# variable for angular acceleration estimate
 	w_z_prev 	= 0
 
-	"""
 	# save data to file
 	date 				= time.strftime("%Y.%m.%d")
 	BASE_PATH   		= "/home/odroid/Data/" + date + "/"
@@ -146,10 +145,9 @@ def state_estimation():
 		os.makedirs(BASE_PATH)
 
 	# create file
-	data_file_name   	= BASE_PATH + test_name + time.strftime("%H.%M.%S") + '.csv'
+	data_file_name   	= BASE_PATH + signal_ID + '-' + time.strftime("%H.%M.%S") + '.csv'
 	data_file     		= open(data_file_name, 'a')
 	data_file.write('t_s,test_mode,roll_imu,pitch_imu,yaw_imu,w_x_imu,w_y_imu,w_z_imu,a_x_imu,a_y_imu,a_z_imu,FL_enc_count,FR_enc_count,v_x_enc,v_y_enc,v_x_pwm,d_f_pwm,d_f,v_x_hat,v_y_hat,w_z_hat\n')
-	"""
 	t0 				= time.time()
 
 	samples_buffer_length = 50
@@ -186,23 +184,25 @@ def state_estimation():
 		all_data = [t,roll,pitch,yaw,w_x,w_y,w_z,a_x,a_y,a_z,FL_count,FR_count,v_x,v_y,v_x_pwm,d_f_pwm,d_f,v_x_hat,v_y_hat,w_z_hat]
 		timestamps.append(t)
 		data_to_flush.append(all_data)
-		"""
+
+		# save to CSV
 		N = len(all_data)
 		str_fmt = '%.4f,'*N
-		data_file.write( (str_fmt[0:-1]+'\n') % all_data)
+		data_file.write( (str_fmt[0:-1]+'\n') % tuple(all_data))
+		
 		"""
-
 		if samples_counter == samples_buffer_length:
 			time_signal = TimeSignal()
 			time_signal.id = signal_ID
 			time_signal.timestamps = timestamps
 			time_signal.signal = json.dumps(data_to_flush)
-			print data_to_flush
 
+			# do the following command asynchronously, right now, this is a blocking call
 			send_data(time_signal, None, '')
 			timestamps = []
 			data_to_flush = []
 			samples_counter = 0
+		"""
 
 		# wait
 		rate.sleep()

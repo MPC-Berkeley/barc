@@ -3,13 +3,13 @@ from numpy import sin, cos, pi
 
 # simple test setting class
 class TestSettings:
-	def __init__(self, SPD = 95, L_turn = -5, R_turn = 5):
-		# member variables
+	def __init__(self, SPD = 95, L_turn = 5, R_turn = -5, dt = 10):
 		# PWN signal values for motor
 		self.speed 		= SPD
 		self.neutral 	= 90
 		self.stopped 	= False
 		self.brake 		= 50
+		self.dt_man 	= dt   	# duration of manuever
 
 		# check valid speed
 		if SPD < 90 or SPD > 130:
@@ -32,27 +32,27 @@ class TestSettings:
 def CircularTest(test_opt, rate, t_i):
     oneSec 		= rate
     t_0         = 5*oneSec
-    t_f         = t_0 + 10*oneSec
+    t_f         = t_0 + (test_opt.dt_man)*oneSec
 
     # do nothing initially
     if (t_i < t_0):
-        SPEEDcmd        = test_opt.neutral
-        TURNcmd         = test_opt.Z_turn
+        motorCMD        = test_opt.neutral
+        servoCMD         = test_opt.Z_turn
 
     # turn left and move
     elif (t_i >= t_0) and (t_i <= t_f):
-        TURNcmd     = test_opt.L_turn
-        SPEEDcmd    = test_opt.speed
+        servoCMD     = test_opt.L_turn
+        motorCMD    = test_opt.speed
 
     # set straight and stop
     else:
-        TURNcmd     	= test_opt.Z_turn
-        SPEEDcmd        = test_opt.neutral
+        servoCMD     	= test_opt.Z_turn
+        motorCMD        = test_opt.neutral
         if not test_opt.stopped:
-            SPEEDcmd    	 = test_opt.brake
+            motorCMD    	 = test_opt.brake
             test_opt.stopped = True
 
-    return (TURNcmd, SPEEDcmd)
+    return (motorCMD, servoCMD)
 
 
 #############################################################
@@ -65,23 +65,23 @@ def Straight(test_opt, rate, t_i):
 
     # rest
     if t_i < t_0:
-        TURNcmd     = test_opt.Z_turn
-        SPEEDcmd    = test_opt.neutral
+        servoCMD     = test_opt.Z_turn
+        motorCMD    = test_opt.neutral
 
     # start moving
     elif (t_i >= t_0) and (t_i < t_f):
-        TURNcmd     = test_opt.Z_turn
-        SPEEDcmd    = test_opt.speed
+        servoCMD     = test_opt.Z_turn
+        motorCMD    = test_opt.speed
 
     # set straight and stop
     else:
-        TURNcmd     	= test_opt.Z_turn
-        SPEEDcmd        = test_opt.neutral
+        servoCMD     	= test_opt.Z_turn
+        motorCMD        = test_opt.neutral
         if not test_opt.stopped:
-            SPEEDcmd    	 = test_opt.brake
+            motorCMD    	 = test_opt.brake
 	
 
-    return (TURNcmd, SPEEDcmd)
+    return (motorCMD, servoCMD)
 
 #############################################################
 def SineSweep(test_opt, rate, t_i):
@@ -96,28 +96,27 @@ def SineSweep(test_opt, rate, t_i):
 
     # rest
     if t_i < t_0:
-        TURNcmd     = test_opt.Z_turn
-        SPEEDcmd    = test_opt.neutral
+        servoCMD     = test_opt.Z_turn
+        motorCMD    = test_opt.neutral
 	
 	# move forward
     elif  (t_i >= t_0) and (t_i < t_st):
-        TURNcmd     = test_opt.Z_turn
-        SPEEDcmd    = test_opt.speed
+        servoCMD     = test_opt.Z_turn
+        motorCMD    = test_opt.speed
 
 	# move in sine wave motion
     elif  (t_i >= t_st) and (t_i < t_f):
-        TURNcmd     = angle_2_servo(25*sin(2*pi*(t_i-t_0)/float(T)))
-        SPEEDcmd    = test_opt.speed
+        servoCMD     = angle_2_servo(25*sin(2*pi*(t_i-t_0)/float(T)))
+        motorCMD    = test_opt.speed
 
     # set straight and stop
     else:
-        TURNcmd     	= test_opt.Z_turn
-        SPEEDcmd        = test_opt.neutral
+        servoCMD     	= test_opt.Z_turn
+        motorCMD        = test_opt.neutral
         if not test_opt.stopped:
-            SPEEDcmd    	 = test_opt.brake
+            motorCMD    	 = test_opt.brake
 
-    return (TURNcmd, SPEEDcmd)
-
+    return (motorCMD, servoCMD)
 
 #############################################################
 def DoubleLaneChange(test_opt, rate, t_i):
@@ -132,29 +131,29 @@ def DoubleLaneChange(test_opt, rate, t_i):
 
     # start moving
     if t_i < t_0:
-        TURNcmd     = test_opt.Z_turn
-        SPEEDcmd    = test_opt.speed
+        servoCMD     = test_opt.Z_turn
+        motorCMD    = test_opt.speed
 
     # turn left
     elif (t_i >= t_0) and (t_i < t_LT):
-        TURNcmd     = test_opt.L_turn
-        SPEEDcmd    = test_opt.speed
+        servoCMD     = test_opt.L_turn
+        motorCMD    = test_opt.speed
 
     # turn right
     elif (t_i >= t_LT) and (t_i < t_RT):
-        TURNcmd     = test_opt.R_turn
-        SPEEDcmd    = test_opt.speed
+        servoCMD     = test_opt.R_turn
+        motorCMD    = test_opt.speed
 
     # go straight
     elif (t_i >= t_RT) and (t_i < t_ZT):
-        TURNcmd     = test_opt.Z_turn
-        SPEEDcmd    = test_opt.speed
+        servoCMD     = test_opt.Z_turn
+        motorCMD    = test_opt.speed
 
     # set straight and stop
     else:
-        TURNcmd     	= test_opt.Z_turn
-        SPEEDcmd        = test_opt.neutral
+        servoCMD     	= test_opt.Z_turn
+        motorCMD        = test_opt.neutral
         if not test_opt.stopped:
-            SPEEDcmd    	 = test_opt.brake
+            motorCMD    	 = test_opt.brake
 
-    return (TURNcmd, SPEEDcmd)
+    return (motorCMD, servoCMD)
