@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 import rospy
 import time
-from barc.msg import TimeData
 from filtering import filteredSignal
 from kinematic_equations import estimateAngularAcceleration, estimateVelocity, estimatePosition
 from geometry_msgs.msg import Vector3
@@ -147,7 +146,7 @@ def state_estimation():
 	# create file
 	data_file_name   	= BASE_PATH + signal_ID + '-' + time.strftime("%H.%M.%S") + '.csv'
 	data_file     		= open(data_file_name, 'a')
-	data_file.write('t_s,test_mode,roll_imu,pitch_imu,yaw_imu,w_x_imu,w_y_imu,w_z_imu,a_x_imu,a_y_imu,a_z_imu,FL_enc_count,FR_enc_count,v_x_enc,v_y_enc,v_x_pwm,d_f_pwm,d_f,v_x_hat,v_y_hat,w_z_hat\n')
+	data_file.write('t,roll_imu,pitch_imu,yaw_imu,w_x_imu,w_y_imu,w_z_imu,a_x_imu,a_y_imu,a_z_imu,FL_enc_count,FR_enc_count,v_x_enc,v_y_enc,v_x_pwm,d_f_pwm,d_f,v_x_hat,v_y_hat,w_z_hat\n')
 	t0 				= time.time()
 
 	samples_buffer_length = 50
@@ -183,7 +182,7 @@ def state_estimation():
 		t  	= time.time() - t0
 		all_data = [t,roll,pitch,yaw,w_x,w_y,w_z,a_x,a_y,a_z,FL_count,FR_count,v_x,v_y,v_x_pwm,d_f_pwm,d_f,v_x_hat,v_y_hat,w_z_hat]
 		timestamps.append(t)
-		data_to_flush.append(all_data)
+		#data_to_flush.append(all_data)
 
 		# save to CSV
 		N = len(all_data)

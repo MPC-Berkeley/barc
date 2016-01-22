@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 import rospy
 from geometry_msgs.msg import Vector3, Twist
-from barc.msg import TimeData
+from data_service.msg import TimeData
 from math import pi,sin
 import time
 import serial

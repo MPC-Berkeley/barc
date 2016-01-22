@@ -47,8 +47,10 @@ find_package(catkin REQUIRED COMPONENTS
 ## Generate messages in the 'msg' folder
  add_message_files(
    FILES
-   TimeSignal.msg
    CustomSignal.msg
+   TimeData.msg
+   TimeSeries.msg
+   TimeSignal.msg
 )
 
 # Generate services in the 'srv' folder
