@@ -53,7 +53,7 @@
 		<param name="experiment_sel" type="int" value="0" />	
 
 		<param name="v_x_pwm" type="int" value="98" />	
-		<param name="steering_angle" type="int" value="14" />
-		<param name="t_exp" type="int" value="25" />
+		<param name="steering_angle" type="int" value="10" />
+		<param name="t_exp" type="int" value="15" />
 	</node>
 </launch>

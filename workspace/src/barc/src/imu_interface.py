@@ -19,6 +19,7 @@ def send_command(serial_port, cmd_msg):
                 return line
 
 ################################################################
+g = 9.81        # acceleration due to gravity [m/s^s]
 def parse_IMU_data(data):
 	data = (data.split('*')[0]).strip() # discard crc field
 	fields = [x.strip() for x in data.split(',')]
@@ -31,12 +32,15 @@ def parse_IMU_data(data):
 	# Use coordinate system with +x pointing forward, +y point to the left,
 	# and +z point upward
 	# Covert units to [rad] and [rad/s]
+	roll 	*=  (pi/180)
 	pitch 	*= -(pi/180)
 	yaw 	*= -(pi/180)
+	w_x 	*= (pi/180)
 	w_y 	*= -(pi/180)
 	w_z 	*= -(pi/180)
-	a_y 	*= -1
-	a_z 	*= -1
+	a_x 	*= g
+	a_y 	*= -g
+	a_z 	*= -g
 	return (roll, pitch, yaw, a_x, a_y, a_z, w_x, w_y, w_z)
 
 ##################################################################

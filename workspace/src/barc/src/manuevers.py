@@ -59,8 +59,8 @@ def CircularTest(test_opt, rate, t_i):
 def Straight(test_opt, rate, t_i):
     # timing maneuvers
     oneSec      = rate
-    dt          = 10*oneSec 
-    t_0         = 5*oneSec
+    dt          = 6*oneSec 
+    t_0         = 3*oneSec
     t_f         = t_0 + dt
 
     # rest
@@ -87,12 +87,13 @@ def Straight(test_opt, rate, t_i):
 def SineSweep(test_opt, rate, t_i):
     # timing maneuvers
     oneSec      	= rate
-    dt          	= 2.5*oneSec 
-    t_0         	= 5*oneSec
+    dt          	= 15*oneSec 
     start_turning 	= 1*oneSec
-    t_st         	= t_0+start_turning
+
+    t_0         	= 5*oneSec
+    t_st         	= t_0 + start_turning
     t_f         	= t_0 + dt +start_turning
-    T           	= 1.2*oneSec
+    T           	= 2*oneSec
 
     # rest
     if t_i < t_0:
@@ -106,7 +107,7 @@ def SineSweep(test_opt, rate, t_i):
 
 	# move in sine wave motion
     elif  (t_i >= t_st) and (t_i < t_f):
-        servoCMD     = angle_2_servo(25*sin(2*pi*(t_i-t_0)/float(T)))
+        servoCMD     = angle_2_servo(15*sin(2*pi*(t_i-t_st)/float(T)))
         motorCMD    = test_opt.speed
 
     # set straight and stop

@@ -1,10 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-IMU sensor model 
-inputs: noisy signal (a_x, a_y, psi)
-returns: filtered/clean signal (v_x, v_y, psi)
+inputs: noisy signal (e.g. a_x, a_y, psi)
+returns: filtered signal (e.g. v_x, v_y, psi)
 
-Created on Mon Sep 28 2015
 @author: jgon13
 """
 from numpy import array, dot, zeros, roll
