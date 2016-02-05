@@ -141,6 +141,7 @@ class SettingResource(ModelResource):
 
         serializer = PrettyJSONSerializer()
 
+
 class EventResource(ModelResource):
     local_computer_id = IntegerField(attribute="local_computer_id")
     system_id = IntegerField(attribute="system_id", null=True)
@@ -165,8 +166,9 @@ class EventResource(ModelResource):
 
         serializer = PrettyJSONSerializer()
 
-class ExperimentResource(ModelResource):
 
+class ExperimentResource(ModelResource):
+    local_computer_id = IntegerField(attribute="local_computer_id")
 
     class Meta:
         queryset = Experiment.objects.all()
@@ -174,7 +176,8 @@ class ExperimentResource(ModelResource):
         authentication = Authentication()
         resource_name = 'experiment'
         filtering = {
-            'name': ALL_WITH_RELATIONS
+            'local_computer_id': ALL_WITH_RELATIONS,
+            'name': ALL_WITH_RELATIONS,
         }
         always_return_data = True
 

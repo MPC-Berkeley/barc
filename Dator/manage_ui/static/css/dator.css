@@ -2,5 +2,8 @@
     border: solid;
     border-width: thin;
     border-color: lightgrey;
-    
+}
+
+.dator-spaced-title {
+    margin-right: 15px;
 }

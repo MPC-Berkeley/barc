@@ -20,20 +20,10 @@ if __name__ == '__main__':
     rospy.wait_for_service('send_data')
     rospy.wait_for_service('register_experiment')
 
-    experiment_id = 'test1'
-
-    # Register experiment
-    #try:
-    #    register_experiment = rospy.ServiceProxy('register_experiment', RegisterExperiment)
-    #    experiment_id = register_experiment('test1')
-    #except rospy.ServiceException as e:
-    #    print e
+    experiment_name = 'ex2'
 
     # generate and send signal
-
-    
     try:
-		# generate data
         t = datetime.datetime.now(tz=pytz.UTC)
         tvec = [t + datetime.timedelta(seconds=i*.01) for i in range(10)]
         tsvec = [DataConnection.utc_to_millisec(at) for at in tvec]
@@ -45,19 +35,17 @@ if __name__ == '__main__':
 		
         send_data = rospy.ServiceProxy('send_data', DataForward)
         time_signal = TimeSignal()
-        time_signal.id = 'mpc_sig1'
+        time_signal.name = 'mpc_sig1'
         time_signal.timestamps = tsvec
         time_signal.signal = json.dumps(signal_vs)
 		
         print "Time Signal", time_signal
-        print "Experiment ID", experiment_id
+        print "Experiment name", experiment_name
 		
-		# Send signal
-        response = send_data(time_signal, None, '')
+        response = send_data(time_signal, None, experiment_name)
     except rospy.ServiceException, e:
         print 'Call to service failed: %s' %e
-    
-    
+
 
     """
     # Send custom data

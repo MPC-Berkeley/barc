@@ -1,6 +1,6 @@
 <div ng-controller="LocalComputer">
     <div class="container" style="margin-top: 15px; ">
-        <div class="panel panel-default col-sm-7 dator-inner-panel">
+        <div class="panel panel-default col-sm-11 dator-inner-panel">
 
             <div class="panel panel-default">
                 <div class="panel-heading" style="margin-top:10px">
@@ -115,17 +115,21 @@
                     <div class="panel-title">
                         Data
                         <div class="form-group pull-right">
-                        <label class="small">Experiment</label>
+                        <label class="small dator-spaced-title">Experiment</label>
 
-                        <select ng-model="uiState.experiment">
-                            <option value="All">All</option>
-                            <option value="None">None</option>
-                        </select>
+                        <select name="experiment"
+                                ng-model="uiState.experiment"
+                                ng-options="experiment.name for experiment in experimentChoices track by experiment.id"
+                                class="dator-spaced-title"></select>
+                            <button ng-click="newProgram()">
+                            <i class="fa fa-plus" style="color: black; background-color: transparent;"></i>
+                        </button>
                         </div>
                     </div>
 
                 </div>
                 <div class="panel-body">
+
 
                     <div class="panel panel-default">
                         <div class="panel-heading">

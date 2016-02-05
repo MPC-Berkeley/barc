@@ -9,10 +9,11 @@ import django.utils.timezone as tmz
 import pytz
 
 import delorean
-
+import dator
+from django.conf import settings
 
 class SystemModel(models.Model):
-    created_at = models.DateTimeField(auto_now_add=True,blank=True,null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     uuid = models.CharField(max_length=128, db_index=True)
 
@@ -132,8 +133,8 @@ class MapPoint(SystemModel):
         return self.name
 
 
-SIGNAL_PROVIDER = file_provider
-BLOB_PROVIDER = file_provider
+
+
 
 class Signal(SystemModel):
     """
@@ -153,26 +154,29 @@ class Signal(SystemModel):
         :param frames [[<float value>,<float value2>, <time in millisec>],...]
         empty values must be formatted as nan
         """
-        SIGNAL_PROVIDER.startup()
+        settings.SIGNAL_PROVIDER.startup()
         string_frames = []
         for frame in frames:
             string_frames.append('['+ ','.join(["{:.15}".format(float(datum)) for datum in frame]) + ']')
 
-        SIGNAL_PROVIDER.append_data(self.uuid,
+        settings.SIGNAL_PROVIDER.append_data(self.uuid,
                                     ''.join([string_frame for string_frame in string_frames]))
 
 
     def get_data(self):
-        SIGNAL_PROVIDER.startup()
-        data = SIGNAL_PROVIDER.get_blob(self.uuid)
+        settings.SIGNAL_PROVIDER.startup()
+        try:
+            data = settings.SIGNAL_PROVIDER.get_blob(self.uuid)
 
-        tokens = data.split("]")
-        points = []
-        for token in tokens:
-            if token != '':
-                ts = token[1:].split(",")
-                points+=[[float(t) for t in ts]]
-        return points
+            tokens = data.split("]")
+            points = []
+            for token in tokens:
+                if token != '':
+                    ts = token[1:].split(",")
+                    points+=[[float(t) for t in ts]]
+            return points
+        except:
+            return []
 
     @classmethod
     def millisec_to_utc(cls, millisec):
@@ -187,8 +191,8 @@ class Signal(SystemModel):
         return pd.TimeSeries(values, index=dates)
 
     def clear(self):
-        SIGNAL_PROVIDER.startup()
-        SIGNAL_PROVIDER.clear(self.uuid)
+        settings.SIGNAL_PROVIDER.startup()
+        settings.SIGNAL_PROVIDER.clear(self.uuid)
 
 
 class Setting(SystemModel):
@@ -215,22 +219,49 @@ class Blob(SystemModel):
         return self.name
 
     def get_data(self):
-        BLOB_PROVIDER.startup()
-        data = BLOB_PROVIDER.get_blob(self.uuid)
+        settings.BLOB_PROVIDER.startup()
+        data = settings.BLOB_PROVIDER.get_blob(self.uuid)
         return data
 
     def set_data(self, json_data):
-        BLOB_PROVIDER.startup()
-        BLOB_PROVIDER.write_blob(self.uuid, json_data)
+        settings.BLOB_PROVIDER.startup()
+        settings.BLOB_PROVIDER.write_blob(self.uuid, json_data)
 
 class Experiment(SystemModel):
     group = models.ManyToManyField(Group)
     started_at = models.DateTimeField(null=True)
     ended_at = models.DateTimeField(null=True)
     name = models.CharField(max_length=128, db_index=True)
+    local_computer = models.ForeignKey(LocalComputer)
 
     def __unicode__(self):
         return u"{}-{}-{}".format(self.name, self.started_at, self.ended_at)
+
+    def clone(self, name):
+        experiment = Experiment.objects.create(local_computer=self.local_computer,
+                                               name=name)
+        groups = self.group.all()
+        experiment.group.add(*groups)
+        for signal in self.signal_set.all():
+            sig = Signal.objects.create(local_computer=self.local_computer,
+                                  experiment=experiment,
+                                  name=signal.name,
+                                  system=signal.system)
+            sig.group.add(*groups)
+        for setting in self.setting_set.all():
+            set = Setting.objects.create(local_computer=self.local_computer,
+                                  experiment=experiment,
+                                  key=setting.key,
+                                  value=setting.value)
+            set.group.add(*groups)
+        for blob in self.blob_set.all():
+            blb = Blob.objects.create(local_computer=self.local_computer,
+                                  experiment=experiment,
+                                  name=blob.name,
+                                  system=blob.system,
+                                  mime_type=blob.mime_type)
+            blb.group.add(*groups)
+        return experiment
 
 @receiver(pre_save, sender=Command)
 @receiver(pre_save, sender=LocalComputer)

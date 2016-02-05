@@ -10,6 +10,8 @@ from observers import kinematicLuembergerObserver
 from data_service.srv import *
 from data_service.msg import *
 
+import numpy as np
+
 # input variables
 d_f 	= 0
 d_f_pwm	= 0
@@ -99,6 +101,7 @@ def state_estimation():
 				       4 : "LQR"}
     experiment_type = experiment_opt.get(experiment_sel)
     signal_ID = username + "-" + experiment_type
+    experiment_name = 'rc_car_ex1'
 
 	# get vehicle dimension parameters
     # note, the imu is installed at the front axel
@@ -151,26 +154,24 @@ def state_estimation():
         t  	= time.time() - t0
         all_data = [t,roll,pitch,yaw,w_x,w_y,w_z,a_x_imu,a_y_imu,a_z_imu,n_FL,n_FR,v_x_pwm,d_f_pwm,d_f,vhat_x,vhat_y,what_z]
         timestamps.append(t)
-		#data_to_flush.append(all_data)
+        data_to_flush.append(all_data)
 
-		# save to CSV
-        N = len(all_data)
-        str_fmt = '%.4f,'*N
-        data_file.write( (str_fmt[0:-1]+'\n') % tuple(all_data))
-		
-        """
-		if samples_counter == samples_buffer_length:
-			time_signal = TimeSignal()
-			time_signal.id = signal_ID
-			time_signal.timestamps = timestamps
-			time_signal.signal = json.dumps(data_to_flush)
 
-			# do the following command asynchronously, right now, this is a blocking call
-			send_data(time_signal, None, '')
-			timestamps = []
-			data_to_flush = []
-			samples_counter = 0
-        """
+	# 	# save to CSV
+        # N = len(all_data)
+        # str_fmt = '%.4f,'*N
+        # data_file.write( (str_fmt[0:-1]+'\n') % tuple(all_data))
+
+        print samples_counter
+
+        # do the service command asynchronously, right now this is a blocking call
+        if samples_counter == samples_buffer_length:
+            data = np.array(data_to_flush)
+            send_all_data(data, timestamps, send_data, experiment_name)
+
+            timestamps = []
+            data_to_flush = []
+            samples_counter = 0
 
         # assuming imu is at the center of the front axel
         # perform coordinate transformation from imu frame to vehicle body frame (at CoG)
@@ -182,6 +183,99 @@ def state_estimation():
         
 		# wait
         rate.sleep()
+
+
+# Reduce duplication somehow?
+def send_all_data(data, timestamps, send_data, experiment_name):
+
+    print data
+    time_signal = TimeSignal()
+    time_signal.timestamps = timestamps
+
+    # idx = np.array([1, 1])
+    # time_signal.name = 't'
+    # time_signal.signal = json.dumps([data[:, 1].flatten().tolist(), data[:, 1].flatten().tolist()])
+    # send_data(time_signal, None, experiment_name)
+
+    time_signal.name = 'roll'
+    idx = np.array([1])
+    time_signal.signal = json.dumps(data[:, idx].tolist())
+    send_data(time_signal, None, experiment_name)
+
+    time_signal.name = 'pitch'
+    idx = np.array([2])
+    time_signal.signal = json.dumps(data[:, idx].tolist())
+    send_data(time_signal, None, experiment_name)
+
+    time_signal.name = 'yaw'
+    idx = np.array([3])
+    time_signal.signal = json.dumps(data[:, idx].tolist())
+    send_data(time_signal, None, experiment_name)
+
+    time_signal.name = 'w_x'
+    idx = np.array([4])
+    time_signal.signal = json.dumps(data[:, idx].tolist())
+    send_data(time_signal, None, experiment_name)
+
+    time_signal.name = 'w_y'
+    idx = np.array([5])
+    time_signal.signal = json.dumps(data[:, idx].tolist())
+    send_data(time_signal, None, experiment_name)
+
+    time_signal.name = 'w_z'
+    idx = np.array([6])
+    time_signal.signal = json.dumps(data[:, idx].tolist())
+    send_data(time_signal, None, experiment_name)
+
+    time_signal.name = 'a_x_imu'
+    idx = np.array([7])
+    time_signal.signal = json.dumps(data[:, idx].tolist())
+    send_data(time_signal, None, experiment_name)
+
+    time_signal.name = 'a_y_imu'
+    idx = np.array([8])
+    time_signal.signal = json.dumps(data[:, idx].tolist())
+    send_data(time_signal, None, experiment_name)
+
+    time_signal.name = 'a_z_imu'
+    idx = np.array([9])
+    time_signal.signal = json.dumps(data[:, idx].tolist())
+    send_data(time_signal, None, experiment_name)
+
+    time_signal.name = 'n_FL'
+    idx = np.array([10])
+    time_signal.signal = json.dumps(data[:, idx].tolist())
+    send_data(time_signal, None, experiment_name)
+
+    time_signal.name = 'n_FR'
+    idx = np.array([11])
+    time_signal.signal = json.dumps(data[:, idx].tolist())
+    send_data(time_signal, None, experiment_name)
+
+    time_signal.name = 'v_x_pwm'
+    idx = np.array([12])
+    time_signal.signal = json.dumps(data[:, idx].tolist())
+    send_data(time_signal, None, experiment_name)
+
+    time_signal.name = 'd_f_pwm'
+    idx = np.array([13])
+    time_signal.signal = json.dumps(data[:, idx].tolist())
+    send_data(time_signal, None, experiment_name)
+
+    time_signal.name = 'what_x'
+    idx = np.array([14])
+    time_signal.signal = json.dumps(data[:, idx].tolist())
+    send_data(time_signal, None, experiment_name)
+
+    time_signal.name = 'what_y'
+    idx = np.array([15])
+    time_signal.signal = json.dumps(data[:, idx].tolist())
+    send_data(time_signal, None, experiment_name)
+
+    time_signal.name = 'what_z'
+    idx = np.array([16])
+    time_signal.signal = json.dumps(data[:, idx].tolist())
+    send_data(time_signal, None, experiment_name)
 
 if __name__ == '__main__':
 	try:

@@ -17,35 +17,49 @@ from data_service.msg import *
 configurator = init_configurator()
 data_connection = DataConnection(configurator)
 
-signal_id_map = dict()
-blob_id_map = dict()
+signal_name_map = dict()
+blob_name_map = dict()
+experiment_name_map = dict()
 
 response_ok = 'Ok'
 
 
-def get_time_signal(signal_id):
 
-    if signal_id not in signal_id_map:
+def get_experiment(experiment_name):
+
+    if experiment_name not in experiment_name_map:
+        print 'Requesting new experiment'
+        experiment = data_connection.get_or_create_experiment(experiment_name)
+        experiment_name_map[experiment_name] = experiment
+
+    return experiment_name_map[experiment_name]
+
+
+def get_time_signal(signal_name, experiment_name):
+
+    experiment = get_experiment(experiment_name)
+
+    if signal_name not in signal_name_map:
         print 'Requesting new time signal'
-        signal = data_connection.get_or_create_signal(signal_id)
-        signal_id_map[signal_id] = signal
+        signal = data_connection.get_or_create_signal(signal_name, experiment)
+        signal_name_map[signal_name] = signal
 
-    return signal_id_map[signal_id]
+    return signal_name_map[signal_name]
 
-def get_blob_signal(signal_id):
 
-    if signal_id not in blob_id_map:
+def get_blob_signal(signal_name):
+
+    if signal_name not in blob_name_map:
         print 'Requesting new blob signal'
-        signal = data_connection.get_or_create_blob(signal_id)
-        blob_id_map[signal_id] = signal
+        signal = data_connection.get_or_create_blob(signal_name)
+        blob_name_map[signal_name] = signal
 
-    return blob_id_map[signal_id]
+    return blob_name_map[signal_name]
 
 
-def send_time_signal(time_signal, experiment_id):
-    signal_id = time_signal.id
-    #signal_id = 'sig_mpc3'
-    signal = get_time_signal(signal_id)
+def send_time_signal(time_signal, experiment_name):
+    signal_name = time_signal.name
+    signal = get_time_signal(signal_name, experiment_name)
     response = response_ok
 
     try:
@@ -54,16 +68,13 @@ def send_time_signal(time_signal, experiment_id):
         signal_points = []
 
         for ts, sig in zip(timestamps, signals):
-#        for ts in timestamps:
-            sig.append(ts)
-            signal_points.append(sig)
-
-        print signal_points
+            signal_points.append([ts] + sig)
+            # sig.append(ts)
+            # signal_points.append(sig)
 
         data_connection.add_signal_points(signal['id'],
                                           signal_points)
     except Exception as e:
-        print e
         response = str(e)
 
     return response
@@ -84,9 +95,8 @@ def send_custom_signal(custom_signal, experiment_id):
 def handle_send_data(req):
     response = response_ok
 
-    if req.time_signal != None and req.time_signal.id != '':
-        print 'SENDING DATAAA'
-        response = send_time_signal(req.time_signal, req.experiment_id)
+    if req.time_signal != None and req.time_signal.name != '':
+        response = send_time_signal(req.time_signal, req.experiment_name)
         if response != response_ok:
             return DataForwardResponse(response)
 
@@ -128,8 +138,8 @@ def handle_retrieve_data(req):
 
 
 def handle_register_experiment(req):
-    response = data_connection.register_experiment(req.experiment)
-    return RegisterExperimentResponse(response)
+    response = data_connection.get_or_create_experiment(req.experiment)
+    return RegisterExperimentResponse(response['id'])
 
 
 def send_data_service():

@@ -21,7 +21,7 @@ function SignalGraph($scope, $routeParams, Restangular, $http, $timeout) {
                     new Dygraph(document.getElementById("signals"), $scope.graphSignals.data,
                         {
                             draw_points: true,
-                            title: "Signal " + signalId,
+                            title: "Signal - " + signal.name,
                             labels: $scope.graphSignals.labels
 
                         }
@@ -35,10 +35,10 @@ function SignalGraph($scope, $routeParams, Restangular, $http, $timeout) {
     function mergeSignal(signalData) {
 
         var sortedSignalData = signalData.sort(function(a,b){
-            return a[1]-b[1];
+            return a[0]-b[0];
         });
-        $scope.graphSignals.data = _.map(signalData, function (datum) {
-            return [new Date(datum[1] * 1000), datum[0]];
+        $scope.graphSignals.data = _.map(sortedSignalData, function (datum) {
+            return [new Date(datum[0] * 1000), datum[1]];
         });
     }
 

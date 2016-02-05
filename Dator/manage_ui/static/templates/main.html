@@ -19,7 +19,9 @@
                             <td>
                                 <a href="/dator/#/local_computer/{{ localComputer.id }}">{{ localComputer.name }}</a>
                             </td>
-                            <td>{{ localComputer.uuid }}</td>
+                            <td>
+                                <a href="/dator/#/local_computer/{{ localComputer.id }}">{{ localComputer.uuid }}</a>
+                            </td>
                             <td>
                                 <button class="pull-right" ng-click="deleteComputer(localComputer.id)"><b>x</b></button>
                             </td>

@@ -125,22 +125,26 @@ class DataConnection(object):
             return json.loads(response.content)
         return None
 
-    def register_experiment(self, experiment):
+
+    def get_or_create_experiment(self, experiment_name):
+        """
+        Get or create an experiment object for this local computer
+        :param experiment_name:
+        :return: The experiment object dict.
+        """
         config = self.configurator.get_config()
-
+        # print config
         url = self._api_url('experiment')
-        params = {'name' : experiment}
+        params = {'name': experiment_name, 'local_computer_id': config['id']}
 
-        print url
+        response = self.client.get(url, params=params, headers=self.sec_header())
 
-        response = self.client.post(url, data=json.dumps(params), headers=self.post_header())
-        print response
+        if len(json.loads(response.content)['objects']) == 0:
+            self.client.post(url, data=json.dumps(params), headers=self.post_header())
+            response = self.client.get(url, params=params, headers=self.sec_header())
 
-        # return json.loads(response.content)
+        return json.loads(response.content)['objects'][0]
 
-        # response = self.client.post(url, data=json.dumps(signal_points), headers=self.post_header())
-        # if not DataConnection.check_response_ok(response):
-        #     print "Error posting signal data {}".format(response.content)
 
     def add_signal_points(self, signal_id, signal_points):
         """ Add sorted time/value points to a signal
@@ -149,7 +153,8 @@ class DataConnection(object):
         """
         config = self.configurator.get_config()
         url = self._data_item_url('signal', signal_id)
-        print 'URL:', url
+        # print 'URL:', url
+        # print 'HEADERS:', self.post_header()
         response = self.client.post(url, data=json.dumps(signal_points), headers=self.post_header())
         if not DataConnection.check_response_ok(response):
             print "Error posting signal data {}".format(response.content)
@@ -194,16 +199,18 @@ class DataConnection(object):
                                 headers=self.sec_header())
         return self.get_signal_points(json.loads(response.content)['objects'][0]['id'])
 
-    def get_or_create_signal(self, signal_name):
+    def get_or_create_signal(self, signal_name, experiment):
         """
         Get or create a signal object for this local computer
-        :param signal_name:
+        :param signal_name: experiment: The experiment ID
         :return: The signal object dict.
         """
         config = self.configurator.get_config()
         # print config
         url = self._api_url('signal')
-        params = {'name': signal_name, 'local_computer_id': config['id']}
+
+        params = {'name': signal_name, 'local_computer_id': config['id'], 
+                  'experiment_id': experiment['id']}
 
         response = self.client.get(url, params=params, headers=self.sec_header())
         # print response.content
@@ -250,8 +257,6 @@ class DataConnection(object):
         url = self._api_url('blob')
         params = {'name': blob_name, 'local_computer_id': config['id']}
         response = self.client.get(url, params=params, headers=self.sec_header())
-        print 'in blob!!!!'
-        print url
         if len(json.loads(response.content)['objects']) == 0:
             response = self.client.post(url, data=json.dumps(params), headers=self.post_header())
             response = self.client.get(url, params=params, headers=self.sec_header())

@@ -1,6 +1,7 @@
+from django.contrib.auth.models import Group
 from django.test import TestCase
 import math
-from data_api.models import System, Signal, LocalComputer
+from data_api.models import System, Signal, LocalComputer, Setting, Blob, Experiment
 import django.utils.timezone as tmz
 import pytz
 import delorean
@@ -10,6 +11,49 @@ class TestModel(TestCase):
     def setUp(self):
         # when creating a System
         self.system = System.objects.create(name="a_name")
+
+    def test_clone_experiment(self):
+        # with an experiment
+        group = Group.objects.create(name="a_group")
+        local_computer = LocalComputer.objects.create(name="a_computer")
+        local_computer.group=group
+        experiment = Experiment.objects.create(name="an_experiment", local_computer=local_computer)
+        experiment.group.add(group)
+
+        # with settings, signals and blobs
+        Signal.objects.create(experiment=experiment, local_computer=local_computer, name="a_signal")
+
+        Blob.objects.create(experiment=experiment, local_computer=local_computer, name="a_blob",
+                                     mime_type="image/jpeg")
+        Setting.objects.create(experiment=experiment, local_computer=local_computer, key="key",
+                                         value="value")
+
+        # should clone settings, blobs and signals
+        new_experiment = experiment.clone("new_experiment")
+        self.assertEqual(Experiment.objects.get(id=new_experiment.id).name, 'new_experiment')
+
+        self.assertEqual(Signal.objects.filter(experiment=new_experiment, local_computer=local_computer).count(),
+                         1)
+        self.assertEqual(Blob.objects.filter(experiment=new_experiment, local_computer=local_computer).count(),
+                         1)
+
+        # should clone mime types and settings
+        self.assertEqual(Setting.objects.get(experiment=new_experiment, key="key").value,
+                         Setting.objects.get(experiment=experiment, key="key").value)
+
+        self.assertEqual(Blob.objects.get(experiment=new_experiment).mime_type,
+                         Blob.objects.get(experiment=experiment).mime_type
+                         )
+
+        # should clone groups
+        for thing in (
+            new_experiment,
+            new_experiment.setting_set.all()[0],
+            new_experiment.blob_set.all()[0],
+            new_experiment.signal_set.all()[0]
+        ):
+            print "checking {}".format(thing)
+            self.assertEqual(group, thing.group.all()[0])
 
     def test_set_uuid(self):
         # should set the uuid.

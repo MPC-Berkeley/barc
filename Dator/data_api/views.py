@@ -1,13 +1,16 @@
 import json
+from django.core import serializers
 from django.core.urlresolvers import reverse
+from django.db.models import Q
 from django.http import HttpResponseRedirect, HttpResponse
 from django.shortcuts import render, render_to_response
 
 # Create your views here.
 from django.template.context_processors import csrf
 from django.views.decorators.csrf import csrf_exempt
+import operator
 from requests import Response
-from data_api.models import Signal, Blob, LocalComputer
+from data_api.models import Signal, Blob, LocalComputer, Experiment, Setting
 
 
 def noop_view(request):
@@ -99,3 +102,52 @@ def claim_local_computer(request, local_computer_id):
             return HttpResponse({'status': '403 - Wrong token presented to claim computer'}, status=403)
     except Exception as e:
         return HttpResponse({'status': "500 - unexpected error {}".format(e)}, status=500)
+
+
+def clone_experiment(request, local_computer_id, source_experiment_id):
+
+    try:
+        if request.method == 'POST':
+            source_experiment = Experiment.objects.get(local_computer_id=local_computer_id, id=source_experiment_id)
+            if not 'name' in request.POST:
+                return HttpResponse({'status': "500 - HTTP GET not supported"}, status=500)
+            else:
+                experiment = source_experiment.clone(request.POST['name'])
+            return HttpResponse({'id': experiment.id}, status=200, content_type="application/json")
+        else:
+            return HttpResponse({'status': "500 - HTTP GET not supported"}, status=500)
+    except Exception as e:
+        return HttpResponse({'status': "500 - unexpected error {} {}".format(e, e.message)}, status=500)
+
+EXPERIMENT = 'experiment'
+SIGNAL = 'signal'
+INCLUDE_DATA = 'include_data'
+def find_signals(request, local_computer_id):
+
+    if EXPERIMENT in request.GET:
+        exp_s = request.GET[EXPERIMENT].strip().split(",")
+        exp_q = [Q(experiment__name__contains=token) for token in exp_s]
+    if SIGNAL in request.GET:
+        sig_s = request.GET[SIGNAL].strip().split(",")
+        sig_q = [Q(name__contains=token) for token in sig_s]
+    if EXPERIMENT in request.GET and SIGNAL in request.GET:
+        response_list = Signal.objects.filter(reduce(operator.or_, exp_q), reduce(operator.or_, sig_q))
+    elif EXPERIMENT in request.GET:
+        response_list = Signal.objects.filter(reduce(operator.or_, exp_q))
+    elif SIGNAL in request.GET:
+        response_list = Signal.objects.filter(reduce(operator.or_, sig_q))
+    else:
+        response_list = Signal.objects.all()
+
+
+    if INCLUDE_DATA in request.GET:
+        #response_map = dict((s.id, s) for s in response_list.all())
+        signals = json.loads(serializers.serialize('json', response_list))
+        print("got signals loaded")
+        for signal in signals:
+            print("getting signal {}".format(str(signal['pk'])))
+            signal['data'] = Signal.objects.get(id=signal['pk']).get_data()
+        print "done with data"
+        return HttpResponse(json.dumps(signals), status=200, content_type="application/json")
+    else:
+        return HttpResponse(serializers.serialize('json', response_list), status=200, content_type="application/json")

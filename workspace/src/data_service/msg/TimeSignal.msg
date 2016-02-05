@@ -1,3 +1,3 @@
-string id
+string name
 float64[] timestamps
 string signal

@@ -13,6 +13,8 @@ https://docs.djangoproject.com/en/1.8/ref/settings/
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 import os
 import sys
+from data_api import file_provider
+from data_api import in_memory_provider
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
@@ -110,3 +112,11 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/1.8/howto/static-files/
 
 STATIC_URL = '/static/'
+
+# provider definitions
+if TEST:
+    SIGNAL_PROVIDER = in_memory_provider
+    BLOB_PROVIDER = in_memory_provider
+else:
+    SIGNAL_PROVIDER = file_provider
+    BLOB_PROVIDER = file_provider

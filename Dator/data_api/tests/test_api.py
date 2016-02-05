@@ -49,8 +49,9 @@ class TestAPIWithLocalComputer(TestCase):
 
     def setUp(self):
         start = now().astimezone(pytz.UTC)
-        self.local_computer = LocalComputer.objects.create(name="a_name", registration_token= 'a_token')
-        self.experiment = Experiment.objects.create(name="a_experiment", started_at=start)
+        self.local_computer = LocalComputer.objects.create(name="a_name", registration_token='a_token')
+        self.experiment = Experiment.objects.create(name="a_experiment", started_at=start,
+                                                    local_computer=self.local_computer)
 
     def test_filter_local_computer_by_name(self):
         # should get the command

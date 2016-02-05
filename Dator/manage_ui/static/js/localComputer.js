@@ -1,5 +1,8 @@
 function LocalComputer($scope, $routeParams, $interval, Restangular, $location, UserStateService) {
 
+
+    var ALL_EXPERIMENTS = {'id':'0','name':'all'};
+
     $scope.uiState= UserStateService.initState(
         LOCAL_COMPUTER_STATE,
         {
@@ -14,8 +17,32 @@ function LocalComputer($scope, $routeParams, $interval, Restangular, $location, 
             eventCount: 0,
             showBlobs: false,
             blobCount: 0,
-            experiment: 'All'
+            experiment: ALL_EXPERIMENTS
         });
+
+    $scope.experimentChoices= [ALL_EXPERIMENTS];
+    /**
+     *
+     * Sets experiments from the db.
+     */
+    $scope.getExperiments=function(){
+        return Restangular.all("experiment").getList({format:'json', local_computer_id: $scope.localComputer.id}).
+            then(function (data){
+                $scope.experiments = data;
+                $scope.setExperimentChoices();
+        });
+    };
+
+    /**
+     * Populate experiment choices from $scope.experiments
+     */
+    $scope.setExperimentChoices=function() {
+        $scope.experimentChoices = [ALL_EXPERIMENTS];
+        $scope.experimentChoices.push({'id':1,'name':'rue'});
+        _.each($scope.experiments, function(experiment){
+            $scope.experimentChoices.push({'id':experiment.id, 'name':experiment.name});
+        });
+    };
 
     $scope.toggleStateClass =function(toggleVar){
         if (toggleVar)
@@ -39,6 +66,7 @@ function LocalComputer($scope, $routeParams, $interval, Restangular, $location, 
     $scope.getComputer = function () {
         return Restangular.one("local_computer", $routeParams.id).get().then(function (localComputer) {
             $scope.localComputer = localComputer;
+            $scope.getEvents();
             $scope.getSignals();
             $scope.getSettings();
             $scope.getEvents();
@@ -191,7 +219,7 @@ function LocalComputer($scope, $routeParams, $interval, Restangular, $location, 
         });
     };
 
-    $scope.displaySignal =function(signalId){
+    $scope.displaySignal = function(signalId){
         $location.path("/signal_graph/" + $routeParams.id + "/" + signalId);
     };
 
