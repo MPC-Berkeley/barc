@@ -1,5 +1,18 @@
 #!/usr/bin/env python
-# @author: jon gonzales
+
+# ---------------------------------------------------------------------------
+# Licensing Information: You are free to use or extend these projects for 
+# education or reserach purposes provided that (1) you retain this notice
+# and (2) you provide clear attribution to UC Berkeley, including a link 
+# to http://barc-project.com
+#
+# Attibution Information: The barc project ROS code-base was developed
+# at UC Berkeley in the Model Predictive Control (MPC) lab by Jon Gonzales
+# (jon.gonzales@berkeley.edu)  Development of the web-server app Dator was 
+# based on an open source project by Bruce Wootton, with contributions from 
+# Kiet Lam (kiet.lam@berkeley.edu)   
+# ---------------------------------------------------------------------------
+
 from numpy import array, dot, eye
 
 C = array([[1, 0]])
