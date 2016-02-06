@@ -1,4 +1,18 @@
-# stateEstimation
+#!/usr/bin/env python
+
+# ---------------------------------------------------------------------------
+# Licensing Information: You are free to use or extend these projects for 
+# education or reserach purposes provided that (1) you retain this notice
+# and (2) you provide clear attribution to UC Berkeley, including a link 
+# to http://barc-project.com
+#
+# Attibution Information: The barc project ROS code-base was developed
+# at UC Berkeley in the Model Predictive Control (MPC) lab by Jon Gonzales
+# (jon.gonzales@berkeley.edu)  Development of the web-server app Dator was 
+# based on an open source project by Bruce Wootton, with contributions from 
+# Kiet Lam (kiet.lam@berkeley.edu)   
+# ---------------------------------------------------------------------------
+
 from numpy import array, dot, cos, sin
 
 def estimateAngularAcceleration(imu_data, w_z_prev, dt):
@@ -8,29 +22,9 @@ def estimateAngularAcceleration(imu_data, w_z_prev, dt):
 
     return (dwz, w_z_new)
 
-# estimate velocity in the vehicle frame
-def estimateVelocity(imu_data, v_BF, vx_enc, dwz, mdl, dt):
-    
-    # unpack filtered imu data
-    # note: km1 = k minus 1, kp1 = k plus one
-    (a,_) = mdl
-    (_, ay_IMU, _, w_z)    = imu_data.getFilteredSignal()
-    (_ , vy_CoG_km1)         = v_BF.getRawSignal()
-    vx_CoG_k = vx_enc
-    
-    # estimate v_x and v_y at CoG_
-    if vx_CoG_k != 0:
-        ay_CoG = ay_IMU - a*dwz
-        vy_CoG_k = vy_CoG_km1 +  (ay_CoG - w_z*vx_CoG_k)*dt 
-    else:
-        vy_CoG_k = 0    
-    
-    v_BF.update(list([vx_CoG_k, vy_CoG_k])) 
-
-
        
 # estimate position in the global frame
-def estimatePosition( v_BF, X_GF, psi, vx_enc, dt):
+def estimatePosition( v_BF, X_GF, psi, dt):
     """
     function    : estimate_position
     
