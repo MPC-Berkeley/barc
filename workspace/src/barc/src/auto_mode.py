@@ -101,7 +101,7 @@ def main_auto():
 	# initialize ROS node
 	rospy.init_node('auto_mode', anonymous=True)
 	rospy.Subscriber('state_estimate', Vector3, updateState_callback)
-	nh = rospy.Publisher('esc_cmd', Vector3, queue_size = 10)
+	nh = rospy.Publisher('ecu_cmd', Vector3, queue_size = 10)
 
 	# set node rate
 	rateHz  = 50
@@ -142,8 +142,8 @@ def main_auto():
 			(motorCMD, servoCMD) = test_mode(test_opt, initial_sequence, K_LQR, rateHz, t_i)
 			
         # send command signal 
-		esc_cmd = Vector3(motorCMD, servoCMD, 0)
-		nh.publish(esc_cmd)
+		ecu_cmd = Vector3(motorCMD, servoCMD, 0)
+		nh.publish(ecu_cmd)
 	
         # wait
 		t_i += 1

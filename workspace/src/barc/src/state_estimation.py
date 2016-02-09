@@ -54,8 +54,8 @@ n_FR_prev 	= 0
 r_tire 		= 0.0319            # radius from tire center to perimeter along magnets
 dx_magnets 	= 2*pi*r_tire/4     # distance between magnets
 
-# esc command update
-def esc_callback(data):
+# ecu command update
+def ecu_callback(data):
 	global d_f_pwm, v_x_pwm, d_f
 	v_x_pwm 	= data.x
 	d_f_pwm 	= data.y
@@ -103,7 +103,7 @@ def state_estimation():
     # topic subscriptions / publications
     rospy.Subscriber('imu_data', TimeData, imu_callback)
     rospy.Subscriber('enc_data', Vector3, enc_callback)
-    rospy.Subscriber('esc_cmd', Vector3, esc_callback)
+    rospy.Subscriber('ecu_cmd', Vector3, ecu_callback)
     state_pub 	= rospy.Publisher('state_estimate', Vector3, queue_size = 10)
 
 	# get system parameters
@@ -125,11 +125,13 @@ def state_estimation():
     m   = rospy.get_param("state_estimation/m")         # mass of vehicle
     I_z = rospy.get_param("state_estimation/I_z")       # moment of inertia about z-axis
     vhMdl   = (L_a, L_b, m, I_z)
+
     # get tire model
     TMF = rospy.get_param("state_estimation/TMF")  
     TMR = rospy.get_param("state_estimation/TMR")  
     TrMdl = (TMF, TMR)
-    # get observer properties
+
+    # get Luemberger and EKF observer properties
     aph = rospy.get_param("state_estimation/aph")             # parameter to tune estimation error dynamics
     q   = rospy.get_param("state_estimation/q")             # std of process noise
     r   = rospy.get_param("state_estimation/r")             # std of measurementnoise

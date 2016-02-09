@@ -63,7 +63,8 @@ void messageCb(const geometry_msgs::Vector3& esc_cmd_msg){
   motor.write( motorCMD );   
   steering.write(  servoCMD );
 }
-ros::Subscriber<geometry_msgs::Vector3> s("esc_cmd", messageCb);
+// ECU := Engine Control Unit
+ros::Subscriber<geometry_msgs::Vector3> s("ecu_cmd", messageCb);
 
 
 /**************************************************************************
