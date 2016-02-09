@@ -13,11 +13,16 @@
 # Kiet Lam (kiet.lam@berkeley.edu)   
 # ---------------------------------------------------------------------------
 
-from numpy import sin, cos, arctan, array
+from numpy import sin, cos, arctan, array, dot
 
 # discrete non-linear bicycle model dynamics
 # function wrapper, this function returns a function
 def f_2s_disc(z, u, vhMdl, trMdl, dt, v_x): 
+    """
+    process model
+    input: state z at time k, z[k] := [beta[k], r[k]], (i.e. slip angle and yaw rate)
+    output: state at next time step (k+1)
+    """
     
     # get states / inputs
     beta    = z[0]
@@ -27,33 +32,29 @@ def f_2s_disc(z, u, vhMdl, trMdl, dt, v_x):
     # extract parameters
     (a,b,m,I_z) = vhMdl
     (trMdlFront, trMdlRear) = trMdl
-    
-    # compute beta_kp1
-    if v_x > 0.01:
-        # comptue the front/rear slip  [rad/s]
-        # ref: Hindiyeh Thesis, p58
-        a_F     = arctan(beta + a*r/v_x) - d_f
-        a_R     = arctan(beta - b*r/v_x)
-    
-        # compute tire force
-        FyF     = f_pajecka(trMdlFront, a_F)
-        FyR     = f_pajecka(trMdlRear, a_R)
-        
-        beta_next   = beta  + dt*(-r + (1/(m*v_x))*(FyF*cos(d_f)+FyR))
-    else:
-        # zero slip angle    
-        # zero tire forces
-        FyF     = 0
-        FyR     = 0
-        
-        beta_next   = beta  + dt*(-r)
-    
-    # compute r_kp1
+
+    # comptue the front/rear slip  [rad/s]
+    # ref: Hindiyeh Thesis, p58
+    a_F     = arctan(beta + a*r/v_x) - d_f
+    a_R     = arctan(beta - b*r/v_x)
+
+    # compute tire force
+    FyF     = f_pajecka(trMdlFront, a_F)
+    FyR     = f_pajecka(trMdlRear, a_R)
+
+    # compute next state
+    beta_next   = beta  + dt*(-r + (1/(m*v_x))*(FyF*cos(d_f)+FyR))
     r_next      = r    + dt/I_z*(a*FyF*cos(d_f) - b*FyR);
-    
-    
     return array([beta_next, r_next])
 
+C = array([[0, 1]])
+def h_2s_disc(x):
+    """
+    measurement model
+    state: z := [beta, r], (i.e. slip angle and yaw rate)
+    output h := r (yaw rate)
+    """
+    return dot(C, x)
     
 def f_pajecka(trMdl, alpha):
     """

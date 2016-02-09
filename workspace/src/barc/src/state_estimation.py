@@ -17,10 +17,11 @@ import rospy
 import time
 import os
 import json
-from numpy import pi, cos, sin
+from numpy import pi, cos, sin, eye
 from geometry_msgs.msg import Vector3
 from input_map import angle_2_servo, servo_2_angle
-from observers import kinematicLuembergerObserver
+from observers import kinematicLuembergerObserver, ekf
+from system_models import f_2s_disc, h_2s_disc
 from data_service.srv import *
 from data_service.msg import *
 
@@ -116,19 +117,28 @@ def state_estimation():
     experiment_type = experiment_opt.get(experiment_sel)
     signal_ID = username + "-" + experiment_type
     experiment_name = 'rc_car_ex1'
-
+    
 	# get vehicle dimension parameters
     # note, the imu is installed at the front axel
     L_a = rospy.get_param("state_estimation/L_a")       # distance from CoG to front axel
     L_b = rospy.get_param("state_estimation/L_b")       # distance from CoG to rear axel
+    m   = rospy.get_param("state_estimation/m")         # mass of vehicle
+    I_z = rospy.get_param("state_estimation/I_z")       # moment of inertia about z-axis
+    vhMdl   = (L_a, L_b, m, I_z)
+    # get tire model
+    TMF = rospy.get_param("state_estimation/TMF")  
+    TMR = rospy.get_param("state_estimation/TMR")  
+    TrMdl = (TMF, TMR)
+    # get observer properties
+    aph = rospy.get_param("state_estimation/aph")             # parameter to tune estimation error dynamics
+    q   = rospy.get_param("state_estimation/q")             # std of process noise
+    r   = rospy.get_param("state_estimation/r")             # std of measurementnoise
+    v_x_min     = rospy.get_param("state_estimation/v_x_min")  # minimum velociy before using EKF
 
 	# set node rate
     loop_rate 	= 50
     dt 		    = 1.0 / loop_rate
     rate 		= rospy.Rate(loop_rate)
-
-	# filter parameters
-    aph = 3             # parameter to tune estimation error dynamics
 
     ## Open file to save data
     date 				= time.strftime("%Y.%m.%d")
@@ -148,10 +158,15 @@ def state_estimation():
     timestamps = []
     send_data = rospy.ServiceProxy('send_data', DataForward)
     
-    # estimation variables
-    vhat_x = 0      # longitudinal velocity estimate
-    vhat_y = 0      # lateral velocity estimate
-    what_z = 0      # yaw rate estimate
+    # estimation variables for Luemberger observer
+    vhat_x = 0      # longitudinal velocity 
+    vhat_y = 0      # lateral velocity 
+    what_z = 0      # yaw rate 
+
+    # estimation variables for EKF
+    beta_EKF    = 0         # slip angle
+    w_z_EKF     = 0         # yaw rate
+    P           = eye(2)    # initial coveriance matrix
 
     while not rospy.is_shutdown():
         samples_counter += 1
@@ -194,6 +209,13 @@ def state_estimation():
         
         # update state estimate
         (vhat_x, vhat_y) = kinematicLuembergerObserver(vhat_x, vhat_y, w_z, a_x, a_y, v_x_enc, aph, dt)
+        if vhat_x > v_x_min:
+            # get measurement
+            y = w_z
+
+            # apply EKF and get each state estimate
+            z_EKF = ekf(f_2s_disc, z_EKF, P, h_2s_disc, y, Q, R, args ) 
+            (beta_EKF, w_z_EKF) = z_EKF
         
 		# wait
         rate.sleep()
@@ -202,7 +224,7 @@ def state_estimation():
 # Reduce duplication somehow?
 def send_all_data(data, timestamps, send_data, experiment_name):
 
-    print data
+    # print data
     time_signal = TimeSignal()
     time_signal.timestamps = timestamps
 

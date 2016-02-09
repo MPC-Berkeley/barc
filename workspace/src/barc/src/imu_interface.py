@@ -15,6 +15,7 @@
 
 import traceback
 from math import pi
+import serial
 
 #############################################################
 def send_command(serial_port, cmd_msg):
