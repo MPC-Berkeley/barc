@@ -26,3 +26,7 @@ source barc/scripts/login.sh
 
 # Make sure crontab is updated
 crontab -u odroid /home/odroid/barc/scripts/crondump
+
+
+# Miscellaneous
+source /home/odroid/team_name.sh

@@ -7,6 +7,9 @@ import time
 from data_connection import DataConnection
 
 
+import os
+
+
 class Configurator(object):
     """
     Manages a config for the Local Computer
@@ -19,10 +22,10 @@ class Configurator(object):
         else:
             self.config = {
                 # ENVIRONMENT VARIBALE OR ROS ENVIRONMENT VARIABLE
-                'name': '<team_name_here>',
+                'name': os.environ['TEAM_NAME'],
 #                'server': 'http://104.131.132.100:8009',
-               'server': 'http://localhost:8000',
-                # 'server': 'http://ec2-52-22-139-24.compute-1.amazonaws.com/',
+#               'server': 'http://localhost:8000',
+                'server': 'http://ec2-52-22-139-24.compute-1.amazonaws.com/',
                 'secret_uuid': str(uuid4()),
                 'registration_token': 'abcd',
                 'id': "1"
