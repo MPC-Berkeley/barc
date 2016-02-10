@@ -22,9 +22,6 @@ from data_api.models import *
 CLOUD_CONFIG_LOCATION = '/home/odroid/cloud.cfg'
 
 if __name__ == '__main__':
-    with open('/home/odroid/cron.log', 'a') as f:
-        f.write(time.strftime('%H.%M.%S\n'))
-
     configurator = init_configurator(CLOUD_CONFIG_LOCATION)
     data_connection = DataConnection(configurator)
 
