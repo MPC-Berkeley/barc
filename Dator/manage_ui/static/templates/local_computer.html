@@ -120,7 +120,8 @@
                                 ng-model="uiState.experiment"
                                 ng-options="experiment.name for experiment in experimentChoices track by experiment.id"
                                 ng-change="filterExperiment()"
-                                class="dator-spaced-title"></select>
+                                class="dator-spaced-title"
+                                style="color: black;"></select>
                             <button ng-click="deleteExperiment()">
                             <i class="fa fa-minus" style="color: black; background-color: transparent;"></i>
                         </button>
