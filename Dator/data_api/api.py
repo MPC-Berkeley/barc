@@ -169,6 +169,7 @@ class EventResource(ModelResource):
 
 class ExperimentResource(ModelResource):
     local_computer_id = IntegerField(attribute="local_computer_id")
+    name = CharField(attribute="name", null=True)
 
     class Meta:
         queryset = Experiment.objects.all()

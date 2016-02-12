@@ -20,7 +20,7 @@ function LocalComputer($scope, $routeParams, $interval, Restangular, $location, 
             experiment: ALL_EXPERIMENTS
         });
 
-    $scope.experimentChoices= [ALL_EXPERIMENTS];
+
     /**
      *
      * Sets experiments from the db.
@@ -33,12 +33,13 @@ function LocalComputer($scope, $routeParams, $interval, Restangular, $location, 
         });
     };
 
+    $scope.experimentChoices= [ALL_EXPERIMENTS];
+
     /**
      * Populate experiment choices from $scope.experiments
      */
     $scope.setExperimentChoices=function() {
         $scope.experimentChoices = [ALL_EXPERIMENTS];
-        $scope.experimentChoices.push({'id':1,'name':'rue'});
         _.each($scope.experiments, function(experiment){
             $scope.experimentChoices.push({'id':experiment.id, 'name':experiment.name});
         });
@@ -71,6 +72,7 @@ function LocalComputer($scope, $routeParams, $interval, Restangular, $location, 
             $scope.getSettings();
             $scope.getEvents();
             $scope.getBlobs();
+            $scope.getExperiments();
         }, function (reason) {
             alert("Couldn't load localComputer: " + reason);
         });
@@ -142,6 +144,44 @@ function LocalComputer($scope, $routeParams, $interval, Restangular, $location, 
             alert("Couldn't stop program on local computer: " + reason);
         });
     };
+
+    $scope.filterExperiment = function() {
+
+        var experiment_id = $scope.uiState.experiment.id;
+
+        var arguments = {format:'json', local_computer_id: $scope.localComputer.id};
+
+        if ($scope.uiState.experiment.id != 0) {
+            arguments.experiment_id = $scope.uiState.experiment.id;
+        }
+
+        $scope.signals = Restangular.all("signal").getList(arguments).
+            then(function (data){
+                $scope.signals = data;
+                $scope.uiState.signalsCount=data.length;
+            });
+
+        $scope.uiState.signalsCount = $scope.signals.length;
+    }
+
+    $scope.deleteExperiment = function() {
+        if ($scope.uiState.experiment.id == 0) {
+            alert("Please delete individual experiment");
+            return;
+        }
+
+        console.log($scope.uiState.experiment);
+
+        Restangular.one("experiment").get({format:'json', name: $scope.uiState.experiment.name}).
+            then(function(experiment) {
+                // console.log(experiment.objects[0].name);
+                experiment.remove({name: experiment.objects[0].name}).then(function(removeStatus) {
+                    $scope.uiState.experiment.id = 0;
+                    $scope.filterExperiment();
+                    $scope.experiments = $scope.getExperiments();
+                });
+            });
+    }
 
     /**
      * Get a list of signals associated with the computer.

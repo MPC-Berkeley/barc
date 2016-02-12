@@ -158,6 +158,8 @@ class DataConnection(object):
         response = self.client.post(url, data=json.dumps(signal_points), headers=self.post_header())
         if not DataConnection.check_response_ok(response):
             print "Error posting signal data {}".format(response.content)
+            print "Raising Exception!"
+            raise Exception("Error posting signal data {}".format(response.content))
 
     def add_signal_points_by_name(self, signal_name, signal_points):
         """
@@ -209,7 +211,7 @@ class DataConnection(object):
         # print config
         url = self._api_url('signal')
 
-        params = {'name': signal_name, 'local_computer_id': config['id'], 
+        params = {'name': signal_name, 'local_computer_id': config['id'],
                   'experiment_id': experiment['id']}
 
         response = self.client.get(url, params=params, headers=self.sec_header())

@@ -24,7 +24,8 @@ class Configurator(object):
                 # ENVIRONMENT VARIBALE OR ROS ENVIRONMENT VARIABLE
                 'name': os.environ['TEAM_NAME'],
 #                'server': 'http://104.131.132.100:8009',
-               'server': 'http://localhost:8000',
+               # 'server': 'http://localhost:8000',
+               'server': 'http://localhost:8888',
 #                'server': 'http://ec2-52-22-139-24.compute-1.amazonaws.com/',
                 'secret_uuid': str(uuid4()),
                 'registration_token': 'abcd',
@@ -45,7 +46,7 @@ class Configurator(object):
         self.config = config
 
 
-CONFIG_LOCATION = "/home/odroid/default.cfg"
+CONFIG_LOCATION = "/home/mpc/default.cfg"
 
 
 def init_configurator(CONFIG_LOCATION=CONFIG_LOCATION):

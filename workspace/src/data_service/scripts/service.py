@@ -36,15 +36,16 @@ def get_experiment(experiment_name):
 
 
 def get_time_signal(signal_name, experiment_name):
+    map_key = (signal_name, experiment_name)
 
     experiment = get_experiment(experiment_name)
 
-    if signal_name not in signal_name_map:
+    if map_key not in signal_name_map:
         print 'Requesting new time signal'
         signal = data_connection.get_or_create_signal(signal_name, experiment)
-        signal_name_map[signal_name] = signal
+        signal_name_map[map_key] = signal
 
-    return signal_name_map[signal_name]
+    return signal_name_map[map_key]
 
 
 def get_blob_signal(signal_name):
@@ -62,21 +63,17 @@ def send_time_signal(time_signal, experiment_name):
     signal = get_time_signal(signal_name, experiment_name)
     response = response_ok
 
-    try:
-        timestamps = time_signal.timestamps
-        signals = json.loads(time_signal.signal)
-        signal_points = []
+    timestamps = time_signal.timestamps
+    signals = json.loads(time_signal.signal)
+    signal_points = []
 
-        for ts, sig in zip(timestamps, signals):
-            signal_points.append([ts] + sig)
-            # sig.append(ts)
-            # signal_points.append(sig)
+    for ts, sig in zip(timestamps, signals):
+        signal_points.append([ts] + sig)
+        # sig.append(ts)
+        # signal_points.append(sig)
 
-        data_connection.add_signal_points(signal['id'],
-                                          signal_points)
-    except Exception as e:
-        response = str(e)
-
+    data_connection.add_signal_points(signal['id'],
+                                      signal_points)
     return response
 
 
@@ -96,9 +93,18 @@ def handle_send_data(req):
     response = response_ok
 
     if req.time_signal != None and req.time_signal.name != '':
-        response = send_time_signal(req.time_signal, req.experiment_name)
-        if response != response_ok:
-            return DataForwardResponse(response)
+        try:
+            send_time_signal(req.time_signal, req.experiment_name)
+        except Exception as e:
+            response = str(e)
+            print e
+            print 'Updating cache and retrying'
+            map_key = (req.time_signal.name, req.experiment_name)
+            if req.experiment_name in experiment_name_map:
+                del experiment_name_map[req.experiment_name]
+            if map_key in signal_name_map:
+                del signal_name_map[map_key]
+            send_time_signal(req.time_signal, req.experiment_name)
 
 #    if req.custom_signal != None and req.custom_signal.id != '':
 #        response = send_custom_signal(req.custom_signal)
@@ -142,11 +148,25 @@ def handle_register_experiment(req):
     return RegisterExperimentResponse(response['id'])
 
 
+def handle_register_setting(req):
+    response = response_ok
+    try:
+        setting = data_connection.get_or_create_setting(req.key)
+        data_connection.write_setting(req.key, req.value)
+    except Exception as e:
+        response = str(e)
+
+    return RegisterSettingResponse(response)
+
+
 def send_data_service():
     rospy.init_node('data_service', anonymous=True)
     s1 = rospy.Service('send_data', DataForward, handle_send_data)
     s2 = rospy.Service('retrieve_data', DataRetrieve, handle_retrieve_data)
     e1 = rospy.Service('register_experiment', RegisterExperiment, handle_register_experiment)
+
+    settings_service = rospy.Service('register_setting', RegisterSetting, handle_register_setting)
+
     rospy.spin()
 
 

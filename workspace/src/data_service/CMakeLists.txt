@@ -59,6 +59,7 @@ add_service_files(
   DataForward.srv
   DataRetrieve.srv
   RegisterExperiment.srv
+  RegisterSetting.srv
 )
 
 ## Generate actions in the 'action' folder
