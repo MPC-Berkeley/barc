@@ -108,38 +108,20 @@ def main_auto():
 	rate 	= rospy.Rate(rateHz)
 	t_i     = 0
 
-	# get node parameters
-	experiment_sel 	= rospy.get_param("auto_node/experiment_sel")
-	v_x_pwm 	= rospy.get_param("auto_node/v_x_pwm")
-	t_exp 		= rospy.get_param("auto_node/t_exp")
-
-    # specify test and test options
-	experiment_opt    = { 0 : CircularTest,
-                    1 : Straight,
-		    		2 : SineSweep,   
-                    3 : DoubleLaneChange,
-					4 : LQR_drift }
-	test_mode   = experiment_opt.get(experiment_sel)
-	str_ang 	= rospy.get_param("auto_node/steering_angle")
-	test_opt 	= TestSettings(SPD = v_x_pwm, L_turn = str_ang, R_turn =-str_ang, dt=t_exp)
-	
 	# get initial OL sequence for feedback control
-	if experiment_sel == 4:
-		# open loop drift maneuver - driver straigh, then perform manuever to enter drift
-		dir_path = '/home/odroid/catkin_ws/src/barc/data'
-		start_drift_maneuver 	= genfromtxt(dir_path + '/startDriftManeuver',delimiter=',')
-		drive_straight 			= zeros(rateHz * 1)
-		initial_sequence 		= hstack((drive_straight, start_drift_maneuver)) 
+	# open loop drift maneuver - driver straigh, then perform manuever to enter drift
+	dir_path = '/home/odroid/catkin_ws/src/barc/data'
+	start_drift_maneuver 	= genfromtxt(dir_path + '/startDriftManeuver',delimiter=',')
+	drive_straight 			= zeros(rateHz * 1)
+	initial_sequence 		= hstack((drive_straight, start_drift_maneuver)) 
 
-		# LQR gain
-		K_LQR = genfromtxt(dir_path + '/K_lqr', delimiter=',') 
+	# LQR gain
+	K_LQR = genfromtxt(dir_path + '/K_lqr', delimiter=',') 
+    test_opt = TestSettings()
 
 	while not rospy.is_shutdown():
 		# get command signal
-		if experiment_sel in [0,1,2,3]:
-			(motorCMD, servoCMD) = test_mode(test_opt, rateHz, t_i)
-		else:
-			(motorCMD, servoCMD) = test_mode(test_opt, initial_sequence, K_LQR, rateHz, t_i)
+		(motorCMD, servoCMD) = LQR_drift(test_opt, initial_sequence, K_LQR, rateHz, t_i)
 			
         # send command signal 
 		ecu_cmd = Vector3(motorCMD, servoCMD, 0)

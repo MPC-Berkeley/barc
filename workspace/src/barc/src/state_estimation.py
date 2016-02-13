@@ -28,9 +28,9 @@ from data_service.msg import *
 import numpy as np
 
 # input variables
-d_f 	= 0
-d_f_pwm	= 0
-v_x_pwm = 0
+d_f 	    = 0
+servo_pwm   = 0
+motor_pwm   = 0
 
 # raw measurement variables
 # from IMU
@@ -40,9 +40,9 @@ yaw 	= 0
 w_x 	= 0
 w_y 	= 0
 w_z 	= 0
-a_x_imu 	= 0
-a_y_imu 	= 0
-a_z_imu 	= 0
+a_x 	= 0
+a_y 	= 0
+a_z 	= 0
 
 # from encoder 
 v_x_enc 	= 0
@@ -56,15 +56,15 @@ dx_magnets 	= 2*pi*r_tire/4     # distance between magnets
 
 # ecu command update
 def ecu_callback(data):
-	global d_f_pwm, v_x_pwm, d_f
-	v_x_pwm 	= data.x
-	d_f_pwm 	= data.y
-	d_f 		= pi/180*servo_2_angle(d_f_pwm)
+	global servo_pwm, motor_pwm, d_f
+	servo_pwm 	= data.x
+	motor_pwm 	= data.y
+	d_f 		= pi/180*servo_2_angle(servo_pwm)
 
 # imu measurement update
 def imu_callback(data):
-	global roll, pitch, yaw, a_x_imu, a_y_imu, a_z_imu, w_x, w_y, w_z
-	(roll, pitch, yaw, a_x_imu, a_y_imu, a_z_imu, w_x, w_y, w_z) = data.value
+	global roll, pitch, yaw, a_x, a_y, a_z, w_x, w_y, w_z
+	(roll, pitch, yaw, a_x, a_y, a_z, w_x, w_y, w_z) = data.value
 
 # encoder measurement update
 def enc_callback(data):
@@ -107,16 +107,16 @@ def state_estimation():
     state_pub 	= rospy.Publisher('state_estimate', Vector3, queue_size = 10)
 
 	# get system parameters
-    username = rospy.get_param("auto_node/user")
-    experiment_sel 	= rospy.get_param("auto_node/experiment_sel")
+    username = rospy.get_param("controller/user")
+    experiment_sel 	= rospy.get_param("controller/experiment_sel")
     experiment_opt 	= {0 : "Circular",
 				       1 : "Straight",
 				       2 : "SineSweep",
 				       3 : "DoubleLaneChange",
-				       4 : "LQR"}
+				       4 : "CoastDown"}
     experiment_type = experiment_opt.get(experiment_sel)
     signal_ID = username + "-" + experiment_type
-    experiment_name = 'rc_car_ex1'
+    experiment_name = 'rc_car_ex2'
     
 	# get vehicle dimension parameters
     # note, the imu is installed at the front axel
@@ -125,6 +125,9 @@ def state_estimation():
     m   = rospy.get_param("state_estimation/m")         # mass of vehicle
     I_z = rospy.get_param("state_estimation/I_z")       # moment of inertia about z-axis
     vhMdl   = (L_a, L_b, m, I_z)
+
+    # get encoder parameters
+    dt_vx   = rospy.get_param("state_estimation/dt_vx")     # time interval to compute v_x
 
     # get tire model
     TMF = rospy.get_param("state_estimation/TMF")  
@@ -150,7 +153,7 @@ def state_estimation():
         os.makedirs(BASE_PATH)
     data_file_name   	= BASE_PATH + signal_ID + '-' + time.strftime("%H.%M.%S") + '.csv'
     data_file     		= open(data_file_name, 'a')
-    data_file.write('t,roll,pitch,yaw,w_x,w_y,w_z,a_x_imu,a_y_imu,a_z_imu,n_FL,n_FR,v_x_pwm,d_f_pwm,d_f,vhat_x,vhat_y,what_z\n')
+    data_file.write('t,roll,pitch,yaw,w_x,w_y,w_z,a_x,a_y,a_z,n_FL,n_FR,motor_pwm,servo_pwm,d_f,vhat_x,vhat_y,what_z\n')
     t0 				= time.time()
 
     # serialization variables
@@ -174,26 +177,25 @@ def state_estimation():
         samples_counter += 1
 
 		# signals from inertial measurement unit, encoder, and control module
-        global roll, pitch, yaw, w_x, w_y, w_z, a_x_imu, a_y_imu, a_z_imu
+        global roll, pitch, yaw, w_x, w_y, w_z, a_x, a_y, a_z
         global n_FL, n_FR, v_x_enc
-        global v_x_pwm, d_f_pwm, d_f
+        global motor_pwm, servo_pwm, d_f
 
 		# publish state estimate
         state_pub.publish( Vector3(vhat_x, vhat_y, w_z) )
 
 		# save data (maybe should use rosbag in the future)
         t  	= time.time() - t0
-        all_data = [t,roll,pitch,yaw,w_x,w_y,w_z,a_x_imu,a_y_imu,a_z_imu,n_FL,n_FR,v_x_pwm,d_f_pwm,d_f,vhat_x,vhat_y,what_z]
+        all_data = [t,roll,pitch,yaw,w_x,w_y,w_z,a_x,a_y,a_z,n_FL,n_FR,motor_pwm,servo_pwm,d_f,vhat_x,vhat_y,what_z]
         timestamps.append(t)
         data_to_flush.append(all_data)
 
+        # save to CSV
+        N = len(all_data)
+        str_fmt = '%.4f,'*N
+        data_file.write( (str_fmt[0:-1]+'\n') % tuple(all_data))
 
-	# 	# save to CSV
-        # N = len(all_data)
-        # str_fmt = '%.4f,'*N
-        # data_file.write( (str_fmt[0:-1]+'\n') % tuple(all_data))
-
-        print samples_counter
+        # print samples_counter
 
         # do the service command asynchronously, right now this is a blocking call
         if samples_counter == samples_buffer_length:
@@ -206,8 +208,8 @@ def state_estimation():
 
         # assuming imu is at the center of the front axel
         # perform coordinate transformation from imu frame to vehicle body frame (at CoG)
-        a_x = a_x_imu + L_a*w_z**2
-        a_y = a_y_imu
+        a_x = a_x + L_a*w_z**2
+        a_y = a_y
         
         # update state estimate
         (vhat_x, vhat_y) = kinematicLuembergerObserver(vhat_x, vhat_y, w_z, a_x, a_y, v_x_enc, aph, dt)

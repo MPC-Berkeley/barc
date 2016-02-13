@@ -13,8 +13,6 @@
 # Kiet Lam (kiet.lam@berkeley.edu)   
 # ---------------------------------------------------------------------------
 
-
-
 from input_map import angle_2_servo, servo_2_angle
 from numpy import sin, cos, pi
 
@@ -76,7 +74,7 @@ def CircularTest(test_opt, rate, t_i):
 def Straight(test_opt, rate, t_i):
     # timing maneuvers
     oneSec      = rate
-    dt          = 6*oneSec 
+    dt          = (test_opt.dt_man)*oneSec 
     t_0         = 3*oneSec
     t_f         = t_0 + dt
 
@@ -99,6 +97,34 @@ def Straight(test_opt, rate, t_i):
 	
 
     return (motorCMD, servoCMD)
+
+
+#############################################################
+def CoastDown(test_opt, rate, t_i):
+    # timing maneuvers
+    oneSec      = rate
+    dt          = (test_opt.dt_man)*oneSec 
+    t_0         = 3*oneSec
+    t_f         = t_0 + dt
+
+    # rest
+    if t_i < t_0:
+        servoCMD     = test_opt.Z_turn
+        motorCMD    = test_opt.neutral
+
+    # start moving
+    elif (t_i >= t_0) and (t_i < t_f):
+        servoCMD     = test_opt.Z_turn
+        motorCMD    = test_opt.speed
+
+    # set straight and stop
+    else:
+        servoCMD     	= test_opt.Z_turn
+        motorCMD        = test_opt.neutral
+
+    return (motorCMD, servoCMD)
+
+
 
 #############################################################
 def SineSweep(test_opt, rate, t_i):

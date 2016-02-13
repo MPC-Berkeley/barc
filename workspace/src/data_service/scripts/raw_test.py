@@ -1,4 +1,4 @@
-#!/home/mpc/.virtualenvs/research/bin/python
+#!/home/odroid/.virtualenvs/research/bin/python
 
 import time
 from data_connection import *
