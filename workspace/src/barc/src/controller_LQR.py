@@ -1,16 +1,16 @@
 #!/usr/bin/env python
 
 # ---------------------------------------------------------------------------
-# Licensing Information: You are free to use or extend these projects for 
+# Licensing Information: You are free to use or extend these projects for
 # education or reserach purposes provided that (1) you retain this notice
-# and (2) you provide clear attribution to UC Berkeley, including a link 
+# and (2) you provide clear attribution to UC Berkeley, including a link
 # to http://barc-project.com
 #
 # Attibution Information: The barc project ROS code-base was developed
 # at UC Berkeley in the Model Predictive Control (MPC) lab by Jon Gonzales
-# (jon.gonzales@berkeley.edu)  Development of the web-server app Dator was 
-# based on an open source project by Bruce Wootton, with contributions from 
-# Kiet Lam (kiet.lam@berkeley.edu)   
+# (jon.gonzales@berkeley.edu)  Development of the web-server app Dator was
+# based on an open source project by Bruce Wootton, with contributions from
+# Kiet Lam (kiet.lam@berkeley.edu)
 # ---------------------------------------------------------------------------
 
 import rospy
@@ -24,15 +24,15 @@ from input_map import angle_2_servo, servo_2_angle
 from manuevers import TestSettings, CircularTest, Straight, SineSweep, DoubleLaneChange
 
 #############################################################
-# get estimate of x_hat = [v_x , v_y, w_z]
+# get estimate of x_hat = [beta , r, v_x]
 x_hat = zeros(3)
 def updateState_callback(data):
 	global x_hat
 
 	# update fields
-	x_hat[0] = data.x 		# v_x  longitudinal velocity 
-	x_hat[1] = data.y 		# v_y  lateral velocity
-	x_hat[2] = data.z		# w_z  angular velocity about z-axis
+	x_hat[0] = data.x 		# beta  slip angle
+	x_hat[1] = data.y 		# r     angular velocity about z-axis (yaw rate)
+	x_hat[2] = data.z		  # v_x   longitudinal velocity
 
 #############################################################
 def LQR_drift(test_opt, init_sequence, K_LQR, rate, t_i):
@@ -60,7 +60,7 @@ def LQR_drift(test_opt, init_sequence, K_LQR, rate, t_i):
 	# define lqr state [beta, w_z, v_x]
 	x_lqr 	= array([beta, w_z, v_x])
 
-	# OPEN LOOP CONTROL 
+	# OPEN LOOP CONTROL
 	# get to speed, then apply open loop steering sequence
 	if t_i < t_0:
 		servoCMD  	= test_opt.Z_turn
@@ -70,7 +70,7 @@ def LQR_drift(test_opt, init_sequence, K_LQR, rate, t_i):
 	elif t_i < t_OL:
 		k 		 = t_i - t_0
 		d_f 	 = init_sequence[k] * 180/pi
-		servoCMD  = angle_2_servo(d_f) 
+		servoCMD  = angle_2_servo(d_f)
 		motorCMD = test_opt.speed
 
 	# FEEDBACK CONTROL
@@ -79,11 +79,11 @@ def LQR_drift(test_opt, init_sequence, K_LQR, rate, t_i):
 		u 		= dot(K_LQR, x_lqr)
 
 		# extract individual inputs
-		d_f 		= u[0]*180/pi	
+		d_f 		= u[0]*180/pi
 		v_x_ref 	= u[1]
 		
 		# TO DO -- NEED MAPPING FROM v_x_ref to ESC PWM signal
-		servoCMD  = angle_2_servo(d_f) 
+		servoCMD  = angle_2_servo(d_f)
 		motorCMD = test_opt.speed
 	
     # set straight and stop
@@ -113,17 +113,17 @@ def main_auto():
 	dir_path = '/home/odroid/catkin_ws/src/barc/data'
 	start_drift_maneuver 	= genfromtxt(dir_path + '/startDriftManeuver',delimiter=',')
 	drive_straight 			= zeros(rateHz * 1)
-	initial_sequence 		= hstack((drive_straight, start_drift_maneuver)) 
+	initial_sequence 		= hstack((drive_straight, start_drift_maneuver))
 
 	# LQR gain
-	K_LQR = genfromtxt(dir_path + '/K_lqr', delimiter=',') 
+	K_LQR = genfromtxt(dir_path + '/K_lqr', delimiter=',')
     test_opt = TestSettings()
 
 	while not rospy.is_shutdown():
 		# get command signal
 		(motorCMD, servoCMD) = LQR_drift(test_opt, initial_sequence, K_LQR, rateHz, t_i)
 			
-        # send command signal 
+        # send command signal
 		ecu_cmd = Vector3(motorCMD, servoCMD, 0)
 		nh.publish(ecu_cmd)
 	

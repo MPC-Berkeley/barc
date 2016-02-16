@@ -4,13 +4,13 @@
   <version>0.4.0</version>
   <description>Berkeley Autonomous Race Car </description>
 
-  <!-- One maintainer tag required, multiple allowed, one person per tag --> 
+  <!-- One maintainer tag required, multiple allowed, one person per tag -->
   <maintainer email="jon.gonzales@berkeley.edu">BARC team</maintainer>
   <!-- One license tag required, multiple allowed, one license per tag -->
   <!-- Commonly used license strings: -->
   <!--   BSD, MIT, Boost Software License, GPLv2, GPLv3, LGPLv2.1, LGPLv3 -->
   <license>TBD</license>
-  <url type="website"> http://www.mpc.berkeley.edu/ </url>
+  <url type="website"> http://www.barc-project.com </url>
 
   <!-- The *_depend tags are used to specify dependencies -->
   <!-- Dependencies can be catkin packages or system dependencies -->

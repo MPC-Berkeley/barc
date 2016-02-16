@@ -1,16 +1,16 @@
 #!/usr/bin/env python
 
 # ---------------------------------------------------------------------------
-# Licensing Information: You are free to use or extend these projects for 
+# Licensing Information: You are free to use or extend these projects for
 # education or reserach purposes provided that (1) you retain this notice
-# and (2) you provide clear attribution to UC Berkeley, including a link 
+# and (2) you provide clear attribution to UC Berkeley, including a link
 # to http://barc-project.com
 #
 # Attibution Information: The barc project ROS code-base was developed
 # at UC Berkeley in the Model Predictive Control (MPC) lab by Jon Gonzales
-# (jon.gonzales@berkeley.edu)  Development of the web-server app Dator was 
-# based on an open source project by Bruce Wootton, with contributions from 
-# Kiet Lam (kiet.lam@berkeley.edu)   
+# (jon.gonzales@berkeley.edu)  Development of the web-server app Dator was
+# based on an open source project by Bruce Wootton, with contributions from
+# Kiet Lam (kiet.lam@berkeley.edu)
 # ---------------------------------------------------------------------------
 
 import rospy
@@ -44,12 +44,12 @@ a_x 	= 0
 a_y 	= 0
 a_z 	= 0
 
-# from encoder 
+# from encoder
 v_x_enc 	= 0
 t0 	        = time.time()
 n_FL	    = 0                 # counts in the front left tire
 n_FR 	    = 0                 # counts in the front right tire
-n_FL_prev 	= 0                 
+n_FL_prev 	= 0
 n_FR_prev 	= 0
 r_tire 		= 0.0319            # radius from tire center to perimeter along magnets
 dx_magnets 	= 2*pi*r_tire/4     # distance between magnets
@@ -68,20 +68,20 @@ def imu_callback(data):
 
 # encoder measurement update
 def enc_callback(data):
-	global v_x_enc, d_f, t0 
-	global n_FL, n_FR, n_FL_prev, n_FR_prev 	 
+	global v_x_enc, d_f, t0
+	global n_FL, n_FR, n_FL_prev, n_FR_prev
 
 	n_FL = data.x
 	n_FR = data.y
 
 	# compute time elapsed
 	tf = time.time()
-	dt = tf - t0 
+	dt = tf - t0
 	
 	# if enough time elapse has elapsed, estimate v_x
 	dt_min = 0.20
-	if dt > dt_min: 
-		# compute speed :  speed = distance / time 
+	if dt > dt_min:
+		# compute speed :  speed = distance / time
 		v_FL = (n_FL- n_FL_prev)*dx_magnets
 		v_FR = (n_FR- n_FR_prev)*dx_magnets
 
@@ -95,9 +95,9 @@ def enc_callback(data):
 		t0 	 = time.time()
 
 
-# state estimation node 
+# state estimation node
 def state_estimation():
-	# initialize node
+	  # initialize node
     rospy.init_node('state_estimation', anonymous=True)
 
     # topic subscriptions / publications
@@ -105,8 +105,9 @@ def state_estimation():
     rospy.Subscriber('enc_data', Vector3, enc_callback)
     rospy.Subscriber('ecu_cmd', Vector3, ecu_callback)
     state_pub 	= rospy.Publisher('state_estimate', Vector3, queue_size = 10)
+    angle_pub 	= rospy.Publisher('angle_info', Vector3, queue_size = 10)
 
-	# get system parameters
+	  # get system parameters
     username = rospy.get_param("controller/user")
     experiment_sel 	= rospy.get_param("controller/experiment_sel")
     experiment_opt 	= {0 : "Circular",
@@ -118,7 +119,7 @@ def state_estimation():
     signal_ID = username + "-" + experiment_type
     experiment_name = 'rc_car_ex2'
     
-	# get vehicle dimension parameters
+	  # get vehicle dimension parameters
     # note, the imu is installed at the front axel
     L_a = rospy.get_param("state_estimation/L_a")       # distance from CoG to front axel
     L_b = rospy.get_param("state_estimation/L_b")       # distance from CoG to rear axel
@@ -130,8 +131,8 @@ def state_estimation():
     dt_vx   = rospy.get_param("state_estimation/dt_vx")     # time interval to compute v_x
 
     # get tire model
-    TMF = rospy.get_param("state_estimation/TMF")  
-    TMR = rospy.get_param("state_estimation/TMR")  
+    TMF = rospy.get_param("state_estimation/TMF")
+    TMR = rospy.get_param("state_estimation/TMR")
     TrMdl = (TMF, TMR)
 
     # get Luemberger and EKF observer properties
@@ -140,7 +141,7 @@ def state_estimation():
     r   = rospy.get_param("state_estimation/r")             # std of measurementnoise
     v_x_min     = rospy.get_param("state_estimation/v_x_min")  # minimum velociy before using EKF
 
-	# set node rate
+	  # set node rate
     loop_rate 	= 50
     dt 		    = 1.0 / loop_rate
     rate 		= rospy.Rate(loop_rate)
@@ -148,7 +149,7 @@ def state_estimation():
     ## Open file to save data
     date 				= time.strftime("%Y.%m.%d")
     BASE_PATH   		= "/home/odroid/Data/" + date + "/"
-	# create directory if it doesn't exist
+	  # create directory if it doesn't exist
     if not os.path.exists(BASE_PATH):
         os.makedirs(BASE_PATH)
     data_file_name   	= BASE_PATH + signal_ID + '-' + time.strftime("%H.%M.%S") + '.csv'
@@ -164,9 +165,9 @@ def state_estimation():
     send_data = rospy.ServiceProxy('send_data', DataForward)
     
     # estimation variables for Luemberger observer
-    vhat_x = 0      # longitudinal velocity 
-    vhat_y = 0      # lateral velocity 
-    what_z = 0      # yaw rate 
+    vhat_x = 0      # longitudinal velocity
+    vhat_y = 0      # lateral velocity
+    what_z = 0      # yaw rate
 
     # estimation variables for EKF
     beta_EKF    = 0         # slip angle
@@ -176,15 +177,16 @@ def state_estimation():
     while not rospy.is_shutdown():
         samples_counter += 1
 
-		# signals from inertial measurement unit, encoder, and control module
+		    # signals from inertial measurement unit, encoder, and control module
         global roll, pitch, yaw, w_x, w_y, w_z, a_x, a_y, a_z
         global n_FL, n_FR, v_x_enc
         global motor_pwm, servo_pwm, d_f
 
-		# publish state estimate
+		    # publish state estimate
         state_pub.publish( Vector3(vhat_x, vhat_y, w_z) )
+        angle_pub.publish( Vector3(yaw, w_z, 0) )
 
-		# save data (maybe should use rosbag in the future)
+		    # save data (maybe should use rosbag in the future)
         t  	= time.time() - t0
         all_data = [t,roll,pitch,yaw,w_x,w_y,w_z,a_x,a_y,a_z,n_FL,n_FR,motor_pwm,servo_pwm,d_f,vhat_x,vhat_y,what_z]
         timestamps.append(t)
@@ -198,6 +200,7 @@ def state_estimation():
         # print samples_counter
 
         # do the service command asynchronously, right now this is a blocking call
+        """
         if samples_counter == samples_buffer_length:
             data = np.array(data_to_flush)
             send_all_data(data, timestamps, send_data, experiment_name)
@@ -205,6 +208,7 @@ def state_estimation():
             timestamps = []
             data_to_flush = []
             samples_counter = 0
+        """
 
         # assuming imu is at the center of the front axel
         # perform coordinate transformation from imu frame to vehicle body frame (at CoG)
@@ -213,13 +217,16 @@ def state_estimation():
         
         # update state estimate
         (vhat_x, vhat_y) = kinematicLuembergerObserver(vhat_x, vhat_y, w_z, a_x, a_y, v_x_enc, aph, dt)
+        
+        """
         if vhat_x > v_x_min:
             # get measurement
             y = w_z
 
             # apply EKF and get each state estimate
-            z_EKF = ekf(f_2s_disc, z_EKF, P, h_2s_disc, y, Q, R, args ) 
+            z_EKF = ekf(f_2s_disc, z_EKF, P, h_2s_disc, y, Q, R, args )
             (beta_EKF, w_z_EKF) = z_EKF
+        """
         
 		# wait
         rate.sleep()
@@ -319,7 +326,7 @@ def send_all_data(data, timestamps, send_data, experiment_name):
 
 if __name__ == '__main__':
 	try:
-		rospy.wait_for_service('send_data')
-		state_estimation()
+	  # rospy.wait_for_service('send_data')
+	  state_estimation()
 	except rospy.ROSInterruptException:
 		pass

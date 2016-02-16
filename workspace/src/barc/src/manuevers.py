@@ -1,16 +1,16 @@
 #!/usr/bin/env python
 
 # ---------------------------------------------------------------------------
-# Licensing Information: You are free to use or extend these projects for 
+# Licensing Information: You are free to use or extend these projects for
 # education or reserach purposes provided that (1) you retain this notice
-# and (2) you provide clear attribution to UC Berkeley, including a link 
+# and (2) you provide clear attribution to UC Berkeley, including a link
 # to http://barc-project.com
 #
 # Attibution Information: The barc project ROS code-base was developed
 # at UC Berkeley in the Model Predictive Control (MPC) lab by Jon Gonzales
-# (jon.gonzales@berkeley.edu)  Development of the web-server app Dator was 
-# based on an open source project by Bruce Wootton, with contributions from 
-# Kiet Lam (kiet.lam@berkeley.edu)   
+# (jon.gonzales@berkeley.edu)  Development of the web-server app Dator was
+# based on an open source project by Bruce Wootton, with contributions from
+# Kiet Lam (kiet.lam@berkeley.edu)
 # ---------------------------------------------------------------------------
 
 from input_map import angle_2_servo, servo_2_angle
@@ -30,7 +30,7 @@ class TestSettings:
 		if SPD < 90 or SPD > 130:
 			self.speed = 95
 
-		# check valid turns 
+		# check valid turns
 		# left is positive, right is negative
 		if L_turn < 0 or L_turn > 30:
 			L_turn = 5
@@ -74,8 +74,8 @@ def CircularTest(test_opt, rate, t_i):
 def Straight(test_opt, rate, t_i):
     # timing maneuvers
     oneSec      = rate
-    dt          = (test_opt.dt_man)*oneSec 
-    t_0         = 3*oneSec
+    dt          = (test_opt.dt_man)*oneSec
+    t_0         = 5*oneSec
     t_f         = t_0 + dt
 
     # rest
@@ -103,8 +103,8 @@ def Straight(test_opt, rate, t_i):
 def CoastDown(test_opt, rate, t_i):
     # timing maneuvers
     oneSec      = rate
-    dt          = (test_opt.dt_man)*oneSec 
-    t_0         = 3*oneSec
+    dt          = (test_opt.dt_man)*oneSec
+    t_0         = 5*oneSec
     t_f         = t_0 + dt
 
     # rest
@@ -130,7 +130,7 @@ def CoastDown(test_opt, rate, t_i):
 def SineSweep(test_opt, rate, t_i):
     # timing maneuvers
     oneSec      	= rate
-    dt          	= 15*oneSec 
+    dt          	= 15*oneSec
     start_turning 	= 1*oneSec
 
     t_0         	= 5*oneSec
@@ -166,7 +166,7 @@ def SineSweep(test_opt, rate, t_i):
 def DoubleLaneChange(test_opt, rate, t_i):
     # timing maneuvers
     oneSec      = rate
-    dt          = 3*oneSec 
+    dt          = 3*oneSec
     t_0         = 5*oneSec
     t_LT        = t_0 + dt
     t_RT        = t_LT + dt

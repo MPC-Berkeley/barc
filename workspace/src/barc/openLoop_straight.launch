@@ -1,0 +1,83 @@
+<launch>
+	<!-- DATA SERVICE-->
+	<!--
+	<node pkg="data_service" type="service.py" name="data_service" >
+	</node>
+	-->
+	
+	<!-- IMU NODE -->
+	<node pkg="barc" type="imu_data_acquisition.py" name="imu_node" >
+		<param name="port" value="/dev/ttyACM0" />
+	</node>
+
+	<!-- ARDUINO NODE -->
+	<node pkg="rosserial_python" type="serial_node.py" name="arduino_node" >
+		<param name="port" value="/dev/ttyUSB0" />
+	</node>
+
+	<!-- STATE ESTIMATION NODE -->
+	<node pkg="barc" type="state_estimation.py" name="state_estimation" >
+    <!-- VEHICLE PROPERTIES -->
+    <!-- m      := mass of vehicle
+         I_z    := moment of inertia about z-axis
+         L_a    := distance from CoG to rear axel
+         L_b    := distance from CoG to front axel -->
+		<param name="L_a" value="0.14" />
+		<param name="L_b" value="0.14" />
+		<param name="m" value="1.76" />
+		<param name="I_z" value="0.24" />
+
+
+    <!-- ENCODER PARAMETERS -->
+		<param name="dt_vx" value="0.2" />
+
+    <!-- TIRE MODEL PARAMETERS-->
+    <!-- f_paj = d*sin(c*atan(b*alpha))
+        assuming lumped tire model
+        TMF := front tire model, with TMF = (b,c,d)
+        TMR := rear tire model, with TMR = (b,c,d)    -->
+		<param name="TMF" value="[9.0, 1.5, -8.0]" />
+		<param name="TMR" value="[9.0, 1.5, -8.3]" />
+
+    <!-- STATE ESTIMATION PROPERTIES -->
+    <!-- Luemberger observer
+        aph := estimation error dynamics turning parameter -->
+		<param name="aph" value="3.5" />
+
+    <!-- EKF observer
+        q   := standard deviation of measurement noise
+        r   := standard deviation of process noise
+        v_x_min   := minimum velocity before using EKF -->
+		<param name="q" value="0.1" />
+		<param name="r" value="0.1" />
+		<param name="v_x_min" value="1.5" />
+	</node>
+	
+
+	<!-- OPEN LOOP MANUEVERS -->
+	<!-- Test Selection
+	1 : Straight
+	-->
+	<node pkg="barc" type="controller_straight.py" name="controller" >
+    <!--  SELECTION -->
+		<param name="user" value="jgon13" />
+		<param name="experiment_sel" type="int" value="4" />
+
+    <!-- PROPERTIES -->
+    <param name="v_x_pwm" type="int" value="98" />
+		<param name="steering_angle" type="int" value="10" />
+		<param name="t_exp" type="int" value="14" />
+		
+    <!-- PID for straight test using encoder readings -->
+    <!--
+    <param name="p" type="double" value="-3.5" />
+		<param name="i" type="double" value="-1" />
+		<param name="d" type="double" value="0" />
+		-->
+		
+    <!-- PID for straight test using imu gyro -->
+    <param name="p" type="double" value="50" />
+		<param name="i" type="double" value="5" />
+		<param name="d" type="double" value="0" />
+	</node>
+</launch>
