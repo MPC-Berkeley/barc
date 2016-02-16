@@ -1,0 +1,24 @@
+<launch>
+    <!-- Machines -->
+    <machine name="odroid" address="10.0.0.1" user="odroid" timeout="20.0"  env-loader="/home/odroid/barc/scripts/config/multi-machine/env_loader_odroid.sh"/>
+    <machine name="this-pc" address="10.0.0.120" timeout="20.0"             env-loader="/home/jgon13/barc/scripts/config/multi-machine/env_loader_pc.sh"/>
+    
+    <!-- IMU -->
+    <node machine="odroid" pkg="myahrs_driver" type="myahrs_driver" name="myahrs_driver">
+        <param name="port" value="/dev/ttyACM0" />
+        <param name="baud_rate" value="115200" />
+    </node>
+
+    <!-- CAMERA -->
+    <node machine="odroid" pkg="uvc_camera" type="uvc_camera_node" name="barc_cam">
+        <param name="index" value="0"/>
+        <param name="device" value="/dev/video6"/>
+        <param name="width" value="640"/>
+        <param name="height" value="480"/>
+    </node>
+
+    <!-- IMAGE DECOMPRESSION (on pc) -->
+    <node machine="this-pc" name="republish" type="republish" pkg="image_transport" output="screen" 
+    args="in:=/image_raw _image_transport:=compressed raw out:=/pc/image_raw" />
+
+</launch>

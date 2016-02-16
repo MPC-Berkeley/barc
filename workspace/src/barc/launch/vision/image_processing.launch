@@ -1,0 +1,25 @@
+<launch>
+  <node pkg="usb_cam" type="usb_cam_node" name="barc_cam" output="screen">
+    <param name="pixel_format" value="yuyv"/>
+    <param name="sharpness" value="255"/>
+    <param name="saturation" value="255"/>
+    <param name="framerate" value="30"/>    
+    <param name="contrast" value="5"/>    
+    <param name="video_device" value="/dev/video6"/>
+  </node>
+
+  <node pkg="barc" type="controller_image_processing.py" name="image_processing" output="screen">
+    <param name="display_image" value="True" type="boolean"/>
+    <param name="publish_image" value="False" type="boolean"/>
+    <param name="calibrate_transform" value="False" type="boolean"/>
+    <param name="upperLeftX" value="321" type="int"/>
+    <param name="upperLeftY" value="141" type="int"/>
+    <param name="upperRightX" value="326" type="int"/>
+    <param name="upperRightY" value="350" type="int"/>
+    <param name="lowerRightX" value="162" type="int"/>
+    <param name="lowerRightY" value="433" type="int"/>
+    <param name="lowerLeftX" value="148" type="int"/>
+    <param name="lowerLeftY" value="65" type="int"/>
+  </node>
+
+</launch>

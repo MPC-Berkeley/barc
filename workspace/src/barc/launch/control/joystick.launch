@@ -2,10 +2,10 @@
     <arg name="id" />
 
     <!-- ARDUINO -->
+    <!--  * encoders and ultrasound sensors -->
     <node pkg="rosserial_python" type="serial_node.py" name="arduino_node" >
         <param name="port" value="/dev/ttyUSB0" />
     </node>
-
 
     <!-- IMU -->
     <node pkg="myahrs_driver" type="myahrs_driver" name="myahrs_driver">
@@ -21,12 +21,9 @@
         <param name="height" value="480"/>
     </node>
     
-    <!-- RECORD -->
-    <node pkg="barc" type="record_experiment.py" name="record_experiment" output="screen">
-        <param name="experiment_name" value="$(arg id)" />
-        <param name="camera_on" value="true" />
-    </node>
+    <!-- MANUAL RC JOYSTICK CONTROL -->
+    <node pkg="barc" type="joystick.py" name="manual" output="screen" />
 
-    <node pkg="labs" type="openlooptest.py" name="model_id" />
- 
+    <!-- Record the experiment data -->
+    <node pkg="rosbag" type="record" name="rosbag_record" args="-O $(arg id).bag --all" />
 </launch>

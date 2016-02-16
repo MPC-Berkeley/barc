@@ -1,0 +1,13 @@
+<launch>
+    <!-- global configuration -->
+    <rosparam command="load" file="$(find barc)/launch/control/parking.yaml" />
+
+    <!-- path planner and controller -->
+    <node pkg="barc" type="parking_mpc.jl" name="mpc" output="screen" />  
+    
+    <!-- system model  -->
+    <node pkg="barc" type="kinBkMdl.py" name="plant" output="screen" /> 
+
+    <!-- visualization  -->
+    <node pkg="barc" type="trajectory_parking.py" name="visualization" output="screen" />
+</launch>

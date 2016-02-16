@@ -47,8 +47,8 @@ if __name__ == '__main__':
     configurator = init_configurator(CLOUD_CONFIG_LOCATION)
     data_connection = DataConnection(configurator)
 
-    s3_client = boto3.client('s3')
-    s3 = boto3.resource('s3')
+    s3_client = boto3.client('s3', use_ssl=0)
+    s3 = boto3.resource('s3', use_ssl=0)
 
     for sig in Signal.objects.all():
         try:

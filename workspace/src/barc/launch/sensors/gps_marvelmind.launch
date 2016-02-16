@@ -1,0 +1,3 @@
+<launch>
+    <node pkg="marvelmind_nav" type="hedge_rcv_bin" name="indoor_gps" args="/dev/ttyACM1"/>
+</launch>
