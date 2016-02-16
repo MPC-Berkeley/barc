@@ -1,9 +1,7 @@
 <launch>
 	<!-- DATA SERVICE-->
-	<!--
 	<node pkg="data_service" type="service.py" name="data_service" >
 	</node>
-	-->
 	
 	<!-- IMU NODE -->
 	<node pkg="barc" type="imu_data_acquisition.py" name="imu_node" >
@@ -55,17 +53,14 @@
 	
 
 	<!-- OPEN LOOP MANUEVERS -->
-	<!-- Test Selection
-	1 : Straight
-	-->
-	<node pkg="barc" type="controller_straight.py" name="controller" >
-    <!--  SELECTION -->
-		<param name="user" value="jgon13" />
-		<param name="experiment_sel" type="int" value="4" />
+	<node pkg="barc" type="controller_openLoop.py" name="controller" >
+            <!--  SELECTION -->
+            <param name="user" value="jgon13" />
+            <param name="experiment_sel" type="int" value="0" />
 
-    <!-- PROPERTIES -->
-    <param name="v_x_pwm" type="int" value="98" />
-	<param name="steering_angle" type="int" value="10" />
-	<param name="t_exp" type="int" value="14" />
-		
+            <!-- PROPERTIES -->
+            <param name="v_x_pwm" type="int" value="96" />
+            <param name="steering_angle" type="int" value="13" />
+            <param name="t_exp" type="int" value="10" />
+    </node>
 </launch>

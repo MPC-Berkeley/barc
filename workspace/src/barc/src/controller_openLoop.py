@@ -59,7 +59,7 @@ def main_auto():
 					      4 : CoastDown }
     test_mode   = experiment_opt.get(experiment_sel)
     str_ang 	= rospy.get_param("controller/steering_angle")
-    test_opt 	= TestSettings(SPD = v_x_pwm, L_turn = str_ang, R_turn =-str_ang, dt=t_exp)
+    test_opt 	= TestSettings(SPD = v_x_pwm, turn = str_ang, dt=t_exp)
 	
 
     # main loop

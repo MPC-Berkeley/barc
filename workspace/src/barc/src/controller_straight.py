@@ -24,18 +24,9 @@ from input_map import angle_2_servo, servo_2_angle
 from manuevers import TestSettings, CircularTest, Straight, SineSweep, DoubleLaneChange, CoastDown
 from pid import PID
 
-# encoder measurement update
-n_FL	    = 0                 # counts in the front left tire
-n_FR 	    = 0                 # counts in the front right tire
-def enc_callback(data):
-	global n_FL, n_FR, err
 
-	n_FL = data.x
-	n_FR = data.y
-	# err = n_FL - n_FR
-
-
-# encoder measurement update
+# pid control for constrant yaw angle 
+# -> d(yaw)/dt = 0 means no turning => straight path
 yaw0    = 0                 # counts in the front left tire
 yaw     = 0
 read_yaw0 = False
@@ -43,9 +34,13 @@ w_z 	  = 0                 # counts in the front right tire
 err     = 0
 def angle_callback(data):
     global yaw, yaw0, w_z, err, read_yaw0
+
+    # save initial measurements
     if not read_yaw0:
         yaw0 = data.x
         read_yaw0 = True
+
+    # compute deviation from original yaw angle
     yaw = data.x
     err = yaw - yaw0
 
@@ -54,7 +49,6 @@ def main_auto():
     # initialize ROS node
     rospy.init_node('auto_mode', anonymous=True)
     nh = rospy.Publisher('ecu_cmd', Vector3, queue_size = 10)
-    rospy.Subscriber('enc_data', Vector3, enc_callback)
     rospy.Subscriber('angle_info', Vector3, angle_callback)
 
 	# set node rate

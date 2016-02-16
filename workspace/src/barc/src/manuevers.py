@@ -18,7 +18,7 @@ from numpy import sin, cos, pi
 
 # simple test setting class
 class TestSettings:
-	def __init__(self, SPD = 95, L_turn = 5, R_turn = -5, dt = 10):
+	def __init__(self, SPD = 95, turn = 0, dt = 10):
 		# PWN signal values for motor
 		self.speed 		= SPD
 		self.neutral 	= 90
@@ -32,14 +32,11 @@ class TestSettings:
 
 		# check valid turns
 		# left is positive, right is negative
-		if L_turn < 0 or L_turn > 30:
-			L_turn = 5
-		if R_turn > 0 or R_turn < -30:
-			R_turn = -5
+		if turn < -30 or turn > 30:
+			turn = 0
 
 		# PWN signal values for servo
-		self.L_turn 	= angle_2_servo(L_turn)		# left turn
-		self.R_turn 	= angle_2_servo(R_turn)		# right turn
+		self.turn 	    = angle_2_servo(turn)		# right turn
 		self.Z_turn 	= 90 						# zero (no) turn
 
 
@@ -56,7 +53,7 @@ def CircularTest(test_opt, rate, t_i):
 
     # turn left and move
     elif (t_i >= t_0) and (t_i <= t_f):
-        servoCMD     = test_opt.L_turn
+        servoCMD     = test_opt.turn
         motorCMD    = test_opt.speed
 
     # set straight and stop
@@ -180,12 +177,12 @@ def DoubleLaneChange(test_opt, rate, t_i):
 
     # turn left
     elif (t_i >= t_0) and (t_i < t_LT):
-        servoCMD     = test_opt.L_turn
+        servoCMD    = abs(test_opt.turn)
         motorCMD    = test_opt.speed
 
     # turn right
     elif (t_i >= t_LT) and (t_i < t_RT):
-        servoCMD     = test_opt.R_turn
+        servoCMD    = -abs(test_opt.turn)
         motorCMD    = test_opt.speed
 
     # go straight

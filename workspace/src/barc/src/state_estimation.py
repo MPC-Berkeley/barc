@@ -57,8 +57,8 @@ dx_magnets 	= 2*pi*r_tire/4     # distance between magnets
 # ecu command update
 def ecu_callback(data):
 	global servo_pwm, motor_pwm, d_f
-	servo_pwm 	= data.x
-	motor_pwm 	= data.y
+	motor_pwm	= data.x
+	servo_pwm = data.y
 	d_f 		= pi/180*servo_2_angle(servo_pwm)
 
 # imu measurement update
@@ -200,7 +200,6 @@ def state_estimation():
         # print samples_counter
 
         # do the service command asynchronously, right now this is a blocking call
-        """
         if samples_counter == samples_buffer_length:
             data = np.array(data_to_flush)
             send_all_data(data, timestamps, send_data, experiment_name)
@@ -208,7 +207,6 @@ def state_estimation():
             timestamps = []
             data_to_flush = []
             samples_counter = 0
-        """
 
         # assuming imu is at the center of the front axel
         # perform coordinate transformation from imu frame to vehicle body frame (at CoG)
