@@ -1,4 +1,7 @@
+import csv
 import json
+import StringIO
+
 from django.core import serializers
 from django.core.urlresolvers import reverse
 from django.db.models import Q
@@ -76,8 +79,20 @@ def signal_data(request, signal_id):
 
     elif request.method == 'GET':
         try:
-            body = json.dumps(signal.get_data())
-            return HttpResponse(body, status=200, content_type="application/json")
+            content_type = 'application/json'
+            if 'format' in request.GET and request.GET['format'] == 'csv':
+                content_type = 'text/csv'
+                raw_data = StringIO.StringIO()
+
+                data = signal.get_data()
+                writer = csv.writer(raw_data)
+                for dat in data:
+                    writer.writerow(dat)
+
+                body = raw_data.getvalue()
+            else:
+                body = json.dumps(signal.get_data())
+            return HttpResponse(body, status=200, content_type=content_type)
         except BaseException as e:
             return HttpResponse({'status': 'failed {}'.format(e)}, status=500)
 
