@@ -155,6 +155,7 @@
                                             <th>UUID</th>
                                             <th class="text-center">Display graph</th>
                                             <th class="text-center">Get JSON</th>
+                                            <th class="text-center">Get CSV</th>
                                         </tr>
                                         </thead>
                                         <tbody>
@@ -172,6 +173,13 @@
                                                     <i class="fa fa-download" style="color: greenyellow; background-color: transparent;"> </i>
                                                 </a>
                                             </td>
+
+                                            <td class="text-center">
+                                                <a href="/data_api/v1/signal/{{ signal.id }}/?format=csv" style="background-color: transparent; color: transparent;">
+                                                    <i class="fa fa-download" style="color: greenyellow; background-color: transparent;"> </i>
+                                                </a>
+                                            </td>
+
                                         </tr>
                                         </tbody>
                                     </table>
