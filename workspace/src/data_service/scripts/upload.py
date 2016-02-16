@@ -27,9 +27,9 @@ if __name__ == '__main__':
 
     for sig in Signal.objects.all():
         try:
-            signal = data_connection.get_or_create_signal(sig.name)
+            experiment = data_connection.get_or_create_experiment(sig.experiment.name)
+            signal = data_connection.get_or_create_signal(sig.name, experiment)
             data_connection.add_signal_points(signal['id'], sig.get_data())
             sig.delete()
         except Exception as e:
             print e
-

@@ -204,7 +204,7 @@ class DataConnection(object):
     def get_or_create_signal(self, signal_name, experiment):
         """
         Get or create a signal object for this local computer
-        :param signal_name: experiment: The experiment ID
+        :param signal_name: experiment: The experiment
         :return: The signal object dict.
         """
         config = self.configurator.get_config()
