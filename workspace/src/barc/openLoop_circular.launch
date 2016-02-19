@@ -1,6 +1,6 @@
 <launch>
 	<!-- DATA SERVICE-->
-	<node pkg="data_service" type="service.py" name="data_service" >
+    <node pkg="data_service" type="service.py" name="data_service" >
 	</node>
 	
 	<!-- IMU NODE -->
@@ -59,8 +59,13 @@
             <param name="experiment_sel" type="int" value="0" />
 
             <!-- PROPERTIES -->
-            <param name="v_x_pwm" type="int" value="96" />
-            <param name="steering_angle" type="int" value="13" />
-            <param name="t_exp" type="int" value="10" />
+            <param name="v_x_pwm" type="int" value="101" />
+            <param name="steering_angle" type="int" value="15" />
+            <param name="t_exp" type="int" value="15" />
     </node>
+
+    <!-- Record the experiment data -->
+    <node pkg="rosbag" type="record" name="rosbag_record"
+        args=" --all" />
+
 </launch>

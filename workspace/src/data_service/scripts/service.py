@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+import time
+
 import rospy
 import json
 import datetime
@@ -92,9 +94,13 @@ def send_custom_signal(custom_signal, experiment_id):
 def handle_send_data(req):
     response = response_ok
 
+    date = time.strftime("%Y.%m.%d")
+
+    experiment_name = req.experiment_name + '_' + date + '_' + time.strftime("%H.%M")
+
     if req.time_signal != None and req.time_signal.name != '':
         try:
-            send_time_signal(req.time_signal, req.experiment_name)
+            send_time_signal(req.time_signal, experiment_name)
         except Exception as e:
             response = str(e)
             print e

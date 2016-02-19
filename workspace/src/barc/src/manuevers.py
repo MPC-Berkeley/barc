@@ -43,7 +43,7 @@ class TestSettings:
 #############################################################
 def CircularTest(test_opt, rate, t_i):
     oneSec 		= rate
-    t_0         = 5*oneSec
+    t_0         = 3*oneSec
     t_f         = t_0 + (test_opt.dt_man)*oneSec
 
     # do nothing initially
@@ -60,9 +60,6 @@ def CircularTest(test_opt, rate, t_i):
     else:
         servoCMD     	= test_opt.Z_turn
         motorCMD        = test_opt.neutral
-        if not test_opt.stopped:
-            motorCMD    	 = test_opt.brake
-            test_opt.stopped = True
 
     return (motorCMD, servoCMD)
 

@@ -117,7 +117,7 @@ def state_estimation():
 				       4 : "CoastDown"}
     experiment_type = experiment_opt.get(experiment_sel)
     signal_ID = username + "-" + experiment_type
-    experiment_name = 'rc_car_ex2'
+    experiment_name = signal_ID
     
 	  # get vehicle dimension parameters
     # note, the imu is installed at the front axel
@@ -162,7 +162,7 @@ def state_estimation():
     samples_counter = 0
     data_to_flush = []
     timestamps = []
-    send_data = rospy.ServiceProxy('send_data', DataForward)
+    # send_data = rospy.ServiceProxy('send_data', DataForward)
     
     # estimation variables for Luemberger observer
     vhat_x = 0      # longitudinal velocity
@@ -200,6 +200,7 @@ def state_estimation():
         # print samples_counter
 
         # do the service command asynchronously, right now this is a blocking call
+        """
         if samples_counter == samples_buffer_length:
             data = np.array(data_to_flush)
             send_all_data(data, timestamps, send_data, experiment_name)
@@ -207,6 +208,7 @@ def state_estimation():
             timestamps = []
             data_to_flush = []
             samples_counter = 0
+        """
 
         # assuming imu is at the center of the front axel
         # perform coordinate transformation from imu frame to vehicle body frame (at CoG)
@@ -272,17 +274,17 @@ def send_all_data(data, timestamps, send_data, experiment_name):
     time_signal.signal = json.dumps(data[:, idx].tolist())
     send_data(time_signal, None, experiment_name)
 
-    time_signal.name = 'a_x_imu'
+    time_signal.name = 'a_x'
     idx = np.array([7])
     time_signal.signal = json.dumps(data[:, idx].tolist())
     send_data(time_signal, None, experiment_name)
 
-    time_signal.name = 'a_y_imu'
+    time_signal.name = 'a_y'
     idx = np.array([8])
     time_signal.signal = json.dumps(data[:, idx].tolist())
     send_data(time_signal, None, experiment_name)
 
-    time_signal.name = 'a_z_imu'
+    time_signal.name = 'a_z'
     idx = np.array([9])
     time_signal.signal = json.dumps(data[:, idx].tolist())
     send_data(time_signal, None, experiment_name)
@@ -297,30 +299,36 @@ def send_all_data(data, timestamps, send_data, experiment_name):
     time_signal.signal = json.dumps(data[:, idx].tolist())
     send_data(time_signal, None, experiment_name)
 
-    time_signal.name = 'v_x_pwm'
+    time_signal.name = 'motor_pwm'
     idx = np.array([12])
     time_signal.signal = json.dumps(data[:, idx].tolist())
     send_data(time_signal, None, experiment_name)
 
-    time_signal.name = 'd_f_pwm'
+    time_signal.name = 'servo_pwm'
     idx = np.array([13])
     time_signal.signal = json.dumps(data[:, idx].tolist())
     send_data(time_signal, None, experiment_name)
 
-    time_signal.name = 'what_x'
+    time_signal.name = 'd_f'
     idx = np.array([14])
     time_signal.signal = json.dumps(data[:, idx].tolist())
     send_data(time_signal, None, experiment_name)
 
-    time_signal.name = 'what_y'
+    time_signal.name = 'vhat_x'
     idx = np.array([15])
     time_signal.signal = json.dumps(data[:, idx].tolist())
     send_data(time_signal, None, experiment_name)
 
-    time_signal.name = 'what_z'
+    time_signal.name = 'vhat_y'
     idx = np.array([16])
     time_signal.signal = json.dumps(data[:, idx].tolist())
     send_data(time_signal, None, experiment_name)
+
+    time_signal.name = 'what_z'
+    idx = np.array([17])
+    time_signal.signal = json.dumps(data[:, idx].tolist())
+    send_data(time_signal, None, experiment_name)
+
 
 if __name__ == '__main__':
 	try:

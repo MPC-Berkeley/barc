@@ -50,5 +50,7 @@ if __name__ == '__main__':
 
 
     # # Register a setting
-    # register_setting = rospy.ServiceProxy('register_setting', RegisterSetting)
-    # register_setting('I', '0.20')
+    register_setting = rospy.ServiceProxy('register_setting', RegisterSetting)
+
+    register_setting('I', '0.20')
+    register_setting('P', '0.60')

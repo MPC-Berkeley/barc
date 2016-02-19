@@ -1,17 +1,17 @@
 <!DOCTYPE html>
+{% load static %}
 <html ng-app="Ruenoor">
 <head lang="en">
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
     <title>DATOR</title>
 
-    <link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href='{% static 'css/font-awesome.min.css' %}'>
 </head>
 <body>
 <div ng-view class="panel-default"></div>
 </body>
 
-{% load static %}
 <link href='{% static 'bower_components/bootstrap/dist/css/bootstrap.min.css' %}' rel="stylesheet" type="text/css"/>
 <link href='{% static 'css/dator.css' %}' rel="stylesheet" type="text/css"/>
 <link href='{% static 'css/bootstrap.min.css' %}' rel="stylesheet" type="text/css"/>
