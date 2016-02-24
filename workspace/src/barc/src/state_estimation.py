@@ -17,13 +17,14 @@ import rospy
 import time
 import os
 import json
-from numpy import pi, cos, sin, eye
+from numpy import pi, cos, sin, eye, array
 from geometry_msgs.msg import Vector3
 from input_map import angle_2_servo, servo_2_angle
 from observers import kinematicLuembergerObserver, ekf
-from system_models import f_2s_disc, h_2s_disc
+from system_models import f_3s, h_3s
 from data_service.srv import *
 from data_service.msg import *
+from filtering import filteredSignal
 
 import numpy as np
 
@@ -90,9 +91,9 @@ def enc_callback(data):
 		v_x_enc 	= (v_FL + v_FR)/2*cos(d_f)
 
 		# update old data
-		n_FL_prev = n_FL
-		n_FR_prev = n_FR
-		t0 	 = time.time()
+		n_FL_prev   = n_FL
+		n_FR_prev   = n_FR
+		t0 	        = time.time()
 
 
 # state estimation node
@@ -114,7 +115,9 @@ def state_estimation():
 				       1 : "Straight",
 				       2 : "SineSweep",
 				       3 : "DoubleLaneChange",
-				       4 : "CoastDown"}
+				       4 : "CoastDown",
+				       5 : "SingleTurn"}
+
     experiment_type = experiment_opt.get(experiment_sel)
     signal_ID = username + "-" + experiment_type
     experiment_name = signal_ID
@@ -131,14 +134,15 @@ def state_estimation():
     dt_vx   = rospy.get_param("state_estimation/dt_vx")     # time interval to compute v_x
 
     # get tire model
-    TMF = rospy.get_param("state_estimation/TMF")
-    TMR = rospy.get_param("state_estimation/TMR")
-    TrMdl = (TMF, TMR)
+    B   = rospy.get_param("state_estimation/B")
+    C   = rospy.get_param("state_estimation/C")
+    mu  = rospy.get_param("state_estimation/mu")
+    TrMdl = ([B,C,mu],[B,C,mu])
 
     # get Luemberger and EKF observer properties
     aph = rospy.get_param("state_estimation/aph")             # parameter to tune estimation error dynamics
-    q   = rospy.get_param("state_estimation/q")             # std of process noise
-    r   = rospy.get_param("state_estimation/r")             # std of measurementnoise
+    q_std   = rospy.get_param("state_estimation/q")             # std of process noise
+    r_std   = rospy.get_param("state_estimation/r")             # std of measurementnoise
     v_x_min     = rospy.get_param("state_estimation/v_x_min")  # minimum velociy before using EKF
 
 	  # set node rate
@@ -157,76 +161,61 @@ def state_estimation():
     data_file.write('t,roll,pitch,yaw,w_x,w_y,w_z,a_x,a_y,a_z,n_FL,n_FR,motor_pwm,servo_pwm,d_f,vhat_x,vhat_y,what_z\n')
     t0 				= time.time()
 
-    # serialization variables
-    samples_buffer_length = 50
-    samples_counter = 0
-    data_to_flush = []
-    timestamps = []
-    # send_data = rospy.ServiceProxy('send_data', DataForward)
-    
     # estimation variables for Luemberger observer
-    vhat_x = 0      # longitudinal velocity
-    vhat_y = 0      # lateral velocity
-    what_z = 0      # yaw rate
+    # z_EKF = [v_x, v_y, w_z]
+    z_EKF       = array([1, 0, 0])
 
     # estimation variables for EKF
-    beta_EKF    = 0         # slip angle
-    w_z_EKF     = 0         # yaw rate
-    P           = eye(2)    # initial coveriance matrix
+    P           = eye(3)                # initial dynamics coveriance matrix
+    Q           = (q_std**2)*eye(3)     # process noise coveriance matrix
+    R           = (r_std**2)*eye(2)     # measurement noise coveriance matrix
+
+    # filtered signal for longitudinal velocity
+    p_filter    = rospy.get_param("state_estimation/p_filter")
+    v_x_filt    = filteredSignal(a = p_filter, method='lp')   # low pass filter
 
     while not rospy.is_shutdown():
-        samples_counter += 1
-
-		    # signals from inertial measurement unit, encoder, and control module
+	    # signals from inertial measurement unit, encoder, and control module
         global roll, pitch, yaw, w_x, w_y, w_z, a_x, a_y, a_z
         global n_FL, n_FR, v_x_enc
         global motor_pwm, servo_pwm, d_f
 
-		    # publish state estimate
-        state_pub.publish( Vector3(vhat_x, vhat_y, w_z) )
+		# publish state estimate
+        (v_x, v_y, r) = z_EKF           # note, r = EKF estimate yaw rate
+        state_pub.publish( Vector3(v_x, v_y, r) )
         angle_pub.publish( Vector3(yaw, w_z, 0) )
 
-		    # save data (maybe should use rosbag in the future)
+		# save data (maybe should use rosbag in the future)
         t  	= time.time() - t0
-        all_data = [t,roll,pitch,yaw,w_x,w_y,w_z,a_x,a_y,a_z,n_FL,n_FR,motor_pwm,servo_pwm,d_f,vhat_x,vhat_y,what_z]
-        timestamps.append(t)
-        data_to_flush.append(all_data)
+        all_data = [t,roll,pitch,yaw,w_x,w_y,w_z,a_x,a_y,a_z,n_FL,n_FR,motor_pwm,servo_pwm,d_f,v_x,v_y,r]
 
         # save to CSV
         N = len(all_data)
         str_fmt = '%.4f,'*N
         data_file.write( (str_fmt[0:-1]+'\n') % tuple(all_data))
 
-        # print samples_counter
+        # update filtered signal
+        v_x_filt.update(v_x_enc)
+        v_x_est = v_x_filt.getFilteredSignal() 
 
-        # do the service command asynchronously, right now this is a blocking call
-        """
-        if samples_counter == samples_buffer_length:
-            data = np.array(data_to_flush)
-            send_all_data(data, timestamps, send_data, experiment_name)
 
-            timestamps = []
-            data_to_flush = []
-            samples_counter = 0
-        """
-
-        # assuming imu is at the center of the front axel
-        # perform coordinate transformation from imu frame to vehicle body frame (at CoG)
-        a_x = a_x + L_a*w_z**2
-        a_y = a_y
-        
-        # update state estimate
-        (vhat_x, vhat_y) = kinematicLuembergerObserver(vhat_x, vhat_y, w_z, a_x, a_y, v_x_enc, aph, dt)
-        
-        """
-        if vhat_x > v_x_min:
+        # apply EKF
+        if v_x_est > v_x_min:
             # get measurement
-            y = w_z
+            y = array([v_x_est, w_z])
+
+            # compute input signal
+            FxR     = (motor_pwm - 95)*0.3*m        # mapping from motor pwm to input force FxR
+            u       = array([d_f, FxR])
+
+            # build extra arguments for non-linear function
+            F_ext = array([0.1308, 0.1711 ]) 
+            args = (u, vhMdl, TrMdl, F_ext, dt) 
 
             # apply EKF and get each state estimate
-            z_EKF = ekf(f_2s_disc, z_EKF, P, h_2s_disc, y, Q, R, args )
-            (beta_EKF, w_z_EKF) = z_EKF
-        """
+            rospy.loginfo('set point 0 : ' + str(z_EKF[0]))
+            (z_EKF,P) = ekf(f_3s, z_EKF, P, h_3s, y, Q, R, args )
+            rospy.loginfo('set point 4 : ' + str(z_EKF[0]))
         
 		# wait
         rate.sleep()
@@ -309,26 +298,20 @@ def send_all_data(data, timestamps, send_data, experiment_name):
     time_signal.signal = json.dumps(data[:, idx].tolist())
     send_data(time_signal, None, experiment_name)
 
-    time_signal.name = 'd_f'
+    time_signal.name = 'what_x'
     idx = np.array([14])
     time_signal.signal = json.dumps(data[:, idx].tolist())
     send_data(time_signal, None, experiment_name)
 
-    time_signal.name = 'vhat_x'
+    time_signal.name = 'what_y'
     idx = np.array([15])
     time_signal.signal = json.dumps(data[:, idx].tolist())
     send_data(time_signal, None, experiment_name)
 
-    time_signal.name = 'vhat_y'
+    time_signal.name = 'what_z'
     idx = np.array([16])
     time_signal.signal = json.dumps(data[:, idx].tolist())
     send_data(time_signal, None, experiment_name)
-
-    time_signal.name = 'what_z'
-    idx = np.array([17])
-    time_signal.signal = json.dumps(data[:, idx].tolist())
-    send_data(time_signal, None, experiment_name)
-
 
 if __name__ == '__main__':
 	try:

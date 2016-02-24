@@ -14,10 +14,11 @@
 # ---------------------------------------------------------------------------
 
 from numpy import sin, cos, arctan, array, dot
+from numpy import sign, argmin, sqrt
+import rospy
 
 # discrete non-linear bicycle model dynamics
-# function wrapper, this function returns a function
-def f_2s_disc(z, u, vhMdl, trMdl, dt, v_x): 
+def f_2s(z, u, vhMdl, trMdl, dt, v_x): 
     """
     process model
     input: state z at time k, z[k] := [beta[k], r[k]], (i.e. slip angle and yaw rate)
@@ -47,15 +48,82 @@ def f_2s_disc(z, u, vhMdl, trMdl, dt, v_x):
     r_next      = r    + dt/I_z*(a*FyF*cos(d_f) - b*FyR);
     return array([beta_next, r_next])
 
-C = array([[0, 1]])
-def h_2s_disc(x):
+# discrete non-linear bicycle model dynamics
+def f_3s(z, u, vhMdl, trMdl, F_ext, dt): 
+    """
+    process model
+    input: state z at time k, z[k] := [v_x[k], v_y[k], r[k]])
+    output: state at next time step z[k+1]
+    """
+    
+    # get states / inputs
+    v_x     = z[0]
+    v_y     = z[1]
+    r       = z[2]
+    d_f     = u[0]
+    FxR     = u[1]
+
+    rospy.loginfo('inside f_3x, v_x := ' + str(v_x))
+
+    # extract parameters
+    (a,b,m,I_z)             = vhMdl
+    (a0, Ff)                = F_ext
+    (trMdlFront, trMdlRear) = trMdl
+    (B,C,mu)                = trMdlFront
+    g                       = 9.81
+    Fn                      = m*g/2         # assuming a = b (i.e. distance from CoG to either axel)
+    # limit force to tire friction circle
+    if FxR >= mu* Fn:
+        FxR = mu*Fn
+
+    # comptue the front/rear slip  [rad/s]
+    # ref: Hindiyeh Thesis, p58
+    a_F     = arctan((v_y + a*r)/v_x) - d_f
+    a_R     = arctan((v_y - b*r)/v_x)
+
+    # compute lateral tire force at the front
+    TM_param    = [B, C, mu*Fn]
+    FyF         = -f_pajecka(TM_param, a_F)
+
+    # compute lateral tire force at the rear
+    # ensure that magnitude of longitudinal/lateral force lie within friction circle
+    FyR_paj     = -f_pajecka(TM_param, a_R)
+    FyR_max     = sqrt((mu*Fn)**2 - FxR**2)
+    Fy          = array([FyR_max, FyR_paj])
+    idx         = argmin(abs(Fy))
+    FyR         = Fy[idx]
+
+    # compute next state
+    v_x_next    = v_x + dt*(r*v_y +1/m*(FxR - FyF*sin(d_f)) - a0*v_x**2 - Ff)
+    v_y_next    = v_y + dt*(-r*v_x +1/m*(FyF*cos(d_f) + FyR))
+    r_next      = r    + dt/I_z*(a*FyF*cos(d_f) - b*FyR)
+    rospy.loginfo('inside f_3x, v_x_next := ' + str(v_x_next))
+    rospy.loginfo('inside f_3x, v_y_next := ' + str(v_y_next))
+    rospy.loginfo('inside f_3x, r_next := ' + str(r_next))
+
+    return array([v_x_next, v_y_next, r_next])
+
+
+def h_2s(x):
     """
     measurement model
     state: z := [beta, r], (i.e. slip angle and yaw rate)
     output h := r (yaw rate)
     """
+    C = array([[0, 1]])
+    return dot(C, x)
+ 
+def h_3s(x):
+    """
+    measurement model
+    input   := state z at time k, z[k] := [v_x[k], v_y[k], r[k]])
+    output  := [v_x, r] (yaw rate)
+    """
+    C = array([[1, 0, 0],
+               [0, 0, 1]])
     return dot(C, x)
     
+   
 def f_pajecka(trMdl, alpha):
     """
     f_pajecka = d*sin(c*atan(b*alpha))    

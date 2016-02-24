@@ -13,9 +13,10 @@
 # Kiet Lam (kiet.lam@berkeley.edu)   
 # ---------------------------------------------------------------------------
 
-from numpy import array, dot, eye
+from numpy import array, dot, eye, copy
 from numpy import dot, zeros
 from scipy.linalg import inv
+import rospy
 
 C = array([[1, 0]])
 B = eye(2)
@@ -85,7 +86,9 @@ def ekf(f, mx_k, P_k, h, y_kp1, Q, R, args):
     Notation: mx_k = E[x_k] and my_k = E[y_k], where m stands for "mean of"
     """
     mx_kp1  = f(mx_k, *args)                    # predict next state
+    rospy.loginfo('Before numerical jacobian')
     A       = numerical_jac(f, mx_k, *args)     # linearize process model about current state
+    rospy.loginfo('After numerical jacobian')
     P_kp1   = dot(dot(A,P_k),A.T) + Q           # proprogate variance
     
     my_kp1  = h(mx_kp1)                         # predict future output
@@ -110,14 +113,27 @@ def numerical_jac(f,x, *args):
     
     jac = zeros( (y.size,x.size) )
     eps = 1e-5
-    xp = x
+    xp = copy(x)
     
     for i in range(x.size):
-        xp[i] = x[i] + eps/2
+        rospy.loginfo('Iteration '+ str(i) + " ==========================================") 
+        xp[0] = 10 #x[i] + eps/2.0
+        rospy.loginfo('before yhi xp[0] '+str(xp[0])) 
+        rospy.loginfo('before yhi x[0] '+str(x[0])) 
         yhi = f(xp, *args)
-        xp[i] = x[i] - eps/2
+        rospy.loginfo('after yhi xp[0] '+str(xp[0])) 
+        rospy.loginfo('after yhi x[0] '+str(x[0])) 
+        rospy.loginfo('value of eps after yhi x[0] '+str(eps)) 
+        xp[0] = 9  #x[i] - eps/2.0
+        rospy.loginfo('after subtract xp[0] '+str(xp[0])) 
+        rospy.loginfo('after subtract x[0] '+str(x[0])) 
         ylo = f(xp, *args)
+        rospy.loginfo('after ylo xp[0] '+str(xp[0])) 
+        rospy.loginfo('after ylo x[0] '+str(x[0])) 
+
         xp[i] = x[i]
         jac[:,i] = (yhi - ylo) / eps
+        rospy.loginfo('after final assignmentylo x[0] '+str(x[0])) 
+        rospy.loginfo('after final assignmentylo xp[0] '+str(xp[0])) 
     
     return jac
