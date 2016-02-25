@@ -63,18 +63,19 @@ def f_3s(z, u, vhMdl, trMdl, F_ext, dt):
     d_f     = u[0]
     FxR     = u[1]
 
-    rospy.loginfo('inside f_3x, v_x := ' + str(v_x))
-
     # extract parameters
     (a,b,m,I_z)             = vhMdl
     (a0, Ff)                = F_ext
     (trMdlFront, trMdlRear) = trMdl
     (B,C,mu)                = trMdlFront
     g                       = 9.81
-    Fn                      = m*g/2         # assuming a = b (i.e. distance from CoG to either axel)
+    Fn                      = m*g/2.0         # assuming a = b (i.e. distance from CoG to either axel)
+
     # limit force to tire friction circle
-    if FxR >= mu* Fn:
+    if FxR >= mu*Fn:
         FxR = mu*Fn
+    rospy.loginfo("FxR: " + str(FxR))
+    rospy.loginfo("mu*Fn: " + str(mu*Fn))
 
     # comptue the front/rear slip  [rad/s]
     # ref: Hindiyeh Thesis, p58
@@ -97,9 +98,6 @@ def f_3s(z, u, vhMdl, trMdl, F_ext, dt):
     v_x_next    = v_x + dt*(r*v_y +1/m*(FxR - FyF*sin(d_f)) - a0*v_x**2 - Ff)
     v_y_next    = v_y + dt*(-r*v_x +1/m*(FyF*cos(d_f) + FyR))
     r_next      = r    + dt/I_z*(a*FyF*cos(d_f) - b*FyR)
-    rospy.loginfo('inside f_3x, v_x_next := ' + str(v_x_next))
-    rospy.loginfo('inside f_3x, v_y_next := ' + str(v_y_next))
-    rospy.loginfo('inside f_3x, r_next := ' + str(r_next))
 
     return array([v_x_next, v_y_next, r_next])
 

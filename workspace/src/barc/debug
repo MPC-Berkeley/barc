@@ -1,0 +1,812 @@
+header: 
+  seq: 7
+  stamp: 
+    secs: 1456354585
+    nsecs: 364141749
+  frame_id: ''
+level: 2
+name: /rosbag_record
+msg: Subscribing to /imu_data
+file: /tmp/binarydeb/ros-indigo-rosbag-1.11.16/src/recorder.cpp
+function: shared_ptr<ros::Subscriber> rosbag::Recorder::subscribe
+line: 209
+topics: ['/rosout']
+---
+header: 
+  seq: 3
+  stamp: 
+    secs: 1456354584
+    nsecs: 451581001
+  frame_id: ''
+level: 2
+name: /arduino_node
+msg: Connecting to /dev/ttyUSB0 at 57600 baud
+file: serial_node.py
+function: <module>
+line: 79
+topics: ['/diagnostics', '/rosout']
+---
+header: 
+  seq: 4
+  stamp: 
+    secs: 1456354587
+    nsecs: 41686058
+  frame_id: ''
+level: 2
+name: /arduino_node
+msg: Note: publish buffer size is 280 bytes
+file: SerialClient.py
+function: setPublishSize
+line: 500
+topics: ['/diagnostics', '/rosout', '/enc_data']
+---
+header: 
+  seq: 5
+  stamp: 
+    secs: 1456354587
+    nsecs: 43109893
+  frame_id: ''
+level: 2
+name: /arduino_node
+msg: Setup publisher on enc_data [geometry_msgs/Vector3]
+file: SerialClient.py
+function: setupPublisher
+line: 516
+topics: ['/diagnostics', '/rosout', '/enc_data']
+---
+header: 
+  seq: 6
+  stamp: 
+    secs: 1456354587
+    nsecs: 52128076
+  frame_id: ''
+level: 2
+name: /arduino_node
+msg: Note: subscribe buffer size is 280 bytes
+file: SerialClient.py
+function: setSubscribeSize
+line: 505
+topics: ['/diagnostics', '/rosout', '/enc_data', '/ecu_cmd']
+---
+header: 
+  seq: 7
+  stamp: 
+    secs: 1456354587
+    nsecs: 53144931
+  frame_id: ''
+level: 2
+name: /arduino_node
+msg: Setup subscriber on ecu_cmd [geometry_msgs/Vector3]
+file: SerialClient.py
+function: setupSubscriber
+line: 529
+topics: ['/diagnostics', '/rosout', '/enc_data', '/ecu_cmd']
+---
+header: 
+  seq: 8
+  stamp: 
+    secs: 1456354587
+    nsecs: 300232875
+  frame_id: ''
+level: 2
+name: /rosbag_record
+msg: Subscribing to /enc_data
+file: /tmp/binarydeb/ros-indigo-rosbag-1.11.16/src/recorder.cpp
+function: shared_ptr<ros::Subscriber> rosbag::Recorder::subscribe
+line: 209
+topics: ['/rosout']
+---
+header: 
+  seq: 1
+  stamp: 
+    secs: 1456354588
+    nsecs: 950272083
+  frame_id: ''
+level: 2
+name: /state_estimation
+msg: set point 0 : 1
+file: state_estimation.py
+function: state_estimation
+line: 216
+topics: ['/angle_info', '/ecu_cmd', '/rosout', '/state_estimate', '/imu_data', '/enc_data']
+---
+header: 
+  seq: 2
+  stamp: 
+    secs: 1456354588
+    nsecs: 953180074
+  frame_id: ''
+level: 2
+name: /state_estimation
+msg: inside f_3x, v_x := 1
+file: system_models.py
+function: f_3s
+line: 66
+topics: ['/angle_info', '/ecu_cmd', '/rosout', '/state_estimate', '/imu_data', '/enc_data']
+---
+header: 
+  seq: 3
+  stamp: 
+    secs: 1456354588
+    nsecs: 956330060
+  frame_id: ''
+level: 2
+name: /state_estimation
+msg: inside f_3x, FxR := 1.782
+file: system_models.py
+function: f_3s
+line: 78
+topics: ['/angle_info', '/ecu_cmd', '/rosout', '/state_estimate', '/imu_data', '/enc_data']
+---
+header: 
+  seq: 4
+  stamp: 
+    secs: 1456354588
+    nsecs: 959758043
+  frame_id: ''
+level: 2
+name: /state_estimation
+msg: inside f_3x, mu*Fn := 2.2725846
+file: system_models.py
+function: f_3s
+line: 79
+topics: ['/angle_info', '/ecu_cmd', '/rosout', '/state_estimate', '/imu_data', '/enc_data']
+---
+header: 
+  seq: 5
+  stamp: 
+    secs: 1456354588
+    nsecs: 962857961
+  frame_id: ''
+level: 2
+name: /state_estimation
+msg: inside f_3x, v_x_next := 1.01191694568
+file: system_models.py
+function: f_3s
+line: 103
+topics: ['/angle_info', '/ecu_cmd', '/rosout', '/state_estimate', '/imu_data', '/enc_data']
+---
+header: 
+  seq: 6
+  stamp: 
+    secs: 1456354588
+    nsecs: 965416908
+  frame_id: ''
+level: 2
+name: /state_estimation
+msg: inside f_3x, v_y_next := -0.00308207598476
+file: system_models.py
+function: f_3s
+line: 104
+topics: ['/angle_info', '/ecu_cmd', '/rosout', '/state_estimate', '/imu_data', '/enc_data']
+---
+header: 
+  seq: 7
+  stamp: 
+    secs: 1456354588
+    nsecs: 967839002
+  frame_id: ''
+level: 2
+name: /state_estimation
+msg: inside f_3x, r_next := -0.00317839085929
+file: system_models.py
+function: f_3s
+line: 105
+topics: ['/angle_info', '/ecu_cmd', '/rosout', '/state_estimate', '/imu_data', '/enc_data']
+---
+header: 
+  seq: 8
+  stamp: 
+    secs: 1456354588
+    nsecs: 971208095
+  frame_id: ''
+level: 2
+name: /state_estimation
+msg: Before numerical jacobian
+file: observers.py
+function: ekf
+line: 89
+topics: ['/angle_info', '/ecu_cmd', '/rosout', '/state_estimate', '/imu_data', '/enc_data']
+---
+header: 
+  seq: 9
+  stamp: 
+    secs: 1456354588
+    nsecs: 974035024
+  frame_id: ''
+level: 2
+name: /state_estimation
+msg: inside f_3x, v_x := 1
+file: system_models.py
+function: f_3s
+line: 66
+topics: ['/angle_info', '/ecu_cmd', '/rosout', '/state_estimate', '/imu_data', '/enc_data']
+---
+header: 
+  seq: 10
+  stamp: 
+    secs: 1456354588
+    nsecs: 976716995
+  frame_id: ''
+level: 2
+name: /state_estimation
+msg: inside f_3x, FxR := 1.782
+file: system_models.py
+function: f_3s
+line: 78
+topics: ['/angle_info', '/ecu_cmd', '/rosout', '/state_estimate', '/imu_data', '/enc_data']
+---
+header: 
+  seq: 11
+  stamp: 
+    secs: 1456354588
+    nsecs: 979403018
+  frame_id: ''
+level: 2
+name: /state_estimation
+msg: inside f_3x, mu*Fn := 2.2725846
+file: system_models.py
+function: f_3s
+line: 79
+topics: ['/angle_info', '/ecu_cmd', '/rosout', '/state_estimate', '/imu_data', '/enc_data']
+---
+header: 
+  seq: 12
+  stamp: 
+    secs: 1456354588
+    nsecs: 982173919
+  frame_id: ''
+level: 2
+name: /state_estimation
+msg: inside f_3x, v_x_next := 1.01191694568
+file: system_models.py
+function: f_3s
+line: 103
+topics: ['/angle_info', '/ecu_cmd', '/rosout', '/state_estimate', '/imu_data', '/enc_data']
+---
+header: 
+  seq: 13
+  stamp: 
+    secs: 1456354588
+    nsecs: 984589099
+  frame_id: ''
+level: 2
+name: /state_estimation
+msg: inside f_3x, v_y_next := -0.00308207598476
+file: system_models.py
+function: f_3s
+line: 104
+topics: ['/angle_info', '/ecu_cmd', '/rosout', '/state_estimate', '/imu_data', '/enc_data']
+---
+header: 
+  seq: 14
+  stamp: 
+    secs: 1456354588
+    nsecs: 987261056
+  frame_id: ''
+level: 2
+name: /state_estimation
+msg: inside f_3x, r_next := -0.00317839085929
+file: system_models.py
+function: f_3s
+line: 105
+topics: ['/angle_info', '/ecu_cmd', '/rosout', '/state_estimate', '/imu_data', '/enc_data']
+---
+header: 
+  seq: 15
+  stamp: 
+    secs: 1456354588
+    nsecs: 991781949
+  frame_id: ''
+level: 2
+name: /state_estimation
+msg: inside f_3x, v_x := 1
+file: system_models.py
+function: f_3s
+line: 66
+topics: ['/angle_info', '/ecu_cmd', '/rosout', '/state_estimate', '/imu_data', '/enc_data']
+---
+header: 
+  seq: 16
+  stamp: 
+    secs: 1456354588
+    nsecs: 994465112
+  frame_id: ''
+level: 2
+name: /state_estimation
+msg: inside f_3x, FxR := 1.782
+file: system_models.py
+function: f_3s
+line: 78
+topics: ['/angle_info', '/ecu_cmd', '/rosout', '/state_estimate', '/imu_data', '/enc_data']
+---
+header: 
+  seq: 17
+  stamp: 
+    secs: 1456354588
+    nsecs: 997541904
+  frame_id: ''
+level: 2
+name: /state_estimation
+msg: inside f_3x, mu*Fn := 2.2725846
+file: system_models.py
+function: f_3s
+line: 79
+topics: ['/angle_info', '/ecu_cmd', '/rosout', '/state_estimate', '/imu_data', '/enc_data']
+---
+header: 
+  seq: 18
+  stamp: 
+    secs: 1456354589
+    nsecs: 731945
+  frame_id: ''
+level: 2
+name: /state_estimation
+msg: inside f_3x, v_x_next := 1.01191694568
+file: system_models.py
+function: f_3s
+line: 103
+topics: ['/angle_info', '/ecu_cmd', '/rosout', '/state_estimate', '/imu_data', '/enc_data']
+---
+header: 
+  seq: 19
+  stamp: 
+    secs: 1456354589
+    nsecs: 3690004
+  frame_id: ''
+level: 2
+name: /state_estimation
+msg: inside f_3x, v_y_next := -0.00308207598476
+file: system_models.py
+function: f_3s
+line: 104
+topics: ['/angle_info', '/ecu_cmd', '/rosout', '/state_estimate', '/imu_data', '/enc_data']
+---
+header: 
+  seq: 20
+  stamp: 
+    secs: 1456354589
+    nsecs: 6041049
+  frame_id: ''
+level: 2
+name: /state_estimation
+msg: inside f_3x, r_next := -0.00317839085929
+file: system_models.py
+function: f_3s
+line: 105
+topics: ['/angle_info', '/ecu_cmd', '/rosout', '/state_estimate', '/imu_data', '/enc_data']
+---
+header: 
+  seq: 21
+  stamp: 
+    secs: 1456354589
+    nsecs: 7276058
+  frame_id: ''
+level: 2
+name: /state_estimation
+msg: inside f_3x, v_x := 0
+file: system_models.py
+function: f_3s
+line: 66
+topics: ['/angle_info', '/ecu_cmd', '/rosout', '/state_estimate', '/imu_data', '/enc_data']
+---
+header: 
+  seq: 22
+  stamp: 
+    secs: 1456354589
+    nsecs: 8721113
+  frame_id: ''
+level: 2
+name: /state_estimation
+msg: inside f_3x, FxR := 1.782
+file: system_models.py
+function: f_3s
+line: 78
+topics: ['/angle_info', '/ecu_cmd', '/rosout', '/state_estimate', '/imu_data', '/enc_data']
+---
+header: 
+  seq: 23
+  stamp: 
+    secs: 1456354589
+    nsecs: 9912967
+  frame_id: ''
+level: 2
+name: /state_estimation
+msg: inside f_3x, mu*Fn := 2.2725846
+file: system_models.py
+function: f_3s
+line: 79
+topics: ['/angle_info', '/ecu_cmd', '/rosout', '/state_estimate', '/imu_data', '/enc_data']
+---
+header: 
+  seq: 24
+  stamp: 
+    secs: 1456354589
+    nsecs: 12094020
+  frame_id: ''
+level: 2
+name: /state_estimation
+msg: inside f_3x, v_x_next := nan
+file: system_models.py
+function: f_3s
+line: 103
+topics: ['/angle_info', '/ecu_cmd', '/rosout', '/state_estimate', '/imu_data', '/enc_data']
+---
+header: 
+  seq: 25
+  stamp: 
+    secs: 1456354589
+    nsecs: 13040065
+  frame_id: ''
+level: 2
+name: /state_estimation
+msg: inside f_3x, v_y_next := nan
+file: system_models.py
+function: f_3s
+line: 104
+topics: ['/angle_info', '/ecu_cmd', '/rosout', '/state_estimate', '/imu_data', '/enc_data']
+---
+header: 
+  seq: 26
+  stamp: 
+    secs: 1456354589
+    nsecs: 14192104
+  frame_id: ''
+level: 2
+name: /state_estimation
+msg: inside f_3x, r_next := nan
+file: system_models.py
+function: f_3s
+line: 105
+topics: ['/angle_info', '/ecu_cmd', '/rosout', '/state_estimate', '/imu_data', '/enc_data']
+---
+header: 
+  seq: 27
+  stamp: 
+    secs: 1456354589
+    nsecs: 15357017
+  frame_id: ''
+level: 2
+name: /state_estimation
+msg: inside f_3x, v_x := 1
+file: system_models.py
+function: f_3s
+line: 66
+topics: ['/angle_info', '/ecu_cmd', '/rosout', '/state_estimate', '/imu_data', '/enc_data']
+---
+header: 
+  seq: 28
+  stamp: 
+    secs: 1456354589
+    nsecs: 16439914
+  frame_id: ''
+level: 2
+name: /state_estimation
+msg: inside f_3x, FxR := 1.782
+file: system_models.py
+function: f_3s
+line: 78
+topics: ['/angle_info', '/ecu_cmd', '/rosout', '/state_estimate', '/imu_data', '/enc_data']
+---
+header: 
+  seq: 29
+  stamp: 
+    secs: 1456354589
+    nsecs: 17357110
+  frame_id: ''
+level: 2
+name: /state_estimation
+msg: inside f_3x, mu*Fn := 2.2725846
+file: system_models.py
+function: f_3s
+line: 79
+topics: ['/angle_info', '/ecu_cmd', '/rosout', '/state_estimate', '/imu_data', '/enc_data']
+---
+header: 
+  seq: 30
+  stamp: 
+    secs: 1456354589
+    nsecs: 18575906
+  frame_id: ''
+level: 2
+name: /state_estimation
+msg: inside f_3x, v_x_next := 1.01191694568
+file: system_models.py
+function: f_3s
+line: 103
+topics: ['/angle_info', '/ecu_cmd', '/rosout', '/state_estimate', '/imu_data', '/enc_data']
+---
+header: 
+  seq: 31
+  stamp: 
+    secs: 1456354589
+    nsecs: 19958019
+  frame_id: ''
+level: 2
+name: /state_estimation
+msg: inside f_3x, v_y_next := -0.00308207598476
+file: system_models.py
+function: f_3s
+line: 104
+topics: ['/angle_info', '/ecu_cmd', '/rosout', '/state_estimate', '/imu_data', '/enc_data']
+---
+header: 
+  seq: 32
+  stamp: 
+    secs: 1456354589
+    nsecs: 21004915
+  frame_id: ''
+level: 2
+name: /state_estimation
+msg: inside f_3x, r_next := -0.00317839085929
+file: system_models.py
+function: f_3s
+line: 105
+topics: ['/angle_info', '/ecu_cmd', '/rosout', '/state_estimate', '/imu_data', '/enc_data']
+---
+header: 
+  seq: 33
+  stamp: 
+    secs: 1456354589
+    nsecs: 21981000
+  frame_id: ''
+level: 2
+name: /state_estimation
+msg: inside f_3x, v_x := 1
+file: system_models.py
+function: f_3s
+line: 66
+topics: ['/angle_info', '/ecu_cmd', '/rosout', '/state_estimate', '/imu_data', '/enc_data']
+---
+header: 
+  seq: 34
+  stamp: 
+    secs: 1456354589
+    nsecs: 23009061
+  frame_id: ''
+level: 2
+name: /state_estimation
+msg: inside f_3x, FxR := 1.782
+file: system_models.py
+function: f_3s
+line: 78
+topics: ['/angle_info', '/ecu_cmd', '/rosout', '/state_estimate', '/imu_data', '/enc_data']
+---
+header: 
+  seq: 35
+  stamp: 
+    secs: 1456354589
+    nsecs: 24708986
+  frame_id: ''
+level: 2
+name: /state_estimation
+msg: inside f_3x, mu*Fn := 2.2725846
+file: system_models.py
+function: f_3s
+line: 79
+topics: ['/angle_info', '/ecu_cmd', '/rosout', '/state_estimate', '/imu_data', '/enc_data']
+---
+header: 
+  seq: 36
+  stamp: 
+    secs: 1456354589
+    nsecs: 25963068
+  frame_id: ''
+level: 2
+name: /state_estimation
+msg: inside f_3x, v_x_next := 1.01191694568
+file: system_models.py
+function: f_3s
+line: 103
+topics: ['/angle_info', '/ecu_cmd', '/rosout', '/state_estimate', '/imu_data', '/enc_data']
+---
+header: 
+  seq: 37
+  stamp: 
+    secs: 1456354589
+    nsecs: 30282020
+  frame_id: ''
+level: 2
+name: /state_estimation
+msg: inside f_3x, v_y_next := -0.00308207598476
+file: system_models.py
+function: f_3s
+line: 104
+topics: ['/angle_info', '/ecu_cmd', '/rosout', '/state_estimate', '/imu_data', '/enc_data']
+---
+header: 
+  seq: 38
+  stamp: 
+    secs: 1456354589
+    nsecs: 31375885
+  frame_id: ''
+level: 2
+name: /state_estimation
+msg: inside f_3x, r_next := -0.00317839085929
+file: system_models.py
+function: f_3s
+line: 105
+topics: ['/angle_info', '/ecu_cmd', '/rosout', '/state_estimate', '/imu_data', '/enc_data']
+---
+header: 
+  seq: 39
+  stamp: 
+    secs: 1456354589
+    nsecs: 32586097
+  frame_id: ''
+level: 2
+name: /state_estimation
+msg: inside f_3x, v_x := 1
+file: system_models.py
+function: f_3s
+line: 66
+topics: ['/angle_info', '/ecu_cmd', '/rosout', '/state_estimate', '/imu_data', '/enc_data']
+---
+header: 
+  seq: 40
+  stamp: 
+    secs: 1456354589
+    nsecs: 33571958
+  frame_id: ''
+level: 2
+name: /state_estimation
+msg: inside f_3x, FxR := 1.782
+file: system_models.py
+function: f_3s
+line: 78
+topics: ['/angle_info', '/ecu_cmd', '/rosout', '/state_estimate', '/imu_data', '/enc_data']
+---
+header: 
+  seq: 41
+  stamp: 
+    secs: 1456354589
+    nsecs: 34735918
+  frame_id: ''
+level: 2
+name: /state_estimation
+msg: inside f_3x, mu*Fn := 2.2725846
+file: system_models.py
+function: f_3s
+line: 79
+topics: ['/angle_info', '/ecu_cmd', '/rosout', '/state_estimate', '/imu_data', '/enc_data']
+---
+header: 
+  seq: 42
+  stamp: 
+    secs: 1456354589
+    nsecs: 36078929
+  frame_id: ''
+level: 2
+name: /state_estimation
+msg: inside f_3x, v_x_next := 1.01191694568
+file: system_models.py
+function: f_3s
+line: 103
+topics: ['/angle_info', '/ecu_cmd', '/rosout', '/state_estimate', '/imu_data', '/enc_data']
+---
+header: 
+  seq: 43
+  stamp: 
+    secs: 1456354589
+    nsecs: 37172079
+  frame_id: ''
+level: 2
+name: /state_estimation
+msg: inside f_3x, v_y_next := -0.00308207598476
+file: system_models.py
+function: f_3s
+line: 104
+topics: ['/angle_info', '/ecu_cmd', '/rosout', '/state_estimate', '/imu_data', '/enc_data']
+---
+header: 
+  seq: 44
+  stamp: 
+    secs: 1456354589
+    nsecs: 38187026
+  frame_id: ''
+level: 2
+name: /state_estimation
+msg: inside f_3x, r_next := -0.00317839085929
+file: system_models.py
+function: f_3s
+line: 105
+topics: ['/angle_info', '/ecu_cmd', '/rosout', '/state_estimate', '/imu_data', '/enc_data']
+---
+header: 
+  seq: 45
+  stamp: 
+    secs: 1456354589
+    nsecs: 39372920
+  frame_id: ''
+level: 2
+name: /state_estimation
+msg: inside f_3x, v_x := 1
+file: system_models.py
+function: f_3s
+line: 66
+topics: ['/angle_info', '/ecu_cmd', '/rosout', '/state_estimate', '/imu_data', '/enc_data']
+---
+header: 
+  seq: 46
+  stamp: 
+    secs: 1456354589
+    nsecs: 40570974
+  frame_id: ''
+level: 2
+name: /state_estimation
+msg: inside f_3x, FxR := 1.782
+file: system_models.py
+function: f_3s
+line: 78
+topics: ['/angle_info', '/ecu_cmd', '/rosout', '/state_estimate', '/imu_data', '/enc_data']
+---
+header: 
+  seq: 47
+  stamp: 
+    secs: 1456354589
+    nsecs: 41709899
+  frame_id: ''
+level: 2
+name: /state_estimation
+msg: inside f_3x, mu*Fn := 2.2725846
+file: system_models.py
+function: f_3s
+line: 79
+topics: ['/angle_info', '/ecu_cmd', '/rosout', '/state_estimate', '/imu_data', '/enc_data']
+---
+header: 
+  seq: 48
+  stamp: 
+    secs: 1456354589
+    nsecs: 43083906
+  frame_id: ''
+level: 2
+name: /state_estimation
+msg: inside f_3x, v_x_next := 1.01191694568
+file: system_models.py
+function: f_3s
+line: 103
+topics: ['/angle_info', '/ecu_cmd', '/rosout', '/state_estimate', '/imu_data', '/enc_data']
+---
+header: 
+  seq: 49
+  stamp: 
+    secs: 1456354589
+    nsecs: 44212102
+  frame_id: ''
+level: 2
+name: /state_estimation
+msg: inside f_3x, v_y_next := -0.00308207598476
+file: system_models.py
+function: f_3s
+line: 104
+topics: ['/angle_info', '/ecu_cmd', '/rosout', '/state_estimate', '/imu_data', '/enc_data']
+---
+header: 
+  seq: 50
+  stamp: 
+    secs: 1456354589
+    nsecs: 45295953
+  frame_id: ''
+level: 2
+name: /state_estimation
+msg: inside f_3x, r_next := -0.00317839085929
+file: system_models.py
+function: f_3s
+line: 105
+topics: ['/angle_info', '/ecu_cmd', '/rosout', '/state_estimate', '/imu_data', '/enc_data']
+---
+header: 
+  seq: 51
+  stamp: 
+    secs: 1456354589
+    nsecs: 46113014
+  frame_id: ''
+level: 2
+name: /state_estimation
+msg: After numerical jacobian
+file: observers.py
+function: ekf
+line: 91
+topics: ['/angle_info', '/ecu_cmd', '/rosout', '/state_estimate', '/imu_data', '/enc_data']
+---

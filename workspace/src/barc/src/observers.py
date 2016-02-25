@@ -116,24 +116,10 @@ def numerical_jac(f,x, *args):
     xp = copy(x)
     
     for i in range(x.size):
-        rospy.loginfo('Iteration '+ str(i) + " ==========================================") 
-        xp[0] = 10 #x[i] + eps/2.0
-        rospy.loginfo('before yhi xp[0] '+str(xp[0])) 
-        rospy.loginfo('before yhi x[0] '+str(x[0])) 
+        xp[i] = x[i] + eps/2.0
         yhi = f(xp, *args)
-        rospy.loginfo('after yhi xp[0] '+str(xp[0])) 
-        rospy.loginfo('after yhi x[0] '+str(x[0])) 
-        rospy.loginfo('value of eps after yhi x[0] '+str(eps)) 
-        xp[0] = 9  #x[i] - eps/2.0
-        rospy.loginfo('after subtract xp[0] '+str(xp[0])) 
-        rospy.loginfo('after subtract x[0] '+str(x[0])) 
+        xp[i] = x[i] - eps/2.0
         ylo = f(xp, *args)
-        rospy.loginfo('after ylo xp[0] '+str(xp[0])) 
-        rospy.loginfo('after ylo x[0] '+str(x[0])) 
-
         xp[i] = x[i]
         jac[:,i] = (yhi - ylo) / eps
-        rospy.loginfo('after final assignmentylo x[0] '+str(x[0])) 
-        rospy.loginfo('after final assignmentylo xp[0] '+str(xp[0])) 
-    
     return jac

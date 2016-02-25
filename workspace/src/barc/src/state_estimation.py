@@ -163,7 +163,7 @@ def state_estimation():
 
     # estimation variables for Luemberger observer
     # z_EKF = [v_x, v_y, w_z]
-    z_EKF       = array([1, 0, 0])
+    z_EKF       = array([1.0, 0.0, 0.0])
 
     # estimation variables for EKF
     P           = eye(3)                # initial dynamics coveriance matrix
@@ -205,7 +205,14 @@ def state_estimation():
             y = array([v_x_est, w_z])
 
             # compute input signal
-            FxR     = (motor_pwm - 95)*0.3*m        # mapping from motor pwm to input force FxR
+            if motor_pwm >= 95:
+                FxR     = (motor_pwm - 95)*0.3*m        # mapping from motor pwm to input force FxR
+            else:
+                FxR     = 0
+            rospy.loginfo('m : ' + str(m))
+            rospy.loginfo('motor_pwm : ' + str(motor_pwm))
+            rospy.loginfo('FxR: ' + str(FxR))
+
             u       = array([d_f, FxR])
 
             # build extra arguments for non-linear function
