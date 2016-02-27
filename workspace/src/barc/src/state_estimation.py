@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+
 # ---------------------------------------------------------------------------
 # Licensing Information: You are free to use or extend these projects for
 # education or reserach purposes provided that (1) you retain this notice
@@ -53,14 +54,14 @@ n_FR 	    = 0                 # counts in the front right tire
 n_FL_prev 	= 0
 n_FR_prev 	= 0
 r_tire 		= 0.0319            # radius from tire center to perimeter along magnets
-dx_magnets 	= 2*pi*r_tire/4     # distance between magnets
+dx_magnets 	= 2.0*pi*r_tire/4.0     # distance between magnets
 
 # ecu command update
 def ecu_callback(data):
 	global servo_pwm, motor_pwm, d_f
 	motor_pwm	= data.x
 	servo_pwm = data.y
-	d_f 		= pi/180*servo_2_angle(servo_pwm)
+	d_f 		= pi/180.0*servo_2_angle(servo_pwm)
 
 # imu measurement update
 def imu_callback(data):
@@ -81,14 +82,14 @@ def enc_callback(data):
 	
 	# if enough time elapse has elapsed, estimate v_x
 	dt_min = 0.20
-	if dt > dt_min:
+	if dt >= dt_min:
 		# compute speed :  speed = distance / time
-		v_FL = (n_FL- n_FL_prev)*dx_magnets
-		v_FR = (n_FR- n_FR_prev)*dx_magnets
+		v_FL = float(n_FL- n_FL_prev)*dx_magnets/dt
+		v_FR = float(n_FR- n_FR_prev)*dx_magnets/dt
 
 		# update encoder v_x, v_y measurements
 		# only valid for small slip angles, still valid for drift?
-		v_x_enc 	= (v_FL + v_FR)/2*cos(d_f)
+		v_x_enc 	= (v_FL + v_FR)/2.0*cos(d_f)
 
 		# update old data
 		n_FL_prev   = n_FL
@@ -139,6 +140,10 @@ def state_estimation():
     mu  = rospy.get_param("state_estimation/mu")
     TrMdl = ([B,C,mu],[B,C,mu])
 
+    # get external force model
+    a0  = rospy.get_param("state_estimation/air_drag_coeff")
+    Ff  = rospy.get_param("state_estimation/Ff")
+
     # get Luemberger and EKF observer properties
     aph = rospy.get_param("state_estimation/aph")             # parameter to tune estimation error dynamics
     q_std   = rospy.get_param("state_estimation/q")             # std of process noise
@@ -158,7 +163,7 @@ def state_estimation():
         os.makedirs(BASE_PATH)
     data_file_name   	= BASE_PATH + signal_ID + '-' + time.strftime("%H.%M.%S") + '.csv'
     data_file     		= open(data_file_name, 'a')
-    data_file.write('t,roll,pitch,yaw,w_x,w_y,w_z,a_x,a_y,a_z,n_FL,n_FR,motor_pwm,servo_pwm,d_f,vhat_x,vhat_y,what_z\n')
+    data_file.write('t,roll,pitch,yaw,w_x,w_y,w_z,a_x,a_y,a_z,n_FL,n_FR,motor_pwm,servo_pwm,d_f,vhat_x,vhat_y,what_z,v_x_enc\n')
     t0 				= time.time()
 
     # estimation variables for Luemberger observer
@@ -182,12 +187,14 @@ def state_estimation():
 
 		# publish state estimate
         (v_x, v_y, r) = z_EKF           # note, r = EKF estimate yaw rate
+
+        # publish information
         state_pub.publish( Vector3(v_x, v_y, r) )
         angle_pub.publish( Vector3(yaw, w_z, 0) )
 
 		# save data (maybe should use rosbag in the future)
         t  	= time.time() - t0
-        all_data = [t,roll,pitch,yaw,w_x,w_y,w_z,a_x,a_y,a_z,n_FL,n_FR,motor_pwm,servo_pwm,d_f,v_x,v_y,r]
+        all_data = [t,roll,pitch,yaw,w_x,w_y,w_z,a_x,a_y,a_z,n_FL,n_FR,motor_pwm,servo_pwm,d_f,v_x,v_y,r,v_x_enc]
 
         # save to CSV
         N = len(all_data)
@@ -204,25 +211,25 @@ def state_estimation():
             # get measurement
             y = array([v_x_est, w_z])
 
-            # compute input signal
+            # compute input motor signal 
             if motor_pwm >= 95:
                 FxR     = (motor_pwm - 95)*0.3*m        # mapping from motor pwm to input force FxR
             else:
-                FxR     = 0
-            rospy.loginfo('m : ' + str(m))
-            rospy.loginfo('motor_pwm : ' + str(motor_pwm))
-            rospy.loginfo('FxR: ' + str(FxR))
+                FxR     = 0.0
 
-            u       = array([d_f, FxR])
+            # define input
+            u       = array([ d_f, FxR ])
 
             # build extra arguments for non-linear function
-            F_ext = array([0.1308, 0.1711 ]) 
+            F_ext = array([ a0, Ff ]) 
             args = (u, vhMdl, TrMdl, F_ext, dt) 
 
             # apply EKF and get each state estimate
-            rospy.loginfo('set point 0 : ' + str(z_EKF[0]))
             (z_EKF,P) = ekf(f_3s, z_EKF, P, h_3s, y, Q, R, args )
-            rospy.loginfo('set point 4 : ' + str(z_EKF[0]))
+
+        else:
+            z_EKF[0] = float(v_x_enc)
+            z_EKF[2] = float(w_z)
         
 		# wait
         rate.sleep()

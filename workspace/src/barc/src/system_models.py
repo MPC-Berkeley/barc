@@ -74,8 +74,6 @@ def f_3s(z, u, vhMdl, trMdl, F_ext, dt):
     # limit force to tire friction circle
     if FxR >= mu*Fn:
         FxR = mu*Fn
-    rospy.loginfo("FxR: " + str(FxR))
-    rospy.loginfo("mu*Fn: " + str(mu*Fn))
 
     # comptue the front/rear slip  [rad/s]
     # ref: Hindiyeh Thesis, p58

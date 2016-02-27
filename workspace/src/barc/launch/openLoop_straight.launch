@@ -1,8 +1,4 @@
 <launch>
-	<!-- DATA SERVICE-->
-	<node pkg="data_service" type="service.py" name="data_service" >
-	</node>
-	
 	<!-- IMU NODE -->
 	<node pkg="barc" type="imu_data_acquisition.py" name="imu_node" >
 		<param name="port" value="/dev/ttyACM0" />
@@ -20,22 +16,28 @@
          I_z    := moment of inertia about z-axis
          L_a    := distance from CoG to rear axel
          L_b    := distance from CoG to front axel -->
-		<param name="L_a" value="0.14" />
-		<param name="L_b" value="0.14" />
-		<param name="m" value="1.76" />
-		<param name="I_z" value="0.24" />
+		<param name="L_a"   value="0.125" />
+		<param name="L_b"   value="0.125" />
+		<param name="m"     value="1.98" />
+		<param name="I_z"   value="0.24" />
 
+    <!-- EXTERNAL FORCES 
+        Ff      := force of friction       -->
+        <param name="air_drag_coeff"    value="0.1308"/>
+        <param name="Ff"    value="0.1711"/>
 
     <!-- ENCODER PARAMETERS -->
 		<param name="dt_vx" value="0.2" />
 
+    <!-- LOW PASS FILTER PARAMETER -->
+        <param name="p_filter" value="0.2" />
+
     <!-- TIRE MODEL PARAMETERS-->
-    <!-- f_paj = d*sin(c*atan(b*alpha))
-        assuming lumped tire model
-        TMF := front tire model, with TMF = (b,c,d)
-        TMR := rear tire model, with TMR = (b,c,d)    -->
-		<param name="TMF" value="[9.0, 1.5, -8.0]" />
-		<param name="TMR" value="[9.0, 1.5, -8.3]" />
+    <!-- f_paj = mu*m*g/2*sin(c*atan(b*alpha))
+        assuming lumped tire model    -->
+		<param name="B" value="7.40" />
+		<param name="C" value="1.25" />
+		<param name="mu" value="0.234" />
 
     <!-- STATE ESTIMATION PROPERTIES -->
     <!-- Luemberger observer
@@ -45,13 +47,12 @@
     <!-- EKF observer
         q   := standard deviation of measurement noise
         r   := standard deviation of process noise
-        v_x_min   := minimum velocity before using EKF -->
+        v_x_min   := minimum velocity before activating EKF -->
 		<param name="q" value="0.1" />
 		<param name="r" value="0.1" />
-		<param name="v_x_min" value="1.5" />
+		<param name="v_x_min" value="0.3" />
 	</node>
 	
-
 	<!-- OPEN LOOP MANUEVERS -->
 	<!-- Test Selection
 	1 : Straight
@@ -62,9 +63,9 @@
 		<param name="experiment_sel" type="int" value="4" />
 
     <!-- PROPERTIES -->
-    <param name="v_x_pwm" type="int" value="97" />
+    <param name="v_x_pwm" type="int" value="98" />
 		<param name="steering_angle" type="int" value="5" />
-		<param name="t_exp" type="int" value="15" />
+		<param name="t_exp" type="int" value="8" />
 		
     <!-- PID for straight test using encoder readings -->
     <!--

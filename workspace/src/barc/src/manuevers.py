@@ -15,6 +15,7 @@
 
 from input_map import angle_2_servo, servo_2_angle
 from numpy import sin, cos, pi
+import numpy as np
 
 # simple test setting class
 class TestSettings:
@@ -107,7 +108,8 @@ def SingleTurn(opt, rate, t_i):
     # Motor command:
     # move
     if (t_i >= t_0) and (t_i < t_0 + dt_motor):
-        motorCMD    = opt.speed
+        step_up     = 95  + np.round( float(t_i - t_0) / float(rate) )
+        motorCMD    = np.min([step_up, opt.speed])
     # stop
     else:
         motorCMD      = opt.neutral
