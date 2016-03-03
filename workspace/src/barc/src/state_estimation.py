@@ -26,7 +26,8 @@ from system_models import f_3s, h_3s
 from data_service.srv import *
 from data_service.msg import *
 from filtering import filteredSignal
-
+from rospy_tutorials.msg import Floats
+from rospy.numpy_msg import numpy_msg
 import numpy as np
 
 # input variables
@@ -56,12 +57,23 @@ n_FR_prev 	= 0
 r_tire 		= 0.0319            # radius from tire center to perimeter along magnets
 dx_magnets 	= 2.0*pi*r_tire/4.0     # distance between magnets
 
+err_pid = 0
+u_pid   = 0
+v_LQR   = 0
+
+# ecu command update
+def debug_callback(data):
+    global err_pid, u_pid, v_LQR
+    err_pid     = data.data[0]
+    u_pid       = data.data[1]
+    v_LQR       = data.data[2]
+
 # ecu command update
 def ecu_callback(data):
 	global servo_pwm, motor_pwm, d_f
-	motor_pwm	= data.x
-	servo_pwm = data.y
-	d_f 		= pi/180.0*servo_2_angle(servo_pwm)
+	motor_pwm	    = data.x
+	servo_pwm       = data.y
+	d_f 		    = data.z
 
 # imu measurement update
 def imu_callback(data):
@@ -106,6 +118,9 @@ def state_estimation():
     rospy.Subscriber('imu_data', TimeData, imu_callback)
     rospy.Subscriber('enc_data', Vector3, enc_callback)
     rospy.Subscriber('ecu_cmd', Vector3, ecu_callback)
+    rospy.Subscriber('debug', numpy_msg(Floats), debug_callback)
+
+
     state_pub 	= rospy.Publisher('state_estimate', Vector3, queue_size = 10)
     angle_pub 	= rospy.Publisher('angle_info', Vector3, queue_size = 10)
 
@@ -117,7 +132,8 @@ def state_estimation():
 				       2 : "SineSweep",
 				       3 : "DoubleLaneChange",
 				       4 : "CoastDown",
-				       5 : "SingleTurn"}
+				       5 : "SingleTurn",
+				       6 : "SingleHardTurn"}
 
     experiment_type = experiment_opt.get(experiment_sel)
     signal_ID = username + "-" + experiment_type
@@ -163,7 +179,7 @@ def state_estimation():
         os.makedirs(BASE_PATH)
     data_file_name   	= BASE_PATH + signal_ID + '-' + time.strftime("%H.%M.%S") + '.csv'
     data_file     		= open(data_file_name, 'a')
-    data_file.write('t,roll,pitch,yaw,w_x,w_y,w_z,a_x,a_y,a_z,n_FL,n_FR,motor_pwm,servo_pwm,d_f,vhat_x,vhat_y,what_z,v_x_enc\n')
+    data_file.write('t,roll,pitch,yaw,w_x,w_y,w_z,a_x,a_y,a_z,n_FL,n_FR,motor_pwm,servo_pwm,d_f,vhat_x,vhat_y,what_z,v_x_enc,err_pid,u_pid, v_LQR\n')
     t0 				= time.time()
 
     # estimation variables for Luemberger observer
@@ -184,6 +200,7 @@ def state_estimation():
         global roll, pitch, yaw, w_x, w_y, w_z, a_x, a_y, a_z
         global n_FL, n_FR, v_x_enc
         global motor_pwm, servo_pwm, d_f
+        global err_pid, u_pid, v_LQR
 
 		# publish state estimate
         (v_x, v_y, r) = z_EKF           # note, r = EKF estimate yaw rate
@@ -194,7 +211,7 @@ def state_estimation():
 
 		# save data (maybe should use rosbag in the future)
         t  	= time.time() - t0
-        all_data = [t,roll,pitch,yaw,w_x,w_y,w_z,a_x,a_y,a_z,n_FL,n_FR,motor_pwm,servo_pwm,d_f,v_x,v_y,r,v_x_enc]
+        all_data = [t,roll,pitch,yaw,w_x,w_y,w_z,a_x,a_y,a_z,n_FL,n_FR,motor_pwm,servo_pwm,d_f,v_x,v_y,r,v_x_enc,err_pid,u_pid, v_LQR]
 
         # save to CSV
         N = len(all_data)

@@ -19,27 +19,28 @@ import numpy as np
 
 # simple test setting class
 class TestSettings:
-	def __init__(self, SPD = 95, turn = 0, dt = 10):
+    def __init__(self, SPD = 95, turn = 0, dt = 10):
 		# PWN signal values for motor
-		self.speed 		= SPD
-		self.neutral 	= 90
-		self.stopped 	= False
-		self.brake 		= 50
-		self.dt_man 	= dt   	# length of time the motor is on
-		self.t_turn  = 2     # length of time before first turn
+        self.speed 		= SPD
+        self.neutral 	= 90
+        self.stopped 	= False
+        self.brake 		= 50
+        self.dt_man 	= dt   	# length of time the motor is on
+        self.t_turn     = 2     # length of time before first turn
+        self.t_0        = 5     # initial time at rest before experiment
 
 		# check valid speed
-		if SPD < 90 or SPD > 130:
-			self.speed = 95
+        if SPD < 90 or SPD > 130:
+            self.speed = 95
 
 		# check valid turns
 		# left is positive, right is negative
-		if turn < -30 or turn > 30:
-			turn = 0
+        if turn < -30 or turn > 30:
+            turn = 0
 
 		# PWN signal values for servo
-		self.turn 	    = angle_2_servo(turn)		# right turn
-		self.Z_turn 	= 90 						# zero (no) turn
+        self.turn 	    = angle_2_servo(turn)		# right turn
+        self.Z_turn 	= 90 						# zero (no) turn
 
 
 #############################################################
@@ -98,7 +99,7 @@ def SingleTurn(opt, rate, t_i):
     oneSec      = rate
     dt_motor    = (opt.dt_man)*oneSec
     t_turn     = (opt.t_turn)*oneSec
-    t_0         = 3*oneSec
+    t_0         = opt.t_0*oneSec
 
     # rest
     if t_i < t_0:
@@ -113,6 +114,44 @@ def SingleTurn(opt, rate, t_i):
     # stop
     else:
         motorCMD      = opt.neutral
+        
+    # go straight and then turn
+    if (t_i <= t_0 + t_turn):
+        servoCMD     = opt.Z_turn
+    else:
+        servoCMD     = opt.turn
+
+    return (motorCMD, servoCMD)
+
+
+#############################################################
+def SingleHardTurn(opt, rate, t_i):
+    # timing maneuvers
+    oneSec      = rate
+    dt_motor    = (opt.dt_man)*oneSec
+    t_turn     = (opt.t_turn)*oneSec
+    t_0         = opt.t_0*oneSec
+    t_brake     = 2*oneSec
+
+    # rest
+    if t_i < t_0:
+        servoCMD    = opt.Z_turn
+        motorCMD    = opt.neutral
+
+    # Motor command:
+    # move
+    if (t_i >= t_0) and (t_i < t_0 + dt_motor):
+        step_up     = 95  + np.round( float(t_i - t_0) / float(rate) )
+        motorCMD    = np.min([step_up, opt.speed])
+    # stop
+    elif (t_i <= t_0 + dt_motor + t_brake):
+        motorCMD      = opt.brake
+    elif (t_i <= t_0 + dt_motor + t_brake + 25):
+        motorCMD      = opt.neutral
+    elif (t_i <= t_0 + dt_motor + t_brake + 50):
+        motorCMD      = 95
+    else:
+        motorCMD      = opt.neutral 
         
     # go straight and then turn
     if (t_i <= t_0 + t_turn):
@@ -147,7 +186,6 @@ def CoastDown(opt, rate, t_i):
         motorCMD        = opt.neutral
 
     return (motorCMD, servoCMD)
-
 
 
 #############################################################

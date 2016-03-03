@@ -23,6 +23,7 @@ from numpy import genfromtxt, zeros, hstack, cos, array, dot, arctan
 from input_map import angle_2_servo, servo_2_angle
 from manuevers import TestSettings, CircularTest, Straight
 from manuevers import SineSweep, DoubleLaneChange, CoastDown, SingleTurn 
+from manuevers import SingleHardTurn
 from pid import PID
 
 
@@ -51,7 +52,6 @@ def main_auto():
     # initialize ROS node
     rospy.init_node('auto_mode', anonymous=True)
     nh = rospy.Publisher('ecu_cmd', Vector3, queue_size = 10)
-    nh_pid = rospy.Publisher('pid_info', Vector3, queue_size = 10)
     rospy.Subscriber('angle_info', Vector3, angle_callback)
 
 	# set node rate
@@ -72,7 +72,8 @@ def main_auto():
 		    		      2 : SineSweep,   
                           3 : DoubleLaneChange,
 					      4 : CoastDown ,
-					      5 : SingleTurn}
+					      5 : SingleTurn,
+					      6 : SingleHardTurn}
     test_mode   = experiment_opt.get(experiment_sel)
     str_ang 	= rospy.get_param("controller/steering_angle")
     test_opt 	= TestSettings(SPD = v_x_pwm, turn = str_ang, dt=t_exp)
@@ -84,7 +85,6 @@ def main_auto():
     d 		= rospy.get_param("controller/d")
     pid     = PID(P=p, I=i, D=d)
 
-
     # main loop
     while not rospy.is_shutdown():
         # get steering wheel command
@@ -93,7 +93,6 @@ def main_auto():
 
         # get command signal
         (motorCMD, servoCMD) = test_mode(test_opt, rateHz, t_i)
-			
 
         if t_i < (rateHz*(5+test_opt.t_turn)):
             servoCMD  = angle_2_servo(u)
@@ -101,7 +100,6 @@ def main_auto():
         # send command signal 
         ecu_cmd = Vector3(motorCMD, servoCMD, 0)
         nh.publish(ecu_cmd)
-        nh_pid.publish( Vector3(err, u, 0) )
 	
         # wait
         t_i += 1

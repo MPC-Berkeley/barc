@@ -55,10 +55,10 @@
 	
 
 	<!-- LQR initization MANUEVER -->
-	<node pkg="barc" type="controller_LQR_init.py" name="controller" >
+	<node pkg="barc" type="controller_hardTurn.py" name="controller" >
             <!--  SELECTION -->
             <param name="user" value="jgon13" />
-            <param name="experiment_sel" type="int" value="5" />
+            <param name="experiment_sel" type="int" value="6" />
 
             <!-- PROPERTIES
             * v_x_pwm: signal for motor speed
@@ -66,10 +66,10 @@
             * t_exp : length of experiment
             * t_turn : time at which motor first turns
             -->
-            <param name="v_x_pwm" type="int" value="100" />
+            <param name="v_x_pwm" type="int" value="98" />
             <param name="steering_angle" type="int" value="25" />
-            <param name="t_turn" type="int" value="7" />
-            <param name="t_exp" type="int" value="9" />
+            <param name="t_turn" type="int" value="6" />
+            <param name="t_exp" type="int" value="7" />
  		
          <!-- PID for straight test using imu gyro -->
             <param name="p" type="double" value="50" />
