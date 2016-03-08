@@ -60,12 +60,6 @@ def main_auto():
     rate 	= rospy.Rate(rateHz)
     t_i     = 0
 
-	# get node parameters
-    experiment_sel 	= rospy.get_param("controller/experiment_sel")
-    v_x_pwm 	= rospy.get_param("controller/v_x_pwm")
-    t_exp 		= rospy.get_param("controller/t_exp")
-    t_turn      = rospy.get_param("controller/t_turn")
-
     # specify test and test options
     experiment_opt    = { 0 : CircularTest,
                           1 : Straight,
@@ -74,10 +68,16 @@ def main_auto():
 					      4 : CoastDown ,
 					      5 : SingleTurn,
 					      6 : SingleHardTurn}
-    test_mode   = experiment_opt.get(experiment_sel)
+    experiment_sel 	= rospy.get_param("controller/experiment_sel")
+    v_x_pwm 	= rospy.get_param("controller/v_x_pwm")
+    t_0         = rospy.get_param("controller/t_0")
+    t_exp 		= rospy.get_param("controller/t_exp")
+    t_turn      = rospy.get_param("controller/t_turn")
     str_ang 	= rospy.get_param("controller/steering_angle")
-    test_opt 	= TestSettings(SPD = v_x_pwm, turn = str_ang, dt=t_exp)
-    test_opt.t_turn = t_turn
+    test_mode   = experiment_opt.get(experiment_sel)
+    opt 	= TestSettings(SPD = v_x_pwm, turn = str_ang, dt=t_exp)
+    opt.t_0    = t_0
+    opt.t_turn = t_turn
 	
     # use simple pid control to keep steering straight
     p 		= rospy.get_param("controller/p")
@@ -92,9 +92,9 @@ def main_auto():
         u         = pid.update(err, dt)
 
         # get command signal
-        (motorCMD, servoCMD) = test_mode(test_opt, rateHz, t_i)
+        (motorCMD, servoCMD) = test_mode(opt, rateHz, t_i)
 
-        if t_i < (rateHz*(5+test_opt.t_turn)):
+        if t_i < (rateHz*(t_0 + opt.t_turn)):
             servoCMD  = angle_2_servo(u)
         
         # send command signal 

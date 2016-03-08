@@ -77,6 +77,14 @@
             <param name="p" type="double" value="50" />
 		    <param name="i" type="double" value="5" />
 		    <param name="d" type="double" value="0" />
+        
+         <!-- LQR offsets  
+            * d_f_offset : steering angle offset to add to LQR output [degrees]      
+            * motor_offset : PWM offset for motor ESC unit    
+          -->
+		    <param name="d_f_offset" type="double" value="5" />
+		    <param name="motor_offset" type="double" value="0" />
+		    <param name="motor_min" type="double" value="0" />
    </node>
 
     <!-- Record the experiment data -->

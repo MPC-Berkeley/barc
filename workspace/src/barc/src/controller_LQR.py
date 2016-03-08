@@ -64,7 +64,7 @@ def updateState_callback(data):
 	x_hat[2] = data.z		# r         yaw rate estimate
 
 #############################################################
-def LQR_drift(z_eq, K_LQR, vhMdl,TrMdl, F_ext, u_nominal):
+def LQR_drift(z_eq, K_LQR, vhMdl,TrMdl, F_ext, u_nominal, offsets):
 
 	# get current state estimate
     global x_hat
@@ -77,6 +77,9 @@ def LQR_drift(z_eq, K_LQR, vhMdl,TrMdl, F_ext, u_nominal):
     (B,C,mu)            = TrMdl
     (a0, Ff)            = F_ext
     Fn                  = mu*m*g/2
+
+    # unpack the offsets
+    d_f_offset, motor_offset, motor_min = offsets
     
 	# compute slip angle beta
     beta    = arctan(v_y / v_x)
@@ -94,16 +97,17 @@ def LQR_drift(z_eq, K_LQR, vhMdl,TrMdl, F_ext, u_nominal):
     FyF     = min(Fn, max(-Fn, FyF))
 
     # get map from FxR to u_motor 
-    motorCMD    = ceil(  (FxR/m + Ff + a0*v_x**2) / 0.3 + 95  ) 
-    # motorCMD    = min(105, max(90, motorCMD))         # saturation on motor command
+    motorCMD    = ceil(  (FxR/m + Ff + a0*v_x**2) / 0.3 + 95  ) + motor_offset 
+    motorCMD    = max(int(motor_min), motorCMD)          # lower bound for motor command
 
     # get map from FyF to steering angle
     a_f     = tan(  arcsin(-(2*FyF / (m*g*mu)) ) / C ) / B
     d_f     = arctan((v_y + L_a*r)/v_x) - a_f
-    d_f_deg = min(25, max(-25, d_f*180/pi))             # saturation on steering angle
+    d_f     += d_f_offset
+    d_f_deg = min(15, max(-10, d_f*180/pi ))    # saturation on steering angle
     servoCMD    = angle_2_servo( d_f_deg )   
 
-    return (motorCMD, servoCMD, d_f)
+    return (motorCMD, servoCMD, d_f_deg*pi/180)
 
 #############################################################
 def main_auto():
@@ -153,6 +157,12 @@ def main_auto():
     K_LQR       = lqr_data['K']
     P           = lqr_data['P']
     gamma       = 3*(lqr_data['r'].flatten()[0])
+
+    # get LQR offset data
+    d_f_offset      = rospy.get_param("controller/d_f_offset")*pi/180
+    motor_offset    = rospy.get_param("controller/motor_offset")
+    motor_min       = rospy.get_param("controller/motor_min")
+    offsets         = [d_f_offset, motor_offset, motor_min]
 
     # specify test and test options
     experiment_opt    = { 0 : CircularTest,
@@ -205,13 +215,7 @@ def main_auto():
         if activateLQR:
             t = time.time()
             if v_x > 0:
-                """
-                if t - t0_LQR < 0.2:
-                    (motorCMD, servoCMD) = test_mode(opt, rateHz, t_i)
-                else:
-                    (motorCMD, servoCMD) = LQR_drift(z_eq, K_LQR, vhMdl, TrMdl, F_ext, u_eq)
-                """
-                (motorCMD, servoCMD, d_f) = LQR_drift(z_eq, K_LQR, vhMdl, TrMdl, F_ext, u_eq)
+                (motorCMD, servoCMD, d_f) = LQR_drift(z_eq, K_LQR, vhMdl, TrMdl, F_ext, u_eq, offsets)
             else:
                 (motorCMD, servoCMD, d_f) = (90,90,0)
 

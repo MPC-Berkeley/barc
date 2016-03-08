@@ -145,7 +145,7 @@ def SingleHardTurn(opt, rate, t_i):
         motorCMD    = np.min([step_up, opt.speed])
     # stop
     elif (t_i <= t_0 + dt_motor + t_brake):
-        motorCMD      = opt.brake
+        motorCMD      = 30 # opt.brake
     elif (t_i <= t_0 + dt_motor + t_brake + 25):
         motorCMD      = opt.neutral
     elif (t_i <= t_0 + dt_motor + t_brake + 50):
