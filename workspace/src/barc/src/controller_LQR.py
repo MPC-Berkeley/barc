@@ -183,6 +183,7 @@ def main_auto():
     opt.t_0    = t_0
 
     activateLQR = False
+    ignoreEncoder = 0
 
     # main loop
     while not rospy.is_shutdown():
@@ -216,10 +217,12 @@ def main_auto():
             t = time.time()
             if v_x > 0:
                 (motorCMD, servoCMD, d_f) = LQR_drift(z_eq, K_LQR, vhMdl, TrMdl, F_ext, u_eq, offsets)
+                if v_x <= 2.0:
+                    ignoreEncoder = 1
             else:
                 (motorCMD, servoCMD, d_f) = (90,90,0)
 
-            if t - t0_LQR > 5:
+            if t - t0_LQR > 10:
                 motorCMD = 90
 
         # OPEN LOOP initially go straight and turn
@@ -242,7 +245,7 @@ def main_auto():
         # send command signal 
         ecu_cmd = Vector3(motorCMD, servoCMD, d_f)
         nh.publish(ecu_cmd)
-        debug_msg   = array([err, d_f, v_LQR], dtype = float32)
+        debug_msg   = array([err, d_f, v_LQR, ignoreEncoder], dtype = float32)
         debug.publish( debug_msg )
 	
         # wait

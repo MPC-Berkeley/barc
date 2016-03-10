@@ -99,6 +99,65 @@ def f_3s(z, u, vhMdl, trMdl, F_ext, dt):
 
     return array([v_x_next, v_y_next, r_next])
 
+# discrete non-linear bicycle model dynamics 6-dof
+def f_6s(z, u, vhMdl, trMdl, F_ext, dt): 
+    """
+    process model
+    input: state z at time k, z[k] := [X[k], Y[k], phi[k], v_x[k], v_y[k], r[k]])
+    output: state at next time step z[k+1]
+    """
+    
+    # get states / inputs
+    X       = z[0]
+    Y       = z[1]
+    phi     = z[2]
+    v_x     = z[3]
+    v_y     = z[4]
+    r       = z[5]
+
+    d_f     = u[0]
+    FxR     = u[1]
+
+    # extract parameters
+    (a,b,m,I_z)             = vhMdl
+    (a0, Ff)                = F_ext
+    (trMdlFront, trMdlRear) = trMdl
+    (B,C,mu)                = trMdlFront
+    g                       = 9.81
+    Fn                      = m*g/2.0         # assuming a = b (i.e. distance from CoG to either axel)
+
+    # limit force to tire friction circle
+    if FxR >= mu*Fn:
+        FxR = mu*Fn
+
+    # comptue the front/rear slip  [rad/s]
+    # ref: Hindiyeh Thesis, p58
+    a_F     = arctan((v_y + a*r)/v_x) - d_f
+    a_R     = arctan((v_y - b*r)/v_x)
+
+    # compute lateral tire force at the front
+    TM_param    = [B, C, mu*Fn]
+    FyF         = -f_pajecka(TM_param, a_F)
+
+    # compute lateral tire force at the rear
+    # ensure that magnitude of longitudinal/lateral force lie within friction circle
+    FyR_paj     = -f_pajecka(TM_param, a_R)
+    FyR_max     = sqrt((mu*Fn)**2 - FxR**2)
+    Fy          = array([FyR_max, FyR_paj])
+    idx         = argmin(abs(Fy))
+    FyR         = Fy[idx]
+
+    # compute next state
+    X_next      = X + dt*(v_x*cos(phi) - v_y*sin(phi)) 
+    Y_next      = Y + dt*(v_x*sin(phi) + v_y*cos(phi)) 
+    phi_next    = phi + dt*r
+    v_x_next    = v_x + dt*(r*v_y +1/m*(FxR - FyF*sin(d_f)) - a0*v_x**2 - Ff)
+    v_y_next    = v_y + dt*(-r*v_x +1/m*(FyF*cos(d_f) + FyR))
+    r_next      = r    + dt/I_z*(a*FyF*cos(d_f) - b*FyR)
+
+    return array([X_next, Y_next, phi_next, v_x_next, v_y_next, r_next])
+
+
 
 def h_2s(x):
     """

@@ -60,13 +60,15 @@ dx_magnets 	= 2.0*pi*r_tire/4.0     # distance between magnets
 err_pid = 0
 u_pid   = 0
 v_LQR   = 0
+ignoreEncoder = 0
 
 # ecu command update
 def debug_callback(data):
-    global err_pid, u_pid, v_LQR
+    global err_pid, u_pid, v_LQR, ignoreEncoder
     err_pid     = data.data[0]
     u_pid       = data.data[1]
     v_LQR       = data.data[2]
+    ignoreEncoder   = data.data[3]
 
 # ecu command update
 def ecu_callback(data):
@@ -179,7 +181,7 @@ def state_estimation():
         os.makedirs(BASE_PATH)
     data_file_name   	= BASE_PATH + signal_ID + '-' + time.strftime("%H.%M.%S") + '.csv'
     data_file     		= open(data_file_name, 'a')
-    data_file.write('t,roll,pitch,yaw,w_x,w_y,w_z,a_x,a_y,a_z,n_FL,n_FR,motor_pwm,servo_pwm,d_f,vhat_x,vhat_y,what_z,v_x_enc,err_pid,u_pid, v_LQR\n')
+    data_file.write('t,roll,pitch,yaw,w_x,w_y,w_z,a_x,a_y,a_z,n_FL,n_FR,motor_pwm,servo_pwm,d_f,vhat_x,vhat_y,what_z,v_x_enc,err_pid,u_pid, v_LQR, ignoreEncoder\n')
     t0 				= time.time()
 
     # estimation variables for Luemberger observer
@@ -200,7 +202,11 @@ def state_estimation():
         global roll, pitch, yaw, w_x, w_y, w_z, a_x, a_y, a_z
         global n_FL, n_FR, v_x_enc
         global motor_pwm, servo_pwm, d_f
-        global err_pid, u_pid, v_LQR
+        global err_pid, u_pid, v_LQR, ignoreEncoder
+
+        # deactive encoder measurement
+        if ignoreEncoder:
+            v_x_enc = 2.0
 
 		# publish state estimate
         (v_x, v_y, r) = z_EKF           # note, r = EKF estimate yaw rate
@@ -211,7 +217,7 @@ def state_estimation():
 
 		# save data (maybe should use rosbag in the future)
         t  	= time.time() - t0
-        all_data = [t,roll,pitch,yaw,w_x,w_y,w_z,a_x,a_y,a_z,n_FL,n_FR,motor_pwm,servo_pwm,d_f,v_x,v_y,r,v_x_enc,err_pid,u_pid, v_LQR]
+        all_data = [t,roll,pitch,yaw,w_x,w_y,w_z,a_x,a_y,a_z,n_FL,n_FR,motor_pwm,servo_pwm,d_f,v_x,v_y,r,v_x_enc,err_pid,u_pid, v_LQR, ignoreEncoder]
 
         # save to CSV
         N = len(all_data)
@@ -219,7 +225,10 @@ def state_estimation():
         data_file.write( (str_fmt[0:-1]+'\n') % tuple(all_data))
 
         # update filtered signal
-        v_x_filt.update(v_x_enc)
+        if not ignoreEncoder:
+            v_x_filt.update(v_x_enc)
+        else:
+            v_x_filt.update(2.0)
         v_x_est = v_x_filt.getFilteredSignal() 
 
 

@@ -67,10 +67,10 @@
             * t_turn : time at which motor first turns
             * t_0   : after t_0 secs, begin experiment
             -->
-            <param name="v_x_pwm" type="int" value="101" />
+            <param name="v_x_pwm" type="int" value="100" />
             <param name="steering_angle" type="int" value="25" />
-            <param name="t_turn" type="int" value="7" />
-            <param name="t_exp" type="int" value="9" />
+            <param name="t_turn" type="int" value="5" />
+            <param name="t_exp" type="int" value="6" />
             <param name="t_0" type="int" value="3" />
  		
          <!-- PID for straight test using imu gyro -->
@@ -82,7 +82,7 @@
             * d_f_offset : steering angle offset to add to LQR output [degrees]      
             * motor_offset : PWM offset for motor ESC unit    
           -->
-		    <param name="d_f_offset" type="double" value="5" />
+		    <param name="d_f_offset" type="double" value="0" />
 		    <param name="motor_offset" type="double" value="0" />
 		    <param name="motor_min" type="double" value="0" />
    </node>
