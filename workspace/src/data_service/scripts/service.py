@@ -26,7 +26,6 @@ experiment_name_map = dict()
 response_ok = 'Ok'
 
 
-
 def get_experiment(experiment_name):
 
     if experiment_name not in experiment_name_map:
@@ -70,7 +69,10 @@ def send_time_signal(time_signal, experiment_name):
     signal_points = []
 
     for ts, sig in zip(timestamps, signals):
-        signal_points.append([ts] + sig)
+        if type(sig) is list:
+            signal_points.append([ts] + sig)
+        else:
+            signal_points.append([ts, sig])
         # sig.append(ts)
         # signal_points.append(sig)
 
