@@ -28,6 +28,7 @@ class TestSettings:
         self.dt_man 	= dt   	# length of time the motor is on
         self.t_turn     = 2     # length of time before first turn
         self.t_0        = 5     # initial time at rest before experiment
+        self.turn_deg   = turn
 
 		# check valid speed
         if SPD < 90 or SPD > 130:
@@ -160,7 +161,6 @@ def SingleHardTurn(opt, rate, t_i):
         servoCMD     = opt.turn
 
     return (motorCMD, servoCMD)
-
 
 #############################################################
 def CoastDown(opt, rate, t_i):

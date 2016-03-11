@@ -84,7 +84,7 @@
           -->
 		    <param name="d_f_offset" type="double" value="0" />
 		    <param name="motor_offset" type="double" value="0" />
-		    <param name="motor_min" type="double" value="0" />
+		    <param name="motor_min" type="double" value="102" />
    </node>
 
     <!-- Record the experiment data -->

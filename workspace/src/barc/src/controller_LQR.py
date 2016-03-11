@@ -97,14 +97,16 @@ def LQR_drift(z_eq, K_LQR, vhMdl,TrMdl, F_ext, u_nominal, offsets):
     FyF     = min(Fn, max(-Fn, FyF))
 
     # get map from FxR to u_motor 
-    motorCMD    = ceil(  (FxR/m + Ff + a0*v_x**2) / 0.3 + 95  ) + motor_offset 
-    motorCMD    = max(int(motor_min), motorCMD)          # lower bound for motor command
+    #motorCMD    = ceil(  (FxR/m + Ff + a0*v_x**2) / 0.3 + 95  ) + motor_offset 
+    #motorCMD    = max(int(motor_min), motorCMD)          # lower bound for motor command
+    motorCMD    = motor_min
 
     # get map from FyF to steering angle
     a_f     = tan(  arcsin(-(2*FyF / (m*g*mu)) ) / C ) / B
     d_f     = arctan((v_y + L_a*r)/v_x) - a_f
     d_f     += d_f_offset
-    d_f_deg = min(15, max(-10, d_f*180/pi ))    # saturation on steering angle
+    #d_f_deg = min(15, max(-10, d_f*180/pi ))    # saturation on steering angle
+    d_f_deg = min(25, max(-25, d_f*180/pi ))    # saturation on steering angle
     servoCMD    = angle_2_servo( d_f_deg )   
 
     return (motorCMD, servoCMD, d_f_deg*pi/180)
@@ -212,21 +214,8 @@ def main_auto():
             activateLQR = True
             t0_LQR = time.time()
 
-        # CLOSED LOOP run LQR if state meets activation condition
-        if activateLQR:
-            t = time.time()
-            if v_x > 0:
-                (motorCMD, servoCMD, d_f) = LQR_drift(z_eq, K_LQR, vhMdl, TrMdl, F_ext, u_eq, offsets)
-                if v_x <= 2.0:
-                    ignoreEncoder = 1
-            else:
-                (motorCMD, servoCMD, d_f) = (90,90,0)
-
-            if t - t0_LQR > 10:
-                motorCMD = 90
-
         # OPEN LOOP initially go straight and turn
-        else:
+        if not activateLQR:
             # get motor command
             (motorCMD, _) = test_mode(opt, rateHz, t_i)
 
@@ -241,6 +230,20 @@ def main_auto():
                 (_,servoCMD) = test_mode(opt, rateHz, t_i)
                 d_f_deg     = servo_2_angle(servoCMD)
             d_f         = d_f_deg*pi/180
+
+        # CLOSED LOOP run LQR if state meets activation condition
+        else:
+            t = time.time()
+            if v_x > 0:
+                (motorCMD, servoCMD, d_f) = LQR_drift(z_eq, K_LQR, vhMdl, TrMdl, F_ext, u_eq, offsets)
+                if v_x <= 2.0:
+                    ignoreEncoder = 1
+            else:
+                (motorCMD, servoCMD, d_f) = (90,90,0)
+
+            if t - t0_LQR > 10:
+                motorCMD = 90
+
 
         # send command signal 
         ecu_cmd = Vector3(motorCMD, servoCMD, d_f)
