@@ -15,20 +15,19 @@ def main():
         print 'Wifi is up and ready!'
         return True
     except Exception as err:
-        print err
         # Try to configure wifi here
         p1 = subprocess.Popen(['ip', 'route', 'list'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
         out, err = p1.communicate()
-        print err
         pattern = re.compile(r'(?P<ip>.*)\.[0-9]+\/[0-9]*\s+dev\s+(?P<interface>wlan[0-9]+).*proto\s+kernel')
         result = re.search(pattern, out)
         if result:
             wifi_ip = result.groupdict()['ip'] + '.1'
             wifi_interface = result.groupdict()['interface']
+            print 'wifi_ip:', wifi_ip
+            print 'wifi_interface:', wifi_interface
 
             p2 = subprocess.Popen(['ip', 'route', 'change', 'default', 'dev', wifi_interface, 'via', wifi_ip], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
             out, err = p2.communicate()
-            print err
 
 
 if __name__ == '__main__':

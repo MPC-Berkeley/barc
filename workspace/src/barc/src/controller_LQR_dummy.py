@@ -28,7 +28,7 @@ import scipy.io as sio
 from rospy_tutorials.msg import Floats
 from rospy.numpy_msg import numpy_msg
 from pid import PID
-
+'''
 # global constants
 g = 9.81
 
@@ -109,22 +109,23 @@ def LQR_drift(z_eq, K_LQR, vhMdl,TrMdl, F_ext, u_nominal, offsets, constraints):
     servoCMD    = angle_2_servo( d_f_deg )   
 
     return (motorCMD, servoCMD, d_f_deg*pi/180)
-
+'''
 #############################################################
 def main_auto():
 	# initialize ROS node
+    
     rospy.init_node('auto_mode', anonymous=True)
-    rospy.Subscriber('state_estimate', Vector3, updateState_callback)
-    rospy.Subscriber('angle_info', Vector3, angle_callback)
-    nh      = rospy.Publisher('ecu_cmd', Vector3, queue_size = 10)
-    debug   = rospy.Publisher('debug', numpy_msg(Floats), queue_size=10)
-
+    #rospy.Subscriber('state_estimate', Vector3, updateState_callback)
+    #rospy.Subscriber('angle_info', Vector3, angle_callback)
+    #nh      = rospy.Publisher('ecu_cmd', Vector3, queue_size = 10)
+    #debug   = rospy.Publisher('debug', numpy_msg(Floats), queue_size=10)
+    
 	# set node rate
     rateHz  = 50
     rate 	= rospy.Rate(rateHz)
     dt      = 1.0 / rateHz
     t_i     = 0
-
+    '''
     # get vehicle properties
     L_a = rospy.get_param("state_estimation/L_a")       # distance from CoG to front axel
     L_b = rospy.get_param("state_estimation/L_b")       # distance from CoG to rear axel
@@ -192,10 +193,10 @@ def main_auto():
 
     activateLQR = False
     ignoreEncoder = 0
-
+    '''
     # main loop
     while not rospy.is_shutdown():
-
+        '''
         # get state
         global x_hat
         v_x     = x_hat[0]
@@ -249,20 +250,23 @@ def main_auto():
             else:
                 (motorCMD, servoCMD, d_f) = (90, 90, 0)
 
-
+        
         # send command signal 
         ecu_cmd = Vector3(motorCMD, servoCMD, d_f)
-        nh.publish(ecu_cmd)
+        # nh.publish(ecu_cmd)
         debug_msg   = array([err, d_f, residual, ignoreEncoder], dtype = float32)
         debug.publish( debug_msg )
 	
         # wait
         t_i += 1
+        '''    
         rate.sleep()
-
+        
 #############################################################
+
 if __name__ == '__main__':
 	try:
 		main_auto()
 	except rospy.ROSInterruptException:
 		pass
+

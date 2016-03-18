@@ -175,7 +175,20 @@ def h_3s(x):
     C = array([[1, 0, 0],
                [0, 0, 1]])
     return dot(C, x)
-    
+
+def h_6s(x):
+    """
+    measurement model
+    input   := state z at time k, z[k] := [X[k], Y[k], phi[k], v_x[k], v_y[k], r[k]])
+    output  := [v_x, r] (yaw rate)
+    """
+    C = array([[0, 0, 0, 1, 0 ,0],
+               [0, 0, 0, 0, 0, 1]])
+    return dot(C, x)
+
+
+
+
    
 def f_pajecka(trMdl, alpha):
     """

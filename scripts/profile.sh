@@ -22,11 +22,12 @@ if [ -d "$HOME/bin" ] ; then
 fi
 
 # start up server when user logins in 
-source barc/scripts/login.sh
+source ~/barc/scripts/login.sh
 
 # Make sure crontab is updated
 crontab -u odroid /home/odroid/barc/scripts/crondump
 
-
 # Miscellaneous
 source /home/odroid/team_name.sh
+
+export PYTHONPATH=$PYTHONPATH:/usr/local/lib/python2.7/site-packages

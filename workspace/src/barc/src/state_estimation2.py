@@ -22,7 +22,7 @@ from numpy import pi, cos, sin, eye, array
 from geometry_msgs.msg import Vector3
 from input_map import angle_2_servo, servo_2_angle
 from observers import kinematicLuembergerObserver, ekf
-from system_models import f_3s, h_3s
+from system_models2 import f_6s, h_6s
 from data_service.srv import *
 from data_service.msg import *
 from filtering import filteredSignal
@@ -49,6 +49,7 @@ a_z 	= 0
 
 # from encoder
 v_x_enc 	= 0
+v_y_enc     = 0
 t0 	        = time.time()
 n_FL	    = 0                 # counts in the front left tire
 n_FR 	    = 0                 # counts in the front right tire
@@ -84,7 +85,7 @@ def imu_callback(data):
 
 # encoder measurement update
 def enc_callback(data):
-	global v_x_enc, d_f, t0
+	global v_x_enc,v_y_enc, d_f, t0
 	global n_FL, n_FR, n_FL_prev, n_FR_prev
 
 	n_FL = data.x
@@ -104,6 +105,9 @@ def enc_callback(data):
 		# update encoder v_x, v_y measurements
 		# only valid for small slip angles, still valid for drift?
 		v_x_enc 	= (v_FL + v_FR)/2.0*cos(d_f)
+		v_y_enc 	= (v_FL + v_FR)/2.0*sin(d_f)
+
+
 
 		# update old data
 		n_FL_prev   = n_FL
@@ -125,6 +129,7 @@ def state_estimation():
 
     state_pub 	= rospy.Publisher('state_estimate', Vector3, queue_size = 10)
     angle_pub 	= rospy.Publisher('angle_info', Vector3, queue_size = 10)
+    position_pub 	= rospy.Publisher('position_info', Vector3, queue_size = 10)    
 
 	  # get system parameters
     username = rospy.get_param("controller/user")
@@ -184,27 +189,30 @@ def state_estimation():
 
     ## Open file to save data
     date 				= time.strftime("%Y.%m.%d")
-    BASE_PATH   		= "/home/odroid/Data/" + date + "/"
+    BASE_PATH   		= "/home/odroid/Data/" + date + "_new/"
 	  # create directory if it doesn't exist
     if not os.path.exists(BASE_PATH):
         os.makedirs(BASE_PATH)
-    data_file_name   	= BASE_PATH + signal_ID + '-' + time.strftime("%H.%M.%S") + '.csv'
+    data_file_name   	= BASE_PATH + signal_ID + '-' + time.strftime("%H.%M.%S") + '_new.csv'
     data_file     		= open(data_file_name, 'a')
-    data_file.write('t,roll,pitch,yaw,w_x,w_y,w_z,a_x,a_y,a_z,n_FL,n_FR,motor_pwm,servo_pwm,d_f,vhat_x,vhat_y,what_z,v_x_enc,err_pid,u_pid, v_LQR, ignoreEncoder,motor_offset, motor_min, motor_max, d_f_ofset,d_f_min,d_f_max,v_LQR_min\n')
+    data_file.write('t,roll,pitch,yaw,w_x,w_y,w_z,a_x,a_y,a_z,n_FL,n_FR,motor_pwm,servo_pwm,d_f,vhat_x,vhat_y,what_z,v_x_enc,err_pid,u_pid, v_LQR, ignoreEncoder,motor_offset, motor_min, motor_max, d_f_ofset,d_f_min,d_f_max,v_LQR_min,X,Y,phi,v_x_est,v_y_est\n')
     t0 				= time.time()
 
     # estimation variables for Luemberger observer
     # z_EKF = [v_x, v_y, w_z]
-    z_EKF       = array([1.0, 0.0, 0.0])
+    z_EKF       = array([0.0, 0.0, 0.0, 1.0, 0.0, 0.0])
+    v_x_est     = 0.0
+    v_y_est     = 0.0
 
     # estimation variables for EKF
-    P           = eye(3)                # initial dynamics coveriance matrix
-    Q           = (q_std**2)*eye(3)     # process noise coveriance matrix
+    P           = eye(6)                # initial dynamics coveriance matrix
+    Q           = (q_std**2)*eye(6)     # process noise coveriance matrix
     R           = (r_std**2)*eye(2)     # measurement noise coveriance matrix
 
     # filtered signal for longitudinal velocity
     p_filter    = rospy.get_param("state_estimation/p_filter")
     v_x_filt    = filteredSignal(a = p_filter, method='lp')   # low pass filter
+    v_y_filt    = filteredSignal(a = p_filter, method='lp')   # low pass filter
 
     while not rospy.is_shutdown():
 	    # signals from inertial measurement unit, encoder, and control module
@@ -214,15 +222,17 @@ def state_estimation():
         global err_pid, u_pid, v_LQR, ignoreEncoder
 
 		# publish state estimate
-        (v_x, v_y, r) = z_EKF           # note, r = EKF estimate yaw rate
+        (X, Y, phi, v_x, v_y, r) = z_EKF           # note, r = EKF estimate yaw rate
 
         # publish information
         state_pub.publish( Vector3(v_x, v_y, r) )
         angle_pub.publish( Vector3(yaw, w_z, 0) )
+        position_pub.publish( Vector3(X, Y, phi) ) # r is from EKF, yaw is from sensor directly
+
 
 		# save data (maybe should use rosbag in the future)
         t  	= time.time() - t0
-        all_data = [t,roll,pitch,yaw,w_x,w_y,w_z,a_x,a_y,a_z,n_FL,n_FR,motor_pwm,servo_pwm,d_f,v_x,v_y,r,v_x_enc,err_pid,u_pid, v_LQR, ignoreEncoder,motor_offset, motor_min, motor_max, d_f_offset, d_f_min, d_f_max,v_LQR_min]
+        all_data = [t,roll,pitch,yaw,w_x,w_y,w_z,a_x,a_y,a_z,n_FL,n_FR,motor_pwm,servo_pwm,d_f,v_x,v_y,r,v_x_enc,err_pid,u_pid, v_LQR, ignoreEncoder,motor_offset, motor_min, motor_max, d_f_offset, d_f_min, d_f_max,v_LQR_min,X,Y,phi,v_x_est,v_y_est]
 
         # save to CSV
         N = len(all_data)
@@ -232,10 +242,12 @@ def state_estimation():
         # update filtered signal
         if not ignoreEncoder:
             v_x_filt.update(v_x_enc)
+            v_y_filt.update(v_y_enc)
         else:
             v_x_filt.update(v_LQR_min)
+            v_y_filt.update(v_LQR_min)
         v_x_est = v_x_filt.getFilteredSignal() 
-
+        v_y_est = v_y_filt.getFilteredSignal()
 
         # apply EKF
         if v_x_est > v_x_min:
@@ -256,11 +268,12 @@ def state_estimation():
             args = (u, vhMdl, TrMdl, F_ext, dt) 
 
             # apply EKF and get each state estimate
-            (z_EKF,P) = ekf(f_3s, z_EKF, P, h_3s, y, Q, R, args )
+            (z_EKF,P) = ekf(f_6s, z_EKF, P, h_6s, y, Q, R, args )
 
         else:
-            z_EKF[0] = float(v_x_enc)
-            z_EKF[2] = float(w_z)
+            z_EKF[3] = float(v_x_est)
+            z_EKF[4] = float(v_y_est)
+            z_EKF[5] = float(w_z)
         
         # staturate the estimate
         z_EKF[1] = min(100, max(-100, z_EKF[1]))
@@ -270,6 +283,6 @@ def state_estimation():
 
 if __name__ == '__main__':
 	try:
-	   state_estimation()
+	  state_estimation()
 	except rospy.ROSInterruptException:
 		pass

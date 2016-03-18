@@ -10,7 +10,7 @@
 	</node>
 
 	<!-- STATE ESTIMATION NODE -->
-	<node pkg="barc" type="state_estimation.py" name="state_estimation" >
+	<node pkg="barc" type="state_estimation2.py" name="state_estimation" >
     <!-- VEHICLE PROPERTIES -->
     <!-- m      := mass of vehicle
          I_z    := moment of inertia about z-axis
@@ -20,7 +20,7 @@
 		<param name="L_b" type="double"  value="0.125" />
 		<param name="m"   type="double"    value="1.98" />
 		<param name="I_z"  type="double"   value="0.24" />
-		
+
     <!-- EXTERNAL FORCES 
         Ff      := force of friction       -->
         <param name="air_drag_coeff"   type="double"   value="0.1308"/>
@@ -55,7 +55,7 @@
 	
 
 	<!-- LQR initization MANUEVER -->
-	<node pkg="barc" type="controller_LQR.py" name="controller" >
+	<node pkg="barc" type="controller_LQR_dummy.py" name="controller" >
             <!--  SELECTION -->
             <param name="user" value="jgon13" />
             <param name="experiment_sel" type="int" value="5" />
@@ -67,14 +67,14 @@
             * t_turn : time at which motor first turns
             * t_0   : after t_0 secs, begin experiment
             -->
-            <param name="v_x_pwm" type="double" value="99" />   <!--was 103 before -->
-            <param name="steering_angle" type="double" value="15" /> <!--was 15 before -->
+            <param name="v_x_pwm" type="double" value="103" />
+            <param name="steering_angle" type="double" value="15" />
             <param name="t_turn" type="int" value="5" />
-            <param name="t_exp" type="int" value="9" />
+            <param name="t_exp" type="int" value="15" />
             <param name="t_0" type="int" value="2" />
  		
          <!-- PID for straight test using imu gyro -->
-            <param name="p" type="double" value="50" />
+           <param name="p" type="double" value="50" />
 		    <param name="i" type="double" value="5" />
 		    <param name="d" type="double" value="0" />
         
@@ -89,9 +89,18 @@
 		    <param name="d_f_min" type="double" value="-30" />
 		    <param name="d_f_max" type="double" value="30" />
 
-		    <param name="v_LQR_min" type="double" value="2" />
+		    <param name="v_LQR_min" type="double" value="0.1" />
             
    </node>
+
+    <!-- MPC control in JUlia --> 
+    
+    <node pkg="barc" type="LL_ctrl.jl" name="MPC_controller" output="screen">
+
+    </node> 
+
+
+
 
     <!-- Record the experiment data -->
     <node pkg="rosbag" type="record" name="rosbag_record"

@@ -1,0 +1,16 @@
+<launch>
+  <node pkg="uvc_camera" type="uvc_camera_node" name="barc_cam">
+    <!-- <param name="serial" value=""/> -->
+    <!-- If the above parameters aren't unique, choose the first match: -->
+    <param name="index" value="0"/>
+
+
+    <param name="device" value="/dev/video0"/>
+
+    <!-- Image size and type -->
+    <param name="width" value="640"/>
+    <param name="height" value="480"/>
+
+    <!-- <param name="fps" value="30"/> -->
+  </node>
+</launch>
