@@ -71,8 +71,6 @@ class MyGUI(Plugin):
         self.setup_topics_list()
         self.p = None
 
-	rospy.wait_for_service('send_data')
-        self.send_data = rospy.ServiceProxy('send_data', DataForward, persistent=True)
 
 
     def setup_topics_list(self):
@@ -125,6 +123,8 @@ class MyGUI(Plugin):
         if not self.p:
             return
 
+        rospy.wait_for_service('send_data')
+        self.send_data = rospy.ServiceProxy('send_data', DataForward, persistent=True)
         command = 'rosnode list'
         out = subprocess.check_output(command, shell=True)
 
