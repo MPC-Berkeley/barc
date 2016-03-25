@@ -39,10 +39,30 @@ from rqt_launch.launch_widget import LaunchWidget
 from rqt_py_common.plugin_container_widget import PluginContainerWidget
 from rqt_py_common.rqt_roscomm_util import RqtRoscommUtil
 
+import re
+
+
+
+def is_int(s):
+    try:
+        int(s)
+        return True
+    except ValueError:
+        return False
+
+
+def is_float(s):
+    try:
+        float(s)
+        return True
+    except ValueError:
+        return False
+
 
 class LaunchMain(object):
     def __init__(self, plugin_context):
         super(LaunchMain, self).__init__()
+        print 'sfdfdsfsdfds'
         self._plugin_context = plugin_context
 
         self._main_launch_widget = LaunchWidget(self)
@@ -71,9 +91,22 @@ class LaunchMain(object):
         Then disable START ALL button and enable STOP ALL button.
         '''
 
+        pat = re.compile(r'.*=(.*)')
         if self._config:
             for k in self._config.params.keys():
-                rospy.set_param(k, self._config.params[k])
+                s = str(self._config.params[k])
+                result = re.match(pat, s)
+
+                if result:
+                    val = result.groups()[0]
+
+                    if is_int(val):
+                        rospy.set_param(k, int(val))
+                    elif is_float(val):
+                        rospy.set_param(k, float(val))
+                    else:
+                        rospy.set_param(k, val)
+
 
         for n in self._node_controllers:
             if not n.is_node_running():
