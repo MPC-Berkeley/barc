@@ -1,0 +1,10 @@
+#!/usr/bin/env python
+
+import sys
+
+from rqt_gui.main import Main
+from rqt_reconfigure.param_plugin import ParamPlugin
+
+plugin = 'rqt_reconfigure.param_plugin.ParamPlugin'
+main = Main(filename=plugin)
+sys.exit(main.main(sys.argv, standalone=plugin, plugin_argument_provider=ParamPlugin.add_arguments))

@@ -1,0 +1,18 @@
+<library path="src">
+  <class name="ActionPlugin" type="rqt_action.action_plugin.ActionPlugin" 
+  base_class_type="rqt_gui_py::Plugin">
+    <description>
+     A Python GUI for browsing available ROS action types.
+    </description>
+    <qtgui>
+      <group>
+        <label>Actions</label>
+        <icon type="theme">folder</icon>
+        <statustip>Plugins related to ROS actions.</statustip>
+      </group>
+      <label>Action Type Browser</label>
+      <icon type="theme">mail-read</icon>
+      <statustip>A Python GUI for browsing available ROS action types.</statustip>
+    </qtgui>
+  </class>
+</library>

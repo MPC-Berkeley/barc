@@ -1,0 +1,17 @@
+<library path="src">
+  <class name="Shell" type="rqt_shell.shell.Shell" base_class_type="qt_gui_py::Plugin">
+    <description>
+      A Python GUI plugin providing an interactive shell.
+    </description>
+    <qtgui>
+      <group>
+        <label>Miscellaneous Tools</label>
+        <icon type="theme">folder</icon>
+        <statustip>Plugins related to miscellaneous tools.</statustip>
+      </group>
+      <label>Shell</label>
+      <icon type="theme">terminal</icon>
+      <statustip>A Python GUI plugin providing an interactive shell.</statustip>
+    </qtgui>
+  </class>
+</library>

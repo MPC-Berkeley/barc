@@ -1,0 +1,17 @@
+<library path="src">
+  <class name="Web" type="rqt_web.web.Web" base_class_type="qt_gui_py::Plugin">
+    <description>
+      A Python GUI plugin displaying and interacting with web tools.
+    </description>
+    <qtgui>
+      <group>
+        <label>Miscellaneous Tools</label>
+        <icon type="theme">folder</icon>
+        <statustip>Plugins related to miscellaneous tools.</statustip>
+      </group>
+      <label>Web</label>
+      <icon type="theme">applications-internet</icon>
+      <statustip>A Python GUI plugin for displaying and interacting with web tools.</statustip>
+    </qtgui>
+  </class>
+</library>

@@ -1,0 +1,41 @@
+<package>
+  <name>rqt_graph</name>
+  <version>0.3.13</version>
+  <description>rqt_graph provides a GUI plugin for visualizing the ROS
+      computation graph.<br /> 
+      
+      Its components are made generic so that other packages
+      where you want to achieve graph representation can depend upon this pkg
+      (use <a href = "http://www.ros.org/wiki/rqt_dep">rqt_dep</a> to find out
+      the pkgs that depend. rqt_dep itself depends on rqt_graph too).
+  </description>
+  <maintainer email="ablasdel@gmail.com">Aaron Blasdel</maintainer>
+
+  <license>BSD</license>
+
+  <url type="website">http://ros.org/wiki/rqt_graph</url>
+  <url type="repository">https://github.com/ros-visualization/rqt_common_plugins</url>
+  <url type="bugtracker">https://github.com/ros-visualization/rqt_common_plugins/issues</url>
+
+  <author>Dirk Thomas</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <run_depend>python-rospkg</run_depend>
+  <run_depend>qt_dotgraph</run_depend>
+  <run_depend>rosgraph</run_depend>
+  <run_depend>rosgraph_msgs</run_depend>
+  <run_depend>roslib</run_depend>
+  <run_depend>rosnode</run_depend>
+  <run_depend>rospy</run_depend>
+  <run_depend>rosservice</run_depend>
+  <run_depend>rostopic</run_depend>
+  <run_depend>rqt_gui</run_depend>
+  <run_depend>rqt_gui_py</run_depend>
+
+  <export>
+    <architecture_independent/>
+    <rqt_gui plugin="${prefix}/plugin.xml"/>
+  </export>
+</package>
+

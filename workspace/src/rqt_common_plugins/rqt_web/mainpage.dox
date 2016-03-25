@@ -1,0 +1,7 @@
+/**
+\mainpage
+\htmlinclude manifest.html
+
+\b rqt_web provides a GUI plugin for displaying and interacting with web tools
+
+*/

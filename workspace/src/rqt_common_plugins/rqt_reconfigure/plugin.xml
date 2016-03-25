@@ -1,0 +1,17 @@
+<library path="src">
+  <class name="Param" type="rqt_reconfigure.param_plugin.ParamPlugin" base_class_type="rqt_gui_py::Plugin">
+    <description>
+      Python GUI to view and edit dynamic_reconfigure parameters.
+    </description>
+    <qtgui>
+      <group>
+        <label>Configuration</label>
+        <icon type="theme">folder</icon>
+        <statustip>Plugins related to configuration.</statustip>
+      </group>
+      <label>Dynamic Reconfigure</label>
+      <icon type="theme">accessories-text-editor</icon>
+      <statustip>A Python GUI for viewing and editing dynamic_reconfigure parameters.</statustip>
+    </qtgui>
+  </class>
+</library>

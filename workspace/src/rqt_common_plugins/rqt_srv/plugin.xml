@@ -1,0 +1,17 @@
+<library path="src">
+  <class name="Services" type="rqt_srv.services.Services" base_class_type="rqt_gui_py::Plugin">
+    <description>
+      A Python GUI plugin for browsing available ROS service types.
+    </description>
+    <qtgui>
+      <group>
+        <label>Services</label>
+        <icon type="theme">folder</icon>
+        <statustip>Plugins related to ROS services.</statustip>
+      </group>
+      <label>Service Type Browser</label>
+      <icon type="theme">edit-copy</icon>
+      <statustip>A Python GUI plugin for browsing available ROS service types.</statustip>
+    </qtgui>
+  </class>
+</library>

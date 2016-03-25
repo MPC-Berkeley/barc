@@ -1,0 +1,6 @@
+/**
+\mainpage
+\htmlinclude manifest.html
+
+\b rqt_console provides a GUI plugin for displaying and filtering ROS messages.
+*/

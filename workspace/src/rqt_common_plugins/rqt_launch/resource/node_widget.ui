@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>NodeWidget</class>
+ <widget class="QWidget" name="NodeWidget">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>764</width>
+    <height>57</height>
+   </rect>
+  </property>
+  <property name="minimumSize">
+   <size>
+    <width>300</width>
+    <height>30</height>
+   </size>
+  </property>
+  <property name="windowTitle">
+   <string>ROS Launch GUI</string>
+  </property>
+  <layout class="QVBoxLayout" name="_vlayout">
+   <item>
+    <layout class="QHBoxLayout" name="horizontalLayout">
+     <item>
+      <widget class="QLabel" name="_label_nodename">
+       <property name="toolTip">
+        <string>Node name</string>
+       </property>
+       <property name="text">
+        <string>&amp;Status</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="label_spawncount">
+       <property name="toolTip">
+        <string>#spawned so far</string>
+       </property>
+       <property name="text">
+        <string>(0)</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="_pushbutton_start_stop_node">
+       <property name="toolTip">
+        <string>Start node</string>
+       </property>
+       <property name="icon">
+        <iconset theme="QStyle.SP_MediaPlay">
+         <normaloff/>
+        </iconset>
+       </property>
+       <property name="checkable">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="_respawn_toggle">
+       <property name="toolTip">
+        <string>Reload</string>
+       </property>
+       <property name="icon">
+        <iconset theme="QStyle::SP_BrowserReload">
+         <normaloff/>
+        </iconset>
+       </property>
+       <property name="checkable">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="_label_pkg_name">
+       <property name="toolTip">
+        <string>Pkg name</string>
+       </property>
+       <property name="text">
+        <string>Package name</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLabel" name="_label_name_executable">
+       <property name="toolTip">
+        <string>Executable name</string>
+       </property>
+       <property name="text">
+        <string>Executable</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QLineEdit" name="_lineEdit_launch_args">
+       <property name="text">
+        <string>(argument)</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

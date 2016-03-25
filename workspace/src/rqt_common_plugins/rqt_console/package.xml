@@ -1,0 +1,27 @@
+<package>
+  <name>rqt_console</name>
+  <version>0.3.13</version>
+  <description>rqt_console provides a GUI plugin for displaying and filtering ROS messages.</description>
+  <maintainer email="ablasdel@gmail.com">Aaron Blasdel</maintainer>
+  <author>Aaron Blasdel</author>
+  
+  <license>BSD</license>
+
+  <url type="website">http://ros.org/wiki/rqt_console</url>
+  <url type="repository">https://github.com/ros-visualization/rqt_common_plugins</url>
+  <url type="bugtracker">https://github.com/ros-visualization/rqt_common_plugins/issues</url>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <run_depend>python-rospkg</run_depend>
+  <run_depend>roslib</run_depend>
+  <run_depend>rospy</run_depend>
+  <run_depend>rqt_gui</run_depend>
+  <run_depend>rqt_gui_py</run_depend>
+  <run_depend>rqt_logger_level</run_depend>
+
+  <export>
+    <architecture_independent/>
+    <rqt_gui plugin="${prefix}/plugin.xml"/>
+  </export>
+</package>

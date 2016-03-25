@@ -1,0 +1,7 @@
+/**
+\mainpage
+\htmlinclude manifest.html
+
+\b rqt_msg provides a GUI plugin for introspecting available ROS message types.
+
+*/

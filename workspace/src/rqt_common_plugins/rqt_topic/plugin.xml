@@ -1,0 +1,17 @@
+<library path="src">
+  <class name="TopicPlugin" type="rqt_topic.topic.Topic" base_class_type="rqt_gui_py::Plugin">
+    <description>
+      A Python GUI plugin to introspect ROS topics.
+    </description>
+    <qtgui>
+      <group>
+        <label>Topics</label>
+        <icon type="theme">folder</icon>
+        <statustip>Plugins related to ROS topics.</statustip>
+      </group>
+      <label>Topic Monitor</label>
+      <icon type="theme">system-search</icon>
+      <statustip>A Python GUI plugin for monitoring ROS topics.</statustip>
+    </qtgui>
+  </class>
+</library>

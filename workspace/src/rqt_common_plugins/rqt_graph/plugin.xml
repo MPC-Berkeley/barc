@@ -1,0 +1,17 @@
+<library path="src">
+  <class name="RosGraph" type="rqt_graph.ros_graph.RosGraph" base_class_type="rqt_gui_py::Plugin">
+    <description>
+      A Python GUI plugin to visualize a ROS computation graph.
+    </description>
+    <qtgui>
+      <group>
+        <label>Introspection</label>
+        <icon type="theme">folder</icon>
+        <statustip>Plugins related to introspection.</statustip>
+      </group>
+      <label>Node Graph</label>
+      <icon type="theme">preferences-system-network</icon>
+      <statustip>A Python GUI plugin for visualizing the ROS computation graph.</statustip>
+    </qtgui>
+  </class>
+</library>

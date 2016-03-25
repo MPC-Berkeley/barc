@@ -1,0 +1,6 @@
+/**
+\mainpage
+\htmlinclude manifest.html
+
+\b rqt_publisher provides a GUI plugin for publishing arbitrary messages with fixed or computed field values.
+*/

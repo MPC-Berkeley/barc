@@ -1,0 +1,17 @@
+<library path="src">
+  <class name="Bag" type="rqt_bag.bag.Bag" base_class_type="rqt_gui_py::Plugin">
+    <description>
+      A Python GUI plugin for displaying and replaying ROS bag files.
+    </description>
+    <qtgui>
+      <group>
+        <label>Logging</label>
+        <icon type="theme">folder</icon>
+        <statustip>Plugins related to logging.</statustip>
+      </group>
+      <label>Bag</label>
+      <icon type="theme">applications-other</icon>
+      <statustip>A Python GUI plugin for displaying and replaying ROS bag files.</statustip>
+    </qtgui>
+  </class>
+</library>
