@@ -25,9 +25,10 @@ fi
 source ~/barc/scripts/login.sh
 
 # Make sure crontab is updated
-crontab -u odroid /home/odroid/barc/scripts/crondump
+#crontab -u odroid /home/odroid/barc/scripts/crondump
 
 # Miscellaneous
-source /home/odroid/team_name.sh
+#source /home/odroid/team_name.sh
 
+export DATOR_SERVER='http://localhost:8000'
 export PYTHONPATH=$PYTHONPATH:/usr/local/lib/python2.7/site-packages
