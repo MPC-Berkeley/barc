@@ -261,7 +261,7 @@ function LocalComputer($scope, $routeParams, $interval, Restangular, $location, 
     };
 
     $scope.displaySignal = function(signalId){
-        $location.path("/signal_graph/" + $routeParams.id + "/" + signalId);
+        window.open("/dator/#/signal_graph/" + $routeParams.id + "/" + signalId, '_blank');
     };
 
     $scope.save_media_link = function() {
