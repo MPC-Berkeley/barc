@@ -1,0 +1,17 @@
+<library path="src">
+  <class name="Console" type="rqt_console.console.Console" base_class_type="rqt_gui_py::Plugin">
+    <description>
+      A Python GUI plugin for displaying and filtering ROS messages.
+    </description>
+    <qtgui>
+      <group>
+        <label>Logging</label>
+        <icon type="theme">folder</icon>
+        <statustip>Plugins related to logging.</statustip>
+      </group>
+      <label>Console</label>
+      <icon type="theme">mail-message-new</icon>
+      <statustip>A Python GUI plugin for displaying and filtering ROS log messages.</statustip>
+    </qtgui>
+  </class>
+</library>

@@ -47,7 +47,7 @@ class TestSettings:
 #############################################################
 def CircularTest(opt, rate, t_i):
     oneSec 		= rate
-    t_0         = 3*oneSec
+    t_0         = opt.t_0*oneSec
     t_f         = t_0 + (opt.dt_man)*oneSec
 
     # do nothing initially

@@ -61,3 +61,5 @@ dump.rdb
 
 # made by jgonzal 
 controller.py
+
+Dator/db.sqlite3

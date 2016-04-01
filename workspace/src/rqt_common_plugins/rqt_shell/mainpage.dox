@@ -1,0 +1,7 @@
+/**
+\mainpage
+\htmlinclude manifest.html
+
+\b rqt_shell is a Python GUI plugin providing an interactive shell.
+
+*/

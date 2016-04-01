@@ -1,0 +1,36 @@
+<package>
+  <name>rqt_bag_plugins</name>
+  <version>0.3.13</version>
+  <description>rqt_bag provides a GUI plugin for displaying and replaying ROS bag files.</description>
+  <maintainer email="ablasdel@gmail.com">Aaron Blasdel</maintainer>
+  <maintainer email="namniart@gmail.com">Austin Hendrix</maintainer>
+
+  <license>BSD</license>
+
+  <url type="website">http://ros.org/wiki/rqt_bag</url>
+  <url type="repository">https://github.com/ros-visualization/rqt_common_plugins</url>
+  <url type="bugtracker">https://github.com/ros-visualization/rqt_common_plugins/issues</url>
+
+  <author>Aaron Blasdel</author>
+  <author>Tim Field</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <run_depend>geometry_msgs</run_depend>
+  <run_depend>python-cairo</run_depend>
+  <run_depend>python-imaging</run_depend>
+  <run_depend>rosbag</run_depend>
+  <run_depend>roslib</run_depend>
+  <run_depend>rospy</run_depend>
+  <run_depend>rqt_bag</run_depend>
+  <run_depend>rqt_gui</run_depend>
+  <run_depend>rqt_gui_py</run_depend>
+  <run_depend>rqt_plot</run_depend>
+  <run_depend>sensor_msgs</run_depend>
+  <run_depend>std_msgs</run_depend>
+
+  <export>
+    <architecture_independent/>
+    <rqt_bag plugin="${prefix}/plugin.xml"/>
+  </export>
+</package>

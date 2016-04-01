@@ -168,6 +168,15 @@ def state_estimation():
     r_std   = rospy.get_param("state_estimation/r")             # std of measurementnoise
     v_x_min     = rospy.get_param("state_estimation/v_x_min")  # minimum velociy before using EKF
 
+    # other parameter settings
+    motor_offset    = rospy.get_param("controller/motor_offset")
+    motor_min       = rospy.get_param("controller/motor_min")
+    motor_max       = rospy.get_param("controller/motor_max")
+    d_f_offset      = rospy.get_param("controller/d_f_offset")*pi/180
+    d_f_min         = rospy.get_param("controller/d_f_min")
+    d_f_max         = rospy.get_param("controller/d_f_max")
+    v_LQR_min       = rospy.get_param("controller/v_LQR_min")
+
 	  # set node rate
     loop_rate 	= 50
     dt 		    = 1.0 / loop_rate
@@ -181,7 +190,7 @@ def state_estimation():
         os.makedirs(BASE_PATH)
     data_file_name   	= BASE_PATH + signal_ID + '-' + time.strftime("%H.%M.%S") + '.csv'
     data_file     		= open(data_file_name, 'a')
-    data_file.write('t,roll,pitch,yaw,w_x,w_y,w_z,a_x,a_y,a_z,n_FL,n_FR,motor_pwm,servo_pwm,d_f,vhat_x,vhat_y,what_z,v_x_enc,err_pid,u_pid, v_LQR, ignoreEncoder\n')
+    data_file.write('t,roll,pitch,yaw,w_x,w_y,w_z,a_x,a_y,a_z,n_FL,n_FR,motor_pwm,servo_pwm,d_f,vhat_x,vhat_y,what_z,v_x_enc,err_pid,u_pid, v_LQR, ignoreEncoder,motor_offset, motor_min, motor_max, d_f_ofset,d_f_min,d_f_max,v_LQR_min\n')
     t0 				= time.time()
 
     # estimation variables for Luemberger observer
@@ -204,10 +213,6 @@ def state_estimation():
         global motor_pwm, servo_pwm, d_f
         global err_pid, u_pid, v_LQR, ignoreEncoder
 
-        # deactive encoder measurement
-        if ignoreEncoder:
-            v_x_enc = 2.0
-
 		# publish state estimate
         (v_x, v_y, r) = z_EKF           # note, r = EKF estimate yaw rate
 
@@ -217,7 +222,7 @@ def state_estimation():
 
 		# save data (maybe should use rosbag in the future)
         t  	= time.time() - t0
-        all_data = [t,roll,pitch,yaw,w_x,w_y,w_z,a_x,a_y,a_z,n_FL,n_FR,motor_pwm,servo_pwm,d_f,v_x,v_y,r,v_x_enc,err_pid,u_pid, v_LQR, ignoreEncoder]
+        all_data = [t,roll,pitch,yaw,w_x,w_y,w_z,a_x,a_y,a_z,n_FL,n_FR,motor_pwm,servo_pwm,d_f,v_x,v_y,r,v_x_enc,err_pid,u_pid, v_LQR, ignoreEncoder,motor_offset, motor_min, motor_max, d_f_offset, d_f_min, d_f_max,v_LQR_min]
 
         # save to CSV
         N = len(all_data)
@@ -228,7 +233,7 @@ def state_estimation():
         if not ignoreEncoder:
             v_x_filt.update(v_x_enc)
         else:
-            v_x_filt.update(2.0)
+            v_x_filt.update(v_LQR_min)
         v_x_est = v_x_filt.getFilteredSignal() 
 
 
@@ -257,105 +262,14 @@ def state_estimation():
             z_EKF[0] = float(v_x_enc)
             z_EKF[2] = float(w_z)
         
+        # staturate the estimate
+        z_EKF[1] = min(100, max(-100, z_EKF[1]))
+
 		# wait
         rate.sleep()
 
-
-# Reduce duplication somehow?
-def send_all_data(data, timestamps, send_data, experiment_name):
-
-    # print data
-    time_signal = TimeSignal()
-    time_signal.timestamps = timestamps
-
-    # idx = np.array([1, 1])
-    # time_signal.name = 't'
-    # time_signal.signal = json.dumps([data[:, 1].flatten().tolist(), data[:, 1].flatten().tolist()])
-    # send_data(time_signal, None, experiment_name)
-
-    time_signal.name = 'roll'
-    idx = np.array([1])
-    time_signal.signal = json.dumps(data[:, idx].tolist())
-    send_data(time_signal, None, experiment_name)
-
-    time_signal.name = 'pitch'
-    idx = np.array([2])
-    time_signal.signal = json.dumps(data[:, idx].tolist())
-    send_data(time_signal, None, experiment_name)
-
-    time_signal.name = 'yaw'
-    idx = np.array([3])
-    time_signal.signal = json.dumps(data[:, idx].tolist())
-    send_data(time_signal, None, experiment_name)
-
-    time_signal.name = 'w_x'
-    idx = np.array([4])
-    time_signal.signal = json.dumps(data[:, idx].tolist())
-    send_data(time_signal, None, experiment_name)
-
-    time_signal.name = 'w_y'
-    idx = np.array([5])
-    time_signal.signal = json.dumps(data[:, idx].tolist())
-    send_data(time_signal, None, experiment_name)
-
-    time_signal.name = 'w_z'
-    idx = np.array([6])
-    time_signal.signal = json.dumps(data[:, idx].tolist())
-    send_data(time_signal, None, experiment_name)
-
-    time_signal.name = 'a_x'
-    idx = np.array([7])
-    time_signal.signal = json.dumps(data[:, idx].tolist())
-    send_data(time_signal, None, experiment_name)
-
-    time_signal.name = 'a_y'
-    idx = np.array([8])
-    time_signal.signal = json.dumps(data[:, idx].tolist())
-    send_data(time_signal, None, experiment_name)
-
-    time_signal.name = 'a_z'
-    idx = np.array([9])
-    time_signal.signal = json.dumps(data[:, idx].tolist())
-    send_data(time_signal, None, experiment_name)
-
-    time_signal.name = 'n_FL'
-    idx = np.array([10])
-    time_signal.signal = json.dumps(data[:, idx].tolist())
-    send_data(time_signal, None, experiment_name)
-
-    time_signal.name = 'n_FR'
-    idx = np.array([11])
-    time_signal.signal = json.dumps(data[:, idx].tolist())
-    send_data(time_signal, None, experiment_name)
-
-    time_signal.name = 'motor_pwm'
-    idx = np.array([12])
-    time_signal.signal = json.dumps(data[:, idx].tolist())
-    send_data(time_signal, None, experiment_name)
-
-    time_signal.name = 'servo_pwm'
-    idx = np.array([13])
-    time_signal.signal = json.dumps(data[:, idx].tolist())
-    send_data(time_signal, None, experiment_name)
-
-    time_signal.name = 'what_x'
-    idx = np.array([14])
-    time_signal.signal = json.dumps(data[:, idx].tolist())
-    send_data(time_signal, None, experiment_name)
-
-    time_signal.name = 'what_y'
-    idx = np.array([15])
-    time_signal.signal = json.dumps(data[:, idx].tolist())
-    send_data(time_signal, None, experiment_name)
-
-    time_signal.name = 'what_z'
-    idx = np.array([16])
-    time_signal.signal = json.dumps(data[:, idx].tolist())
-    send_data(time_signal, None, experiment_name)
-
 if __name__ == '__main__':
 	try:
-	  # rospy.wait_for_service('send_data')
-	  state_estimation()
+	   state_estimation()
 	except rospy.ROSInterruptException:
 		pass

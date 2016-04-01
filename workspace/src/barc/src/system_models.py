@@ -88,9 +88,7 @@ def f_3s(z, u, vhMdl, trMdl, F_ext, dt):
     # ensure that magnitude of longitudinal/lateral force lie within friction circle
     FyR_paj     = -f_pajecka(TM_param, a_R)
     FyR_max     = sqrt((mu*Fn)**2 - FxR**2)
-    Fy          = array([FyR_max, FyR_paj])
-    idx         = argmin(abs(Fy))
-    FyR         = Fy[idx]
+    FyR         = min(FyR_max, max(-FyR_max, FyR_paj))
 
     # compute next state
     v_x_next    = v_x + dt*(r*v_y +1/m*(FxR - FyF*sin(d_f)) - a0*v_x**2 - Ff)

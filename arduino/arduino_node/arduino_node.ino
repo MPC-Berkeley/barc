@@ -42,6 +42,11 @@ int motor_min = 40;
 volatile unsigned long dt;
 volatile unsigned long t0;
 
+// pin to poll rear wheel encoder 
+int pin_BR = 5;   // back right
+boolean val, new_val;
+int B_count = 0;
+
 
 ros::NodeHandle nh;
 
@@ -75,6 +80,11 @@ void setup()
     // Set up interrupt pins
   pinMode(encPinA, INPUT_PULLUP);
   pinMode(encPinB, INPUT_PULLUP);
+  
+  // set up polling pins
+  pinMode(pin_BR, INPUT);
+  val = digitalRead(pin_BR);   // read the input pin
+
   
   // Set up communication between Arduino and {Motor and Servo}
   motor.attach(motorPin);
@@ -110,9 +120,16 @@ void loop()
   if (dt > 20) {
     enc_msg.x = FL_count;
     enc_msg.y = FR_count;
+    enc_msg.z = B_count;
     
     p.publish(&enc_msg);
     t0 = millis();
+  }
+  
+  new_val = digitalRead(pin_BR);   // read the input pin
+  if (val != new_val){
+    B_count++;
+    val = new_val;
   }
   
   nh.spinOnce();

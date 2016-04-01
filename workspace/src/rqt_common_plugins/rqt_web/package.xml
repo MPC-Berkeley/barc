@@ -1,0 +1,27 @@
+<package>
+  <name>rqt_web</name>
+  <version>0.3.13</version>
+  <description>rqt_web is a simple web content viewer for rqt. Users can show web content in Qt-based window by specifying its URL. </description>
+  <maintainer email="ablasdel@gmail.com">Aaron Blasdel</maintainer>
+  
+  <license>BSD</license>
+
+  <url type="website">http://ros.org/wiki/rqt_web</url>
+  <url type="repository">https://github.com/ros-visualization/rqt_common_plugins</url>
+  <url type="bugtracker">https://github.com/ros-visualization/rqt_common_plugins/issues</url>
+
+  <author>Aaron Blasdel</author>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <run_depend>python-rospkg</run_depend>
+  <run_depend>qt_gui</run_depend>
+  <run_depend>rospy</run_depend>
+  <run_depend>rqt_gui</run_depend>
+  <run_depend>rqt_gui_py</run_depend>
+
+  <export>
+    <architecture_independent/>
+    <qt_gui plugin="${prefix}/plugin.xml"/>
+  </export>
+</package>

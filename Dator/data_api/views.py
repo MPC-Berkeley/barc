@@ -96,6 +96,26 @@ def signal_data(request, signal_id):
         except BaseException as e:
             return HttpResponse({'status': 'failed {}'.format(e)}, status=500)
 
+
+@csrf_exempt
+def experiment_media(request, experiment_id):
+    try:
+        experiment = Experiment.objects.get(id=experiment_id)
+    except Experiment.DoesNotExist as e:
+        return HttpResponse({'status': 'failed - Experiment requested does not exist'}, status=404)
+
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            media_link = data['media']
+            experiment.media_link = media_link
+            experiment.save()
+            response_dict = {'status': 'succeeded'}
+            return HttpResponse(response_dict, status=200, content_type="application/json")
+        except BaseException as e:
+            return HttpResponse({'status': 'failed{}'.format(e)}, status=500)
+
+
 def claim_local_computer(request, local_computer_id):
     """
     Add the claiming user to the local computer's access group.

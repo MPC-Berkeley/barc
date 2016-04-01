@@ -25,7 +25,7 @@ function LocalComputer($scope, $routeParams, $interval, Restangular, $location, 
      *
      * Sets experiments from the db.
      */
-    $scope.getExperiments=function(){
+    $scope.getExperiments = function(){
         return Restangular.all("experiment").getList({format:'json', local_computer_id: $scope.localComputer.id}).
             then(function (data){
                 $scope.experiments = data;
@@ -41,7 +41,8 @@ function LocalComputer($scope, $routeParams, $interval, Restangular, $location, 
     $scope.setExperimentChoices=function() {
         $scope.experimentChoices = [ALL_EXPERIMENTS];
         _.each($scope.experiments, function(experiment){
-            $scope.experimentChoices.push({'id':experiment.id, 'name':experiment.name});
+            $scope.experimentChoices.push({'id':experiment.id, 'name':experiment.name,
+                                          'media_link': experiment.media_link});
         });
     };
 
@@ -263,7 +264,32 @@ function LocalComputer($scope, $routeParams, $interval, Restangular, $location, 
         $location.path("/signal_graph/" + $routeParams.id + "/" + signalId);
     };
 
+    $scope.save_media_link = function() {
+        console.log($scope.uiState.experiment.id);
+        console.log($('#media-link').val());
+
+        $.ajax({
+            url: '/data_api/v1/experiment_media/' + $scope.uiState.experiment.id + '/',
+            type : 'POST',
+
+            data : JSON.stringify({
+                'media' : $('#media-link').val()
+            }),
+
+            success : function(json) {
+                console.log(json);
+            },
+
+            // handle a non-successful response
+            error : function(xhr,errmsg,err) {
+                console.log(xhr.status + ": " + xhr.responseText); // provide a bit more info about the error to the console
+            }
+        })
+
+        location.reload();
+    }
 }
+
 
 angular.module('Ruenoor').controller('LocalComputer',
     ['$scope', '$routeParams', '$interval', 'Restangular',  '$location', 'UserStateService', LocalComputer]);

@@ -118,8 +118,10 @@ class Map(SystemModel):
     def __unicode__(self):
         return self.name
 
+
 ACTUATOR = 1
 SENSOR = 2
+
 
 class MapPoint(SystemModel):
 
@@ -131,9 +133,6 @@ class MapPoint(SystemModel):
 
     def __unicode__(self):
         return self.name
-
-
-
 
 
 class Signal(SystemModel):
@@ -227,12 +226,15 @@ class Blob(SystemModel):
         settings.BLOB_PROVIDER.startup()
         settings.BLOB_PROVIDER.write_blob(self.uuid, json_data)
 
+
 class Experiment(SystemModel):
     group = models.ManyToManyField(Group)
     started_at = models.DateTimeField(null=True)
     ended_at = models.DateTimeField(null=True)
     name = models.CharField(max_length=128, db_index=True)
     local_computer = models.ForeignKey(LocalComputer)
+    media_link = models.URLField(null=True, blank=True)
+
 
     def __unicode__(self):
         return u"{}-{}-{}".format(self.name, self.started_at, self.ended_at)

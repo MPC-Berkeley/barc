@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<package>
+  <name>rqt_top</name>
+  <version>0.3.13</version>
+  <description>RQT plugin for monitoring ROS processes.</description>
+
+  <author email="dan@lazewatsky.com">Dan Lazewatsky</author>
+  <maintainer email="dan@lazewatsky.com">Dan Lazewatsky</maintainer>
+  <license>BSD</license>
+
+  <url type="website">http://ros.org/wiki/rqt_top</url>
+  <url type="repository">https://github.com/ros-visualization/rqt_top</url>
+  <url type="bugtracker">https://github.com/ros-visualization/rqt_top/issues</url>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <run_depend>python-psutil</run_depend>
+  <run_depend>rospy</run_depend>
+  <run_depend>rqt_gui</run_depend>
+  <run_depend>rqt_gui_py</run_depend>
+
+  <export>
+    <architecture_independent/>
+    <rqt_gui plugin="${prefix}/plugin.xml"/>
+  </export>
+</package>

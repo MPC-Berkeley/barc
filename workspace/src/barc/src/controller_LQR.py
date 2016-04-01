@@ -64,7 +64,7 @@ def updateState_callback(data):
 	x_hat[2] = data.z		# r         yaw rate estimate
 
 #############################################################
-def LQR_drift(z_eq, K_LQR, vhMdl,TrMdl, F_ext, u_nominal, offsets):
+def LQR_drift(z_eq, K_LQR, vhMdl,TrMdl, F_ext, u_nominal, offsets, constraints):
 
 	# get current state estimate
     global x_hat
@@ -78,8 +78,9 @@ def LQR_drift(z_eq, K_LQR, vhMdl,TrMdl, F_ext, u_nominal, offsets):
     (a0, Ff)            = F_ext
     Fn                  = mu*m*g/2
 
-    # unpack the offsets
-    d_f_offset, motor_offset, motor_min = offsets
+    # unpack the offsets and constraints
+    motor_min, motor_max, d_f_min, d_f_max  = constraints
+    motor_offset, d_f_offset                = offsets
     
 	# compute slip angle beta
     beta    = arctan(v_y / v_x)
@@ -97,16 +98,14 @@ def LQR_drift(z_eq, K_LQR, vhMdl,TrMdl, F_ext, u_nominal, offsets):
     FyF     = min(Fn, max(-Fn, FyF))
 
     # get map from FxR to u_motor 
-    #motorCMD    = ceil(  (FxR/m + Ff + a0*v_x**2) / 0.3 + 95  ) + motor_offset 
-    #motorCMD    = max(int(motor_min), motorCMD)          # lower bound for motor command
-    motorCMD    = motor_min
+    motorCMD    = ceil(  (FxR/m + Ff + a0*v_x**2) / 0.3 ) + motor_offset 
+    motorCMD    = 95  + min(motor_max, max(motor_min, motorCMD ))    # saturation on steering angle
 
     # get map from FyF to steering angle
     a_f     = tan(  arcsin(-(2*FyF / (m*g*mu)) ) / C ) / B
     d_f     = arctan((v_y + L_a*r)/v_x) - a_f
     d_f     += d_f_offset
-    #d_f_deg = min(15, max(-10, d_f*180/pi ))    # saturation on steering angle
-    d_f_deg = min(25, max(-25, d_f*180/pi ))    # saturation on steering angle
+    d_f_deg = min(d_f_max, max(d_f_min, d_f*180/pi ))    # saturation on steering angle
     servoCMD    = angle_2_servo( d_f_deg )   
 
     return (motorCMD, servoCMD, d_f_deg*pi/180)
@@ -159,12 +158,19 @@ def main_auto():
     K_LQR       = lqr_data['K']
     P           = lqr_data['P']
     gamma       = 3*(lqr_data['r'].flatten()[0])
+    residual    = 1000
 
     # get LQR offset data
-    d_f_offset      = rospy.get_param("controller/d_f_offset")*pi/180
     motor_offset    = rospy.get_param("controller/motor_offset")
     motor_min       = rospy.get_param("controller/motor_min")
-    offsets         = [d_f_offset, motor_offset, motor_min]
+    motor_max       = rospy.get_param("controller/motor_max")
+    d_f_offset      = rospy.get_param("controller/d_f_offset")*pi/180
+    d_f_min         = rospy.get_param("controller/d_f_min")
+    d_f_max         = rospy.get_param("controller/d_f_max")
+    v_LQR_min       = rospy.get_param("controller/v_LQR_min")
+    offsets         = [motor_offset, d_f_offset]
+    offsets         = [motor_offset, d_f_offset]
+    constraints     = [motor_min, motor_max, d_f_min, d_f_max]
 
     # specify test and test options
     experiment_opt    = { 0 : CircularTest,
@@ -189,66 +195,65 @@ def main_auto():
 
     # main loop
     while not rospy.is_shutdown():
-        # check for LQR activation
+
+        # get state
         global x_hat
+        v_x     = x_hat[0]
+        v_y     = x_hat[1]
+        r       = x_hat[2]
 
-        # get current state estimate
-        v_x 	= x_hat[0]
-        v_y 	= x_hat[1]
-        r 	    = x_hat[2]
+        # check for LQR activation
+        if not activateLQR:
+            # compute slip angle
+            if v_x > 0:
+                beta = arctan(v_y / v_x)
 
-	    # compute slip angle beta
-        if v_x > 0:
-            beta    = arctan(v_y / v_x)
-        else:
-            beta    = 0
+                # compute state error
+                z_hat       = array([beta, r, v_x]).reshape(-1,1)
+                z_error     = z_hat - z_eq
 
-        # compute error state
-        z_hat       = array([beta, r, v_x]).reshape(-1,1) 
-        z_error     = z_hat - z_eq
-    
-        # compute quadratic expression for LQR activation
-        v_LQR   = dot(dot(z_error.T, P),z_error)[0][0]
+                # compute quadtric residual for LQR activation
+                residual    = dot(dot(z_error.T, P), z_error)[0][0]
+            
+                if residual < gamma:
+                    activateLQR = True
+                    t0_LQR  = time.time()
 
-        if v_LQR < gamma:
-            activateLQR = True
-            t0_LQR = time.time()
-
-        # OPEN LOOP initially go straight and turn
+        # OPEN LOOP 
         if not activateLQR:
             # get motor command
             (motorCMD, _) = test_mode(opt, rateHz, t_i)
 
-            # get steering wheel command
             # go straight using PID
-            if t_i < (rateHz*(t_0 + t_turn)):
+            if t_i < (rateHz * (t_0 + t_turn)):
                 global err
-                d_f_deg   = pid.update(err, dt)
-                servoCMD  = angle_2_servo(d_f_deg)
-            # after certain time, turn
+                d_f_deg     = pid.update(err, dt)
+                servoCMD    = angle_2_servo(d_f_deg)
+            # turn after time period
             else:
-                (_,servoCMD) = test_mode(opt, rateHz, t_i)
+                (_, servoCMD)   = test_mode(opt, rateHz, t_i)
                 d_f_deg     = servo_2_angle(servoCMD)
-            d_f         = d_f_deg*pi/180
+            d_f     = d_f_deg*pi/180.0
 
-        # CLOSED LOOP run LQR if state meets activation condition
+        # CLOSED LOOP 
         else:
-            t = time.time()
+            t   = time.time()
             if v_x > 0:
-                (motorCMD, servoCMD, d_f) = LQR_drift(z_eq, K_LQR, vhMdl, TrMdl, F_ext, u_eq, offsets)
-                if v_x <= 2.0:
-                    ignoreEncoder = 1
-            else:
-                (motorCMD, servoCMD, d_f) = (90,90,0)
+                (motorCMD, servoCMD, d_f) = LQR_drift(z_eq, K_LQR, vhMdl, TrMdl, F_ext, u_eq, offsets, constraints)
 
-            if t - t0_LQR > 10:
-                motorCMD = 90
+                """
+                if v_x <= v_LQR_min:
+                    ignoreEncoder = 1
+                """
+            
+            else:
+                (motorCMD, servoCMD, d_f) = (90, 90, 0)
 
 
         # send command signal 
         ecu_cmd = Vector3(motorCMD, servoCMD, d_f)
         nh.publish(ecu_cmd)
-        debug_msg   = array([err, d_f, v_LQR, ignoreEncoder], dtype = float32)
+        debug_msg   = array([err, d_f, residual, ignoreEncoder], dtype = float32)
         debug.publish( debug_msg )
 	
         # wait
