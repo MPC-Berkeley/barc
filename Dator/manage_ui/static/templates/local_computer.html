@@ -114,8 +114,43 @@
                     <div class="panel-title">
                         Data
                         <div class="form-group pull-right">
-                        <label class="small dator-spaced-title">Experiment</label>
+                            <!-- <a href="{{ uiState.experiment.experiment_link }}"/> -->
+                        <label class="small dator-spaced-title">Media</label>
+                        <button class="btn btn-link" role="link" name="op" value="{{ uiState.experiment.media_link }}">{{ uiState.experiment.media_link }}</button>
 
+
+                        <button type="button" data-toggle="modal" data-target="#myModal" data-link="media">
+                            <i class="fa fa-plus" style="color: black; background-color: transparent;"></i>
+                        </button>
+
+                        <!-- Modal -->
+                        <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true">
+                            <div class="modal-dialog" role="document">
+                                <div class="modal-content">
+                                    <div class="modal-header">
+                                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                            <span aria-hidden="true">&times;</span>
+                                        </button>
+                                        <h4 class="modal-title" id="myModalLabel">Update media link</h4>
+                                    </div>
+                                    <div class="modal-body">
+                                        <form>
+                                            <div class="form-group">
+                                                <label for="media-link" class="form-control-label">Media link:</label>
+                                                <input type="text" class="form-control" id="media-link">
+                                            </div>
+                                        </form>
+                                    </div>
+                                    <div class="modal-footer">
+                                        <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                                        <button class="btn btn-primary" id="save-media" ng-click="save_media_link()" data-dismiss="modal">Save Changes</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+
+                        <label class="small dator-spaced-title">Experiment</label>
                         <select name="experiment"
                                 ng-model="uiState.experiment"
                                 ng-options="experiment.name for experiment in experimentChoices track by experiment.id"
@@ -124,7 +159,7 @@
                                 style="color: black;"></select>
                             <button ng-click="deleteExperiment()">
                             <i class="fa fa-minus" style="color: black; background-color: transparent;"></i>
-                        </button>
+                            </button>
                         </div>
                     </div>
 
