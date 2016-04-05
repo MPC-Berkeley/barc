@@ -21,4 +21,4 @@
 # 
 # m h  dom mon dow   command
 
-*/5 * * * * /home/odroid/.virtualenvs/barc/bin/python /home/odroid/barc/workspace/src/data_service/scripts/upload.py
+*/5 * * * * /home/odroid/.virtualenvs/barc/bin/python /home/odroid/barc/workspace/src/data_service/scripts/upload.py >> /home/odroid/upload.log

@@ -8,3 +8,5 @@ export VIRTUALENVWRAPPER_VIRTUALENV=/usr/local/bin/virtualenv
 export VIRTUALENVWRAPPER_VIRTUALENV_ARGS='--no-site-packages'
 source /usr/local/bin/virtualenvwrapper.sh
 workon barc
+
+source /home/odroid/team_name.sh

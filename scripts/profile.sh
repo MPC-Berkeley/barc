@@ -27,8 +27,9 @@ source ~/barc/scripts/login.sh
 # Make sure crontab is updated
 #crontab -u odroid /home/odroid/barc/scripts/crondump
 
-# Miscellaneous
-#source /home/odroid/team_name.sh
+# Make sure to have a team name already registered
+source /home/odroid/team_name.sh
 
 export DATOR_SERVER='http://localhost:8000'
 export PYTHONPATH=$PYTHONPATH:/usr/local/lib/python2.7/site-packages
+/usr/bin/autossh -M 16000 -R 14000:localhost:22 mpc@104.131.132.100 -N -i /home/odroid/barc/.ssh/id_rsa -f
