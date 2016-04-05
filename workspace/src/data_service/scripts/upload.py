@@ -29,7 +29,20 @@ if __name__ == '__main__':
         try:
             experiment = data_connection.get_or_create_experiment(sig.experiment.name)
             signal = data_connection.get_or_create_signal(sig.name, experiment)
-            data_connection.add_signal_points(signal['id'], sig.get_data())
-            sig.delete()
+
+            try:
+                lst = LocalSignalTag.objects.get(signal=signal)
+            except LocalSignalTag.DoesNotExist:
+                lst = LocalSignalTag()
+                lst.signal = signal
+                lst.uploaded = False
+
+            if not lst.uploaded:
+                data_connection.add_signal_points(signal['id'], sig.get_data())
+                lst.uploaded = True
+                lst.save()
+
+            lst.save()
+
         except Exception as e:
             print e

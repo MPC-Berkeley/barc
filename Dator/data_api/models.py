@@ -265,6 +265,13 @@ class Experiment(SystemModel):
             blb.group.add(*groups)
         return experiment
 
+
+class LocalSignalTag(models.Model):
+    signal = models.ForeignKey('Signal')
+    uploaded = models.BooleanField(default=False)
+
+
+
 @receiver(pre_save, sender=Command)
 @receiver(pre_save, sender=LocalComputer)
 @receiver(pre_save, sender=Map)
