@@ -183,7 +183,11 @@ class Signal(SystemModel):
 
     @classmethod
     def utc_to_millisec(cls, dt):
-        return delorean.Delorean(dt, timezone="UTC").epoch
+        epoch = delorean.Delorean(dt, timezone="UTC").epoch
+        if isinstance(epoch, (int, long)):
+            return delorean.Delorean(dt, timezone="UTC").epoch
+        else:
+            return delorean.Delorean(dt, timezone="UTC").epoch()
 
     def get_time_series(self):
         values, dates = self.get_data()
