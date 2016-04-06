@@ -13,8 +13,8 @@ import dator
 from django.conf import settings
 
 class SystemModel(models.Model):
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True, null=True)
     uuid = models.CharField(max_length=128, db_index=True)
 
     class Meta:
@@ -184,7 +184,7 @@ class Signal(SystemModel):
     @classmethod
     def utc_to_millisec(cls, dt):
         epoch = delorean.Delorean(dt, timezone="UTC").epoch
-        if isinstance(epoch, (int, long)):
+        if not hasattr(epoch, '__call__'):
             return delorean.Delorean(dt, timezone="UTC").epoch
         else:
             return delorean.Delorean(dt, timezone="UTC").epoch()
