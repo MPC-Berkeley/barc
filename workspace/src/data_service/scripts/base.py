@@ -26,7 +26,7 @@ class Configurator(object):
                 'server': os.environ['DATOR_SERVER'],
                 'secret_uuid': str(uuid4()),
                 'registration_token': 'abcd',
-                'id': "1"
+                'id': None
             }
 
     def write_config(self, filename):
