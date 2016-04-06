@@ -26,8 +26,8 @@ class TestSettings:
         self.stopped 	= False
         self.brake 		= 50
         self.dt_man 	= dt   	# length of time the motor is on
-        self.t_turn     = 2     # length of time before first turn
-        self.t_0        = 5     # initial time at rest before experiment
+        self.t_turn     = 4     # length of time before first turn
+        self.t_0        = 2     # initial time at rest before experiment
         self.turn_deg   = turn
 
 		# check valid speed
@@ -73,7 +73,7 @@ def Straight(opt, rate, t_i):
     # timing maneuvers
     oneSec      = rate
     dt          = (opt.dt_man)*oneSec
-    t_0         = 5*oneSec
+    t_0         = opt.t_0*oneSec
     t_f         = t_0 + dt
 
     # rest
@@ -167,7 +167,7 @@ def CoastDown(opt, rate, t_i):
     # timing maneuvers
     oneSec      = rate
     dt          = (opt.dt_man)*oneSec
-    t_0         = 5*oneSec
+    t_0         = opt.t_0*oneSec
     t_f         = t_0 + dt
 
     # rest
@@ -195,7 +195,7 @@ def SineSweep(opt, rate, t_i):
     dt          	= 15*oneSec
     start_turning 	= 1*oneSec
 
-    t_0         	= 5*oneSec
+    t_0         = opt.t_0*oneSec
     t_st         	= t_0 + start_turning
     t_f         	= t_0 + dt +start_turning
     T           	= 2*oneSec
@@ -229,7 +229,7 @@ def DoubleLaneChange(opt, rate, t_i):
     # timing maneuvers
     oneSec      = rate
     dt          = 3*oneSec
-    t_0         = 5*oneSec
+    t_0         = opt.t_0*oneSec
     t_LT        = t_0 + dt
     t_RT        = t_LT + dt
     t_ZT        = t_RT + dt

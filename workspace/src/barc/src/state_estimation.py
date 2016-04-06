@@ -168,33 +168,13 @@ def state_estimation():
     r_std   = rospy.get_param("state_estimation/r")             # std of measurementnoise
     v_x_min     = rospy.get_param("state_estimation/v_x_min")  # minimum velociy before using EKF
 
-    # other parameter settings
-    motor_offset    = rospy.get_param("controller/motor_offset")
-    motor_min       = rospy.get_param("controller/motor_min")
-    motor_max       = rospy.get_param("controller/motor_max")
-    d_f_offset      = rospy.get_param("controller/d_f_offset")*pi/180
-    d_f_min         = rospy.get_param("controller/d_f_min")
-    d_f_max         = rospy.get_param("controller/d_f_max")
-    v_LQR_min       = rospy.get_param("controller/v_LQR_min")
-
-	  # set node rate
+	# set node rate
     loop_rate 	= 50
     dt 		    = 1.0 / loop_rate
     rate 		= rospy.Rate(loop_rate)
-
-    ## Open file to save data
-    date 				= time.strftime("%Y.%m.%d")
-    BASE_PATH   		= "/home/odroid/Data/" + date + "/"
-	  # create directory if it doesn't exist
-    if not os.path.exists(BASE_PATH):
-        os.makedirs(BASE_PATH)
-    data_file_name   	= BASE_PATH + signal_ID + '-' + time.strftime("%H.%M.%S") + '.csv'
-    data_file     		= open(data_file_name, 'a')
-    data_file.write('t,roll,pitch,yaw,w_x,w_y,w_z,a_x,a_y,a_z,n_FL,n_FR,motor_pwm,servo_pwm,d_f,vhat_x,vhat_y,what_z,v_x_enc,err_pid,u_pid, v_LQR, ignoreEncoder,motor_offset, motor_min, motor_max, d_f_ofset,d_f_min,d_f_max,v_LQR_min\n')
     t0 				= time.time()
 
     # estimation variables for Luemberger observer
-    # z_EKF = [v_x, v_y, w_z]
     z_EKF       = array([1.0, 0.0, 0.0])
 
     # estimation variables for EKF
@@ -219,15 +199,6 @@ def state_estimation():
         # publish information
         state_pub.publish( Vector3(v_x, v_y, r) )
         angle_pub.publish( Vector3(yaw, w_z, 0) )
-
-		# save data (maybe should use rosbag in the future)
-        t  	= time.time() - t0
-        all_data = [t,roll,pitch,yaw,w_x,w_y,w_z,a_x,a_y,a_z,n_FL,n_FR,motor_pwm,servo_pwm,d_f,v_x,v_y,r,v_x_enc,err_pid,u_pid, v_LQR, ignoreEncoder,motor_offset, motor_min, motor_max, d_f_offset, d_f_min, d_f_max,v_LQR_min]
-
-        # save to CSV
-        N = len(all_data)
-        str_fmt = '%.4f,'*N
-        data_file.write( (str_fmt[0:-1]+'\n') % tuple(all_data))
 
         # update filtered signal
         if not ignoreEncoder:

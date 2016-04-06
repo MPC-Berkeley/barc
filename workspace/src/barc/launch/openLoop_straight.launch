@@ -54,29 +54,26 @@
 	</node>
 	
 	<!-- OPEN LOOP MANUEVERS -->
-	<!-- Test Selection
-	1 : Straight
-	-->
 	<node pkg="barc" type="controller_straight.py" name="controller" >
-    <!--  SELECTION -->
+         <!--  SELECTION -->
 		<param name="user" value="jgon13" />
 		<param name="experiment_sel" type="int" value="4" />
 
-    <!-- PROPERTIES -->
-    <param name="v_x_pwm" type="int" value="98" />
+         <!-- PROPERTIES -->
+        <param name="v_x_pwm" type="int" value="96" />
 		<param name="steering_angle" type="int" value="5" />
-		<param name="t_exp" type="int" value="8" />
+		<param name="t_exp" type="int" value="4" />
+        <param name="t_0" type="int" value="2" />
 		
-    <!-- PID for straight test using encoder readings -->
-    <!--
-    <param name="p" type="double" value="-3.5" />
-		<param name="i" type="double" value="-1" />
-		<param name="d" type="double" value="0" />
-		-->
-		
-    <!-- PID for straight test using imu gyro -->
-    <param name="p" type="double" value="50" />
+        <!-- PID for straight test using imu gyro -->
+        <param name="p" type="double" value="50" />
 		<param name="i" type="double" value="5" />
 		<param name="d" type="double" value="0" />
-	</node>
+        
+   </node>
+
+    <!-- Record the experiment data -->
+    <node pkg="rosbag" type="record" name="rosbag_record"
+        args=" --all" />
+
 </launch>

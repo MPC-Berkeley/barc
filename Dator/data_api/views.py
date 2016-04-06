@@ -65,6 +65,7 @@ def signal_data(request, signal_id):
     """
     try:
         signal = Signal.objects.get(id=signal_id)
+        print signal
     except Signal.DoesNotExist as e:
         return HttpResponse({'status': 'failed - Signal requested does not exist'}, status=404)
 
@@ -85,6 +86,7 @@ def signal_data(request, signal_id):
                 raw_data = StringIO.StringIO()
 
                 data = signal.get_data()
+                print data
                 writer = csv.writer(raw_data)
                 for dat in data:
                     writer.writerow(dat)

@@ -21,87 +21,55 @@ import time
 import serial
 from numpy import genfromtxt, zeros, hstack, cos, array, dot, arctan
 from input_map import angle_2_servo, servo_2_angle
-from manuevers import TestSettings, CircularTest, Straight
-from manuevers import SineSweep, DoubleLaneChange, CoastDown, SingleTurn 
-from pid import PID
+from manuevers import TestSettings, CircularTest, Straight, SineSweep, DoubleLaneChange, CoastDown
 
+#############################################################
+# get estimate of x_hat = [v_x , v_y, w_z]
+x_hat = zeros(3)
+def updateState_callback(data):
+	global x_hat
 
-# pid control for constrant yaw angle 
-# -> d(yaw)/dt = 0 means no turning => straight path
-yaw0    = 0                 # counts in the front left tire
-yaw     = 0
-read_yaw0 = False
-w_z 	  = 0                 # counts in the front right tire
-err     = 0
-def angle_callback(data):
-    global yaw, yaw0, w_z, err, read_yaw0
-
-    # save initial measurements
-    if not read_yaw0:
-        yaw0 = data.x
-        read_yaw0 = True
-
-    # compute deviation from original yaw angle
-    yaw = data.x
-    err = yaw - yaw0
-
+	# update fields
+	x_hat[0] = data.x 		# v_x  longitudinal velocity 
+	x_hat[1] = data.y 		# v_y  lateral velocity
+	x_hat[2] = data.z		# w_z  angular velocity about z-axis
 
 #############################################################
 def main_auto():
     # initialize ROS node
     rospy.init_node('auto_mode', anonymous=True)
+    rospy.Subscriber('state_estimate', Vector3, updateState_callback)
     nh = rospy.Publisher('ecu_cmd', Vector3, queue_size = 10)
-    nh_pid = rospy.Publisher('pid_info', Vector3, queue_size = 10)
-    rospy.Subscriber('angle_info', Vector3, angle_callback)
 
 	# set node rate
     rateHz  = 50
-    dt      = 1.0 / rateHz
     rate 	= rospy.Rate(rateHz)
     t_i     = 0
-
-	# get node parameters
-    experiment_sel 	= rospy.get_param("controller/experiment_sel")
-    v_x_pwm 	= rospy.get_param("controller/v_x_pwm")
-    t_exp 		= rospy.get_param("controller/t_exp")
-    t_turn      = rospy.get_param("controller/t_turn")
 
     # specify test and test options
     experiment_opt    = { 0 : CircularTest,
                           1 : Straight,
 		    		      2 : SineSweep,   
                           3 : DoubleLaneChange,
-					      4 : CoastDown ,
-					      5 : SingleTurn}
-    test_mode   = experiment_opt.get(experiment_sel)
+					      4 : CoastDown }
+    experiment_sel 	= rospy.get_param("controller/experiment_sel")
+    v_x_pwm 	= rospy.get_param("controller/v_x_pwm")
+    t_0         = rospy.get_param("controller/t_0")
+    t_exp 		= rospy.get_param("controller/t_exp")
     str_ang 	= rospy.get_param("controller/steering_angle")
-    test_opt 	= TestSettings(SPD = v_x_pwm, turn = str_ang, dt=t_exp)
-    test_opt.t_turn = t_turn
+    test_mode   = experiment_opt.get(experiment_sel)
+    opt 	    = TestSettings(SPD = v_x_pwm, turn = str_ang, dt=t_exp)
+    opt.t_0    = t_0
 	
-    # use simple pid control to keep steering straight
-    p 		= rospy.get_param("controller/p")
-    i 		= rospy.get_param("controller/i")
-    d 		= rospy.get_param("controller/d")
-    pid     = PID(P=p, I=i, D=d)
-
 
     # main loop
     while not rospy.is_shutdown():
-        # get steering wheel command
-        global err
-        u         = pid.update(err, dt)
-
         # get command signal
-        (motorCMD, servoCMD) = test_mode(test_opt, rateHz, t_i)
+        (motorCMD, servoCMD) = test_mode(opt, rateHz, t_i)
 			
-
-        if t_i < (rateHz*(5+test_opt.t_turn)):
-            servoCMD  = angle_2_servo(u)
-        
         # send command signal 
         ecu_cmd = Vector3(motorCMD, servoCMD, 0)
         nh.publish(ecu_cmd)
-        nh_pid.publish( Vector3(err, u, 0) )
 	
         # wait
         t_i += 1
