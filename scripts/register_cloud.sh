@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/bin/bash
 
 
 export DATOR_SERVER='http://dator.forge9.com';

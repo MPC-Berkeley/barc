@@ -1,4 +1,4 @@
-#!/usr/bin/bash
+#!/bin/bash
 
 source ~/team_name.sh ; 
 sudo service cron stop; 
