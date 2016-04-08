@@ -3,12 +3,12 @@
 import os, sys
 import time
 
-os.chdir('/home/mpc/barc/workspace/src/data_service/scripts')
+os.chdir('/home/odroid/barc/workspace/src/data_service/scripts')
 
 from data_connection import *
 from base import *
 
-proj_path = '/home/mpc/barc/Dator'
+proj_path = '/home/odroid/barc/Dator'
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'dator.settings')
 sys.path.append(proj_path)
@@ -19,7 +19,7 @@ application = get_wsgi_application()
 
 from data_api.models import *
 
-CLOUD_CONFIG_LOCATION = '/home/mpc/cloud.cfg'
+CLOUD_CONFIG_LOCATION = '/home/odroid/cloud.cfg'
 
 if __name__ == '__main__':
     configurator = init_configurator(CLOUD_CONFIG_LOCATION)
