@@ -92,13 +92,14 @@ class MyGUI(Plugin):
 
         if self.record_started:
             self.record_started = False
+            self.stop_record_data()
             self._widget.label_experiment.setText('Experiment name')
             self._widget.pushbutton_record.setText('Start Recording')
-            self.stop_record_data()
         else:
             self.record_started = True
             self._widget.pushbutton_record.setText('Stop Recording')
             self._widget.label_experiment.setText('Recording...')
+            self.time = time.time()
             self.start_record_data()
 
 
@@ -119,6 +120,7 @@ class MyGUI(Plugin):
         self.p = subprocess.Popen(command, stdin=subprocess.PIPE, shell=True, cwd=rosbag_dir)
 
 
+    # TODO: Do this in the background thread!!!
     def stop_record_data(self):
         if not self.p:
             return
@@ -167,6 +169,7 @@ class MyGUI(Plugin):
 
         for topic, msg, t in bag.read_messages():
             ts = t.nsecs * convert_to_time
+            ts += (t.secs - self.time)
 
             if topic not in chunk_dict:
                 chunk_dict[topic] = 1
