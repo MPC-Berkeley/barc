@@ -39,7 +39,7 @@ def main_auto():
     # initialize ROS node
     rospy.init_node('auto_mode', anonymous=True)
     rospy.Subscriber('state_estimate', Vector3, updateState_callback)
-    nh = rospy.Publisher('ecu_cmd', Vector3, queue_size = 10)
+    nh = rospy.Publisher('ecu', Vector3, queue_size = 10)
 
 	# set node rate
     rateHz  = 50

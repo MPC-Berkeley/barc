@@ -24,7 +24,7 @@ from imu_interface import IMU_initialization, send_command, parse_IMU_data
 def imu_data_acq():
     # launch node, publish to two topics
 	rospy.init_node('imu_data_acq', anonymous=True)
-	imu_data_pub 	= rospy.Publisher('imu_data', TimeData, queue_size = 10)
+	imu_data_pub 	= rospy.Publisher('imu', TimeData, queue_size = 10)
 	
 	# set node rate
 	smp_rate        = 50

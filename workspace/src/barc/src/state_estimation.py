@@ -117,10 +117,9 @@ def state_estimation():
     rospy.init_node('state_estimation', anonymous=True)
 
     # topic subscriptions / publications
-    rospy.Subscriber('imu_data', TimeData, imu_callback)
-    rospy.Subscriber('enc_data', Vector3, enc_callback)
-    rospy.Subscriber('ecu_cmd', Vector3, ecu_callback)
-    rospy.Subscriber('debug', numpy_msg(Floats), debug_callback)
+    rospy.Subscriber('imu', TimeData, imu_callback)
+    rospy.Subscriber('encoder', Vector3, enc_callback)
+    rospy.Subscriber('ecu', Vector3, ecu_callback)
 
 
     state_pub 	= rospy.Publisher('state_estimate', Vector3, queue_size = 10)

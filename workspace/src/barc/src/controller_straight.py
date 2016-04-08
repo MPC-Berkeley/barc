@@ -48,7 +48,7 @@ def angle_callback(data):
 def main_auto():
     # initialize ROS node
     rospy.init_node('auto_mode', anonymous=True)
-    nh = rospy.Publisher('ecu_cmd', Vector3, queue_size = 10)
+    nh = rospy.Publisher('ecu', Vector3, queue_size = 10)
     rospy.Subscriber('angle_info', Vector3, angle_callback)
 
 	# set node rate
