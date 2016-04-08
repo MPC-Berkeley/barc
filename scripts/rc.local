@@ -15,6 +15,6 @@ exec 2> /tmp/rc.local.log  # send stderr from rc.local to a log file
 exec 1>&2                      # send stdout to the same log file
 set -x                         # tell sh to display commands before execution
 
-/usr/local/bin/supervisord -c /home/odroid/barc/Dator/supervisor.conf
+su - odroid -c "/usr/local/bin/supervisord -c /home/odroid/barc/Dator/supervisor.conf"
 
 exit 0
