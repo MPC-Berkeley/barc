@@ -13,9 +13,9 @@
  
 // include libraries
 #include <ros.h>
-#include <std_msgs/Float32.h>
-#include <std_msgs/Float32MultiArray.h>
-#include <geometry_msgs/Vector3.h>
+#include <barc/Ultrasound.h>
+#include <barc/Encoder.h>
+#include <barc/ECU.h>
 #include <Servo.h>
 #include "Maxbotix.h"
 
@@ -54,38 +54,32 @@ int motor_min = 40;
 volatile unsigned long dt;
 volatile unsigned long t0;
 
-// pin to poll rear wheel encoder 
-int pin_BR = 5;   // back right
-boolean val, new_val;
-int B_count = 0;
-
-
 ros::NodeHandle nh;
 
 // define global message variables
 // Encoder, Electronic Control Unit, Ultrasound
-geometry_msgs::Vector3 enc_msg;
-geometry_msgs::Vector3 esc_cmd_msg;
-std_msgs::Float32MultiArray ultrasound;
+barc::Ultrasound ultrasound;
+barc::ECU ecu;
+barc::Encoder encoder;
 
-ros::Publisher pub_encoder("encoder", &enc_msg);
+ros::Publisher pub_encoder("encoder", &encoder);
 ros::Publisher pub_ultrasound("ultrasound", &ultrasound);
 
 
 /**************************************************************************
 ESC COMMAND {MOTOR, SERVO} CALLBACK
 **************************************************************************/
-void messageCb(const geometry_msgs::Vector3& esc_cmd_msg){
+void messageCb(const barc::ECU& ecu){
   // deconstruct esc message
-  motorCMD = saturateMotor( int(esc_cmd_msg.x) );
-  servoCMD = saturateServo( int(esc_cmd_msg.y) );
+  motorCMD = saturateMotor( int(ecu.motor_pwm) );
+  servoCMD = saturateServo( int(ecu.servo_pwm) );
   
   // apply commands to motor and servo
   motor.write( motorCMD );   
   steering.write(  servoCMD );
 }
 // ECU := Engine Control Unit
-ros::Subscriber<geometry_msgs::Vector3> s("ecu", messageCb);
+ros::Subscriber<barc::ECU> s("ecu", messageCb);
 
 // Set up ultrasound sensors
 Maxbotix us_fr(14, Maxbotix::PW, Maxbotix::LV); // front
@@ -116,20 +110,11 @@ void setup()
   
   // Start ROS node
   nh.initNode();
-  nh.subscribe(s);
   
-  // initialize ultrasound sensor datatype
-  ultrasound.layout.dim = (std_msgs::MultiArrayDimension *) malloc(sizeof(std_msgs::MultiArrayDimension) * 2);
-  ultrasound.layout.dim[0].label = "cm";
-  ultrasound.layout.dim[0].size = 4;
-  ultrasound.layout.dim[0].stride = 4;
-  ultrasound.layout.data_offset = 0;
-  ultrasound.data = (float *) malloc(sizeof(float)*4);
-  ultrasound.data_length = 4;
-  
-  // Public data to topics
+  // Publish / Subscribe to topics
   nh.advertise(pub_ultrasound);
   nh.advertise(pub_encoder);
+  nh.subscribe(s);
 }
 
 
@@ -144,24 +129,20 @@ void loop()
   // publish measurements
   if (dt > 50) {
     // publish encodeer measurement
-    enc_msg.x = FL_count;
-    enc_msg.y = FR_count;
-    enc_msg.z = 0;
-    pub_encoder.publish(&enc_msg);
+    
+    encoder.FL = FL_count;
+    encoder.FR = FR_count;
+    encoder.BL = 0;
+    encoder.BR = 0;
+    pub_encoder.publish(&encoder);
     
     // publish ultra-sound measurement
-    ultrasound.data[0] = us_fr.getRange();
-    ultrasound.data[1] = us_bk.getRange();
-    ultrasound.data[2] = us_lt.getRange();
-    ultrasound.data[3] = us_rt.getRange();
+    ultrasound.front = us_fr.getRange();
+    ultrasound.back = us_bk.getRange();
+    ultrasound.left = us_lt.getRange();
+    ultrasound.right = us_rt.getRange();
     pub_ultrasound.publish(&ultrasound);
     t0 = millis();
-  }
-  
-  new_val = digitalRead(pin_BR);   // read the input pin
-  if (val != new_val){
-    B_count++;
-    val = new_val;
   }
   
   nh.spinOnce();
@@ -179,11 +160,9 @@ SATURATE MOTOR AND SERVO COMMANDS
 **************************************************************************/
 int saturateMotor(int x) 
 {
-  if (x  == noAction ){
-    return motor_neutral;
-  }
+  if (x  == noAction ){ return motor_neutral; }
   
-  if (x  >  motor_max) {
+  if (x  >  motor_max) { 
     x = motor_max; 
   } 
   else if (x < motor_min) {
