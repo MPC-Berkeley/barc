@@ -11,6 +11,14 @@
 # Kiet Lam (kiet.lam@berkeley.edu)   
 # --------------------------------------------------------------------------- */
  
+ 
+/* ---------------------------------------------------------------------------
+WARNING: 
+* Be sure to have all ultrasound sensors plugged in, otherwise the pins may get stuck in 
+  some float voltage
+# --------------------------------------------------------------------------- */
+
+ 
 // include libraries
 #include <ros.h>
 #include <barc/Ultrasound.h>
@@ -82,10 +90,12 @@ void messageCb(const barc::ECU& ecu){
 ros::Subscriber<barc::ECU> s("ecu", messageCb);
 
 // Set up ultrasound sensors
+/*
 Maxbotix us_fr(14, Maxbotix::PW, Maxbotix::LV); // front
 Maxbotix us_bk(15, Maxbotix::PW, Maxbotix::LV); // back
 Maxbotix us_lt(16, Maxbotix::PW, Maxbotix::LV); // left
 Maxbotix us_rt(17, Maxbotix::PW, Maxbotix::LV); // right
+*/
 
 /**************************************************************************
 ARDUINO INITIALIZATION
@@ -138,11 +148,13 @@ void loop()
     pub_encoder.publish(&encoder);
     
     // publish ultra-sound measurement
+    /*
     ultrasound.front = us_fr.getRange();
     ultrasound.back = us_bk.getRange();
     ultrasound.left = us_lt.getRange();
     ultrasound.right = us_rt.getRange();
     pub_ultrasound.publish(&ultrasound);
+    */
     t0 = millis();
   }
   
