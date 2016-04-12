@@ -22,8 +22,21 @@ import time
 from data_service.srv import *
 from data_service.msg import *
 
+from threading import *
+
 
 rosbag_dir = '.'
+
+
+class UploadThread(Thread):
+
+    def __init__(self, plugin_ob):
+        Thread.__init__(self)
+        self.plugin_ob = plugin_ob
+
+
+    def run(self):
+        self.plugin_ob.record_data_thread()
 
 
 class MyGUI(Plugin):
@@ -72,9 +85,8 @@ class MyGUI(Plugin):
         self.p = None
 
 
-
     def setup_topics_list(self):
-        topics = ['imu_data', 'enc_data', 'ecu_cmd']
+        topics = ['imu', 'encoder', 'ecu', 'ultrasound']
 
         for t in topics:
             item = QListWidgetItem(t)
@@ -93,8 +105,8 @@ class MyGUI(Plugin):
         if self.record_started:
             self.record_started = False
             self.stop_record_data()
-            self._widget.label_experiment.setText('Experiment name')
-            self._widget.pushbutton_record.setText('Start Recording')
+            # self._widget.label_experiment.setText('Experiment name')
+            # self._widget.pushbutton_record.setText('Start Recording')
         else:
             self.record_started = True
             self._widget.pushbutton_record.setText('Stop Recording')
@@ -120,10 +132,15 @@ class MyGUI(Plugin):
         self.p = subprocess.Popen(command, stdin=subprocess.PIPE, shell=True, cwd=rosbag_dir)
 
 
-    # TODO: Do this in the background thread!!!
     def stop_record_data(self):
         if not self.p:
             return
+
+        uploader = UploadThread(self)
+        uploader.start()
+
+
+    def record_data_thread(self):
 
         rospy.wait_for_service('send_data')
         self.send_data = rospy.ServiceProxy('send_data', DataForward, persistent=True)
@@ -139,9 +156,10 @@ class MyGUI(Plugin):
         self._widget.label_experiment.setText('Uploading data...')
         self.upload_data()
         self._widget.label_experiment.setText('Experiment name')
-
+        self._widget.pushbutton_record.setText('Start Recording')
 
     def upload_data(self):
+        print 'Uploading data!!!!'
         rosbag_file = os.path.abspath(rosbag_dir + '/' + self._widget.experiment_name.text() + '.bag')
 
         date = time.strftime("%Y.%m.%d")
@@ -166,8 +184,8 @@ class MyGUI(Plugin):
         chunk_msg = dict()
         chunk_ts = dict()
 
-
         for topic, msg, t in bag.read_messages():
+            print msg
             ts = t.nsecs * convert_to_time
             ts += (t.secs - self.time)
 
@@ -198,8 +216,12 @@ class MyGUI(Plugin):
 
 
     def upload_message(self, topic, msgs, tss, experiment):
-        vars_list = ['roll', 'pitch', 'yaw', 'a_x', 'a_y', 'a_z', 'w_x', 'w_y', 'w_z', 'n_FL', 'n_FR',
-                     'motor_pwm', 'servo_pwm']
+        vars_list = ['roll', 'pitch', 'yaw',
+                      'roll_rate', 'pitch_rate', 'yaw_rate',
+                     'acc_x', 'acc_y', 'acc_z', 
+                     'encoder_FL', 'encoder_FR','encoder_BL','encoder_BR',
+                     'motor_pwm', 'servo_pwm',
+                     'ultrasound_front','ultrasound_back','ultrasound_left','ultrasound_right']
 
         signal_dict = dict()
 
@@ -207,20 +229,29 @@ class MyGUI(Plugin):
             signal_dict[v] = []
 
         for msg in msgs:
-            if topic == 'imu_data':
-                (roll, pitch, yaw, a_x, a_y, a_z, w_x, w_y, w_z) = msg.value
+            # Inertia measurement unit
+            if topic == 'imu':
+                (roll, pitch, yaw, acc_x, acc_y, acc_z, roll_rate, pitch_rate, yaw_rate) = msg.value
 
-            # TODO: Encoder data is raw
-            if topic == 'enc_data':
-                n_FL = msg.x
-                n_FR = msg.y
+            # Encoder
+            if topic == 'encoder':
+                encoder_FL = msg.FL
+                encoder_FR = msg.FR
+                encoder_BL = msg.BL
+                encoder_BR = msg.BR
 
-            if topic == 'ecu_cmd':
-                motor_pwm = msg.x
-                servo_pwm = msg.y
-                d_f = msg.z
+            if topic == 'ultrasound':
+                ultrasound_front = msg.front
+                ultrasound_back = msg.back
+                ultrasound_left = msg.left
+                ultrasound_right = msg.right
 
-            # Python introspection
+            # Electronic control unit
+            if topic == 'ecu':
+                motor_pwm = msg.motor_pwm
+                servo_pwm = msg.servo_pwm
+
+            # Python introspection from list 'vars_list'
             for v in vars_list:
                 if v in dict(globals(), **locals()):
                     signal_dict[v].append(dict(globals(), **locals())[v])

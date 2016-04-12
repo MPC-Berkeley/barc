@@ -16,6 +16,7 @@
 import rospy
 from geometry_msgs.msg import Vector3, Twist
 from data_service.msg import TimeData
+from barc.msg import ECU
 from math import pi,sin
 import time
 import serial
@@ -24,22 +25,10 @@ from input_map import angle_2_servo, servo_2_angle
 from manuevers import TestSettings, CircularTest, Straight, SineSweep, DoubleLaneChange, CoastDown
 
 #############################################################
-# get estimate of x_hat = [v_x , v_y, w_z]
-x_hat = zeros(3)
-def updateState_callback(data):
-	global x_hat
-
-	# update fields
-	x_hat[0] = data.x 		# v_x  longitudinal velocity 
-	x_hat[1] = data.y 		# v_y  lateral velocity
-	x_hat[2] = data.z		# w_z  angular velocity about z-axis
-
-#############################################################
 def main_auto():
     # initialize ROS node
     rospy.init_node('auto_mode', anonymous=True)
-    rospy.Subscriber('state_estimate', Vector3, updateState_callback)
-    nh = rospy.Publisher('ecu', Vector3, queue_size = 10)
+    nh = rospy.Publisher('ecu', ECU, queue_size = 10)
 
 	# set node rate
     rateHz  = 50
@@ -68,7 +57,7 @@ def main_auto():
         (motorCMD, servoCMD) = test_mode(opt, rateHz, t_i)
 			
         # send command signal 
-        ecu_cmd = Vector3(motorCMD, servoCMD, 0)
+        ecu_cmd = ECU(motorCMD, servoCMD)
         nh.publish(ecu_cmd)
 	
         # wait
