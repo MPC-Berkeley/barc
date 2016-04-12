@@ -102,19 +102,20 @@ void setup()
   motor.attach(motorPin);
   steering.attach(servoPin);
   
-  // Arming ESC, 1 sec delay for arming
-  motor.write(theta_center);
-  steering.write(theta_center);
-  delay(1000);
-  t0 = millis();
-  
-  // Start ROS node
+    // Start ROS node
   nh.initNode();
   
   // Publish / Subscribe to topics
   nh.advertise(pub_ultrasound);
   nh.advertise(pub_encoder);
   nh.subscribe(s);
+  
+  // Arming ESC, 1 sec delay for arming and ROS
+  motor.write(theta_center);
+  steering.write(theta_center);
+  delay(1000);
+  t0 = millis();
+ 
 }
 
 
