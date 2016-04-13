@@ -11,7 +11,7 @@
 	</node>
 
 	<!-- OPEN LOOP MANUEVERS -->
-	<node pkg="barc" type="controller_straight.py" name="controller" >
+	<node pkg="barc" type="controller_straight.py" name="controller" output="screen">
          <!--  SELECTION -->
 		<param name="user" value="jgon13" />
 		<param name="experiment_sel" type="int" value="4" />
@@ -19,11 +19,11 @@
          <!-- PROPERTIES -->
         <param name="v_x_pwm" type="int" value="96" />
 		<param name="steering_angle" type="int" value="5" />
-		<param name="t_exp" type="int" value="4" />
+		<param name="t_exp" type="int" value="6" />
         <param name="t_0" type="int" value="2" />
 		
         <!-- PID for straight test using imu gyro -->
-        <param name="p" type="double" value="50" />
+        <param name="p" type="double" value="40" />
 		<param name="i" type="double" value="5" />
 		<param name="d" type="double" value="0" />
         

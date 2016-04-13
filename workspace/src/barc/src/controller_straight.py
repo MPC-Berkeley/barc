@@ -14,42 +14,47 @@
 # ---------------------------------------------------------------------------
 
 import rospy
-from geometry_msgs.msg import Vector3, Twist
+from barc.msg import ECU
 from data_service.msg import TimeData
 from math import pi,sin
 import time
 import serial
-from numpy import genfromtxt, zeros, hstack, cos, array, dot, arctan
+from numpy import zeros, hstack, cos, array, dot, arctan, sign
+from numpy import unwrap
 from input_map import angle_2_servo, servo_2_angle
 from manuevers import TestSettings, CircularTest, Straight, SineSweep, DoubleLaneChange, CoastDown
 from pid import PID
 
-
 # pid control for constrant yaw angle 
-# -> d(yaw)/dt = 0 means no turning => straight path
-yaw0    = 0                 # counts in the front left tire
-yaw     = 0
-read_yaw0 = False
-w_z 	  = 0                 # counts in the front right tire
-err     = 0
-def angle_callback(data):
-    global yaw, yaw0, w_z, err, read_yaw0
+yaw0        = 0      
+read_yaw0   = False
+yaw_prev    = 0      
+yaw         = 0
+err         = 0
+def callback(data):
+    global yaw0, read_yaw0, yaw_prev, yaw, err
+
+    # extract yaw angle
+    (_,_,yaw, _,_,_, _,_,_) = data.value
 
     # save initial measurements
     if not read_yaw0:
-        yaw0 = data.x
         read_yaw0 = True
+        yaw0    = yaw
+    else:
+        temp        = unwrap(array([yaw_prev, yaw]))
+        yaw         = temp[1]
+        yaw_prev    = yaw
 
-    # compute deviation from original yaw angle
-    yaw = data.x
     err = yaw - yaw0
+    rospy.loginfo("yaw0 := %f, yaw_t = %f, err := %f" % (yaw0,yaw,err) )
 
 #############################################################
 def main_auto():
     # initialize ROS node
     rospy.init_node('auto_mode', anonymous=True)
-    nh = rospy.Publisher('ecu', Vector3, queue_size = 10)
-    rospy.Subscriber('angle_info', Vector3, angle_callback)
+    nh = rospy.Publisher('ecu', ECU, queue_size = 10)
+    rospy.Subscriber('imu', TimeData, callback)
 
 	# set node rate
     rateHz  = 50
@@ -89,7 +94,7 @@ def main_auto():
         (motorCMD, _) = test_mode(opt, rateHz, t_i)
 			
         # send command signal
-        ecu_cmd = Vector3(motorCMD, servoCMD, 0)
+        ecu_cmd = ECU(motorCMD, servoCMD)
         nh.publish(ecu_cmd)
 	
         # wait

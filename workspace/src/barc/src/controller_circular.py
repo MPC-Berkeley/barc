@@ -14,13 +14,12 @@
 # ---------------------------------------------------------------------------
 
 import rospy
-from geometry_msgs.msg import Vector3, Twist
 from data_service.msg import TimeData
 from barc.msg import ECU
 from math import pi,sin
 import time
 import serial
-from numpy import genfromtxt, zeros, hstack, cos, array, dot, arctan
+from numpy import zeros, hstack, cos, array, dot, arctan
 from input_map import angle_2_servo, servo_2_angle
 from manuevers import TestSettings, CircularTest, Straight, SineSweep, DoubleLaneChange, CoastDown
 
