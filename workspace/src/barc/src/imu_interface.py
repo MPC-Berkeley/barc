@@ -8,9 +8,9 @@
 #
 # Attibution Information: The barc project ROS code-base was developed
 # at UC Berkeley in the Model Predictive Control (MPC) lab by Jon Gonzales
-# (jon.gonzales@berkeley.edu)  Development of the web-server app Dator was 
-# based on an open source project by Bruce Wootton, with contributions from 
-# Kiet Lam (kiet.lam@berkeley.edu)   
+# (jon.gonzales@berkeley.edu). The cloud services integation with ROS was developed
+# by Kiet Lam  (kiet.lam@berkeley.edu). The web-server app Dator was 
+# based on an open source project by Bruce Wootton
 # ---------------------------------------------------------------------------
 
 import traceback
