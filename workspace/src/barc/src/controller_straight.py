@@ -47,7 +47,6 @@ def callback(data):
         yaw_prev    = yaw
 
     err = yaw - yaw0
-    rospy.loginfo("yaw0 := %f, yaw_t = %f, err := %f" % (yaw0,yaw,err) )
 
 #############################################################
 def main_auto():
@@ -86,7 +85,6 @@ def main_auto():
     # main loop
     while not rospy.is_shutdown():
         # get steering wheel command
-        global err
         u         = pid.update(err, dt)
         servoCMD  = angle_2_servo(u)
         
