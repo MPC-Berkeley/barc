@@ -36,3 +36,22 @@
 	</ul>
 	</li>
 </ul>
+
+### Getting started
+#### Rebuild ROS and reflash arduino
+After git cloning or pulling, rebuild the ROS workspace by opening a terminal and executing the following
+
+```source ~/barc/scripts/rebuild_system.sh ```
+
+Next, open arduino IDE and flash the the arduino nano with latest code inside 
+
+`~/barc/arduino/arduino_node/`
+
+#### Register with the cloud
+In your home directory, edit a filnamed `team_name.sh` to define a username, then in four separate terminals, execute the following
+```
+source ~/barc/scripts/reset_database.sh 
+roscore
+rosrun data_service service.py
+source ~/barc/scripts/register_cloud.sh
+```
