@@ -200,7 +200,6 @@ class MyGUI(Plugin):
         chunk_ts = dict()
 
         for topic, msg, t in bag.read_messages():
-            print msg
             ts = t.nsecs * convert_to_time
             ts += (t.secs - self.time)
 

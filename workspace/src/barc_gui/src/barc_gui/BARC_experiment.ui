@@ -20,13 +20,13 @@
    <enum>Qt::ClickFocus</enum>
   </property>
   <property name="windowTitle">
-   <string/>
+   <string> BARC Experiment </string>
   </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <item>
     <widget class="QLabel" name="label">
      <property name="text">
-      <string>Topics</string>
+      <string>Topics (check box for topic you want to record)</string>
      </property>
     </widget>
    </item>
