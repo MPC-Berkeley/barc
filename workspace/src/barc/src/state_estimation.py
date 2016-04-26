@@ -17,8 +17,9 @@ import rospy
 import time
 import os
 import json
-from numpy import pi, cos, sin, eye, array
+from barc.msg import ECU, Encoder
 from geometry_msgs.msg import Vector3
+from numpy import pi, cos, sin, eye, array
 from input_map import angle_2_servo, servo_2_angle
 from observers import kinematicLuembergerObserver, ekf
 from system_models import f_3s, h_3s
@@ -53,28 +54,14 @@ n_FL	    = 0                 # counts in the front left tire
 n_FR 	    = 0                 # counts in the front right tire
 n_FL_prev 	= 0
 n_FR_prev 	= 0
-r_tire 		= 0.0319            # radius from tire center to perimeter along magnets
-dx_magnets 	= 2.0*pi*r_tire/4.0     # distance between magnets
-
-err_pid = 0
-u_pid   = 0
-v_LQR   = 0
-ignoreEncoder = 0
-
-# ecu command update
-def debug_callback(data):
-    global err_pid, u_pid, v_LQR, ignoreEncoder
-    err_pid     = data.data[0]
-    u_pid       = data.data[1]
-    v_LQR       = data.data[2]
-    ignoreEncoder   = data.data[3]
+r_tire 		= 0.0319            # radius from tire center to perimeter along magnets [m]
+dx_magnets 	= 2.0*pi*r_tire/4.0     # along quarter tire edge
 
 # ecu command update
 def ecu_callback(data):
-	global servo_pwm, motor_pwm, d_f
-	motor_pwm	    = data.x
-	servo_pwm       = data.y
-	d_f 		    = data.z
+	global motor_PWM, servo_PWM
+	motor_pwm	    = data.motor_pwm
+	servo_pwm       = data.servo_pwm
 
 # imu measurement update
 def imu_callback(data):
@@ -86,8 +73,8 @@ def enc_callback(data):
 	global v_x_enc, d_f, t0
 	global n_FL, n_FR, n_FL_prev, n_FR_prev
 
-	n_FL = data.x
-	n_FR = data.y
+	n_FL = data.FL
+	n_FR = data.FR
 
 	# compute time elapsed
 	tf = time.time()
@@ -117,29 +104,11 @@ def state_estimation():
 
     # topic subscriptions / publications
     rospy.Subscriber('imu', TimeData, imu_callback)
-    rospy.Subscriber('encoder', Vector3, enc_callback)
-    rospy.Subscriber('ecu', Vector3, ecu_callback)
-
-
+    rospy.Subscriber('encoder', Encoder, enc_callback)
+    rospy.Subscriber('ecu', ECU, ecu_callback)
     state_pub 	= rospy.Publisher('state_estimate', Vector3, queue_size = 10)
-    angle_pub 	= rospy.Publisher('angle_info', Vector3, queue_size = 10)
 
-	  # get system parameters
-    username = rospy.get_param("controller/user")
-    experiment_sel 	= rospy.get_param("controller/experiment_sel")
-    experiment_opt 	= {0 : "Circular",
-				       1 : "Straight",
-				       2 : "SineSweep",
-				       3 : "DoubleLaneChange",
-				       4 : "CoastDown",
-				       5 : "SingleTurn",
-				       6 : "SingleHardTurn"}
-
-    experiment_type = experiment_opt.get(experiment_sel)
-    signal_ID = username + "-" + experiment_type
-    experiment_name = signal_ID
-    
-	  # get vehicle dimension parameters
+	# get vehicle dimension parameters
     # note, the imu is installed at the front axel
     L_a = rospy.get_param("state_estimation/L_a")       # distance from CoG to front axel
     L_b = rospy.get_param("state_estimation/L_b")       # distance from CoG to rear axel
@@ -160,10 +129,9 @@ def state_estimation():
     a0  = rospy.get_param("state_estimation/air_drag_coeff")
     Ff  = rospy.get_param("state_estimation/Ff")
 
-    # get Luemberger and EKF observer properties
-    aph = rospy.get_param("state_estimation/aph")             # parameter to tune estimation error dynamics
-    q_std   = rospy.get_param("state_estimation/q")             # std of process noise
-    r_std   = rospy.get_param("state_estimation/r")             # std of measurementnoise
+    # get EKF observer properties
+    q_std   = rospy.get_param("state_estimation/q_std")             # std of process noise
+    r_std   = rospy.get_param("state_estimation/r_std")             # std of measurementnoise
     v_x_min     = rospy.get_param("state_estimation/v_x_min")  # minimum velociy before using EKF
 
 	# set node rate
@@ -185,26 +153,16 @@ def state_estimation():
     v_x_filt    = filteredSignal(a = p_filter, method='lp')   # low pass filter
 
     while not rospy.is_shutdown():
-	    # signals from inertial measurement unit, encoder, and control module
-        global roll, pitch, yaw, w_x, w_y, w_z, a_x, a_y, a_z
-        global n_FL, n_FR, v_x_enc
-        global motor_pwm, servo_pwm, d_f
-        global err_pid, u_pid, v_LQR, ignoreEncoder
 
 		# publish state estimate
         (v_x, v_y, r) = z_EKF           # note, r = EKF estimate yaw rate
 
         # publish information
         state_pub.publish( Vector3(v_x, v_y, r) )
-        angle_pub.publish( Vector3(yaw, w_z, 0) )
 
         # update filtered signal
-        if not ignoreEncoder:
-            v_x_filt.update(v_x_enc)
-        else:
-            v_x_filt.update(v_LQR_min)
+        v_x_filt.update(v_x_enc)
         v_x_est = v_x_filt.getFilteredSignal() 
-
 
         # apply EKF
         if v_x_est > v_x_min:
@@ -231,9 +189,6 @@ def state_estimation():
             z_EKF[0] = float(v_x_enc)
             z_EKF[2] = float(w_z)
         
-        # staturate the estimate
-        z_EKF[1] = min(100, max(-100, z_EKF[1]))
-
 		# wait
         rate.sleep()
 

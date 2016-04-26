@@ -107,7 +107,7 @@ def main_auto():
         # convert desired steering angle [deg] into a PWM signal
         err             = enc_FL - enc_FR 
         steering_angle  = pid.update(err, dt)     # [deg]
-        servo_PWM       = angle_2_servo(steering_PWM)
+        servo_PWM       = angle_2_servo(steering_angle)
 
         # set desired longitudinal input force
         # NOTE: the last expression depends on your vehicle model, this is just an example 
