@@ -1,0 +1,4 @@
+<launch>
+    <node pkg="barc" type="controller_MPC.jl" name="MPC" output="screen">
+    </node>
+</launch>
