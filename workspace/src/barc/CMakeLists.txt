@@ -50,6 +50,7 @@ add_message_files(
    Ultrasound.msg
    Encoder.msg
    ECU.msg
+   Z_KinBkMdl.msg
 )
 
 ## Generate services in the 'srv' folder

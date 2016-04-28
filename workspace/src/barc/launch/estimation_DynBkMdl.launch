@@ -16,7 +16,7 @@
 	</node>
 
     <!-- Launch state observer -->
-    <node pkg="barc" type="state_estimation.py" name="state_estimation">
+    <node pkg="barc" type="state_estimation_DynBkMdl.py" name="state_estimation">
         <!-- vehicle properties -->
         <param name="L_a" type="double" value="0.125" />
         <param name="L_b" type="double" value="0.125" />

@@ -85,20 +85,19 @@ def ekf(f, mx_k, P_k, h, y_kp1, Q, R, args):
                
     Notation: mx_k = E[x_k] and my_k = E[y_k], where m stands for "mean of"
     """
+
+
+    xDim    = mx_k.size                         # dimension of the state
     mx_kp1  = f(mx_k, *args)                    # predict next state
-    rospy.loginfo('Before numerical jacobian')
     A       = numerical_jac(f, mx_k, *args)     # linearize process model about current state
-    rospy.loginfo('After numerical jacobian')
     P_kp1   = dot(dot(A,P_k),A.T) + Q           # proprogate variance
-    
     my_kp1  = h(mx_kp1)                         # predict future output
     H       = numerical_jac(h, mx_kp1)          # linearize measurement model about predicted next state
-    
     P12     = dot(P_kp1, H.T)                   # cross covariance
     K       = dot(P12, inv( dot(H,P12) + R))    # Kalman filter gain
     mx_kp1  = mx_kp1 + dot(K,(y_kp1 - my_kp1))  # state estimate
-    P_kp1   = P_kp1 - dot(K, P12.T)             # state covariance matrix update
-    
+    P_kp1   = dot(dot(K,R),K.T) + dot( dot( (eye(xDim) - dot(K,H)) , P_kp1)  ,  (eye(xDim) - dot(K,H)).T ) 
+
     return (mx_kp1, P_kp1)
 
 

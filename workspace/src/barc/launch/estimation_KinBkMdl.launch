@@ -1,0 +1,33 @@
+<launch>
+
+    <!--- 
+    ADD A CONTROLLER 
+    -->
+
+	<!-- IMU NODE -->
+	<node pkg="barc" type="imu_data_acquisition.py" name="imu_node" >
+		<param name="port" value="/dev/ttyACM0" />
+	</node>
+
+	<!-- ARDUINO NODE -->
+    <!--  * encoders and ultrasound sensors -->
+	<node pkg="rosserial_python" type="serial_node.py" name="arduino_node" >
+		<param name="port" value="/dev/ttyUSB0" />
+	</node>
+
+    <!-- Launch state observer -->
+    <node pkg="barc" type="state_estimation_KinBkMdl.py" name="state_estimation" output="screen">
+        <!-- vehicle properties -->
+        <param name="L_a" type="double" value="0.125" />
+        <param name="L_b" type="double" value="0.125" />
+        
+        <!-- v_x estimation sample time-->
+		<param name="dt_vx" type="double" value="0.2" />
+
+        <!-- ekf properties -->
+		<param name="q_std" type="double" value="0.1" />
+		<param name="r_std" type="double" value="0.1" />
+    </node>
+
+
+</launch>

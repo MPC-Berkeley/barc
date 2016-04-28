@@ -14,7 +14,7 @@
 =# 
 
 using RobotOS
-@rosimport barc.msg: ECU, Encoder, Ultrasound
+@rosimport barc.msg: ECU, Encoder, Ultrasound, Z_KinBkMdl
 @rosimport data_service.msg: TimeData
 @rosimport geometry_msgs.msg: Vector3
 rostypegen()
@@ -52,6 +52,9 @@ mdl     = Model(solver = IpoptSolver(print_level=3))
 @setNLObjective(mdl, Min, (x[N+1] - x_ref)^2 + (y[N+1] - y_ref)^2 )
 
 # define constraints
+# define system dynamics
+# Reference: R.Rajamani, Vehicle Dynamics and Control, set. Mechanical Engineering Series,
+#               Spring, 2011, page 26
 @defNLParam(mdl, x0     == 0); @addNLConstraint(mdl, x[1]     == x0);
 @defNLParam(mdl, y0     == 0); @addNLConstraint(mdl, y[1]     == y0);
 @defNLParam(mdl, psi0   == 0); @addNLConstraint(mdl, psi[1]   == psi0 );
@@ -69,19 +72,19 @@ println("initial solve ...")
 solve(mdl)
 println("finished initial solve!")
 
-function SE_callback(msg::Vector3)
+function SE_callback(msg::Z_KinBkMdl)
     # update mpc initial condition 
-    setvalue(x0, 0)
-    setvalue(y0, 0)
-    setvalue(psi0, 0)
-    setvalue(v0, 0)
+    setvalue(x0,    msg.x)
+    setvalue(y0,    msg.y)
+    setvalue(psi0,  msg.psi)
+    setvalue(v0,    msg.v)
 end
 
 function main()
     # initiate node, set up publisher / subscriber topics
     init_node("mpc")
     pub = Publisher("ecu", ECU, queue_size=10)
-    s1  = Subscriber("state_estimate", Vector3, SE_callback, queue_size=10)
+    s1  = Subscriber("state_estimate", Z_KinBkMdl, SE_callback, queue_size=10)
     loop_rate = Rate(10)
 
     while ! is_shutdown()

@@ -16,55 +16,45 @@
 import rospy
 import time
 import os
-import json
 from barc.msg import ECU, Encoder
+from data_service.msg import TimeData
 from geometry_msgs.msg import Vector3
-from numpy import pi, cos, sin, eye, array
+from numpy import pi, cos, sin, eye, array, zeros
 from input_map import angle_2_servo, servo_2_angle
 from observers import kinematicLuembergerObserver, ekf
 from system_models import f_3s, h_3s
-from data_service.srv import *
-from data_service.msg import *
 from filtering import filteredSignal
 from rospy_tutorials.msg import Floats
 from rospy.numpy_msg import numpy_msg
-import numpy as np
 
 # input variables
 d_f 	    = 0
-servo_pwm   = 0
-motor_pwm   = 0
+servo_pwm   = 90
+motor_pwm   = 90
 
 # raw measurement variables
-# from IMU
-roll    = 0
-pitch   = 0
-yaw 	= 0
-w_x 	= 0
-w_y 	= 0
-w_z 	= 0
-a_x 	= 0
-a_y 	= 0
-a_z 	= 0
+(roll, pitch, yaw, a_x, a_y, a_z, w_x, w_y, w_z) = zeros(9)
 
 # from encoder
 v_x_enc 	= 0
 t0 	        = time.time()
-n_FL	    = 0                 # counts in the front left tire
-n_FR 	    = 0                 # counts in the front right tire
+n_FL	    = 0                     # counts in the front left tire
+n_FR 	    = 0                     # counts in the front right tire
 n_FL_prev 	= 0
 n_FR_prev 	= 0
-r_tire 		= 0.0319            # radius from tire center to perimeter along magnets [m]
-dx_magnets 	= 2.0*pi*r_tire/4.0     # along quarter tire edge
+r_tire 		= 0.04                  # radius from tire center to perimeter along magnets [m]
+dx_qrt 	    = 2.0*pi*r_tire/4.0     # distance along quarter tire edge
 
 # ecu command update
 def ecu_callback(data):
-	global motor_PWM, servo_PWM
-	motor_pwm	    = data.motor_pwm
-	servo_pwm       = data.servo_pwm
+    global motor_pwm, servo_pwm, d_f
+    motor_pwm	    = data.motor_pwm
+    servo_pwm       = data.servo_pwm
+    d_f             = servo_2_angle(servo_pwm)
 
 # imu measurement update
 def imu_callback(data):
+    # units: [rad] and [rad/s]
 	global roll, pitch, yaw, a_x, a_y, a_z, w_x, w_y, w_z
 	(roll, pitch, yaw, a_x, a_y, a_z, w_x, w_y, w_z) = data.value
 
@@ -84,8 +74,8 @@ def enc_callback(data):
 	dt_min = 0.20
 	if dt >= dt_min:
 		# compute speed :  speed = distance / time
-		v_FL = float(n_FL- n_FL_prev)*dx_magnets/dt
-		v_FR = float(n_FR- n_FR_prev)*dx_magnets/dt
+		v_FL = float(n_FL- n_FL_prev)*dx_qrt/dt
+		v_FR = float(n_FR- n_FR_prev)*dx_qrt/dt
 
 		# update encoder v_x, v_y measurements
 		# only valid for small slip angles, still valid for drift?
@@ -109,7 +99,6 @@ def state_estimation():
     state_pub 	= rospy.Publisher('state_estimate', Vector3, queue_size = 10)
 
 	# get vehicle dimension parameters
-    # note, the imu is installed at the front axel
     L_a = rospy.get_param("state_estimation/L_a")       # distance from CoG to front axel
     L_b = rospy.get_param("state_estimation/L_b")       # distance from CoG to rear axel
     m   = rospy.get_param("state_estimation/m")         # mass of vehicle
