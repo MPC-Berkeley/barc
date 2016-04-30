@@ -93,8 +93,8 @@ ros::Subscriber<barc::ECU> s("ecu", messageCb);
 /*
 Maxbotix us_fr(14, Maxbotix::PW, Maxbotix::LV); // front
 Maxbotix us_bk(15, Maxbotix::PW, Maxbotix::LV); // back
-Maxbotix us_lt(16, Maxbotix::PW, Maxbotix::LV); // left
-Maxbotix us_rt(17, Maxbotix::PW, Maxbotix::LV); // right
+Maxbotix us_rt(16, Maxbotix::PW, Maxbotix::LV); // right
+Maxbotix us_lt(17, Maxbotix::PW, Maxbotix::LV); // left
 */
 
 /**************************************************************************
@@ -151,10 +151,10 @@ void loop()
     /*
     ultrasound.front = us_fr.getRange();
     ultrasound.back = us_bk.getRange();
-    ultrasound.left = us_lt.getRange();
     ultrasound.right = us_rt.getRange();
-    pub_ultrasound.publish(&ultrasound);
+    ultrasound.left = us_lt.getRange();
     */
+    pub_ultrasound.publish(&ultrasound);
     t0 = millis();
   }
   

@@ -34,11 +34,11 @@ Image from
     <td>D15 = A1</td> 
   </tr>
   <tr>
-    <td>Left Ultrasound</td>
+    <td>Right Ultrasound</td>
     <td>D16 = A2</td> 
   </tr>
     <tr>
-    <td>Right Ultrasound</td>
+    <td>Left Ultrasound</td>
     <td>D17 = A3</td> 
   </tr>
 </table>
