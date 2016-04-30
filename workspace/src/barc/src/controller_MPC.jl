@@ -25,14 +25,14 @@ using JuMP
 using Ipopt
 
 # define model parameters
-L_a     = 0.125
-L_b     = 0.125
-dt      = 0.1
+L_a     = 0.125         # distance from CoG to front axel
+L_b     = 0.125         # distance from CoG to rear axel
+dt      = 0.1           # time step of system
 
 # preview horizon
 N       = 5
 
-# define targets
+# define targets [generic values]
 x_ref   = 10
 y_ref   = 0
 
