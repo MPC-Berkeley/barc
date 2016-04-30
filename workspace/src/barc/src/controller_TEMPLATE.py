@@ -46,8 +46,8 @@ def ultrasound_callback(data):
     global us_F, us_B, us_R, us_L
     us_F = data.front
     us_B = data.back
-    us_R = data.left
-    us_L = data.right
+    us_R = data.right
+    us_L = data.left
 
 #############################################################
 # main code

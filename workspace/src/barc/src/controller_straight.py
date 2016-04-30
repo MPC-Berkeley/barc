@@ -31,7 +31,7 @@ read_yaw0   = False
 yaw_prev    = 0      
 yaw         = 0
 err         = 0
-def callback(data):
+def imu_callback(data):
     global yaw0, read_yaw0, yaw_prev, yaw, err
 
     # extract yaw angle
@@ -53,7 +53,7 @@ def main_auto():
     # initialize ROS node
     rospy.init_node('auto_mode', anonymous=True)
     nh = rospy.Publisher('ecu', ECU, queue_size = 10)
-    rospy.Subscriber('imu', TimeData, callback)
+    rospy.Subscriber('imu', TimeData, imu_callback)
 
 	# set node rate
     rateHz  = 50

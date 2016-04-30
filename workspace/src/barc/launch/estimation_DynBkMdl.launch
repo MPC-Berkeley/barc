@@ -4,16 +4,16 @@
     ADD A CONTROLLER 
     -->
 
-	<!-- IMU NODE -->
-	<node pkg="barc" type="imu_data_acquisition.py" name="imu_node" >
-		<param name="port" value="/dev/ttyACM0" />
-	</node>
+    <!-- IMU NODE -->
+    <node pkg="barc" type="imu_data_acquisition.py" name="imu_node" >
+        <param name="port" value="/dev/ttyACM0" />
+    </node>
 
-	<!-- ARDUINO NODE -->
+    <!-- ARDUINO NODE -->
     <!--  * encoders and ultrasound sensors -->
-	<node pkg="rosserial_python" type="serial_node.py" name="arduino_node" >
-		<param name="port" value="/dev/ttyUSB0" />
-	</node>
+    <node pkg="rosserial_python" type="serial_node.py" name="arduino_node" >
+        <param name="port" value="/dev/ttyUSB0" />
+    </node>
 
     <!-- Launch state observer -->
     <node pkg="barc" type="state_estimation_DynBkMdl.py" name="state_estimation">
@@ -22,27 +22,27 @@
         <param name="L_b" type="double" value="0.125" />
         <param name="m" type="double" value="1.98" />
         <param name="I_z" type="double" value="0.24" />
+     
 
-        
         <!-- v_x estimation sample time-->
-		<param name="dt_vx" type="double" value="0.2" />
+        <param name="dt_vx" type="double" value="0.2" />
 
         <!-- tire model -->
-		<param name="B" type="double" value="7.40" />
-		<param name="C" type="double" value="1.25" />
-		<param name="mu" type="double" value="0.234" />
+        <param name="B" type="double" value="7.40" />
+        <param name="C" type="double" value="1.25" />
+        <param name="mu" type="double" value="0.234" />
 
         <!-- external force properties (air drag, friction) -->
-		<param name="air_drag_coeff" type="double" value="0.1308" />
-		<param name="Ff" type="double" value="0.1711" />
+        <param name="air_drag_coeff" type="double" value="0.1308" />
+        <param name="Ff" type="double" value="0.1711" />
 
         <!-- low pass filter parameter -->
-		<param name="p_filter" type="double" value="0.2" />
+        <param name="p_filter" type="double" value="0.2" />
         
         <!-- ekf properties -->
-		<param name="q_std" type="double" value="0.1" />
-		<param name="r_std" type="double" value="0.1" />
-		<param name="v_x_min" type="double" value="0.3" />
+        <param name="q_std" type="double" value="0.1" />
+        <param name="r_std" type="double" value="0.1" />
+        <param name="v_x_min" type="double" value="0.3" />
     </node>
 
 

@@ -74,10 +74,10 @@ println("finished initial solve!")
 
 function SE_callback(msg::Z_KinBkMdl)
     # update mpc initial condition 
-    setvalue(x0,    msg.x)
-    setvalue(y0,    msg.y)
-    setvalue(psi0,  msg.psi)
-    setvalue(v0,    msg.v)
+    setValue(x0,    msg.x)
+    setValue(y0,    msg.y)
+    setValue(psi0,  msg.psi)
+    setValue(v0,    msg.v)
 end
 
 function main()
