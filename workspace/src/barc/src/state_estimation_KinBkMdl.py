@@ -49,11 +49,16 @@ dx_qrt 	    = 2.0*pi*r_tire/4.0     # distance along quarter tire edge [m]
 
 # ecu command update
 def ecu_callback(data):
-    global motor_pwm, servo_pwm, d_f
+    global motor_pwm, servo_pwm, d_f, a
     motor_pwm	    = data.motor_pwm
     servo_pwm       = data.servo_pwm
     d_f             = servo_2_angle(servo_pwm) * pi/180         # [rad]
-    a               = motor_pwm - 90                            # TODO: need to build correct mapping
+
+    # apply acceleration input
+    if a > 95:
+        a           = 0.3*(motor_pwm - 95)                          # TODO: need to build correct mapping
+    else:
+        a           = 0
 
 # imu measurement update
 def imu_callback(data):
@@ -145,7 +150,6 @@ def state_estimation():
 
         # apply EKF and get each state estimate
         (z_EKF,P) = ekf(f_KinBkMdl, z_EKF, P, h_KinBkMdl, y, Q, R, args )
-        rospy.loginfo("%f, %f, %f, %f" % (P[0,0],P[1,1],P[2,2],P[3,3]))
 
 		# wait
         rate.sleep()
