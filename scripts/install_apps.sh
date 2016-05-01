@@ -6,7 +6,7 @@ if ! hash ano 2>/dev/null; then
     cd Arturo
 
     # install tool
-    sudo make install; cd; rm -rf Arturo
+    sudo make install; cd; sudo rm -rf Arturo
 
     # create arduino upload-folder
     cd ~/barc/arduino/
