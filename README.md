@@ -39,13 +39,14 @@
 
 ### Getting started
 #### Rebuild ROS and reflash arduino
-After git cloning or pulling, rebuild the ROS workspace by opening a terminal and executing the following
+After git cloning or pulling, rebuild the ROS workspace by opening a terminal and executing the following (alias) command
+Make sure your arduino is plugged in
 
-```source ~/barc/scripts/rebuild_system.sh ```
+```rebuild_system ```
 
-Next, open arduino IDE and flash the the arduino nano with latest code inside 
+You can reflash your arudino from the command line using the following 
 
-`~/barc/arduino/arduino_node/`
+`nanorst`
 
 #### Register with the cloud
 In your home directory, edit a filnamed `team_name.sh` to define a username, then in four separate terminals, execute the following

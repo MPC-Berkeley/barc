@@ -19,4 +19,4 @@ cd ~/barc/arduino/.arduino_nano328_node
 ano clean
 ano build -m nano328
 ano upload -m nano328 -p /dev/ttyUSB0
-cd roscd barc;
+roscd barc;

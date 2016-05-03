@@ -11,6 +11,7 @@ workon barc
 
 source /home/odroid/team_name.sh
 
-alias nanorst='cd ~/barc/arduino/.arduino_nano328_node; ano clean; ano build -m nano328; ano upload -m nano328 -p /dev/ttyUSB0; cd roscd barc'
+alias nanorst='cd ~/barc/arduino/.arduino_nano328_node; ano clean; ano build -m nano328; ano upload -m nano328 -p /dev/ttyUSB0; roscd barc'
+alias rebuild_system='source ~/barc/scripts/rebuild_system.sh'
 
 export ROS_HOME=$HOME/barc/workspace/src/barc/rosbag/
