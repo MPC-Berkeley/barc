@@ -89,7 +89,7 @@ def enc_callback(data):
 		# compute speed :  speed = distance / time
 		v_FL = float(n_FL- n_FL_prev)*dx_qrt/dt
 		v_FR = float(n_FR- n_FR_prev)*dx_qrt/dt
-		v_avg 	= (v_FL + v_FR)/2.0
+		v 	 = (v_FL + v_FR)/2.0
 
 		# update old data
 		n_FL_prev   = n_FL
