@@ -107,7 +107,7 @@ void setup()
   pinMode(encPinA, INPUT_PULLUP);
   pinMode(encPinB, INPUT_PULLUP);
   attachInterrupt(0, FL_inc, CHANGE); // args = (digitalPintoInterrupt, ISR, mode), mode set = {LOW, CHANGE, RISING, FALLING}, pin 0 = INT0, which is pin D2
-  attachInterrupt(1, BR_inc, CHANGE); //pin 1 = INT1, which is pin D3
+  attachInterrupt(1, FR_inc, CHANGE); //pin 1 = INT1, which is pin D3
 
   // Set up actuators
   motor.attach(motorPin);
@@ -140,7 +140,7 @@ void loop()
 
   // publish measurements
   if (dt > 50) {
-    // publish encodeer measurement
+    // publish encoder measurement
 
     encoder.FL = FL_count;
     encoder.FR = FR_count;
@@ -168,7 +168,6 @@ ENCODER COUNTERS
 // increment the counters
 void FL_inc() { FL_count++; }
 void FR_inc() { FR_count++; }
-void BR_inc() { BR_count++; }
 
 /**************************************************************************
 SATURATE MOTOR AND SERVO COMMANDS
