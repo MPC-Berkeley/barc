@@ -1,17 +1,17 @@
 #!/usr/bin/env julia
 
 #=
- Licensing Information: You are free to use or extend these projects for 
+ Licensing Information: You are free to use or extend these projects for
  education or reserach purposes provided that (1) you retain this notice
- and (2) you provide clear attribution to UC Berkeley, including a link 
+ and (2) you provide clear attribution to UC Berkeley, including a link
  to http://barc-project.com
 
  Attibution Information: The barc project ROS code-base was developed
  at UC Berkeley in the Model Predictive Control (MPC) lab by Jon Gonzales
  (jon.gonzales@berkeley.edu). The cloud services integation with ROS was developed
- by Kiet Lam  (kiet.lam@berkeley.edu). The web-server app Dator was 
+ by Kiet Lam  (kiet.lam@berkeley.edu). The web-server app Dator was
  based on an open source project by Bruce Wootton
-=# 
+=#
 
 using RobotOS
 @rosimport barc.msg: ECU, Encoder, Ultrasound, Z_KinBkMdl
@@ -36,9 +36,9 @@ N       = 5
 x_ref   = 10
 y_ref   = 0
 
-# define decision variables 
+# define decision variables
 # states: position (x,y), yaw angle, and velocity
-# inputs: acceleration, steering angle 
+# inputs: acceleration, steering angle
 println("Creating kinematic bicycle model ....")
 mdl     = Model(solver = IpoptSolver(print_level=3))
 @defVar( mdl, x[1:(N+1)] )
@@ -73,7 +73,7 @@ solve(mdl)
 println("finished initial solve!")
 
 function SE_callback(msg::Z_KinBkMdl)
-    # update mpc initial condition 
+    # update mpc initial condition
     setValue(x0,    msg.x)
     setValue(y0,    msg.y)
     setValue(psi0,  msg.psi)
