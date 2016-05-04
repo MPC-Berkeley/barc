@@ -47,7 +47,6 @@ const int servoPin = 11;
 int motorCMD;
 int servoCMD;
 const int noAction = 0;
-bool forward_mode = true;
 
 // Actuator constraints (servo)
 // Not sure if constraints should be active on motor as well
@@ -84,8 +83,8 @@ void messageCb(const barc::ECU& ecu){
   servoCMD = saturateServo( int(ecu.servo_pwm) );
 
   // apply commands to motor and servo
-  mapAndWriteMotor(motorCMD);
-  steering.write( servoCMD );
+  motor.write( motorCMD );
+  steering.write(  servoCMD );
 }
 // ECU := Engine Control Unit
 ros::Subscriber<barc::ECU> s("ecu", messageCb);
@@ -140,7 +139,7 @@ void loop()
 
   // publish measurements
   if (dt > 50) {
-    // publish encoder measurement
+    // publish encodeer measurement
 
     encoder.FL = FL_count;
     encoder.FR = FR_count;
@@ -199,44 +198,4 @@ int saturateServo(int x)
     x = theta_min;
   }
   return x;
-}
-
-void mapAndWriteMotor(int cmd) {
-  // Adjust for the dead spot in the ECU
-  cmd = motorMap(cmd);
-
-  // The car's ECU acts as a four-state state machine for easy drivability with
-  // the remote control. Applying the throttle (motorCMD > 90) passes the given
-  // pwm to the motor. Applying reverse throttle (motorCMD < 90) only stops the
-  // wheels unless the following sequence is performed: send motorCMD < 67
-  // (applying full brakes), send motorCMD in [88, 94] (return to the neutral
-  // region), then send motorCMD < 88 to reverse. The forward_mode boolean
-  // tracks a simplified version of the state and applies the necessary 66, 90
-  // sequence when needed to switch from foward to reverse mode.
-  if((cmd > 90) && !forward_mode) {
-    forward_mode = true;
-  } else if ((cmd < 90) && forward_mode) {
-    forward_mode = false;
-    motor.write(66);
-    // 125ms seems to be the minimal delay to allow the ESC to register these
-    // signal changes and enter reverse mode
-    // Consider the 0.25s cost of switching between forward and reverse when
-    // designing controllers
-    delay(125);
-    motor.write(90);
-    delay(125);
-  }
-
-  motor.write(cmd);
-}
-
-// Bypass [88, 94] dead region in ECU and leave only 90 as neutral
-int motorMap(int cmd) {
-  if((cmd > 90) && (cmd < 95)) {
-    return 95;
-  } else if ((cmd > 87) && (cmd < 90)) {
-    return 87;
-  } else {
-    return cmd;
-  }
 }
