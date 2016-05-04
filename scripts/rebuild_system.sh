@@ -14,8 +14,9 @@ cd
 if ! hash ano 2>/dev/null; then
     cd ~/barc/scripts/
     source install_apps.sh
-fi    
+fi
 cd ~/barc/arduino/.arduino_nano328_node
+cp ~/barc/arduino/arduino_nano328_node/arduino_nano328_node.ino src/
 ano clean
 ano build -m nano328
 ano upload -m nano328 -p /dev/ttyUSB0
