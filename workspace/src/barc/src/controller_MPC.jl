@@ -23,17 +23,31 @@ using data_service.msg
 using geometry_msgs.msg
 using JuMP
 using Ipopt
+using DataFrames
+
+# Open and prepare throttle map
+throttle_map = readtable("/home/odroid/throttlemap1.csv", header=false)
+pwm_range = convert(Array{Int32}, throttle_map[1])
+accel_range = convert(Array{Float32}, throttle_map[2])
 
 # define model parameters
 L_a     = 0.125         # distance from CoG to front axel
 L_b     = 0.125         # distance from CoG to rear axel
 dt      = 0.1           # time step of system
 
+# define model constraints
+a_max   = 1.5
+a_min   = -1.3
+v_max = 5
+v_min = -1*v_max
+d_f_max = 30
+d_f_min = -1*d_f_max
+
 # preview horizon
 N       = 5
 
 # define targets [generic values]
-x_ref   = 10
+x_ref   = 5
 y_ref   = 0
 
 # define decision variables
@@ -44,9 +58,11 @@ mdl     = Model(solver = IpoptSolver(print_level=3))
 @defVar( mdl, x[1:(N+1)] )
 @defVar( mdl, y[1:(N+1)] )
 @defVar( mdl, psi[1:(N+1)] )
-@defVar( mdl, v[1:(N+1)] )
-@defVar( mdl, a[1:N] )
-@defVar( mdl, d_f[1:N] )
+@defVar( mdl, v_min <= v[1:(N+1)] <= v_max)
+@defVar( mdl, a_min <= a[1:N] <= a_max)
+@defVar( mdl, d_f_min <= d_f[1:N] <= d_f_max)
+
+# TODO use actuator rate limiting constraints if needed
 
 # define objective function
 @setNLObjective(mdl, Min, (x[N+1] - x_ref)^2 + (y[N+1] - y_ref)^2 )
@@ -80,6 +96,37 @@ function SE_callback(msg::Z_KinBkMdl)
     setValue(v0,    msg.v)
 end
 
+# Degrees to servo pwm command
+function angle_2_servo(x)
+    u = 92.0558 + 1.8194*x  - 0.0104*x^2
+    return u
+end
+
+# Accel m/s^2 to esc pwm command
+function accel_2_pwm(a, v)
+    pwm = nearest_pwm(a)
+    if a > 0 # may want to give this a little epsilon around zero?
+        pwm = max(95, pwm)
+    else # a < 0
+        pwm = min(87, pwm)
+    end
+    return pwm
+end
+
+# Find best ESC PWM for desired acceleration
+function nearest_pwm(a_des)
+    best_idx = 0
+    min_err = 10
+    for i=[1:length(accel_range)]
+        err = abs(accel_range[i] - a_des)
+        if err < min_err
+            best_idx = i
+            min_err = err
+        end
+    end
+    return pwm_range[best_idx]
+end
+
 function main()
     # initiate node, set up publisher / subscriber topics
     init_node("mpc")
@@ -94,11 +141,14 @@ function main()
         # get optimal solutions
         a_opt   = getValue(a[1])
         d_f_opt = getValue(d_f[1])
-        # TO DO: transform to PWM signals
-        cmd = ECU(a_opt, d_f_opt)
 
         # publish commands
+        esc_cmd = accel_2_pwm(a_opt)
+        # TODO verify that these conversions produce sensible output
+        servo_cmd = angle_2_servo(d_f_opt*pi/180)
+        cmd = ECU(esc_cmd, servo_cmd)
         publish(pub, cmd)
+
         rossleep(loop_rate)
     end
 end
