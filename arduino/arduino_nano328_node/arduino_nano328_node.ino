@@ -24,6 +24,7 @@ WARNING:
 #include <barc/Ultrasound.h>
 #include <barc/Encoder.h>
 #include <barc/ECU.h>
+#include <barc/Z_KinBkMdl.h>
 #include <Servo.h>
 #include "Maxbotix.h"
 
@@ -32,6 +33,8 @@ WARNING:
 // F = front, B = back, L = left, R = right
 volatile int FL_count = 0;
 volatile int FR_count = 0;
+volatile int BL_count = 0;
+volatile int BR_count = 0;
 
 //encoder pins: pins 2,3 are hardware interrupts
 const int encPinA = 2;
@@ -47,17 +50,28 @@ const int servoPin = 11;
 int motorCMD;
 int servoCMD;
 const int noAction = 0;
+
+// Global variables for ESC mode management
+const float REVERSE_ESC_THRESHOLD = 0.1;
 bool forward_mode = true;
+float v_est = 0.0;
 
 // Actuator constraints (servo)
 // Not sure if constraints should be active on motor as well
-int d_theta_max = 50;
+// TODO seems to me that the permissible steering range is really about [58,
+// 120] judging from the sound of the servo pushing beyond a mechanical limit
+// outside that range. The offset may be 2 or 3 deg and the d_theta_max is then
+// ~31.
+int d_theta_max = 30;
 int theta_center = 90;
 int motor_neutral = 90;
 int theta_max = theta_center + d_theta_max;
 int theta_min = theta_center - d_theta_max;
-int motor_max = 120;
-int motor_min = 40;
+/* int motor_max = 120; */
+/* int motor_min = 40; */
+// Enforcing smaller values for testing safety
+int motor_max = 101;
+int motor_min = 75;
 
 // variable for time
 volatile unsigned long dt;
@@ -90,6 +104,16 @@ void messageCb(const barc::ECU& ecu){
 // ECU := Engine Control Unit
 ros::Subscriber<barc::ECU> s("ecu", messageCb);
 
+/**************************************************************************
+STATE ESTIMATE {x, y, psi, v} CALLBACK
+**************************************************************************/
+void stateEstimateCallback(const barc::Z_KinBkMdl& state_est){
+  // TODO WARNING This will only work with KinBkMdl state estimate, should revert
+  // to master arduino code if you are using DynBkMdl
+  v_est = state_est.v;
+}
+ros::Subscriber<barc::Z_KinBkMdl> state_est_sub("state_estimate", stateEstimateCallback);
+
 // Set up ultrasound sensors
 /*
 Maxbotix us_fr(14, Maxbotix::PW, Maxbotix::LV); // front
@@ -120,9 +144,10 @@ void setup()
   nh.advertise(pub_ultrasound);
   nh.advertise(pub_encoder);
   nh.subscribe(s);
+  nh.subscribe(state_est_sub);
 
   // Arming ESC, 1 sec delay for arming and ROS
-  motor.write(theta_center);
+  motor.write(motor_neutral);
   steering.write(theta_center);
   delay(1000);
   t0 = millis();
@@ -144,8 +169,8 @@ void loop()
 
     encoder.FL = FL_count;
     encoder.FR = FR_count;
-    encoder.BL = 0;
-    encoder.BR = 0;
+    encoder.BL = BL_count;
+    encoder.BR = BR_count;
     pub_encoder.publish(&encoder);
 
     // publish ultra-sound measurement
@@ -168,6 +193,7 @@ ENCODER COUNTERS
 // increment the counters
 void FL_inc() { FL_count++; }
 void FR_inc() { FR_count++; }
+void BL_inc() { BL_count++; }
 void BR_inc() { BR_count++; }
 
 /**************************************************************************
@@ -202,6 +228,9 @@ int saturateServo(int x)
   return x;
 }
 
+/**************************************************************************
+ADJUST MOTOR COMMANDS ACCORDING TO BRAKE/REVERSE INTENT
+**************************************************************************/
 void mapAndWriteMotor(int cmd) {
   // Adjust for the dead spot in the ECU
   cmd = motorMap(cmd);
@@ -210,13 +239,14 @@ void mapAndWriteMotor(int cmd) {
   // the remote control. Applying the throttle (motorCMD > 90) passes the given
   // pwm to the motor. Applying reverse throttle (motorCMD < 90) only stops the
   // wheels unless the following sequence is performed: send motorCMD < 67
-  // (applying full brakes), send motorCMD in [88, 94] (return to the neutral
-  // region), then send motorCMD < 88 to reverse. The forward_mode boolean
-  // tracks a simplified version of the state and applies the necessary 66, 90
-  // sequence when needed to switch from foward to reverse mode.
+  // (applying full brakes), send motorCMD in [88, 94] while motor is stopped
+  // (return to the neutral region), then send motorCMD < 88 to reverse. The
+  // forward_mode boolean tracks a simplified version of the state and applies
+  // the necessary 66, 90 sequence when needed to switch from foward to reverse
+  // mode.
   if((cmd > 90) && !forward_mode) {
     forward_mode = true;
-  } else if ((cmd < 90) && forward_mode) {
+  } else if ((cmd < 90) && forward_mode && (v_est < REVERSE_ESC_THRESHOLD)) {
     forward_mode = false;
     motor.write(66);
     // 125ms seems to be the minimal delay to allow the ESC to register these
