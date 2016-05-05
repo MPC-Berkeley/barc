@@ -210,7 +210,7 @@ def f_KinBkMdl(z,u,vhMdl, dt):
     # extract parameters
     (L_a, L_b)             = vhMdl
 
-    # compute slip angle
+    # compute steering angle at center of mass
     bta         = arctan( L_a / (L_a + L_b) * tan(d_f) )
 
     # compute next state

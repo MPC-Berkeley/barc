@@ -55,10 +55,19 @@ def ecu_callback(data):
     d_f             = servo_2_angle(servo_pwm) * pi/180         # [rad]
 
     # apply acceleration input
-    if a > 95:
-        a           = 0.3*(motor_pwm - 95)                          # TODO: need to build correct mapping
+    # TODO fix this for negative
+    if motor_pwm > 95:
+        # TODO: build a correct mapping
+        # TODO: refactor ECU messages to (accel, angle) rather than (motor_pwm,
+        # servo_pwm) so that this conversion back and forth can happen in a
+        # centralized place (probably arduino code but an argument could be made
+        # for doing this on a barc/inputs message which a python node listens
+        # to, converts, and publishes barc/ECU
+        a = 0.23*(motor_pwm - 94)                          # TODO: need to build correct mapping
+    elif motor_pwm < 87:
+        a = -0.1*(motor_pwm - 88)
     else:
-        a           = 0
+        a = 0
 
 # imu measurement update
 def imu_callback(data):
