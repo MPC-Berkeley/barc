@@ -65,7 +65,7 @@ def ecu_callback(data):
         # to, converts, and publishes barc/ECU
         a = 0.23*(motor_pwm - 94)                          # TODO: need to build correct mapping
     elif motor_pwm < 87:
-        a = -0.1*(motor_pwm - 88)
+        a = -0.1*(88 - motor_pwm)
     else:
         a = 0
 
