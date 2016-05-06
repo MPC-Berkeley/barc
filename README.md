@@ -36,3 +36,9 @@ roscore
 rosrun data_service service.py
 source ~/barc/scripts/register_cloud.sh
 ```
+
+### Running NoMachine
+
+To change the resolution:
+
+```xrandr --fb <width>x<height>```
