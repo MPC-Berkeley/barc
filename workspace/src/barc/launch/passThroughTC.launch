@@ -10,7 +10,7 @@
   </node>
 
   <!-- OPEN LOOP MANUEVERS -->
-  <node pkg="barc" type="controller_rc.py" name="controller" output="screen">
+  <node pkg="barc" type="controller_rc_tc.py" name="controller" output="screen">
     <!--  SELECTION -->
     <param name="user" value="grmarcil" />
   </node>
