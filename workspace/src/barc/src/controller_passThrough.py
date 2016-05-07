@@ -14,64 +14,40 @@
 # ---------------------------------------------------------------------------
 
 import rospy
-from geometry_msgs.msg import Vector3, Twist
 from data_service.msg import TimeData
+from barc.msg import ECU
 from math import pi,sin
 import time
 import serial
 from numpy import genfromtxt, zeros, hstack, cos, array, dot, arctan
 from input_map import angle_2_servo, servo_2_angle
-from manuevers import TestSettings, CircularTest, Straight, SineSweep, DoubleLaneChange, CoastDown
 
-#############################################################
-# get estimate of x_hat = [v_x , v_y, w_z]
-# x_hat = zeros(3)
-# def updateState_callback(data):
-#   global x_hat
+def rc_inputs_callback(data):
+    global throttle, steering
+    throttle = data.motor_pwm
+    steering = data.servo_pwm
 
-#   # update fields
-#   x_hat[0] = data.x       # v_x  longitudinal velocity
-#   x_hat[1] = data.y       # v_y  lateral velocity
-#   x_hat[2] = data.z       # w_z  angular velocity about z-axis
-
-rc_inputs = (90, 90)
-def receiveRC_callback(data):
-    global rc_inputs
-    rc_inputs[0] = data.x #throttle
-    rc_inputs[1] = data.y #steering
-    rospy.loginfo("motor: ")
-    rospy.loginfo("%d", data.x)
-    rospy.loginfo("servo: ")
-    rospy.loginfo("%d", data.y)
-
-#############################################################
 def main_auto():
+    global throttle, steering
     # initialize ROS node
     rospy.init_node('auto_mode', anonymous=True)
-    # rospy.Subscriber('state_estimate', Vector3, updateState_callback)
-    rospy.Subscriber('rc_cmd', Vector3, receiveRC_callback)
-    nh = rospy.Publisher('ecu_cmd', Vector3, queue_size = 10)
+    rospy.Subscriber('rc_inputs', ECU, rc_inputs_callback)
+    nh = rospy.Publisher('ecu', ECU, queue_size = 10)
 
     # set node rate
     rateHz  = 50
     rate    = rospy.Rate(rateHz)
-    t_i     = 0
 
-    # get node parameters
-    timeout = rospy.get_param("controller/runLength")
+    throttle = 90
+    steering = 90
 
     # main loop
     while not rospy.is_shutdown():
-        # get command signal
-        (motorCMD, servoCMD) = (rc_inputs[0], rc_inputs[1])
 
         # send command signal
-        ecu_cmd = Vector3(motorCMD, servoCMD, 0)
-        # TODO uncomment once this is verified as OK
-        # nh.publish(ecu_cmd)
+        ecu_cmd = ECU(throttle, steering)
+        nh.publish(ecu_cmd)
 
-        # wait
-        t_i += 1
         rate.sleep()
 
 #############################################################

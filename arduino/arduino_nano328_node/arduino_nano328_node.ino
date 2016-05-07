@@ -8,7 +8,8 @@
 # at UC Berkeley in the Model Predictive Control (MPC) lab by Jon Gonzales
 # (jon.gonzales@berkeley.edu)  Development of the web-server app Dator was
 # based on an open source project by Bruce Wootton, with contributions from
-# Kiet Lam (kiet.lam@berkeley.edu)
+# Kiet Lam (kiet.lam@berkeley.edu). The RC Input code was based on sample code
+# from http://rcarduino.blogspot.com/2012/04/how-to-read-multiple-rc-channels-draft.html
 # --------------------------------------------------------------------------- */
 
 
@@ -18,7 +19,6 @@ WARNING:
   some float voltage
 # --------------------------------------------------------------------------- */
 
-
 // include libraries
 #include <ros.h>
 #include <barc/Ultrasound.h>
@@ -27,6 +27,41 @@ WARNING:
 #include <barc/Z_KinBkMdl.h>
 #include <Servo.h>
 #include "Maxbotix.h"
+#include <EnableInterrupt.h>
+
+// Pin assignments
+const int ENC_FL_PIN = 2;
+const int ENC_BR_PIN = 3;
+const int ENC_BL_PIN = 5;
+const int THROTTLE_PIN = 7;
+const int STEERING_PIN = 8;
+const int motorPin = 10;
+const int servoPin = 11;
+
+// These bit flags are set in bUpdateFlagsShared to indicate which
+// channels have new signals
+// TODO migrate the wheel encoder interrupts to this same framework, possibly
+// connect all four encoders
+#define THROTTLE_FLAG 1
+#define STEERING_FLAG 2
+
+// holds the update flags defined above
+volatile uint8_t bUpdateFlagsShared;
+
+// shared variables are updated by the ISR and read by loop.
+// In loop we immediatley take local copies so that the ISR can keep ownership
+// of the shared ones. To access these in loop we first turn interrupts off
+// with noInterrupts we take a copy to use in loop and the turn interrupts back
+// on as quickly as possible, this ensures that we are always able to receive
+// new signals
+volatile uint16_t unThrottleInShared;
+volatile uint16_t unSteeringInShared;
+
+// These are used to record the rising edge of a pulse in the calcInput functions
+// They do not need to be volatile as they are only used in the ISR. If we wanted
+// to refer to these in loop and the ISR then they would need to be declared volatile
+uint32_t ulThrottleStart;
+uint32_t ulSteeringStart;
 
 // Number of encoder counts on tires
 // count tick on {FL, FR, BL, BR}
@@ -36,17 +71,14 @@ volatile int FR_count = 0;
 volatile int BL_count = 0;
 volatile int BR_count = 0;
 
-//encoder pins: pins 2,3 are hardware interrupts
-const int encPinA = 2;
-const int encPinB = 3;
 
-// Actuator pins: 5,6
 // <Servo> data type performs PWM
 // Declare variables to hold actuator commands
 Servo motor;
 Servo steering;
-const int motorPin = 10;
-const int servoPin = 11;
+// we may be leaving performance on the table by using ints here. RC commands
+// are sent as 1000-2000 microsend pwms. The increased coarseness of 0-180 pwm
+// may be costing us a bit, especially at low speeds?
 int motorCMD;
 int servoCMD;
 const int noAction = 0;
@@ -81,13 +113,21 @@ ros::NodeHandle nh;
 
 // define global message variables
 // Encoder, Electronic Control Unit, Ultrasound
-barc::Ultrasound ultrasound;
 barc::ECU ecu;
+barc::ECU rc_inputs;
 barc::Encoder encoder;
+barc::Ultrasound ultrasound;
 
 ros::Publisher pub_encoder("encoder", &encoder);
+ros::Publisher pub_rc_inputs("rc_inputs", &rc_inputs);
 ros::Publisher pub_ultrasound("ultrasound", &ultrasound);
 
+uint8_t microseconds2PWM(uint16_t microseconds)
+{
+  // Scales RC pulses from 1000 - 2000 microseconds to 0 - 180 PWM angles
+  uint16_t pwm = (microseconds - 1000.0)/1000.0*180;
+  return static_cast<uint8_t>(pwm);
+}
 
 /**************************************************************************
 ESC COMMAND {MOTOR, SERVO} CALLBACK
@@ -128,12 +168,23 @@ ARDUINO INITIALIZATION
 void setup()
 {
   // Set up encoder sensors
-  pinMode(encPinA, INPUT_PULLUP);
-  pinMode(encPinB, INPUT_PULLUP);
-  attachInterrupt(0, FL_inc, CHANGE); // args = (digitalPintoInterrupt, ISR, mode), mode set = {LOW, CHANGE, RISING, FALLING}, pin 0 = INT0, which is pin D2
-  attachInterrupt(1, BR_inc, CHANGE); //pin 1 = INT1, which is pin D3
+  pinMode(ENC_FL_PIN, INPUT_PULLUP);
+  pinMode(ENC_BR_PIN, INPUT_PULLUP);
+  pinMode(ENC_BL_PIN, INPUT_PULLUP);
+  enableInterrupt(ENC_FL_PIN, FL_inc, CHANGE);
+  enableInterrupt(ENC_BR_PIN, BR_inc, CHANGE);
+  enableInterrupt(ENC_BL_PIN, BL_inc, CHANGE);
+
+  // Set up software interrupts for RC inputs
+  pinMode(THROTTLE_PIN, INPUT_PULLUP);
+  pinMode(STEERING_PIN, INPUT_PULLUP);
+  enableInterrupt(THROTTLE_PIN, calcThrottle, CHANGE);
+  enableInterrupt(STEERING_PIN, calcSteering, CHANGE);
 
   // Set up actuators
+  // these can be set up as motor.attach(pin, lower microsecond limit, upper
+  // microsecond) maybe this affects how arduino translates 0-180 to
+  // microseconds though. Would improve safety if we could do it though
   motor.attach(motorPin);
   steering.attach(servoPin);
 
@@ -141,8 +192,9 @@ void setup()
   nh.initNode();
 
   // Publish / Subscribe to topics
-  nh.advertise(pub_ultrasound);
   nh.advertise(pub_encoder);
+  nh.advertise(pub_rc_inputs);
+  nh.advertise(pub_ultrasound);
   nh.subscribe(s);
   nh.subscribe(state_est_sub);
 
@@ -160,18 +212,57 @@ ARDUINO MAIN lOOP
 **************************************************************************/
 void loop()
 {
-    // compute time elapsed (in ms)
+  // create local variables to hold a local copies of the channel inputs
+  // these are declared static so that thier values will be retained
+  // between calls to loop.
+  static uint16_t unThrottleIn = 1500;
+  static uint16_t unSteeringIn = 1500;
+  // local copy of update flags
+  static uint8_t bUpdateFlags;
+
+  // check shared update flags to see if any channels have a new signal
+  if (bUpdateFlagsShared)
+  {
+    // Turn off interrupts, make local copies of variables set by interrupts,
+    // then turn interrupts back on. Without doing this, an interrupt could
+    // update a shared multibyte variable while the loop is in the middle of
+    // reading it
+    noInterrupts();
+
+    // make local copies
+    bUpdateFlags = bUpdateFlagsShared;
+    if(bUpdateFlags & THROTTLE_FLAG)
+    {
+      unThrottleIn = unThrottleInShared;
+    }
+
+    if(bUpdateFlags & STEERING_FLAG)
+    {
+      unSteeringIn = unSteeringInShared;
+    }
+
+    // clear shared update flags and turn interrupts back on
+    bUpdateFlagsShared = 0;
+    interrupts();
+  }
+
+  // compute time elapsed (in ms)
   dt = millis() - t0;
 
   // publish measurements
   if (dt > 50) {
-    // publish encodeer measurement
+    // publish encoder measurement
 
+    // TODO may want to wrap this in noInterrupts(); code; interrupts();
     encoder.FL = FL_count;
     encoder.FR = FR_count;
     encoder.BL = BL_count;
     encoder.BR = BR_count;
     pub_encoder.publish(&encoder);
+
+    rc_inputs.motor_pwm = microseconds2PWM(unThrottleIn);
+    rc_inputs.servo_pwm = microseconds2PWM(unSteeringIn);
+    pub_rc_inputs.publish(&rc_inputs);
 
     // publish ultra-sound measurement
     /*
@@ -188,13 +279,40 @@ void loop()
 }
 
 /**************************************************************************
-ENCODER COUNTERS
+INTERRUPT SERVICE ROUTINES
 **************************************************************************/
-// increment the counters
 void FL_inc() { FL_count++; }
-void FR_inc() { FR_count++; }
-void BL_inc() { BL_count++; }
 void BR_inc() { BR_count++; }
+void BL_inc() { BL_count++; }
+
+void calcThrottle()
+{
+  if(digitalRead(THROTTLE_PIN) == HIGH)
+  {
+    // rising edge of the signal pulse, start timing
+    ulThrottleStart = micros();
+  }
+  else
+  {
+    // falling edge, calculate duration of throttle pulse
+    unThrottleInShared = (uint16_t)(micros() - ulThrottleStart);
+    // set the throttle flag to indicate that a new signal has been received
+    bUpdateFlagsShared |= THROTTLE_FLAG;
+  }
+}
+
+void calcSteering()
+{
+  if(digitalRead(STEERING_PIN) == HIGH)
+  {
+    ulSteeringStart = micros();
+  }
+  else
+  {
+    unSteeringInShared = (uint16_t)(micros() - ulSteeringStart);
+    bUpdateFlagsShared |= STEERING_FLAG;
+  }
+}
 
 /**************************************************************************
 SATURATE MOTOR AND SERVO COMMANDS
@@ -233,7 +351,10 @@ ADJUST MOTOR COMMANDS ACCORDING TO BRAKE/REVERSE INTENT
 **************************************************************************/
 void mapAndWriteMotor(int cmd) {
   // Adjust for the dead spot in the ECU
-  cmd = motorMap(cmd);
+  // Turning this off temporarily for pass thru controller
+  // Clearly need some compilation flags or way to easily compile and flash
+  // arduino with different versions
+  /* cmd = motorMap(cmd); */
 
   // The car's ECU acts as a four-state state machine for easy drivability with
   // the remote control. Applying the throttle (motorCMD > 90) passes the given
@@ -244,7 +365,7 @@ void mapAndWriteMotor(int cmd) {
   // forward_mode boolean tracks a simplified version of the state and applies
   // the necessary 66, 90 sequence when needed to switch from foward to reverse
   // mode.
-  if((cmd > 90) && !forward_mode) {
+  if ((cmd > 90) && !forward_mode) {
     forward_mode = true;
   } else if ((cmd < 90) && forward_mode && (v_est < REVERSE_ESC_THRESHOLD)) {
     forward_mode = false;

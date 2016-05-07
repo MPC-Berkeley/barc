@@ -11,17 +11,12 @@
 
   <!-- OPEN LOOP MANUEVERS -->
   <node pkg="barc" type="controller_passThrough.py" name="controller" output="screen">
-            <!--  SELECTION -->
-            <param name="user" value="grmarcil" />
+    <!--  SELECTION -->
+    <param name="user" value="grmarcil" />
+  </node>
 
-            <!-- PROPERTIES -->
-            <!-- Timeout in seconds -->
-            <param name="runLength" type="int" value="5" />
-    </node>
-
-    <!-- Record the experiment data -->
-    <node pkg="rosbag" type="record" name="rosbag_record"
-        args=" --all" />
+  <!-- Record the experiment data -->
+  <!-- <node pkg="rosbag" type="record" name="rosbag_record" args=" -a" /> -->
 
 </launch>
 
