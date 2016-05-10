@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<package>
+  <name>barc</name>
+  <version>1.0</version>
+  <build_depend>message_generation</build_depend>
+</package>
+
+
