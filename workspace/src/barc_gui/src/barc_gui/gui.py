@@ -162,7 +162,7 @@ class MyGUI(Plugin):
         command = 'mv output.avi %s.avi' % self.get_experiment_name()
         subprocess.Popen(command, stdin=subprocess.PIPE, shell=True, cwd=video_dir)
 
-        self._widget.pushbutton_record.setText('Start Recording Video')
+        self._widget.pushbutton_record_video.setText('Start Recording Video')
 
 
     def _handle_record(self, checked):
