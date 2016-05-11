@@ -1,15 +1,15 @@
 #!/usr/bin/env python
 
 # ---------------------------------------------------------------------------
-# Licensing Information: You are free to use or extend these projects for 
+# Licensing Information: You are free to use or extend these projects for
 # education or reserach purposes provided that (1) you retain this notice
-# and (2) you provide clear attribution to UC Berkeley, including a link 
+# and (2) you provide clear attribution to UC Berkeley, including a link
 # to http://barc-project.com
 #
 # Attibution Information: The barc project ROS code-base was developed
 # at UC Berkeley in the Model Predictive Control (MPC) lab by Jon Gonzales
 # (jon.gonzales@berkeley.edu). The cloud services integation with ROS was developed
-# by Kiet Lam  (kiet.lam@berkeley.edu). The web-server app Dator was 
+# by Kiet Lam  (kiet.lam@berkeley.edu). The web-server app Dator was
 # based on an open source project by Bruce Wootton
 # ---------------------------------------------------------------------------
 
@@ -41,6 +41,7 @@ from threading import *
 
 
 rosbag_dir = '.'
+video_dir = '.'
 
 
 class UploadThread(Thread):
@@ -92,12 +93,17 @@ class MyGUI(Plugin):
         # Add widget to the user interface
         context.add_widget(self._widget)
 
-
         self._widget.pushbutton_record.clicked[bool].connect(self._handle_record)
+        self._widget.pushbutton_record_video.clicked[bool].connect(self._handle_record_video)
         self.record_started = False
+        self.record_video_started = False
 
         self.setup_topics_list()
         self.p = None
+
+
+    def get_experiment_name(self):
+        return self._widget.experiment_name.text().replace(' ', '_')
 
 
     def setup_topics_list(self):
@@ -110,8 +116,57 @@ class MyGUI(Plugin):
             self._widget.listview_topics.addItem(item)
 
 
+    def _handle_record_video(self, checked):
+        if not self.get_experiment_name():
+            msg = QMessageBox()
+            msg.setText('Need an experiment name!')
+            msg.exec_()
+            return
+
+        if self.record_video_started:
+            self.record_video_started = False
+            self.stop_record_video()
+            # self._widget.label_experiment.setText('Experiment name')
+            # self._widget.pushbutton_record.setText('Start Recording')
+        else:
+            self.record_video_started = True
+            self._widget.pushbutton_record_video.setText('Stop Recording Video')
+            # self._widget.label_experiment.setText('Recording...')
+            self.start_record_video()
+
+
+    def start_record_video(self):
+
+        print 'Recording video...'
+
+        command = 'rosrun image_view video_recorder image:=/image_raw _max_depth_range:=0'
+
+        self.p_video = subprocess.Popen(command, stdin=subprocess.PIPE, shell=True, cwd=video_dir)
+
+
+    def stop_record_video(self):
+        print 'Stopping record video'
+
+        if not self.p_video:
+            print 'Not stopping record video because p_video NONE'
+            return
+
+        command = 'rosnode list'
+        out = subprocess.check_output(command, shell=True)
+        for li in out.split('\n'):
+            if 'video_recorder' in li:
+                command_kill = 'rosnode kill %s' % li
+                ps = subprocess.Popen(command_kill, stdin=subprocess.PIPE, shell=True)
+                ps.communicate()
+
+        command = 'mv output.avi %s.avi' % self.get_experiment_name()
+        subprocess.Popen(command, stdin=subprocess.PIPE, shell=True, cwd=video_dir)
+
+        self._widget.pushbutton_record.setText('Start Recording Video')
+
+
     def _handle_record(self, checked):
-        if not self._widget.experiment_name.text():
+        if not self.get_experiment_name():
             msg = QMessageBox()
             msg.setText('Need an experiment name!')
             msg.exec_()
@@ -142,7 +197,7 @@ class MyGUI(Plugin):
         for topic in record_topics:
             command += topic + ' '
 
-        command += ' -O %s' % self._widget.experiment_name.text()
+        command += ' -O %s' % self.get_experiment_name()
 
         self.p = subprocess.Popen(command, stdin=subprocess.PIPE, shell=True, cwd=rosbag_dir)
 
@@ -173,12 +228,13 @@ class MyGUI(Plugin):
         self._widget.label_experiment.setText('Experiment name')
         self._widget.pushbutton_record.setText('Start Recording')
 
+
     def upload_data(self):
         print 'Uploading data!!!!'
-        rosbag_file = os.path.abspath(rosbag_dir + '/' + self._widget.experiment_name.text() + '.bag')
+        rosbag_file = os.path.abspath(rosbag_dir + '/' + self.get_experiment_name() + '.bag')
 
         date = time.strftime("%Y.%m.%d")
-        experiment = self._widget.experiment_name.text()
+        experiment = self.get_experiment_name()
 
         experiment += '_' + date + '_' + time.strftime('%H.%M')
 
@@ -232,7 +288,7 @@ class MyGUI(Plugin):
     def upload_message(self, topic, msgs, tss, experiment):
         vars_list = ['roll', 'pitch', 'yaw',
                       'roll_rate', 'pitch_rate', 'yaw_rate',
-                     'acc_x', 'acc_y', 'acc_z', 
+                     'acc_x', 'acc_y', 'acc_z',
                      'encoder_FL', 'encoder_FR','encoder_BL','encoder_BR',
                      'motor_pwm', 'servo_pwm',
                      'ultrasound_front','ultrasound_back','ultrasound_left','ultrasound_right']

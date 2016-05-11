@@ -231,6 +231,14 @@ class Blob(SystemModel):
         settings.BLOB_PROVIDER.write_blob(self.uuid, json_data)
 
 
+class MediaData(Blob):
+    uploaded = models.BooleanField(default=False)
+    local_location = models.FilePathField()
+
+    def __unicode__(self):
+        return self.local_location.path
+
+
 class Experiment(SystemModel):
     group = models.ManyToManyField(Group)
     started_at = models.DateTimeField(null=True)
