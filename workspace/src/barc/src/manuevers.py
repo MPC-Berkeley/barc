@@ -1,15 +1,15 @@
 #!/usr/bin/env python
 
 # ---------------------------------------------------------------------------
-# Licensing Information: You are free to use or extend these projects for 
+# Licensing Information: You are free to use or extend these projects for
 # education or reserach purposes provided that (1) you retain this notice
-# and (2) you provide clear attribution to UC Berkeley, including a link 
+# and (2) you provide clear attribution to UC Berkeley, including a link
 # to http://barc-project.com
 #
 # Attibution Information: The barc project ROS code-base was developed
 # at UC Berkeley in the Model Predictive Control (MPC) lab by Jon Gonzales
 # (jon.gonzales@berkeley.edu). The cloud services integation with ROS was developed
-# by Kiet Lam  (kiet.lam@berkeley.edu). The web-server app Dator was 
+# by Kiet Lam  (kiet.lam@berkeley.edu). The web-server app Dator was
 # based on an open source project by Bruce Wootton
 # ---------------------------------------------------------------------------
 
@@ -20,33 +20,33 @@ import numpy as np
 # simple test setting class
 class TestSettings:
     def __init__(self, SPD = 95, turn = 0, dt = 10):
-		# PWN signal values for motor
-        self.speed 		= SPD
-        self.neutral 	= 90
-        self.stopped 	= False
-        self.brake 		= 50
-        self.dt_man 	= dt   	# length of time the motor is on
+        # PWN signal values for motor
+        self.speed      = SPD
+        self.neutral    = 90
+        self.stopped    = False
+        self.brake      = 50
+        self.dt_man     = dt    # length of time the motor is on
         self.t_turn     = 4     # length of time before first turn
         self.t_0        = 2     # initial time at rest before experiment
         self.turn_deg   = turn
 
-		# check valid speed
-        if SPD < 90 or SPD > 130:
-            self.speed = 95
+        # check valid speed
+        # if SPD < 90 or SPD > 130:
+        #     self.speed = 95
 
-		# check valid turns
-		# left is positive, right is negative
+        # check valid turns
+        # left is positive, right is negative
         if turn < -30 or turn > 30:
             turn = 0
 
-		# PWN signal values for servo
-        self.turn 	    = angle_2_servo(turn)		# right turn
-        self.Z_turn 	= 90 						# zero (no) turn
+        # PWN signal values for servo
+        self.turn       = angle_2_servo(turn)       # right turn
+        self.Z_turn     = 90                        # zero (no) turn
 
 
 #############################################################
 def CircularTest(opt, rate, t_i):
-    oneSec 		= rate
+    oneSec      = rate
     t_0         = opt.t_0*oneSec
     t_f         = t_0 + (opt.dt_man)*oneSec
 
@@ -62,7 +62,7 @@ def CircularTest(opt, rate, t_i):
 
     # set straight and stop
     else:
-        servoCMD     	= opt.Z_turn
+        servoCMD        = opt.Z_turn
         motorCMD        = opt.neutral
 
     return (motorCMD, servoCMD)
@@ -88,7 +88,7 @@ def Straight(opt, rate, t_i):
 
     # set straight and stop
     else:
-        servoCMD     	= opt.Z_turn
+        servoCMD        = opt.Z_turn
         motorCMD        = opt.neutral
 
     return (motorCMD, servoCMD)
@@ -115,7 +115,7 @@ def SingleTurn(opt, rate, t_i):
     # stop
     else:
         motorCMD      = opt.neutral
-        
+
     # go straight and then turn
     if (t_i <= t_0 + t_turn):
         servoCMD     = opt.Z_turn
@@ -152,8 +152,8 @@ def SingleHardTurn(opt, rate, t_i):
     elif (t_i <= t_0 + dt_motor + t_brake + 50):
         motorCMD      = 95
     else:
-        motorCMD      = opt.neutral 
-        
+        motorCMD      = opt.neutral
+
     # go straight and then turn
     if (t_i <= t_0 + t_turn):
         servoCMD     = opt.Z_turn
@@ -182,7 +182,7 @@ def CoastDown(opt, rate, t_i):
 
     # set straight and stop
     else:
-        servoCMD     	= opt.Z_turn
+        servoCMD        = opt.Z_turn
         motorCMD        = opt.neutral
 
     return (motorCMD, servoCMD)
@@ -191,36 +191,36 @@ def CoastDown(opt, rate, t_i):
 #############################################################
 def SineSweep(opt, rate, t_i):
     # timing maneuvers
-    oneSec      	= rate
-    dt          	= 15*oneSec
-    start_turning 	= 1*oneSec
+    oneSec          = rate
+    dt              = 15*oneSec
+    start_turning   = 1*oneSec
 
     t_0         = opt.t_0*oneSec
-    t_st         	= t_0 + start_turning
-    t_f         	= t_0 + dt +start_turning
-    T           	= 2*oneSec
+    t_st            = t_0 + start_turning
+    t_f             = t_0 + dt +start_turning
+    T               = 2*oneSec
 
     # rest
     if t_i < t_0:
         servoCMD     = opt.Z_turn
         motorCMD    = opt.neutral
-	
-	# move forward
+
+    # move forward
     elif  (t_i >= t_0) and (t_i < t_st):
         servoCMD     = opt.Z_turn
         motorCMD    = opt.speed
 
-	# move in sine wave motion
+    # move in sine wave motion
     elif  (t_i >= t_st) and (t_i < t_f):
         servoCMD     = angle_2_servo(15*sin(2*pi*(t_i-t_st)/float(T)))
         motorCMD    = opt.speed
 
     # set straight and stop
     else:
-        servoCMD     	= opt.Z_turn
+        servoCMD        = opt.Z_turn
         motorCMD        = opt.neutral
         if not opt.stopped:
-            motorCMD    	 = opt.brake
+            motorCMD         = opt.brake
 
     return (motorCMD, servoCMD)
 
@@ -257,9 +257,9 @@ def DoubleLaneChange(opt, rate, t_i):
 
     # set straight and stop
     else:
-        servoCMD     	= opt.Z_turn
+        servoCMD        = opt.Z_turn
         motorCMD        = opt.neutral
         if not opt.stopped:
-            motorCMD    	 = opt.brake
+            motorCMD         = opt.brake
 
     return (motorCMD, servoCMD)

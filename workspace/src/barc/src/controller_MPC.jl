@@ -38,16 +38,16 @@ dt      = 0.1           # time step of system
 # define model constraints
 a_max   = 1.5
 a_min   = -1.3
-v_max = 5
+v_max = 2
 v_min = -1*v_max
-d_f_max = 30
+d_f_max = 30*pi/180.0
 d_f_min = -1*d_f_max
 
 # preview horizon
 N       = 5
 
-# define targets [generic values]
-x_ref   = 5
+# define targets (meters)
+x_ref   = 2
 y_ref   = 0
 
 # define decision variables
@@ -59,13 +59,14 @@ mdl     = Model(solver = IpoptSolver(print_level=3))
 @defVar( mdl, y[1:(N+1)] )
 @defVar( mdl, psi[1:(N+1)] )
 @defVar( mdl, v_min <= v[1:(N+1)] <= v_max)
-@defVar( mdl, a_min <= a[1:N] <= a_max)
 @defVar( mdl, d_f_min <= d_f[1:N] <= d_f_max)
 
 # TODO use actuator rate limiting constraints if needed
 
 # define objective function
-@setNLObjective(mdl, Min, (x[N+1] - x_ref)^2 + (y[N+1] - y_ref)^2 )
+# @setNLObjective(mdl, Min, (x[N+1] - x_ref)^2 + (y[N+1] - y_ref)^2) overshoots
+# because no velocity penalty
+@setNLObjective(mdl, Min, (x[N+1] - x_ref)^2 + (y[N+1] - y_ref)^2 + (v[N+1])^2)
 
 # define constraints
 # define system dynamics
@@ -75,7 +76,7 @@ mdl     = Model(solver = IpoptSolver(print_level=3))
 @defNLParam(mdl, y0     == 0); @addNLConstraint(mdl, y[1]     == y0);
 @defNLParam(mdl, psi0   == 0); @addNLConstraint(mdl, psi[1]   == psi0 );
 @defNLParam(mdl, v0     == 0); @addNLConstraint(mdl, v[1]     == v0);
-@defNLExpr(mdl, bta[i = 1:N], atan( L_a / (L_a + L_b) * tan(d_f[i]) ) )
+@defNLExpr(mdl, bta[i = 1:N], atan( L_b / (L_a + L_b) * tan(d_f[i]) ) )
 for i in 1:N
     @addNLConstraint(mdl, x[i+1]    == x[i]      + dt*(v[i]*cos( psi[i] + bta[i] ))  )
     @addNLConstraint(mdl, y[i+1]    == y[i]      + dt*(v[i]*sin( psi[i] + bta[i] ))  )
@@ -98,12 +99,13 @@ end
 
 # Degrees to servo pwm command
 function angle_2_servo(x)
+    x = x-2
     u = 92.0558 + 1.8194*x  - 0.0104*x^2
     return u
 end
 
 # Accel m/s^2 to esc pwm command
-function accel_2_pwm(a, v)
+function accel_2_pwm(a)
     pwm = nearest_pwm(a)
     if a > 0 # may want to give this a little epsilon around zero?
         pwm = max(95, pwm)
@@ -145,7 +147,7 @@ function main()
         # publish commands
         esc_cmd = accel_2_pwm(a_opt)
         # TODO verify that these conversions produce sensible output
-        servo_cmd = angle_2_servo(d_f_opt*pi/180)
+        servo_cmd = angle_2_servo(d_f_opt*180/pi)
         cmd = ECU(esc_cmd, servo_cmd)
         publish(pub, cmd)
 

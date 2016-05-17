@@ -36,27 +36,40 @@ motor_pwm   = 90
 (roll, pitch, yaw, a_x, a_y, a_z, w_x, w_y, w_z) = zeros(9)
 yaw_prev    = 0
 psi         = 0
+psi_meas = 0
 
 # from encoder
 v           = 0
+v_meas = 0
 t0          = time.time()
 n_FL        = 0                     # counts in the front left tire
 n_FR        = 0                     # counts in the front right tire
+n_BL        = 0                     # counts in the back left tire
+n_BR        = 0                     # counts in the back right tire
 n_FL_prev   = 0
 n_FR_prev   = 0
+n_BL_prev   = 0
+n_BR_prev   = 0
 r_tire      = 0.036                  # radius from tire center to perimeter along magnets [m]
 dx_qrt      = 2.0*pi*r_tire/4.0     # distance along quarter tire edge [m]
 
 # ecu command update
 def ecu_callback(data):
-    global motor_pwm, servo_pwm, d_f, a
+    global motor_pwm, servo_pwm, d_f, a, v_meas
+    global a_drag_corrected
     motor_pwm       = data.motor_pwm
     servo_pwm       = data.servo_pwm
     d_f             = servo_2_angle(servo_pwm) * pi/180         # [rad]
 
+    # saturate
+    if motor_pwm > 100:
+        motor_pwm = 100
+    elif motor_pwm < 75:
+        motor_pwm = 75
+
     # apply acceleration input
     # TODO fix this for negative
-    if motor_pwm > 95:
+    if motor_pwm > 94:
         # TODO: build a correct mapping
         # TODO: refactor ECU messages to (accel, angle) rather than (motor_pwm,
         # servo_pwm) so that this conversion back and forth can happen in a
@@ -65,51 +78,69 @@ def ecu_callback(data):
         # to, converts, and publishes barc/ECU
         a = 0.23*(motor_pwm - 94)                          # TODO: need to build correct mapping
     elif motor_pwm < 87:
-        a = -0.1*(88 - motor_pwm)
+        a = -0.1*(87 - motor_pwm)
+    elif motor_pwm > 91:
+        a = 0.23
+    elif motor_pwm < 89:
+        a = -0.1
     else:
         a = 0
+
+    a_drag_corrected = a - 0.1*v_meas
 
 # imu measurement update
 def imu_callback(data):
     # units: [rad] and [rad/s]
     global roll, pitch, yaw, a_x, a_y, a_z, w_x, w_y, w_z
-    global yaw_prev, psi
+    global yaw_prev, psi_meas
     (roll, pitch, yaw, a_x, a_y, a_z, w_x, w_y, w_z) = data.value
     # unwrap angle measurements, since measurements wrap at plus/minus pi
     yaw         = unwrap(array([yaw_prev, yaw]), discont = 2*pi)[1]
     yaw_prev    = yaw
-    psi         = yaw
+    psi_meas         = yaw
 
 # encoder measurement update
 def enc_callback(data):
-    global v, d_f, t0
+    global v, t0, dt_v_enc, v_meas
     global n_FL, n_FR, n_FL_prev, n_FR_prev
+    global n_BL, n_BR, n_BL_prev, n_BR_prev
 
     n_FL = data.FL
     n_FR = data.FR
+    n_BL = data.BL
+    n_BR = data.BR
 
     # compute time elapsed
     tf = time.time()
     dt = tf - t0
 
     # if enough time elapse has elapsed, estimate v_x
-    dt_min = 0.20
-    if dt >= dt_min:
+    if dt >= dt_v_enc:
         # compute speed :  speed = distance / time
-        v_FL = float(n_FL- n_FL_prev)*dx_qrt/dt
-        v_FR = float(n_FR- n_FR_prev)*dx_qrt/dt
+        v_FL = float(n_FL - n_FL_prev)*dx_qrt/dt
+        v_FR = float(n_FR - n_FR_prev)*dx_qrt/dt
+        v_BL = float(n_BL - n_BL_prev)*dx_qrt/dt
+        v_BR = float(n_BR - n_BR_prev)*dx_qrt/dt
         # v    = (v_FL + v_FR)/2.0
         # My modification for single FL encoder
-        v = v_FL
+        # v = v_FL
+        # Modification for 3 working encoders
+        v_meas = (v_FL + v_BL + v_BR)/3.0
+        # Modification for bench testing (driven wheels only)
+        # v = (v_BL + v_BR)/2.0
 
         # update old data
         n_FL_prev   = n_FL
         n_FR_prev   = n_FR
+        n_BL_prev   = n_BL
+        n_BR_prev   = n_BR
         t0          = time.time()
 
 
 # state estimation node
 def state_estimation():
+    global dt_v_enc
+    global v_meas, psi_meas
     # initialize node
     rospy.init_node('state_estimation', anonymous=True)
 
@@ -125,7 +156,7 @@ def state_estimation():
     vhMdl   = (L_a, L_b)
 
     # get encoder parameters
-    dt_vx   = rospy.get_param("state_estimation/dt_vx")     # time interval to compute v_x
+    dt_v_enc = rospy.get_param("state_estimation/dt_v_enc") # time interval to compute v_x from encoders
 
     # get EKF observer properties
     q_std   = rospy.get_param("state_estimation/q_std")             # std of process noise
@@ -155,7 +186,7 @@ def state_estimation():
 
         # collect measurements, inputs, system properties
         # collect inputs
-        y   = array([psi, v])
+        y   = array([psi_meas, v_meas])
         u   = array([ d_f, a ])
         args = (u,vhMdl,dt)
 

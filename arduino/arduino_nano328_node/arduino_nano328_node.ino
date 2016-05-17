@@ -79,12 +79,12 @@ Servo steering;
 // we may be leaving performance on the table by using ints here. RC commands
 // are sent as 1000-2000 microsend pwms. The increased coarseness of 0-180 pwm
 // may be costing us a bit, especially at low speeds?
-int motorCMD;
-int servoCMD;
+float motorCMD;
+float servoCMD;
 const int noAction = 0;
 
 // Global variables for ESC mode management
-const float REVERSE_ESC_THRESHOLD = 0.1;
+const float REVERSE_ESC_THRESHOLD = 0.03;
 bool forward_mode = true;
 float v_est = 0.0;
 
@@ -102,8 +102,11 @@ int theta_min = theta_center - d_theta_max;
 /* int motor_max = 120; */
 /* int motor_min = 40; */
 // Enforcing smaller values for testing safety
-int motor_max = 101;
+int motor_max = 100;
 int motor_min = 75;
+// Bigger values for TC
+/* int motor_max = 180; */
+/* int motor_min = 0; */
 
 // variable for time
 volatile unsigned long dt;
@@ -134,11 +137,14 @@ ESC COMMAND {MOTOR, SERVO} CALLBACK
 **************************************************************************/
 void messageCb(const barc::ECU& ecu){
   // deconstruct esc message
-  motorCMD = saturateMotor( int(ecu.motor_pwm) );
-  servoCMD = saturateServo( int(ecu.servo_pwm) );
+  /* motorCMD = saturateMotor( int(ecu.motor_pwm) ); */
+  /* servoCMD = saturateServo( int(ecu.servo_pwm) ); */
+  motorCMD = saturateMotor( ecu.motor_pwm );
+  servoCMD = saturateServo( ecu.servo_pwm );
 
   // apply commands to motor and servo
   mapAndWriteMotor(motorCMD);
+  /* motor.write(motorCMD); */
   steering.write( servoCMD );
 }
 // ECU := Engine Control Unit
@@ -250,6 +256,7 @@ void loop()
   dt = millis() - t0;
 
   // publish measurements
+  // TODO maybe 20 would be better for TC?
   if (dt > 50) {
     // publish encoder measurement
 
@@ -354,7 +361,7 @@ void mapAndWriteMotor(int cmd) {
   // Turning this off temporarily for pass thru controller
   // Clearly need some compilation flags or way to easily compile and flash
   // arduino with different versions
-  /* cmd = motorMap(cmd); */
+  cmd = motorMap(cmd);
 
   // The car's ECU acts as a four-state state machine for easy drivability with
   // the remote control. Applying the throttle (motorCMD > 90) passes the given
@@ -365,7 +372,8 @@ void mapAndWriteMotor(int cmd) {
   // forward_mode boolean tracks a simplified version of the state and applies
   // the necessary 66, 90 sequence when needed to switch from foward to reverse
   // mode.
-  if ((cmd > 90) && !forward_mode) {
+  // TODO trying 94 rather than 90 to prevent accidental pwm66 pulses
+  if ((cmd > 94) && !forward_mode) {
     forward_mode = true;
   } else if ((cmd < 90) && forward_mode && (v_est < REVERSE_ESC_THRESHOLD)) {
     forward_mode = false;
@@ -382,11 +390,11 @@ void mapAndWriteMotor(int cmd) {
   motor.write(cmd);
 }
 
-// Bypass [88, 94] dead region in ECU and leave only 90 as neutral
+// Bypass [88, 94] dead region in ECU and leave only [89,91] as neutral
 int motorMap(int cmd) {
-  if((cmd > 90) && (cmd < 95)) {
+  if((cmd > 91) && (cmd < 95)) {
     return 95;
-  } else if ((cmd > 87) && (cmd < 90)) {
+  } else if ((cmd > 87) && (cmd < 89)) {
     return 87;
   } else {
     return cmd;

@@ -27,7 +27,9 @@ class PID:
         self.int_e_min      = Integrator_min
 
     def update(self,current_value, dt):
+        self.current_value = current_value
         e_t         = self.set_point - current_value
+        # huge change in de_t when the set point gets established
         de_t        = ( e_t - self.e)/dt
 
         self.e_int  = self.e_int + e_t * dt
@@ -47,6 +49,10 @@ class PID:
 
     def setPoint(self,set_point):
         self.set_point    = set_point
+        # reset error and error integrator
+        # without error reset the D term will react to an instantaneous change
+        # in error
+        self.e            = set_point - self.current_value
         self.e_int        = 0
 
     def setKp(self,P):

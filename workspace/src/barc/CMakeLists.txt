@@ -51,6 +51,7 @@ add_message_files(
    Encoder.msg
    ECU.msg
    Z_KinBkMdl.msg
+   wheel.msg
 )
 
 ## Generate services in the 'srv' folder
@@ -106,7 +107,7 @@ catkin_package(
    CATKIN_DEPENDS rospy std_msgs message_runtime
 #   roscpp rospy std_msgs
 #  DEPENDS system_lib
-   
+
 )
 
 ###########
