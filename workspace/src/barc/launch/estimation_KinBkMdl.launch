@@ -1,7 +1,7 @@
 <launch>
 
-    <!--- 
-    ADD A CONTROLLER 
+    <!---
+    ADD A CONTROLLER
     -->
 
     <!-- IMU NODE -->
@@ -20,9 +20,9 @@
         <!-- vehicle properties -->
         <param name="L_a" type="double" value="0.125" />
         <param name="L_b" type="double" value="0.125" />
-        
+
         <!-- v_x estimation sample time-->
-        <param name="dt_vx" type="double" value="0.2" />
+        <param name="dt_v_enc" type="double" value="0.2" />
 
         <!-- ekf properties -->
         <param name="q_std" type="double" value="0.1" />
