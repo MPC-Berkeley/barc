@@ -27,13 +27,25 @@
       <param name="r_std" type="double" value="0.1" />
   </node>
 
-  <!-- CONTROLLER -->
+  <!-- LONGITUDINAL CONTROLLER -->
   <node pkg="barc" type="controller_velocity.py" name="controller" output="screen">
     <!-- PID for velocity -->
     <!-- good tuning pid: 0.1 0.01 0.1 -->
     <param name="p" type="double" value="0.1" />
     <param name="i" type="double" value="0.01" />
     <param name="d" type="double" value="0.1" />
+  </node>
+
+  <!-- LATERAL CONTROLLER -->
+  <node pkg="barc" type="controller_yaw.py" name="controller_yaw" output="screen">
+    <!-- PID for yaw using imu gyro -->
+    <!-- good tuning pid: 40 5 0 -->
+    <param name="p" type="double" value="40" />
+    <param name="i" type="double" value="5" />
+    <param name="d" type="double" value="0" />
+
+    <param name="steering_angle" type="int" value="5" />
+
   </node>
 
   <!-- Record the experiment data -->
