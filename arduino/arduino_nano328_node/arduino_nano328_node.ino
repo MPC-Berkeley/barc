@@ -57,10 +57,10 @@ class Car {
     void calcSteering();
   private:
     // Pin assignments
-    /* const int ENC_FR_PIN = X; */
     const int ENC_FL_PIN = 2;
-    const int ENC_BR_PIN = 3;
+    const int ENC_FR_PIN = 3;
     const int ENC_BL_PIN = 5;
+    const int ENC_BR_PIN = 6;
     const int THROTTLE_PIN = 7;
     const int STEERING_PIN = 8;
     const int MOTOR_PIN = 10;
@@ -275,11 +275,11 @@ float Car::saturateServo(float x) {
 }
 
 void Car::initEncoders() {
-  /* pinMode(ENC_FR_PIN, INPUT_PULLUP); */
+  pinMode(ENC_FR_PIN, INPUT_PULLUP);
   pinMode(ENC_FL_PIN, INPUT_PULLUP);
   pinMode(ENC_BR_PIN, INPUT_PULLUP);
   pinMode(ENC_BL_PIN, INPUT_PULLUP);
-  /* enableInterrupt(ENC_FR_PIN, incFRCallback, CHANGE); */
+  enableInterrupt(ENC_FR_PIN, incFRCallback, CHANGE);
   enableInterrupt(ENC_FL_PIN, incFLCallback, CHANGE);
   enableInterrupt(ENC_BR_PIN, incBRCallback, CHANGE);
   enableInterrupt(ENC_BL_PIN, incBLCallback, CHANGE);
