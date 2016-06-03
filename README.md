@@ -2,21 +2,23 @@
 
 The Berkeley Autonomous Race Car is a development platform for autonomous driving to achieve complex maneuvers such as drifting, lane changes, and obstacle avoidance. A 1/10 scale RC car and an embedded Linux computer make up the hardware platform of the project. This project aims to be fully open-source. The data collection process is cloud-based and brings new dimensions to the Vehicle Dynamics and Control Theory teaching and research world.
 
-This site is home to the repository. The main site for the project is [here](http://www.barc-project.com/). 
+This site is home to the repository. The main site for the project is [here](http://www.barc-project.com/).
 
 The primary folders in this repository include
 
+* docs
+  * Overview about the mechanical, electrical, and software deign of the vehicle. Descriptions of the vehicle models used for some control algorithms
 * CAD
   * DWX files for fabricating the deck and side brackets for the chassis, and STL files for fabricating the sensor mounts (e.g. hall effect sensor, camera, ultrasound) and the cover for the odroid.
 * Dator
   * Web server for cloud robotics. Provides a standard way to record data and events from one or more local computers for later analysis. Based on [this repo](https://github.com/bwootton/Dator) from Bruce Wooton
-* Arduino
+* arduino
   * Files to program the arduino to (1) send commands to the electronic speed control (ESC) unit and the servo, and to (2) acquire measurements from the encoders and ultrasound sensors</span></li>
-* Scripts
+* scripts
   * Bash programs that set up environment variables and launch the local server upon boot
 * MATLAB
   * Useful MATLAB scripts for processing ROS bag file. The bag files store all the message data (time stamped sensor measurements, actuator commands, etc) during an experiment
-* Workspace
+* workspace
   * **Robotic Operating System (ROS)** workspace that contains the barc package. This package holds the source code to control the vehicle using the ROS framework
 
 All software to control the vehicle resides in the *Arduino* and *Workspace* folders.
@@ -35,7 +37,7 @@ To reflash your arudino, you can run the following command
 ### Register with the cloud
 In your home directory, edit a filnamed `team_name.sh` to define a username, then in four separate terminals, execute the following
 ```
-source ~/barc/scripts/reset_database.sh 
+source ~/barc/scripts/reset_database.sh
 roscore
 rosrun data_service service.py
 source ~/barc/scripts/register_cloud.sh
@@ -52,7 +54,7 @@ Note that for typing commands, like the following, linux supports [tab completio
  + `lsusb` (less info) or `usb-devices` (more info)
 + Switch easily between several programs within one terminal. Watch [this video](https://www.youtube.com/watch?v=BHhA_ZKjyxo) for a tutorial on how to use tmux
  + `tmux`
-+ Search code base for a text string, read [here](http://conqueringthecommandline.com/book/ack_ag) for in-depth examples 
++ Search code base for a text string, read [here](http://conqueringthecommandline.com/book/ack_ag) for in-depth examples
  + `ag <text_string>`
 
 ### Useful ROS commands
@@ -61,9 +63,9 @@ Below is a list of some commonly used commands. Check [this link](http://wiki.ro
  + `roscd <package_name>`, for example `roscd barc`
 + Run a single ROS node
  + `roscore` (in one terminal)
- + `rosrun <package> <file_name>` (in another terminal) 
+ + `rosrun <package> <file_name>` (in another terminal)
 + Run a launch file
- + `roslaunch <package> <file_name>.launch` 
+ + `roslaunch <package> <file_name>.launch`
 + Display the active topics
  + `rostopic list`
 + Print the messages coming from a topic
@@ -75,5 +77,13 @@ Below is a list of some commonly used commands. Check [this link](http://wiki.ro
 
 Recommended reading and resources
 + [A Gentle Introduction to ROS](https://cse.sc.edu/~jokane/agitr/), by Jason M. O'Kane, and this [basic tutorial](http://wiki.ros.org/ROS/Tutorials/WritingPublisherSubscriber%28python%29) for writing ROS nodes in python
-+ [Julia JuMP] (https://jump.readthedocs.io/en/latest/) 
-+ [Git - the simple guide] (http://rogerdudler.github.io/git-guide/), or for a more in-depth reading, consider [this](https://www.atlassian.com/git/tutorials/ ) tutorial by Atlassian
++ [Julia JuMP](https://jump.readthedocs.io/en/latest/), Mathematical Programming using the Julia programming language
++ [Git - the simple guide](http://rogerdudler.github.io/git-guide/), or for a more in-depth reading, consider [this](https://www.atlassian.com/git/tutorials/ ) tutorial by Atlassian
++ [Electronic Speed Control (ESC) manual](http://propeleris.lt/failai/wp-s10c-rtr_manual.pdf), which details how to calibrate and program the ESC
+
+
+### Student projects
++ [Lane Keeping and Obstacle Avoidance](https://github.com/ych09041/me131lane), with [ demo](https://www.youtube.com/watch?v=5HKu7AaSsoM), by Tony Abdo, Hohyun Song, Cheng Hao Yuan, UC Berkeley ME 131, Spring 2016
+
+### Known issues
+The magnetic field around car, perhaps from the motor or aluminum deck, may interfere with the magnetometer readings, meaning the roll, pitch, yaw measurements may be off
