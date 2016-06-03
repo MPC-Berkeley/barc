@@ -21,7 +21,7 @@ The on-board electronics move the vehicle. The standard electronic components in
 
 These on-board electronics are shown in the image below, original image [here](http://www.hobbyking.com/hobbyking/store/__84945__Basher_RZ_4_1_10_Rally_Racer_V2_ARR_.html)
 
-<img src="imgs/std_electronic_parts.png" alt="Drawing" style="width: 400px;"/>
+<img src="https://github.com/BARCproject/barc/raw/master/docs/imgs/std_electronic_parts.PNG" alt="Drawing" style="width: 400px;"/>
 
 ## Software design
 The BARC platform uses ROS, an open-source library and set of tools for programming robots. The architecture abstracts low level details, like timing, communication protocols, concurrency, and other processes by providing a simple programming paradigm with a well-written, easy-to-use set of application programming interfaces (APIs). The ROS infrastructure is build on the concepts of nodes, topics, messages. A short, a node is a computer program (i.e. le) that processes some data. That data is then packaged into a message format, and then published, or broadcast, onto a topic, for other nodes to listen to. In other words, ROS uses a many-to-many communication paradigm to decouple nodes, so that each node (or process) can be written independent of the others. For an in-depth explanation,

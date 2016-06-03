@@ -4,7 +4,7 @@ Coordinate System
 
 For all vehicle models, we set a body frame coordinate system in which the positive x axis points to the front of the vehicle, the positive y axis points to the left of the vehicle, and the positive z axis points upward, as shown in the image below.
 
-.. image:: imgs/coordinate_system.png
+.. image:: https://github.com/BARCproject/barc/raw/master/docs/imgs/coordinate_system.PNG
    :height: 250px
    :width: 400 px
    :align: center
