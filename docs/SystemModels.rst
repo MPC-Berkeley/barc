@@ -13,8 +13,8 @@ For all vehicle models, we set a body frame coordinate system in which the posit
 Nomenclature
 ***************
 .. image:: https://github.com/BARCproject/barc/raw/master/docs/imgs/nomenclature.PNG
-   :height: 250px
-   :width: 400 px
+   :height: 400px
+   :width: 475 px
    :align: center
 
 ***************
@@ -23,10 +23,10 @@ Kinematic model
 
 Kinematic models succinctly capture the motion of the vehicle from the velocity and steering angle using geometry.
 
-.. image:: https://github.com/BARCproject/barc/raw/master/docs/imgs/kinBkMdl.PNG
+.. image:: https://github.com/BARCproject/barc/raw/master/docs/imgs/kinBkMdl_eqns.PNG
    :height: 250px
    :width: 400 px
-   :align: center \\
+   :align: center
 
 The descriptor kinematic implies that this model does not consider the mass of the vehicle.
 This model captures the trajectory of the vehicle well at low speeds, for which the slip angle is small (i.e. only a few degrees)
@@ -77,7 +77,7 @@ The dynamics are obtained from Newtonian mechanics, using principles from the ba
 of linear and angular momentum. For a vehicle with rear wheel drive, the equations of motion
 are as shown below.
 
-.. image:: https://github.com/BARCproject/barc/raw/master/docs/imgs/dynBkMdl.PNG
-   :height: 250px
+.. image:: https://github.com/BARCproject/barc/raw/master/docs/imgs/dynBkMdl_eqns.PNG
+   :height: 300px
    :width: 400 px
-   :align: center \\
+   :align: center
