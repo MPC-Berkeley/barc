@@ -5,7 +5,7 @@ Coordinate System
 For all vehicle models, we set a body frame coordinate system in which the positive x axis points to the front of the vehicle, the positive y axis points to the left of the vehicle, and the positive z axis points upward, as shown in the image below.
 
 .. image:: https://github.com/BARCproject/barc/raw/master/docs/imgs/coordinate_system.PNG
-   :height: 250px
+   :height: 250 px
    :width: 400 px
    :align: center
 
@@ -13,7 +13,7 @@ For all vehicle models, we set a body frame coordinate system in which the posit
 Nomenclature
 ***************
 .. image:: https://github.com/BARCproject/barc/raw/master/docs/imgs/nomenclature.PNG
-   :height: 400px
+   :height: 400 px
    :width: 475 px
    :align: center
 
@@ -24,7 +24,7 @@ Kinematic model
 Kinematic models succinctly capture the motion of the vehicle from the velocity and steering angle using geometry.
 
 .. image:: https://github.com/BARCproject/barc/raw/master/docs/imgs/kinBkMdl_eqns.PNG
-   :height: 250px
+   :height: 250 px
    :width: 400 px
    :align: center
 
@@ -78,6 +78,6 @@ of linear and angular momentum. For a vehicle with rear wheel drive, the equatio
 are as shown below.
 
 .. image:: https://github.com/BARCproject/barc/raw/master/docs/imgs/dynBkMdl_eqns.PNG
-   :height: 300px
+   :height: 300 px
    :width: 400 px
    :align: center
