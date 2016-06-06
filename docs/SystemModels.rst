@@ -10,38 +10,26 @@ For all vehicle models, we set a body frame coordinate system in which the posit
    :align: center
 
 ***************
+Nomenclature
+***************
+.. image:: https://github.com/BARCproject/barc/raw/master/docs/imgs/nomenclature.PNG
+   :height: 250px
+   :width: 400 px
+   :align: center
+
+***************
 Kinematic model
 ***************
 
-Kinematic models succinctly capture the motion of the vehicle with the state vector
-:math:`z=[x,y,\psi,v]^\top`, where
-:math:`(x,y)` describe the position of the vehicle in the global frame,
-:math:`\psi` describes the heading angle of the vehicle, and
-:math:`v` is the velocity of the vehicle.
-The input vector is :math:`u=[a,\delta_f]^\top`, where
-:math:`a` is the acceleration, and
-:math:`\delta_f` is the front steering angle we assume the r, the rear steering
-angle, is zero.
+Kinematic models succinctly capture the motion of the vehicle from the velocity and steering angle using geometry.
 
-.. math::
-   \dot{x}    &=  v \, \cos(\psi + \beta) \\
-   \dot{y}    &=  v \, \sin(\psi + \beta) \\
-   \dot{\psi} &=  \frac{v \, \cos(\beta)}{l_f + l_r} \, \tan(\delta_f) \\
-   \dot{v}    &=  a \\
-   \beta      &=  \tan^{-1} (\frac{l_r}{l_f+l_r} \tan(\delta_f))
-
-where :math:`l_f, l_r` are the distances from the center of mass to the front axel and rear axel,
-respectively.
-Note that the expression for the yaw rate may vary in the literature
-
-.. math::
-   \dot{\psi} &=  \frac{v \, \cos(\beta)}{l_f + l_r} \, \tan(\delta_f) = \frac{v}{l_r} \sin(\beta) \\
+.. image:: https://github.com/BARCproject/barc/raw/master/docs/imgs/kinBkMdl.PNG
+   :height: 250px
+   :width: 400 px
+   :align: center \\
 
 The descriptor kinematic implies that this model does not consider the mass of the vehicle.
-It simply considers the motion that follows from the velocity and steering angle using geometry.
-This model captures the trajectory of the vehicle well at low speeds, in which
-:math:`\beta`
-is small, meaning only a few degrees.
+This model captures the trajectory of the vehicle well at low speeds, for which the slip angle is small (i.e. only a few degrees)
 
 Below is a code segment of how a discretized version of the kinematic model would be written in python.
 This code is found in the file system_models.py inside the barc ROS package
@@ -89,10 +77,7 @@ The dynamics are obtained from Newtonian mechanics, using principles from the ba
 of linear and angular momentum. For a vehicle with rear wheel drive, the equations of motion
 are as shown below.
 
-.. math::
-   \dot{x}    &=  v_x \, \cos \psi - v_y \, \sin \psi \\
-   \dot{y}    &=  v_x \, \sin \psi + v_y \, \cos \psi \\
-   \dot{y}    &=  r \\
-   \dot{v}_x  &=  v_y \, r + \frac{1}{m} (F_{xR} - F_{yF} \, \sin \delta) \\
-   \dot{v}_y  &= -v_x \, r + \frac{1}{m} (F_{yF} \, \cos \delta + F_{yR} ) \\
-   \dot{r}    &=  \frac{1}{I_z} \, (l_f \, F_{yR} \, \cos \delta - l_f \, F_{yR} )
+.. image:: https://github.com/BARCproject/barc/raw/master/docs/imgs/dynBkMdl.PNG
+   :height: 250px
+   :width: 400 px
+   :align: center \\
