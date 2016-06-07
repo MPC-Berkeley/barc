@@ -36,7 +36,7 @@ We use a 2 Cell 7.4 V Turnigy LiPo Battery to power the RC car.
 Be careful with the battery. For your safety:
 * Never leave the battery charging while unattended.
 * Never let the voltage drop below 6.0V
-* Never charge the battery to over 8.4V (the charger should atuomatically shut off at 8.4 V).
+* Never charge the battery to over 8.4V (the charger should automatically stop charging at 8.4 V).
 * Never charge the battery at higher than 5.0Amps
 * When the car is not in use, don’t leave the battery connected to the
 ESC or the buck converter.
@@ -58,4 +58,5 @@ simple display to show the current voltage, and an alarm to sound when the volta
 There are many vendors that sell these checkers, here is [one](http://www.hobbyking.com/hobbyking/store/__18588__HobbyKing_8482_Cell_Checker_with_Low_Voltage_Alarm_2S_8S_.html) that we use.
 
 Below is a video about how to use one
+
 [![batery-tutorial](http://img.youtube.com/vi/tupNpOKHxJw/0.jpg)](https://www.youtube.com/watch?v=tupNpOKHxJw)
