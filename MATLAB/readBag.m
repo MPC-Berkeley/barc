@@ -20,8 +20,12 @@
 % addpath('path_to_msggen')
 % savepath('path_to_msggen')
 
+%% select bag file
+[fileName,pathName] = uigetfile({'data/*.bag'},'Select bag file');
+filePath = strcat(pathName,fileName);
+
 %%  Open rosbag 
-bag     = rosbag('2016-05-09-20-49-53.bag');    % open bag file
+bag     = rosbag(filePath);    % open bag file
 msgs    = readMessages(bag);                    % get all messages
 t0      = bag.StartTime;                        % get initial time
 bag.AvailableTopics                             % display all recorded topics
@@ -32,21 +36,18 @@ bag_imu     = select(bag,'Topic','/imu/data');
 bag_enc     = select(bag,'Topic','/encoder');
 bag_ecu     = select(bag,'Topic','/ecu');
 bag_img     = select(bag,'Topic','/camera/image_raw/compressed');
-bag_optflow = select(bag,'Topic','/optic_flow');
 
 % all message data
-compressed_imgs = readMessages(bag_img);
-ecu             = readMessages(bag_ecu);
-encoder         = readMessages(bag_enc);
 imu             = readMessages(bag_imu);
-optflow         = readMessages(bag_optflow);
+encoder         = readMessages(bag_enc);
+ecu             = readMessages(bag_ecu);
+compressed_imgs = readMessages(bag_img);
 
 % number of messages
-n_ecu_msg       = size(ecu,1);
-n_enc_msg       = size(encoder,1);
 n_imu_msg       = size(imu,1);
+n_enc_msg       = size(encoder,1);
+n_ecu_msg       = size(ecu,1);
 n_img_msg       = size(compressed_imgs,1);
-n_optfl_msg     = size(optflow,1);
 
 %% process imu data
 if n_imu_msg > 0
