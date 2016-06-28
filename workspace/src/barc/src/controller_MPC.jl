@@ -23,6 +23,12 @@ using data_service.msg
 using geometry_msgs.msg
 using JuMP
 using Ipopt
+using DataFrames
+
+# throttle map
+throttle_map = readtable("/home/odroid/barc/workspace/src/barc/src/throttlemap.csv")
+pwm_range = convert(Array{Int32}, throttle_map[1])
+accel_range = convert(Array{Float32}, throttle_map[2])
 
 # define model parameters
 L_a     = 0.125         # distance from CoG to front axel
@@ -33,8 +39,18 @@ dt      = 0.1           # time step of system
 N       = 5
 
 # define targets [generic values]
-x_ref   = 10
+x_ref   = 5
 y_ref   = 0
+psi_ref = 0
+v_ref   = 0
+
+# some model constraints
+a_max = 1.5
+a_min = -1.3
+v_max = 2
+v_min = -1*v_max
+d_f_max = 30*pi/180.0
+d_f_min = -1*d_f_max
 
 # define decision variables 
 # states: position (x,y), yaw angle, and velocity
@@ -44,12 +60,12 @@ mdl     = Model(solver = IpoptSolver(print_level=3))
 @defVar( mdl, x[1:(N+1)] )
 @defVar( mdl, y[1:(N+1)] )
 @defVar( mdl, psi[1:(N+1)] )
-@defVar( mdl, v[1:(N+1)] )
-@defVar( mdl, a[1:N] )
-@defVar( mdl, d_f[1:N] )
+@defVar( mdl, v_min <= v[1:(N+1)] <= v_max)
+@defVar( mdl, a_min <= a[1:N] <= a_max)
+@defVar( mdl, d_f_min <= d_f[1:N] <= d_f_max)
 
 # define objective function
-@setNLObjective(mdl, Min, (x[N+1] - x_ref)^2 + (y[N+1] - y_ref)^2 )
+@setNLObjective(mdl, Min, (x[N+1] - x_ref)^2 + (y[N+1] - y_ref)^2 + (psi[N+1] - psi_ref)^2 + (v[N+1] - v_ref)^2)
 
 # define constraints
 # define system dynamics
@@ -59,7 +75,7 @@ mdl     = Model(solver = IpoptSolver(print_level=3))
 @defNLParam(mdl, y0     == 0); @addNLConstraint(mdl, y[1]     == y0);
 @defNLParam(mdl, psi0   == 0); @addNLConstraint(mdl, psi[1]   == psi0 );
 @defNLParam(mdl, v0     == 0); @addNLConstraint(mdl, v[1]     == v0);
-@defNLExpr(mdl, bta[i = 1:N], atan( L_a / (L_a + L_b) * tan(d_f[i]) ) )
+@defNLExpr(mdl, bta[i = 1:N], atan( L_b / (L_a + L_b) * tan(d_f[i]) ) )
 for i in 1:N
     @addNLConstraint(mdl, x[i+1]    == x[i]      + dt*(v[i]*cos( psi[i] + bta[i] ))  )
     @addNLConstraint(mdl, y[i+1]    == y[i]      + dt*(v[i]*sin( psi[i] + bta[i] ))  )
@@ -80,11 +96,41 @@ function SE_callback(msg::Z_KinBkMdl)
     setValue(v0,    msg.v)
 end
 
+function angle_2_servo(x)
+    x = x-2
+    u = 92.0558 + 1.8194*x - 0.0104*x^2
+    return u
+end
+
+function accel_2_pwm(a)
+    pwm = nearest_pwm(a)
+    if a > 0
+        pwm = max(95, pwm)
+    else
+        pwm = min(87, pwm)
+    end
+    return pwm
+end
+
+function nearest_pwm(a_des)
+    best_idx = 0
+    min_err = 10
+    for i = [1:length(accel_range)]
+        err = abs(accel_range[i] - a_des)
+        if err < min_err
+            best_idx = i
+            min_err = err
+        end
+    end
+    return pwm_range[best_idx]
+end
+
+
 function main()
     # initiate node, set up publisher / subscriber topics
     init_node("mpc")
     pub = Publisher("ecu", ECU, queue_size=10)
-    s1  = Subscriber("state_estimate", Z_KinBkMdl, SE_callback, queue_size=10)
+    s1  = Subscriber("state_estimation", Z_KinBkMdl, SE_callback, queue_size=10)
     loop_rate = Rate(10)
 
     while ! is_shutdown()
@@ -94,8 +140,10 @@ function main()
         # get optimal solutions
         a_opt   = getValue(a[1])
         d_f_opt = getValue(d_f[1])
-        # TO DO: transform to PWM signals
-        cmd = ECU(a_opt, d_f_opt)
+
+        esc_cmd = accel_2_pwm(a_opt)
+        servo_cmd = angle_2_servo(d_f_opt*180/pi)
+        cmd = ECU(esc_cmd, servo_cmd)
 
         # publish commands
         publish(pub, cmd)
