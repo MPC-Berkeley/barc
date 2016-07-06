@@ -14,13 +14,15 @@
 =# 
 
 using RobotOS
-@rosimport barc.msg: ECU, Encoder, Ultrasound, Z_KinBkMdl
+@rosimport barc.msg: ECU, Encoder, Ultrasound, Z_KinBkMdl, vel_sgn
 @rosimport data_service.msg: TimeData
 @rosimport geometry_msgs.msg: Vector3
+#@rosimport std_msgs.msg: Bool
 rostypegen()
 using barc.msg
 using data_service.msg
 using geometry_msgs.msg
+#using std_msgs.msg
 using JuMP
 using Ipopt
 using DataFrames
@@ -39,7 +41,7 @@ dt      = 0.1           # time step of system
 N       = 5
 
 # define targets [generic values]
-x_ref   = 5
+x_ref   = 2
 y_ref   = 0
 psi_ref = 0
 v_ref   = 0
@@ -129,13 +131,26 @@ end
 function main()
     # initiate node, set up publisher / subscriber topics
     init_node("mpc")
-    pub = Publisher("ecu", ECU, queue_size=10)
-    s1  = Subscriber("state_estimation", Z_KinBkMdl, SE_callback, queue_size=10)
+    pub_steer = Publisher("servo_pwm", ECU, queue_size=10)
+    pub_motor = Publisher("motor_pwm", ECU, queue_size=10)
+    pub_sgn   = Publisher("vel_sgn", vel_sgn, queue_size=10)
+    s1  = Subscriber("state_estimate", Z_KinBkMdl, SE_callback, queue_size=10)
+
+    # BARC has two modes: forward and reverse, with hysteresis.
+    # Default is forward mode. pwm > 90 passes given pwm to motor. Applying 66 < pwm < 90 only brakes. 
+    # Must send pwm < 67 (full brakes), then 88 < pwm < 94 (neutral), to get to reverse mode
+    
+    # TODO: change forward_mode to Bool. Requires some overhead with catkin_make
+    sign = vel_sgn()
+    sign.forward_mode = 1
     loop_rate = Rate(10)
 
-    while ! is_shutdown()
+    while !is_shutdown()
         # run mpc, publish command
-        solve(mdl)
+        status = solve(mdl)
+        if status != :Optimal
+            break
+        end
 
         # get optimal solutions
         a_opt   = getValue(a[1])
@@ -143,14 +158,40 @@ function main()
 
         esc_cmd = accel_2_pwm(a_opt)
         servo_cmd = angle_2_servo(d_f_opt*180/pi)
-        cmd = ECU(esc_cmd, servo_cmd)
+   
+        vel = getValue(v0)
+        if (abs(vel) < 0.3) && (esc_cmd < 88 || esc_cmd > 94)
+            if esc_cmd < 88 && sign.forward_mode == 1
+                sign.forward_mode = 0
+                publish(pub_sgn, sign)
+                cmd = ECU(66, servo_cmd)
+                publish(pub_motor, cmd)
+                rossleep(loop_rate)
 
-        # publish commands
-        publish(pub, cmd)
-        rossleep(loop_rate)
+                cmd = ECU(90, servo_cmd)
+                publish(pub_motor, cmd)
+                rossleep(loop_rate)
+            elseif esc_cmd > 94 && sign.forward_mode == 0
+                sign.forward_mode = 1
+                publish(pub_sgn, sign)
+            end
+
+            cmd = ECU(esc_cmd, servo_cmd)
+            publish(pub_steer, cmd)
+            publish(pub_motor, cmd)
+        else
+            cmd = ECU(esc_cmd, servo_cmd)
+
+            # publish commands
+            # arduino_interface handles rest of ECU publication
+            publish(pub_steer, cmd)
+            publish(pub_motor, cmd)
+
+            rossleep(loop_rate)
+        end
     end
 end
 
-if ! isinteractive()
+if !isinteractive()
     main()
 end
