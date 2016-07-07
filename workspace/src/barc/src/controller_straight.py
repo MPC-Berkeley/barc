@@ -23,6 +23,7 @@ from numpy import unwrap
 from tf import transformations
 from pid import PID
 import numpy as np
+import rospy
 
 # pid control for constrant yaw angle 
 yaw0        = 0      
@@ -55,7 +56,7 @@ def imu_callback(data):
         yaw_prev    = yaw
 
 #############################################################
-def straight(t_i, pid, time_params,FxR_max):
+def straight(t_i, pid, time_params,FxR_target):
     # unpack parameters
     (t_0, t_f, dt)  = time_params
 
@@ -68,7 +69,7 @@ def straight(t_i, pid, time_params,FxR_max):
     elif (t_i < t_f):
         d_f         = pid.update(yaw, dt)
         step_up     = float(t_i - t_0) / 50.0
-        FxR         = np.min([ step_up, FxR_max ])
+        FxR         = np.min([ step_up, FxR_target])
 
     # stop experiment
     else:
@@ -99,7 +100,7 @@ def main_auto():
     # get experiment parameters 
     t_0             = get_param("controller/t_0")     # time to start test
     t_f             = get_param("controller/t_f")     # time to end test
-    FxR_max         = get_param("controller/FxR_max")
+    FxR_target      = get_param("controller/FxR_target")
     t_params        = (t_0, t_f, dt)
 
     while not is_shutdown():
@@ -113,7 +114,7 @@ def main_auto():
                 t_i             = 0.0
             # apply open loop command
             else:
-                (FxR, d_f)      = straight(t_i, pid, t_params, FxR_max)
+                (FxR, d_f)      = straight(t_i, pid, t_params, FxR_target)
                 ecu_cmd             = ECU(FxR, d_f)
                 nh.publish(ecu_cmd)
                 t_i += dt

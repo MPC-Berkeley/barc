@@ -15,19 +15,14 @@
 # ---------------------------------------------------------------------------
 
 # README: This node serves as an outgoing messaging bus from odroid to arduino
-# Subscribes: steering and motor commands on 'servo_pwm' and 'motor_pwm' and
-# Publishes: combined ecu commands as 'ecu'
+# Subscribes: steering and motor commands on 'ecu'
+# Publishes: combined ecu commands as 'ecu_pwm'
 
-# Eventually, there should be another node, or this node could be extended, as a
-# central translator between steering angle and desired acceleration to servo
-# and motor pwm. Making the translator a separate node would be nice because
-# this node would be reusable with different translators (in case someone has a
-# controller that outputs something other than desired acceleration, for
-# example). Eg, my cruise controller operates directly on motor cmd
-
-import rospy
+from rospy import init_node, Subscriber, Publisher, get_param
+from rospy import Rate, is_shutdown, ROSInterruptException, spin, on_shutdown
 from barc.msg import ECU
 from numpy import pi
+import rospy
 
 motor_pwm = 90
 servo_pwm = 90
@@ -67,21 +62,21 @@ def arduino_interface():
     global ecu_pub, b0
 
     # launch node, subscribe to motorPWM and servoPWM, publish ecu
-    rospy.init_node('arduino_interface')
-    b0  = rospy.get_param("input_gain")
+    init_node('arduino_interface')
+    b0  = get_param("input_gain")
 
-    rospy.Subscriber('ecu', ECU, pwm_converter_callback, queue_size = 10)
-    ecu_pub = rospy.Publisher('ecu_pwm', ECU, queue_size = 10)
+    Subscriber('ecu', ECU, pwm_converter_callback, queue_size = 10)
+    ecu_pub = Publisher('ecu_pwm', ECU, queue_size = 10)
 
     # Set motor to neutral on shutdown
-    rospy.on_shutdown(neutralize)
+    on_shutdown(neutralize)
 
     # process callbacks and keep alive
-    rospy.spin()
+    spin()
 
 #############################################################
 if __name__ == '__main__':
     try:
         arduino_interface()
-    except rospy.ROSInterruptException:
+    except ROSInterruptException:
         pass

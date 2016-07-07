@@ -32,6 +32,8 @@ acc         = 0         # acceleration [m/s]
 yaw_prev = 0
 (roll, pitch, yaw, a_x, a_y, a_z, w_x, w_y, w_z) = zeros(9)
 yaw_prev    = 0
+yaw_local   = 0
+read_yaw0   = False
 psi         = 0
 psi_meas    = 0
 

@@ -119,7 +119,7 @@ def state_estimation():
     vhMdl   = (L_a, L_b, m, I_z)
 
     # get encoder parameters
-    dt_vx   = rospy.get_param("state_estimation/dt_vx")     # time interval to compute v_x
+    dt_vx   = rospy.get_param("state_estimation/dt_v_enc")     # time interval to compute v_x
 
     # get tire model
     B   = rospy.get_param("tire_model/B")

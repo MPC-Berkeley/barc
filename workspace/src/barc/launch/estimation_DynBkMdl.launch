@@ -29,7 +29,7 @@
     <!-- OBSERVER-->
     <node pkg="barc" type="state_estimation_DynBkMdl.py" name="state_estimation">
         <!-- v_x estimation sample time-->
-        <param name="dt_vx" type="double" value="0.2" />
+        <param name="dt_v_enc" type="double" value="0.2" />
 
         <!-- ekf properties -->
         <param name="q_std" type="double" value="0.1" />
@@ -39,9 +39,4 @@
 
     <!-- LOW LEVEL -->
     <node pkg="barc" type="controller_low_level.py" name="low_level_controller" />
-
-    <!--- 
-    ADD A CONTROLLER 
-    -->
-
 </launch>
