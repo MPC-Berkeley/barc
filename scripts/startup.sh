@@ -15,3 +15,5 @@ alias nanorst='cd ~/barc/arduino/.arduino_nano328_node; cp ../arduino_nano328_no
 alias rebuild_system='source ~/barc/scripts/rebuild_system.sh'
 
 export ROS_HOME=$HOME/barc/workspace/src/barc/rosbag/
+
+cp vimrc ~/.vimrc
