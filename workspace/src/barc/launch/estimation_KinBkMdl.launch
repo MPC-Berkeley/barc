@@ -1,10 +1,9 @@
 <launch>
-   <!-- VEHICLE PROPERTIES -->
-   <param name="L_a" type="double" value="0.125" />
-   <param name="L_b" type="double" value="0.125" />
-
-    <!-- SYSTEM MODEL -->
-   <param name="input_gain" type="double" value="0.3" />
+    <!-- VEHICLE PROPERTIES -->
+    <param name="L_a" type="double" value="0.125" />
+    <param name="L_b" type="double" value="0.125" />
+    <!-- control parameters -->
+    <param name="input_gain" type="double" value="0.3" />
 
     <!-- IMU -->
     <node pkg="myahrs_driver" type="myahrs_driver" name="myahrs_driver">
