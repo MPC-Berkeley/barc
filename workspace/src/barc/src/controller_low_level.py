@@ -41,7 +41,8 @@ def ecu_callback(msg):
     servo_pwm   = 92.0558 + 1.8194*str_ang  - 0.0104*str_ang**2
 
     # compute motor command
-    FxR     = msg.motor 
+    FxR         =  float(msg.motor) 
+    motor_pwm   =  FxR/a0 + 95
     update_arduino()
 
 def neutralize():
