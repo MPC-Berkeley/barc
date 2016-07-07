@@ -16,4 +16,4 @@ alias rebuild_system='source ~/barc/scripts/rebuild_system.sh'
 
 export ROS_HOME=$HOME/barc/workspace/src/barc/rosbag/
 
-cp vimrc ~/.vimrc
+cp ~/barc/scripts/vimrc ~/.vimrc

@@ -27,14 +27,16 @@
 
 import rospy
 from barc.msg import ECU
-from input_map import angle_2_servo
+from numpy import pi
 
-def ecu_callback(msg):
-    global motor_pwm, servo_pwm
+motor_pwm = 90
+servo_pwm = 90
+
+def pwm_converter_callback(msg):
+    global motor_pwm, servo_pwm, b0
 
     # translate from SI units in vehicle model
     # to pwm angle units (i.e. to send command signal to actuators)
-    motor_pwm = msg.motor
 
     # compute servo command
     str_ang     = 180.0/pi*msg.servo  # convert steering angle to degrees
@@ -42,7 +44,12 @@ def ecu_callback(msg):
 
     # compute motor command
     FxR         =  float(msg.motor) 
-    motor_pwm   =  FxR/a0 + 95
+    if FxR == 0:
+        motor_pwm = 90
+    elif FxR > 0:
+        motor_pwm   =  FxR/b0 + 95
+    else:
+        motor_pwm = 90
     update_arduino()
 
 def neutralize():
@@ -57,16 +64,14 @@ def update_arduino():
     ecu_pub.publish(ecu_cmd)
 
 def arduino_interface():
-    global motor_pwm, servo_pwm, ecu_pub
+    global ecu_pub, b0
+
     # launch node, subscribe to motorPWM and servoPWM, publish ecu
     rospy.init_node('arduino_interface')
-    rospy.Subscriber('ecu', ECU, servo_callback, queue_size = 10)
-    ecu_pub = rospy.Publisher('ecu_pwm', ECU, queue_size = 10)
+    b0  = rospy.get_param("input_gain")
 
-    # initialize motor and servo at neutral
-    motor = 0
-    steering_angle = 0
-    steering_offset = 2
+    rospy.Subscriber('ecu', ECU, pwm_converter_callback, queue_size = 10)
+    ecu_pub = rospy.Publisher('ecu_pwm', ECU, queue_size = 10)
 
     # Set motor to neutral on shutdown
     rospy.on_shutdown(neutralize)
