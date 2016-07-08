@@ -33,18 +33,46 @@ pwm_range = convert(Array{Int32}, throttle_map[1])
 accel_range = convert(Array{Float32}, throttle_map[2])
 
 # define model parameters
-L_a     = 0.125         # distance from CoG to front axel
-L_b     = 0.125         # distance from CoG to rear axel
-dt      = 0.1           # time step of system
+L_a     = 0.125         # distance from CoG to front axle
+L_b     = 0.125         # distance from CoG to rear axle
+df      = 0.07          # distance from front axis to front
+dr      = 0.06          # distance from back axis to back
+Lf      = L_a + df      
+Lr      = L_b + dr
+w       = 0.095         # half the actual width
+width   = w*2
+len     = Lf + Lr;
+dt      = 0.2           # time step of system
 
 # preview horizon
-N       = 5
+N1       = 5
+N2       = 7
 
-# define targets [generic values]
-x_ref   = 2
+# number of steps
+T1 = 75;
+T2 = 50;
+
+
+# define targets [generic values] and updated in SE_callback based on initial measured psi_ref
+# x_ref will initially be relative x_int
+# after reaching x_int, x_ref will be set to relative x_final
+x_ref   = 0
 y_ref   = 0
 psi_ref = 0
 v_ref   = 0
+x_final     = 3
+y_final     = -0.6
+psi_final   = 0
+v_final     = 0
+x_int       = x_final + 0.4
+y_int       = y_final + 0.225
+psi_int     = 0
+v_int       = 0
+
+# Parking spot definition, will be updated in set_target to relative coordinates
+xl = x_final - (Lr + 0.07)
+xr = x_final + Lf + 0.1
+yt = y_final + w
 
 # Need to set psi_ref from relative initial yaw
 read_yaw0 = 0
@@ -101,17 +129,33 @@ function SE_callback(msg::Z_KinBkMdl)
     setValue(v0,    msg.v)
     if read_yaw0 == 0
         read_yaw0 = 1
-        psi_ref = psi0
-        x_ref   = 2*cos(psi_ref)
-        y_ref   = 2*sin(psi_ref)
+        psi_ref_offset = psi0
+        set_targets(psi_ref)
+        x_ref   = x_int
+        y_ref   = y_int
+    end
+    if (x0 - x_ref)^2 + (y0 - y_ref)^2 + (psi0 - psi_ref)^2 + (v0 - v_ref)^2 <= 0.05
+        x_ref   = x_final
+        y_ref   = y_final
     end
 end
 
-function angle_2_servo(x)
-    x = x-2
-    u = 92.0558 + 1.8194*x - 0.0104*x^2
-    return u
+function set_targets(psi_ref)
+   offset_angle_int = atan(y_int/x_int)    
+   offset_angle_final = atan(y_final/x_final)
+   x_int0 = x_int
+   x_final0 = x_final
+   x_int = x_int0*cos(psi_ref + offset_angle_int)
+   y_int = x_int0*sin(psi_ref + offset_angle_int)
+   x_final = x_final0*cos(psi_ref + offset_angle_final)
+   y_final = y_final0*sin(psi_ref + offset_angle_final)
 end
+ 
+function angle_2_servo(x)
+     x = x-2
+     u = 92.0558 + 1.8194*x - 0.0104*x^2
+     return u
+ end
 
 function accel_2_pwm(a)
     pwm = nearest_pwm(a)
