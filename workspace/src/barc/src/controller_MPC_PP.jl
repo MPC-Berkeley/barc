@@ -45,17 +45,11 @@ len     = Lf + Lr;
 dt      = 0.2           # time step of system
 
 # preview horizon
-N1       = 5
-N2       = 7
-
-# number of steps
-T1 = 75;
-T2 = 50;
-
+N       = 7
 
 # define targets [generic values] and updated in SE_callback based on initial measured psi_ref
-# x_ref will initially be relative x_int
-# after reaching x_int, x_ref will be set to relative x_final
+# x_ref will initially be x_int
+# after reaching x_int, x_ref will be set to x_final
 x_ref   = 0
 y_ref   = 0
 psi_ref = 0
@@ -73,9 +67,14 @@ v_int       = 0
 xl = x_final - (Lr + 0.07)
 xr = x_final + Lf + 0.1
 yt = y_final + w
+spot_l = xr - xl
+spot_w = width + 0.06
 
 # Need to set psi_ref from relative initial yaw
 read_yaw0 = 0
+
+# flag to break out of loop
+is_parked = 0
 
 # some model constraints
 a_max = 1.5
@@ -85,17 +84,25 @@ v_min = -1*v_max
 d_f_max = 30*pi/180.0
 d_f_min = -1*d_f_max
 
+x_min = -10
+x_max = 10
+y_min = -5
+y_max = 10
+psi_min = -pi/6
+psi_max = pi/6
+
 # define decision variables 
 # states: position (x,y), yaw angle, and velocity
 # inputs: acceleration, steering angle 
 println("Creating kinematic bicycle model ....")
 mdl     = Model(solver = IpoptSolver(print_level=3))
-@defVar( mdl, x[1:(N+1)] )
-@defVar( mdl, y[1:(N+1)] )
-@defVar( mdl, psi[1:(N+1)] )
+@defVar( mdl, x_min <= x[1:(N+1)] <= x_max )
+@defVar( mdl, y_min <= y[1:(N+1)] <= y_max )
+@defVar( mdl, psi_min <= psi[1:(N+1)] <= psi_max )
 @defVar( mdl, v_min <= v[1:(N+1)] <= v_max)
 @defVar( mdl, a_min <= a[1:N] <= a_max)
 @defVar( mdl, d_f_min <= d_f[1:N] <= d_f_max)
+@defVar( mdl, d[1:16*N] )
 
 # define objective function
 @setNLObjective(mdl, Min, (x[N+1] - x_ref)^2 + (y[N+1] - y_ref)^2 + (psi[N+1] - psi_ref)^2 + (v[N+1] - v_ref)^2)
@@ -110,10 +117,43 @@ mdl     = Model(solver = IpoptSolver(print_level=3))
 @defNLParam(mdl, v0     == 0); @addNLConstraint(mdl, v[1]     == v0);
 @defNLExpr(mdl, bta[i = 1:N], atan( L_b / (L_a + L_b) * tan(d_f[i]) ) )
 for i in 1:N
-    @addNLConstraint(mdl, x[i+1]    == x[i]      + dt*(v[i]*cos( psi[i] + bta[i] ))  )
     @addNLConstraint(mdl, y[i+1]    == y[i]      + dt*(v[i]*sin( psi[i] + bta[i] ))  )
     @addNLConstraint(mdl, psi[i+1]  == psi[i]    + dt*(v[i]/L_b * sin(bta[i]))  )
     @addNLConstraint(mdl, v[i+1]    == v[i]      + dt*(a[i])  )
+
+    @addNLConstraint(mdl, d[(i-1)*16 + 1]*(x[i] + Lf*cos(psi[i]) - width/2*sin(psi[i]) - xl ) 
+                   + d[(i-1)*16 + 2]*(y[i] + Lf*sin(psi[i]) + width/2*cos(psi[i]) - yt) >= 0)
+    @addNLConstraint(mdl, d[(i-1)*16 + 1] + d[(i-1)*16 + 2] == 1)               
+
+    @addNLConstraint(mdl, d[(i-1)*16 + 3]*(x[i] + Lf*cos(psi[i]) + width/2*sin(psi[i]) - xl ) 
+                   + d[(i-1)*16 + 4]*(y[i] + Lf*sin(psi[i]) + width/2*cos(psi[i]) - yt) >= 0)
+    @addNLConstraint(mdl, d[(i-1)*16 + 3] + d[(i-1)*16 + 4] == 1)               
+
+    @addNLConstraint(mdl, d[(i-1)*16 + 5]*(x[i] - Lr*cos(psi[i]) + width/2*sin(psi[i]) - xl ) 
+                   + d[(i-1)*16 + 6]*(y[i] - Lr*sin(psi[i]) - width/2*cos(psi[i]) - yt) >= 0)
+    @addNLConstraint(mdl, d[(i-1)*16 + 5] + d[(i-1)*16 + 6] == 1)               
+
+    @addNLConstraint(mdl, d[(i-1)*16 + 7]*(x[i] - Lr*cos(psi[i]) - width/2*sin(psi[i]) - xl ) 
+                   + d[(i-1)*16 + 8]*(y[i] - Lr*sin(psi[i]) + width/2*cos(psi[i]) - yt) >= 0)
+    @addNLConstraint(mdl, d[(i-1)*16 + 7] + d[(i-1)*16 + 8] == 1)               
+
+
+    @addNLConstraint(mdl, d[(i-1)*16 + 9]*(-(x[i] + Lf*cos(psi[i]) - width/2*sin(psi[i])) + xr)
+                   + d[(i-1)*16 + 10]*(y[i] + Lf*sin(psi[i]) + width/2*cos(psi[i]) - yt) >= 0)
+    @addNLConstraint(mdl, d[(i-1)*16 + 9] + d[(i-1)*16 + 10] == 1)               
+
+    @addNLConstraint(mdl, d[(i-1)*16 + 11]*(-(x[i] + Lf*cos(psi[i]) + width/2*sin(psi[i]))+ xr)
+                   + d[(i-1)*16 + 12]*(y[i] + Lf*sin(psi[i]) - width/2*cos(psi[i]) - yt) >= 0)
+    @addNLConstraint(mdl, d[(i-1)*16 + 11] + d[(i-1)*16 + 12] == 1)               
+
+    @addNLConstraint(mdl, d[(i-1)*16 + 13]*(-(x[i] - Lr*cos(psi[i]) + width/2*sin(psi[i]))+xr) 
+                   + d[(i-1)*16 + 14]*(y[i] - Lr*sin(psi[i]) - width/2*cos(psi[i]) - yt) >= 0)
+    @addNLConstraint(mdl, d[(i-1)*16 + 13] + d[(i-1)*16 + 14] == 1)               
+
+    @addNLConstraint(mdl, d[(i-1)*16 + 15]*(-(x[i] - Lr*cos(psi[i]) - width/2*sin(psi[i]))+xr) 
+                   + d[(i-1)*16 + 16]*(y[i] - Lr*sin(psi[i]) + width/2*cos(psi[i]) - yt) >= 0)
+    @addNLConstraint(mdl, d[(i-1)*16 + 15] + d[(i-1)*16 + 16] == 1)               
+
 end
 
 # status update
@@ -125,12 +165,12 @@ function SE_callback(msg::Z_KinBkMdl)
     # update mpc initial condition 
     setValue(x0,    msg.x)
     setValue(y0,    msg.y)
-    setValue(psi0,  msg.psi)
+    setValue(psi0,  msg.psi + psi_offset)
     setValue(v0,    msg.v)
     if read_yaw0 == 0
         read_yaw0 = 1
-        psi_ref_offset = psi0
-        set_targets(psi_ref)
+        psi_offset = -psi0
+        # set_targets(psi_ref)
         x_ref   = x_int
         y_ref   = y_int
     end
@@ -197,7 +237,7 @@ function main()
     sign.forward_mode = 1
     loop_rate = Rate(10)
 
-    while !is_shutdown()
+    while !is_shutdown() && is_parked == 0
         # run mpc, publish command
         status = solve(mdl)
         if status != :Optimal
@@ -217,7 +257,7 @@ function main()
                 sign.forward_mode = 0
                 publish(pub_sgn, sign)
                 cmd = ECU(66, servo_cmd)
-                publish(pub_motor, cmd)
+                pulish(pub_motor, cmd)
                 rossleep(loop_rate)
 
                 cmd = ECU(90, servo_cmd)
@@ -241,7 +281,13 @@ function main()
 
             rossleep(loop_rate)
         end
+        if (x0 - x_final)^2 + (y0 - y_final)^2 + (psi0 - psi_final)^2 + (v0 - v_final)^2 <= 0.05
+            is_parked = 1
+        end
     end
+    cmd = ECU(90,90)
+    publish(pub_steer, cmd)
+    publish(pub_motor, cmd)
 end
 
 if !isinteractive()
