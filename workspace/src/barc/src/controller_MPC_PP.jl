@@ -72,9 +72,7 @@ spot_w = width + 0.06
 
 # Need to set psi_ref from relative initial yaw
 read_yaw0 = 0
-
-# flag to break out of loop
-is_parked = 0
+psi_offset = 0
 
 # some model constraints
 a_max = 1.5
@@ -162,6 +160,8 @@ solve(mdl)
 println("finished initial solve!")
 
 function SE_callback(msg::Z_KinBkMdl)
+    global psi_offset
+    global read_yaw0
     # update mpc initial condition 
     setValue(x0,    msg.x)
     setValue(y0,    msg.y)
@@ -236,7 +236,8 @@ function main()
     sign = vel_sgn()
     sign.forward_mode = 1
     loop_rate = Rate(10)
-
+    
+    is_parked = 0
     while !is_shutdown() && is_parked == 0
         # run mpc, publish command
         status = solve(mdl)
@@ -257,7 +258,7 @@ function main()
                 sign.forward_mode = 0
                 publish(pub_sgn, sign)
                 cmd = ECU(66, servo_cmd)
-                pulish(pub_motor, cmd)
+                publish(pub_motor, cmd)
                 rossleep(loop_rate)
 
                 cmd = ECU(90, servo_cmd)
@@ -281,7 +282,11 @@ function main()
 
             rossleep(loop_rate)
         end
-        if (x0 - x_final)^2 + (y0 - y_final)^2 + (psi0 - psi_final)^2 + (v0 - v_final)^2 <= 0.05
+        x_curr = getValue(x0)
+        y_curr = getValue(y0)
+        psi_curr = getValue(psi0)
+        v_curr = getValue(v0)
+        if (x_curr - x_final)^2 + (y_curr - y_final)^2 + (psi_curr - psi_final)^2 + (v_curr - v_final)^2 <= 0.05
             is_parked = 1
         end
     end
