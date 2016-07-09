@@ -186,7 +186,11 @@ function SE_callback(msg::Z_KinBkMdl)
         x_ref   = x_int
         y_ref   = y_int
     end
-    if (x0 - x_ref)^2 + (y0 - y_ref)^2 + (psi0 - psi_ref)^2 + (v0 - v_ref)^2 <= 0.05
+    x_curr = getValue(x0)
+    y_curr = getValue(y0)
+    psi_curr = getValue(psi0)
+    v_curr = getValue(v0)
+    if (x_curr - x_ref)^2 + (y_curr - y_ref)^2 + (psi_curr - psi_ref)^2 + (v_curr - v_ref)^2 <= 0.05
         x_ref   = x_final
         y_ref   = y_final
     end

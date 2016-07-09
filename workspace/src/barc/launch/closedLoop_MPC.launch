@@ -10,8 +10,8 @@
     </node >
 
     <!-- ODROID TO ARDUINO HUB -->
-   <!--  <node pkg="barc" type="arduino_interface.py" name="arduino_interface" output="screen"> -->
-    <!-- </node> -->
+    <node pkg="barc" type="arduino_interface.py" name="arduino_interface" output="screen">
+    </node>
        
 
     <!-- STATE ESTIMATOR -->
