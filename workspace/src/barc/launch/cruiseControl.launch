@@ -10,8 +10,8 @@
   </node>
 
   <!-- ODROID TO ARDUINO HUB -->
-  <node pkg="barc" type="arduino_interface.py" name="arduino_interface" output="screen">
-  </node>
+<!--  <node pkg="barc" type="arduino_interface.py" name="arduino_interface" output="screen"> -->
+  <!-- </node> -->
 
   <!-- STATE ESTIMATOR -->
   <node pkg="barc" type="state_estimation_KinBkMdl.py" name="state_estimation" output="screen">
@@ -34,7 +34,7 @@
     <param name="p" type="double" value="0.1" />
     <param name="i" type="double" value="0.01" />
     <param name="d" type="double" value="0.1" />
-  </node>
+    </node> 
 
   <!-- LATERAL CONTROLLER -->
   <node pkg="barc" type="controller_yaw.py" name="controller_yaw" output="screen">

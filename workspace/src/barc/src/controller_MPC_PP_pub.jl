@@ -28,7 +28,7 @@ using Ipopt
 using DataFrames
 
 # throttle map
-throttle_map = readtable("/home/odroid/barc/workspace/src/barc/src/throttlemap.csv")
+throttle_map = readtable("/home/odroid/barc/workspace/src/barc/src/throttlemap1.csv")
 pwm_range = convert(Array{Int32}, throttle_map[1])
 accel_range = convert(Array{Float32}, throttle_map[2])
 
@@ -186,7 +186,12 @@ function SE_callback(msg::Z_KinBkMdl)
         x_ref   = x_int
         y_ref   = y_int
     end
-    if (x0 - x_ref)^2 + (y0 - y_ref)^2 + (psi0 - psi_ref)^2 + (v0 - v_ref)^2 <= 0.05
+
+    x_curr = getValue(x0)
+    y_curr = getValue(y0)
+    psi_curr = getValue(psi0)
+    v_curr = getValue(v0)
+    if (x_curr - x_ref)^2 + (y_curr - y_ref)^2 + (psi_curr - psi_ref)^2 + (v_curr - v_ref)^2 <= 0.05
         x_ref   = x_final
         y_ref   = y_final
     end
@@ -212,7 +217,7 @@ function angle_2_servo(x)
 function accel_2_pwm(a)
     pwm = nearest_pwm(a)
     if a > 0
-        pwm = max(95, pwm)
+        pwm = max(100, pwm)
     else
         pwm = min(87, pwm)
     end
@@ -238,6 +243,7 @@ function main()
     pub_steer = Publisher("servo_pwm", ECU, queue_size=10)
     pub_motor = Publisher("motor_pwm", ECU, queue_size=10)
     pub_sgn   = Publisher("vel_sgn", vel_sgn, queue_size=10)
+    pub_ecu   = Publisher("ecu", ECU, queue_size=10)
     s1  = Subscriber("state_estimate", Z_KinBkMdl, SE_callback, queue_size=10)
 
     # BARC has two modes: forward and reverse, with hysteresis.
@@ -270,11 +276,11 @@ function main()
                 sign.forward_mode = 0
                 publish(pub_sgn, sign)
                 cmd = ECU(66, servo_cmd)
-                publish(pub_motor, cmd)
+                publish(pub_ecu, cmd)
                 rossleep(loop_rate)
 
                 cmd = ECU(90, servo_cmd)
-                publish(pub_motor, cmd)
+                publish(pub_ecu, cmd)
                 rossleep(loop_rate)
             elseif esc_cmd > 94 && sign.forward_mode == 0
                 sign.forward_mode = 1
@@ -282,15 +288,13 @@ function main()
             end
 
             cmd = ECU(esc_cmd, servo_cmd)
-            publish(pub_steer, cmd)
-            publish(pub_motor, cmd)
+            publish(pub_ecu, cmd)
         else
             cmd = ECU(esc_cmd, servo_cmd)
 
             # publish commands
             # arduino_interface handles rest of ECU publication
-            publish(pub_steer, cmd)
-            publish(pub_motor, cmd)
+            publish(pub_ecu, cmd)
 
             rossleep(loop_rate)
         end
@@ -303,8 +307,7 @@ function main()
         end
     end
     cmd = ECU(90,90)
-    publish(pub_steer, cmd)
-    publish(pub_motor, cmd)
+    publish(pub_ecu, cmd)
 end
 
 if !isinteractive()
