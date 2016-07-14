@@ -16,7 +16,7 @@
 import rospy
 import time
 import os
-from barc.msg import ECU, Encoder, Z_KinBkMdl, vel_sgn
+from barc.msg import ECU, Encoder, Z_KinBkMdl
 from data_service.msg import TimeData
 from numpy import pi, cos, sin, eye, array, zeros, unwrap
 from input_map import angle_2_servo, servo_2_angle
@@ -25,7 +25,6 @@ from system_models import f_KinBkMdl, h_KinBkMdl
 from filtering import filteredSignal
 from rospy_tutorials.msg import Floats
 from rospy.numpy_msg import numpy_msg
-# from std_msgs.msg import Bool
 
 # input variables [default values]
 d_f         = 0         # steering angle [deg]
@@ -53,9 +52,6 @@ n_BL_prev   = 0
 n_BR_prev   = 0
 r_tire      = 0.036                  # radius from tire center to perimeter along magnets [m]
 dx_qrt      = 2.0*pi*r_tire/4.0     # distance along quarter tire edge [m]
-
-# default velocity sign
-sgn         = 1
 
 # ecu command update
 def ecu_callback(data):
@@ -124,8 +120,8 @@ def enc_callback(data):
         v_BR = float(n_BR - n_BR_prev)*dx_qrt/dt
         # Uncomment/modify according to your encoder setup
         # v_meas    = (v_FL + v_FR)/2.0
-        # Modification for 2 working encoders
-        v_meas = sgn*(v_FL + v_BL)/2.0
+        # Modification for 3 working encoders
+        v_meas = (v_FL + v_BL + v_BR)/3.0
         # Modification for bench testing (driven wheels only)
         # v = (v_BL + v_BR)/2.0
 
@@ -136,12 +132,6 @@ def enc_callback(data):
         n_BR_prev   = n_BR
         t0          = time.time()
 
-def vel_sgn_callback(data):
-    global sgn
-    if data.forward_mode == 1: # the sign of the velocity becomes positive
-        sgn = 1
-    else: # the sign of the velocity becomes negative
-        sgn = -1
 
 # state estimation node
 def state_estimation():
@@ -154,7 +144,6 @@ def state_estimation():
     rospy.Subscriber('imu', TimeData, imu_callback)
     rospy.Subscriber('encoder', Encoder, enc_callback)
     rospy.Subscriber('ecu', ECU, ecu_callback)
-    rospy.Subscriber('vel_sgn', vel_sgn, vel_sgn_callback)
     state_pub   = rospy.Publisher('state_estimate', Z_KinBkMdl, queue_size = 10)
 
     # get vehicle dimension parameters
