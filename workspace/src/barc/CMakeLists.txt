@@ -189,3 +189,7 @@ include_directories(
 
 ## Add folders to be run by python nosetests
 # catkin_add_nosetests(test)
+
+add_executable (drift_corner src/drift_corner src/pid)
+target_link_libraries(drift_corner ${catkin_LIBRARIES})
+add_dependencies(drift_corner geometry_msgs)
