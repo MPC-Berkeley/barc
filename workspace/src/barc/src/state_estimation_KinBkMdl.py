@@ -62,7 +62,8 @@ def ecu_callback(data):
 def imu_callback(data):
     # units: [rad] and [rad/s]
     global roll, pitch, yaw, a_x, a_y, a_z, w_x, w_y, w_z
-    global yaw_prev, yaw0, read_yaw0, yaw_local, psi_meas
+    global yaw_prev, yaw0, read_yaw0, yaw_local
+    global psi_meas
 
     # get orientation from quaternion data, and convert to roll, pitch, yaw
     # extract angular velocity and linear acceleration data
@@ -81,37 +82,6 @@ def imu_callback(data):
     yaw_prev    = yaw
     yaw_local   = yaw - yaw0
     psi_meas    = yaw_local
-    
-    # extract angular velocity and linear acceleration data
-    w_x = data.angular_velocity.x
-    w_y = data.angular_velocity.y
-    w_z = data.angular_velocity.z
-    a_x = data.linear_acceleration.x
-    a_y = data.linear_acceleration.y
-    a_z = data.linear_acceleration.z
-
-# imu measurement update
-def imu_callback(data):
-    # units: [rad] and [rad/s]
-    global roll, pitch, yaw, a_x, a_y, a_z, w_x, w_y, w_z
-    global yaw_prev, yaw0, read_yaw0, yaw_local
-
-    # get orientation from quaternion data, and convert to roll, pitch, yaw
-    # extract angular velocity and linear acceleration data
-    ori         = data.orientation
-    quaternion  = (ori.x, ori.y, ori.z, ori.w)
-    (roll, pitch, yaw) = transformations.euler_from_quaternion(quaternion)
-
-    # save initial measurements
-    if not read_yaw0:
-        read_yaw0   = True
-        yaw_prev    = yaw
-        yaw0        = yaw
-    
-    # unwrap measurement
-    yaw         = unwrap(array([yaw_prev, yaw]), discont = pi)[1]
-    yaw_prev    = yaw
-    yaw_local   = yaw - yaw0
     
     # extract angular velocity and linear acceleration data
     w_x = data.angular_velocity.x
@@ -147,9 +117,10 @@ def enc_callback(data):
         # Uncomment/modify according to your encoder setup
         # v_meas    = (v_FL + v_FR)/2.0
         # Modification for 3 working encoders
-        v_meas = (v_FL + v_BL + v_BR)/3.0
+        #v_meas = (v_FL + v_BL + v_BR)/3.0
         # Modification for bench testing (driven wheels only)
-        # v = (v_BL + v_BR)/2.0
+        v_meas = (v_FL + v_BL)/2.0
+        
 
         # update old data
         n_FL_prev   = n_FL
@@ -199,7 +170,6 @@ def state_estimation():
     R           = (r_std**2)*eye(2)     # measurement noise coveriance matrix
 
     while not rospy.is_shutdown():
-
         # publish state estimate
         (x, y, psi, v) = z_EKF
 

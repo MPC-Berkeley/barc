@@ -1,4 +1,3 @@
-execute pathogen#infect()
 syntax enable
 colorscheme monokai
 " show existing tab with 4 spaces width
