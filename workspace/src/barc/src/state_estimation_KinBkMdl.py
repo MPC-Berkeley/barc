@@ -90,37 +90,6 @@ def imu_callback(data):
     a_y = data.linear_acceleration.y
     a_z = data.linear_acceleration.z
 
-# imu measurement update
-def imu_callback(data):
-    # units: [rad] and [rad/s]
-    global roll, pitch, yaw, a_x, a_y, a_z, w_x, w_y, w_z
-    global yaw_prev, yaw0, read_yaw0, yaw_local
-
-    # get orientation from quaternion data, and convert to roll, pitch, yaw
-    # extract angular velocity and linear acceleration data
-    ori         = data.orientation
-    quaternion  = (ori.x, ori.y, ori.z, ori.w)
-    (roll, pitch, yaw) = transformations.euler_from_quaternion(quaternion)
-
-    # save initial measurements
-    if not read_yaw0:
-        read_yaw0   = True
-        yaw_prev    = yaw
-        yaw0        = yaw
-    
-    # unwrap measurement
-    yaw         = unwrap(array([yaw_prev, yaw]), discont = pi)[1]
-    yaw_prev    = yaw
-    yaw_local   = yaw - yaw0
-    
-    # extract angular velocity and linear acceleration data
-    w_x = data.angular_velocity.x
-    w_y = data.angular_velocity.y
-    w_z = data.angular_velocity.z
-    a_x = data.linear_acceleration.x
-    a_y = data.linear_acceleration.y
-    a_z = data.linear_acceleration.z
-
 # encoder measurement update
 def enc_callback(data):
     global v, t0, dt_v_enc, v_meas
