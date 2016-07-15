@@ -39,7 +39,7 @@ dt      = 0.1           # time step of system
 N       = 5
 
 # define targets [generic values]
-x_ref   = 5
+x_ref   = 1
 y_ref   = 0
 psi_ref = 0
 v_ref   = 0
@@ -97,41 +97,6 @@ function SE_callback(msg::Z_KinBkMdl)
     setValue(y0,    msg.y)
     setValue(psi0,  msg.psi)
     setValue(v0,    msg.v)
-    if read_yaw0 == 0
-        read_yaw0 = 1
-        psi_ref = psi0
-        x_ref   = 2*cos(psi_ref)
-        y_ref   = 2*sin(psi_ref)
-    end
-end
-
-function angle_2_servo(x)
-    x = x-2
-    u = 92.0558 + 1.8194*x - 0.0104*x^2
-    return u
-end
-
-function accel_2_pwm(a)
-    pwm = nearest_pwm(a)
-    if a > 0
-        pwm = max(95, pwm)
-    else
-        pwm = min(87, pwm)
-    end
-    return pwm
-end
-
-function nearest_pwm(a_des)
-    best_idx = 0
-    min_err = 10
-    for i = [1:length(accel_range)]
-        err = abs(accel_range[i] - a_des)
-        if err < min_err
-            best_idx = i
-            min_err = err
-        end
-    end
-    return pwm_range[best_idx]
 end
 
 function main()
@@ -149,9 +114,7 @@ function main()
         a_opt   = getValue(a[1])
         d_f_opt = getValue(d_f[1])
 
-        esc_cmd = accel_2_pwm(a_opt)
-        servo_cmd = angle_2_servo(d_f_opt*180/pi)
-        cmd = ECU(esc_cmd, servo_cmd)
+        cmd = ECU(a_opt, d_f_opt)
 
         # publish commands
         publish(pub, cmd)
