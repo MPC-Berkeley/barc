@@ -93,7 +93,6 @@ println("finished initial solve!")
 
 function SE_callback(msg::Z_KinBkMdl)
     # update mpc initial condition 
-    global read_yaw0
     setValue(x0,    msg.x)
     setValue(y0,    msg.y)
     setValue(psi0,  msg.psi)

@@ -82,12 +82,12 @@ v_min = -1*v_max
 d_f_max = 30*pi/180.0
 d_f_min = -1*d_f_max
 
-x_min = -20
-x_max = 20
+x_min = -10
+x_max = 10
 y_min = -5
-y_max = 20
-psi_min = -4*pi
-psi_max = 4*pi
+y_max = 10
+psi_min = -pi/6
+psi_max = pi/6
 
 # define decision variables 
 # states: position (x,y), yaw angle, and velocity
@@ -124,7 +124,7 @@ for i in 1:N
     @addNLConstraint(mdl, d[(i-1)*16 + 1] + d[(i-1)*16 + 2] == 1)               
 
     @addNLConstraint(mdl, d[(i-1)*16 + 3]*(x[i] + Lf*cos(psi[i]) + width/2*sin(psi[i]) - xl ) 
-                   + d[(i-1)*16 + 4]*(y[i] + Lf*sin(psi[i]) - width/2*cos(psi[i]) - yt) >= 0)
+                   + d[(i-1)*16 + 4]*(y[i] + Lf*sin(psi[i]) + width/2*cos(psi[i]) - yt) >= 0)
     @addNLConstraint(mdl, d[(i-1)*16 + 3] + d[(i-1)*16 + 4] == 1)               
 
     @addNLConstraint(mdl, d[(i-1)*16 + 5]*(x[i] - Lr*cos(psi[i]) + width/2*sin(psi[i]) - xl ) 
@@ -152,16 +152,6 @@ for i in 1:N
                    + d[(i-1)*16 + 16]*(y[i] - Lr*sin(psi[i]) + width/2*cos(psi[i]) - yt) >= 0)
     @addNLConstraint(mdl, d[(i-1)*16 + 15] + d[(i-1)*16 + 16] == 1)               
 
-    @addNLConstraint(mdl, x_min <= x[i] + Lf*cos(psi[i]) - width/2*sin(psi[i]) <= x_max)
-    @addNLConstraint(mdl, x_min <= x[i] + Lf*cos(psi[i]) + width/2*sin(psi[i]) <= x_max)
-    @addNLConstraint(mdl, x_min <= x[i] - Lr*cos(psi[i]) + width/2*sin(psi[i]) <= x_max)
-    @addNLConstraint(mdl, x_min <= x[i] - Lr*cos(psi[i]) - width/2*sin(psi[i]) <= x_max)
-
-    @addNLConstraint(mdl, y_min <= y[i] + Lf*sin(psi[i]) + width/2*cos(psi[i]) <= y_max)
-    @addNLConstraint(mdl, y_min <= y[i] + Lf*sin(psi[i]) - width/2*cos(psi[i]) <= y_max)
-    @addNLConstraint(mdl, y_min <= y[i] - Lr*sin(psi[i]) - width/2*cos(psi[i]) <= y_max)
-    @addNLConstraint(mdl, y_min <= y[i] - Lr*sin(psi[i]) + width/2*cos(psi[i]) <= y_max)
-    
 end
 
 # status update
@@ -172,8 +162,6 @@ println("finished initial solve!")
 function SE_callback(msg::Z_KinBkMdl)
     global psi_offset
     global read_yaw0
-    global x_ref
-    global y_ref
     # update mpc initial condition 
     setValue(x0,    msg.x)
     setValue(y0,    msg.y)
