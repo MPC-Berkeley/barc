@@ -1,21 +1,19 @@
 Arduino connections
 
-<img src="https://www.arduino.cc/en/uploads/Main/ArduinoNanoFront_3_lg.jpg" alt="Arduino Nano" width="600" height="450">
+<img src="https://www.arduino.cc/en/uploads/Main/ArduinoNanoFront_3_lg.jpg" alt="Arduino Nano" width="400" height="250">
+<img src="http://blog.huntgang.com/wp-content/uploads/2015/01/Arduino-Nano-V3.jpg" alt="Arduino Nano" width="400" height="250">
+
+
+
 Image from 
 <a href="https://www.arduino.cc/en/Main/ArduinoBoardNano">arduino.cc</a>
+and 
+<a href="http://blog.huntgang.com/2015/01/20/arduino-esp8266-tutorial-web-server-monitor-example/">blog.huntgang</a>
 
 <table style="width:100%">
   <tr>
     <th>Component</th>
     <th>Pin</th> 
-  </tr>
-  <tr>
-    <td>Sero</td>
-    <td>D11</td> 
-  </tr>
-  <tr>
-    <td>Motor</td>
-    <td>D10</td> 
   </tr>
   <tr>
     <td>Front Left Encoder</td>
@@ -24,6 +22,30 @@ Image from
     <tr>
     <td>Front Right Encoder</td>
     <td>D3</td> 
+  </tr>
+  <tr>
+    <td>Back Left Encoder</td>
+    <td>D5</td> 
+  </tr>
+    <tr>
+    <td>Back Right Encoder</td>
+    <td>D6</td> 
+  </tr>
+  <tr>
+  <td>Throttle (from RC receiver channel 2) </td>
+    <td>D7</td> 
+  </tr>
+    <tr>
+    <td>Steering (from RC receiver channel 1)</td>
+    <td>D8</td> 
+  </tr>
+  <tr>
+    <td>Electronic Speed Control (for 3-phase Motor)</td>
+    <td>D10</td> 
+  </tr>
+  <tr>
+    <td>Servo</td>
+    <td>D11</td> 
   </tr>
   <tr>
     <td>Front Ultrasound</td>
@@ -45,8 +67,6 @@ Image from
 
 Notes
 <ul>
-  <li>The arduino nano only uses two of the four encoders because it has only two interrupts</li>
-  <li>The ultrasound sensor code is commented out. Uncomment it when the sensors have been connected, otherwise serial communication may not work </li>
-  <li> To rebuild arduiono-ROS libraries, open a terminal and run <br> <font face="Digital, Arial, Helvetica, sans-serif">source ~/barc/scripts/rebuild_system.sh</font> 
-  <br> and then reflash the arduino</li>
+  <li>The ultrasound sensor code is commented out. Uncomment it when the sensors have been connected, otherwise serial communication may not work properly</li>
+  <li>Encoders now use software interrupts (formerly hardware interrupts. Install the necessary library by running `source ~/barc/scripts/install_enable_interrupt.sh`</li>
 </ul>

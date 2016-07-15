@@ -1,0 +1,16 @@
+syntax enable
+colorscheme monokai
+" show existing tab with 4 spaces width
+set autoindent
+
+" when indenting with '>', use 4 spaces width
+set tabstop=4
+
+set shiftwidth=4
+
+" on pressing tab, insert 4 spaces
+set expandtab 
+set mouse=a
+
+autocmd BufNewFile,BufReadPost *.ino,*.pde set filetype=cpp
+autocmd BufNewFile,BufReadPost *.launch set filetype=xml

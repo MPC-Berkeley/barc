@@ -57,10 +57,10 @@ class Car {
     void calcSteering();
   private:
     // Pin assignments
-    /* const int ENC_FR_PIN = X; */
     const int ENC_FL_PIN = 2;
-    const int ENC_BR_PIN = 3;
+    const int ENC_FR_PIN = 3;
     const int ENC_BL_PIN = 5;
+    const int ENC_BR_PIN = 6;
     const int THROTTLE_PIN = 7;
     const int STEERING_PIN = 8;
     const int MOTOR_PIN = 10;
@@ -173,7 +173,7 @@ ros::NodeHandle nh;
 ros::Publisher pub_encoder("encoder", &encoder);
 ros::Publisher pub_rc_inputs("rc_inputs", &rc_inputs);
 ros::Publisher pub_ultrasound("ultrasound", &ultrasound);
-ros::Subscriber<barc::ECU> sub_ecu("ecu", ecuCallback);
+ros::Subscriber<barc::ECU> sub_ecu("ecu_pwm", ecuCallback);
 
 
 // Set up ultrasound sensors
@@ -228,8 +228,8 @@ void loop() {
     encoder.BR = car.getEncoderBR();
     pub_encoder.publish(&encoder);
 
-    rc_inputs.motor_pwm = car.getRCThrottle();
-    rc_inputs.servo_pwm = car.getRCSteering();
+    rc_inputs.motor = car.getRCThrottle();
+    rc_inputs.servo = car.getRCSteering();
     pub_rc_inputs.publish(&rc_inputs);
 
     // publish ultra-sound measurement
@@ -275,11 +275,11 @@ float Car::saturateServo(float x) {
 }
 
 void Car::initEncoders() {
-  /* pinMode(ENC_FR_PIN, INPUT_PULLUP); */
+  pinMode(ENC_FR_PIN, INPUT_PULLUP);
   pinMode(ENC_FL_PIN, INPUT_PULLUP);
   pinMode(ENC_BR_PIN, INPUT_PULLUP);
   pinMode(ENC_BL_PIN, INPUT_PULLUP);
-  /* enableInterrupt(ENC_FR_PIN, incFRCallback, CHANGE); */
+  enableInterrupt(ENC_FR_PIN, incFRCallback, CHANGE);
   enableInterrupt(ENC_FL_PIN, incFLCallback, CHANGE);
   enableInterrupt(ENC_BR_PIN, incBRCallback, CHANGE);
   enableInterrupt(ENC_BL_PIN, incBLCallback, CHANGE);
@@ -304,8 +304,8 @@ void Car::armActuators() {
 }
 
 void Car::writeToActuators(const barc::ECU& ecu) {
-  float motorCMD = saturateMotor(ecu.motor_pwm);
-  float servoCMD = saturateServo(ecu.servo_pwm);
+  float motorCMD = saturateMotor(ecu.motor);
+  float servoCMD = saturateServo(ecu.servo);
   motor.write(motorCMD);
   steering.write(servoCMD);
 }
