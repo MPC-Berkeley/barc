@@ -120,7 +120,7 @@ def enc_callback(data):
         #v_meas = (v_FL + v_BL + v_BR)/3.0
         # Modification for bench testing (driven wheels only)
         v_meas = (v_FL + v_BL)/2.0
-        
+        #v_meas = v_FL
 
         # update old data
         n_FL_prev   = n_FL
