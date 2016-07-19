@@ -30,11 +30,11 @@ L_b     = 0.125         # distance from CoG to rear axel
 dt      = 0.1           # time step of system
 
 # preview horizon
-N       = 5
+N       = 10
 
 # define targets [generic values]
-x_ref   = 1
-y_ref   = -0.6
+x_ref   = 1.0
+y_ref   = -0.5
 
 # define decision variables 
 # states: position (x,y), yaw angle, and velocity
@@ -93,7 +93,8 @@ function main()
     # set rate
     loop_rate = Rate(10)
 
-    while ! is_shutdown()
+    is_parked = 0
+    while ! is_shutdown() && is_parked == 0 
         # run mpc, publish command
         solve(mdl)
 
@@ -105,9 +106,21 @@ function main()
         cmd     = ECU(a_opt, d_f_opt)
         publish(pub, cmd)
 
+        x_curr = getValue(x0)
+        y_curr = getValue(y0)
+        psi_curr = getValue(psi0)
+        v_curr = getValue(v0)
+
+        if abs(x_curr - x_ref) <= 0.05 && abs(y_curr - y_ref) <= 0.05 && abs(psi_curr) <= 0.05 && abs(v_curr) <= 0.05
+            is_parked = 1
+        end
+
         # sleep
         rossleep(loop_rate)
     end
+    cmd = ECU(0,0)
+    publish(pub,cmd)
+    println("parked!")
 end
 
 if ! isinteractive()

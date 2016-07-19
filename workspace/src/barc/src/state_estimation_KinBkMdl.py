@@ -17,7 +17,7 @@ import rospy
 import time
 import os
 from sensor_msgs.msg import Imu
-from barc.msg import ECU, Encoder, Z_KinBkMdl
+from barc.msg import ECU, Encoder, Z_KinBkMdl, vel_sgn
 from numpy import pi, cos, sin, eye, array, zeros, unwrap
 from observers import kinematicLuembergerObserver, ekf
 from system_models import f_KinBkMdl, h_KinBkMdl
@@ -27,6 +27,9 @@ from numpy import unwrap
 # input variables [default values]
 d_f         = 0         # steering angle [deg]
 acc         = 0         # acceleration [m/s]
+
+# velocity sign
+sign = 1
 
 # raw measurement variables
 yaw_prev = 0
@@ -51,6 +54,10 @@ n_BL_prev   = 0
 n_BR_prev   = 0
 r_tire      = 0.036                  # radius from tire center to perimeter along magnets [m]
 dx_qrt      = 2.0*pi*r_tire/4.0     # distance along quarter tire edge [m]
+
+def sign_callback(data):
+    global sign
+    sign = data.mode
 
 # ecu command update
 def ecu_callback(data):
@@ -119,7 +126,7 @@ def enc_callback(data):
         # Modification for 3 working encoders
         #v_meas = (v_FL + v_BL + v_BR)/3.0
         # Modification for bench testing (driven wheels only)
-        v_meas = (v_FL + v_BL)/2.0
+        v_meas = sign*(v_FL + v_BL)/2.0
         #v_meas = v_FL
 
         # update old data
@@ -141,6 +148,7 @@ def state_estimation():
     rospy.Subscriber('imu/data', Imu, imu_callback)
     rospy.Subscriber('encoder', Encoder, enc_callback)
     rospy.Subscriber('ecu', ECU, ecu_callback)
+    rospy.Subscriber('vel_sgn', vel_sgn, sign_callback)
     state_pub   = rospy.Publisher('state_estimate', Z_KinBkMdl, queue_size = 10)
 
     # get vehicle dimension parameters

@@ -20,19 +20,21 @@
 
 from rospy import init_node, Subscriber, Publisher, get_param
 from rospy import Rate, is_shutdown, ROSInterruptException, spin, on_shutdown
-from barc.msg import ECU
-from numpy import pi
+from barc.msg import ECU, Z_KinBkMdl, vel_sgn
+from numpy import pi, abs
 import rospy
 
 motor_pwm = 90
 servo_pwm = 90
+vel = 0
+mode = 1
 
 def pwm_converter_callback(msg):
-    global motor_pwm, servo_pwm, b0
-
+    global motor_pwm, servo_pwm, b0, mode
     # translate from SI units in vehicle model
     # to pwm angle units (i.e. to send command signal to actuators)
 
+    rate = rospy.Rate(10)
     # compute servo command
     str_ang     = 180.0/pi*msg.servo  # convert steering angle to degrees
     servo_pwm   = 92.0558 + 1.8194*str_ang  - 0.0104*str_ang**2
@@ -42,10 +44,38 @@ def pwm_converter_callback(msg):
     if FxR == 0:
         motor_pwm = 90
     elif FxR > 0:
-        motor_pwm   =  FxR/b0 + 95
+        if abs(vel) < 0.1 and mode == -1:
+            mode = 1
+            sign = vel_sgn(mode)
+            pub_sgn.publish(sign)            
+        motor_pwm   =  FxR/b0 + 96
+    elif FxR < 0:
+        if abs(vel) < 0.1 and mode == 1:
+            mode = -1
+            sign = vel_sgn(mode)
+            pub_sgn.publish(sign)
+
+            # need this sequence to change to backward mode
+            i = 0
+            while i < 5:
+                motor_pwm = 60
+                update_arduino()
+                rate.sleep()
+                i+=1
+            motor_pwm = 90
+            update_arduino()
+            rate.sleep()
+
+        rospy.loginfo("here")
+        motor_pwm   =  FxR/b0 + 87
+            
     else:
         motor_pwm = 90
     update_arduino()
+
+def SE_callback(msg):
+    global vel
+    vel =  msg.v
 
 def neutralize():
     global motor_pwm
@@ -59,13 +89,15 @@ def update_arduino():
     ecu_pub.publish(ecu_cmd)
 
 def arduino_interface():
-    global ecu_pub, b0
+    global ecu_pub, pub_sgn, b0
 
     # launch node, subscribe to motorPWM and servoPWM, publish ecu
     init_node('arduino_interface')
     b0  = get_param("input_gain")
 
     Subscriber('ecu', ECU, pwm_converter_callback, queue_size = 10)
+    Subscriber('state_estimate', Z_KinBkMdl, SE_callback, queue_size = 10)
+    pub_sgn = Publisher('vel_sgn', vel_sgn, queue_size = 10)
     ecu_pub = Publisher('ecu_pwm', ECU, queue_size = 10)
 
     # Set motor to neutral on shutdown
