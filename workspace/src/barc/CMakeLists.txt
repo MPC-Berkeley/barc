@@ -193,3 +193,7 @@ include_directories(
 add_executable (drift_corner src/drift_corner src/pid)
 target_link_libraries(drift_corner ${catkin_LIBRARIES})
 add_dependencies(drift_corner geometry_msgs)
+
+add_executable (openloop_man src/openloop_man src/pid)
+target_link_libraries(openloop_man ${catkin_LIBRARIES})
+add_dependencies(openloop_man geometry_msgs)
