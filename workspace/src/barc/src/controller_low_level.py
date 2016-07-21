@@ -54,7 +54,7 @@ def neutralize():
     update_arduino()
 
 def update_arduino():
-    global motor_pwm, servo_cmd, ecu_pub
+    global motor_pwm, servo_pwm, ecu_pub
     ecu_cmd = ECU(motor_pwm, servo_pwm)
     ecu_pub.publish(ecu_cmd)
 
