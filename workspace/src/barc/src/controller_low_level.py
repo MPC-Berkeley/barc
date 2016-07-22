@@ -48,7 +48,7 @@ def pwm_converter_callback(msg):
     update_arduino()
 
 def neutralize():
-    global motor_pwm
+    global motor_pwm, servo_pwm
     motor_pwm = 90
     servo_pwm = 90
     update_arduino()
