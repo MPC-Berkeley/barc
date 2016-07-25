@@ -126,8 +126,8 @@ def enc_callback(data):
         # Modification for 3 working encoders
         #v_meas = (v_FL + v_BL + v_BR)/3.0
         # Modification for bench testing (driven wheels only)
-        v_meas = sign*(v_FL + v_BL)/2.0
-        #v_meas = v_FL
+        #v_meas = sign*(v_FL + v_BL)/2.0
+        v_meas = sign*v_FL
 
         # update old data
         n_FL_prev   = n_FL

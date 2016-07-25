@@ -33,23 +33,23 @@ dt      = 0.1           # time step of system
 N       = 10
 
 # define targets [generic values]
-x_ref   = 2.0
-y_ref   = 1.0
+x_final = 2.0
+y_final = -0.5
+x_int   = x_final + 0.4
+y_int   = y_final + 0.225
 
 # define decision variables 
 # states: position (x,y), yaw angle, and velocity
 # inputs: acceleration, steering angle 
 println("Creating kinematic bicycle model ....")
 mdl     = Model(solver = IpoptSolver(print_level=3))
-@defVar(mdl, -3 <= x[1:(N+1)] <= 4)
-@defVar(mdl, -2 <= y[1:(N+1)] <= 2)
-@defVar(mdl, -2*pi <= psi[1:(N+1)] <= 2*pi)
+@defVar(mdl, x[1:(N+1)])
+@defVar(mdl, y[1:(N+1)])
+@defVar(mdl, -pi/2 <= psi[1:(N+1)] <= pi/2)
 @defVar(mdl, -2 <= v[1:(N+1)] <= 2)
 @defVar(mdl, -30*pi/180.0 <= d_f[1:N] <= 30*pi/180.0)
-@defVar(mdl, -1 <= a[1:N] <= 1)
+@defVar(mdl, -0.25 <= a[1:N] <= 0.5)
 
-# define objective function
-@setNLObjective(mdl, Min, 2*(x[N+1] - x_ref)^2 + 2*(y[N+1] - y_ref)^2 + psi[N+1]^2 + v[N+1]^2)
 
 # define constraints
 # define system dynamics
@@ -60,6 +60,11 @@ mdl     = Model(solver = IpoptSolver(print_level=3))
 @defNLParam(mdl, y0     == 0); @addNLConstraint(mdl, y[1]     == y0);
 @defNLParam(mdl, psi0   == 0); @addNLConstraint(mdl, psi[1]   == psi0 );
 @defNLParam(mdl, v0     == 0); @addNLConstraint(mdl, v[1]     == v0);
+@defNLParam(mdl, x_ref == x_int);
+@defNLParam(mdl, y_ref == y_int);
+
+# define objective function
+@setNLObjective(mdl, Min, (x[N+1] - x_ref)^2 + (y[N+1] - y_ref)^2 + v[N+1]^2 + psi[N+1]^2)
 
 # model dynamics
 @defNLExpr(mdl,  bta[i=1:N], atan( L_a / (L_a + L_b) * tan(d_f[i]) ) )
@@ -88,49 +93,56 @@ function main()
     init_node("mpc")
     pub = Publisher("ecu", ECU, queue_size=10)
     s1  = Subscriber("state_estimate", Z_KinBkMdl, SE_callback, queue_size=10)
-    
+#    pub_stage = Publisher("stage", Bool, queue_size = 10) 
     # set rate
     loop_rate = Rate(10)
 
+    to_final = 0
     is_parked = 0
     while ! is_shutdown() && is_parked == 0 
         # run mpc, publish command
-        status = solve(mdl)
+        solve(mdl)
 
-        if status != :Infeasible
-            # get optimal solutions
-            a_opt   = getValue(a[1])
-            d_f_opt = getValue(d_f[1])
+        # get optimal solutions
+        a_opt   = getValue(a[1])
+        d_f_opt = getValue(d_f[1])
 
-            # apply ecu command
-            cmd     = ECU(a_opt, d_f_opt)
-            publish(pub, cmd)
+        # apply ecu command
+        cmd     = ECU(a_opt, d_f_opt)
+        publish(pub, cmd)
 
-            x_curr = getValue(x0)
-            y_curr = getValue(y0)
-            psi_curr = getValue(psi0)
-            v_curr = getValue(v0)
+        x_curr = getValue(x0)
+        y_curr = getValue(y0)
+        psi_curr = getValue(psi0)
+        v_curr = getValue(v0)
 
-            while psi_curr < -pi
-                psi_curr += 2*pi
+        if to_final == 0
+            if x_curr > x_int && x_curr - x_int < 0.2
+                if abs(y_curr - y_int) <= 0.2 && abs(v_curr) <= 0.1
+                    to_final = 1
+                    println("reached intermediate pose")
+                    setValue(x_ref, x_final)
+                    setValue(y_ref, y_final)
+                    println("set values")
+                end
             end
-            while psi_curr > pi
-                psi_curr -= 2*pi
-            end
-
-            if abs(x_curr - x_ref) <= 0.05 && abs(y_curr - y_ref) <= 0.05 && abs(psi_curr) <= 0.05 && abs(v_curr) <= 0.05
-                is_parked = 1
-            end
-
-            # sleep
-            rossleep(loop_rate)
-        else
-            cmd = ECU(-1,0)
-            publish(pub, cmd)
         end
+
+
+        if to_final == 1 && abs(x_curr - x_final) <= 0.1 && abs(y_curr - y_final) <= 0.1 && abs(v_curr) <= 0.05
+            is_parked = 1
+        end
+
+        # sleep
+        rossleep(loop_rate)
     end
-    cmd = ECU(0,0)
-    publish(pub,cmd)
+    
+    i = 0
+    while(i < 10)
+        cmd = ECU(0,0)
+        publish(pub,cmd)
+        rossleep(loop_rate)
+    end
     println("parked!")
 end
 

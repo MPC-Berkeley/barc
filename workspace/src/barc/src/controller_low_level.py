@@ -28,13 +28,13 @@ motor_pwm = 90
 servo_pwm = 90
 vel = 0
 mode = 1
-
+time = 0
 def pwm_converter_callback(msg):
-    global motor_pwm, servo_pwm, b0, mode
+    global motor_pwm, servo_pwm, b0, mode, time
     # translate from SI units in vehicle model
     # to pwm angle units (i.e. to send command signal to actuators)
 
-    rate = rospy.Rate(10)
+    rate = rospy.Rate(30)
     # compute servo command
     str_ang     = 180.0/pi*msg.servo  # convert steering angle to degrees
     servo_pwm   = 92.0558 + 1.8194*str_ang  - 0.0104*str_ang**2
@@ -44,31 +44,42 @@ def pwm_converter_callback(msg):
     if FxR == 0:
         motor_pwm = 90
     elif FxR > 0:
-        if abs(vel) < 0.1 and mode == -1:
+        if abs(vel) < 0.01 and mode == -1:
             mode = 1
             sign = vel_sgn(mode)
             pub_sgn.publish(sign)            
-        motor_pwm   =  FxR/b0 + 96
+        motor_pwm   =  FxR/b0 + 96.5
     elif FxR < 0:
-        if abs(vel) < 0.1 and mode == 1:
+        if abs(vel) < 0.01 and mode == -1:
+            time+=1
+            if time > 30: # 1 sec based on Rate
+                mode = 1
+                time = 0
+        if abs(vel) < 0.01 and mode == 1:
             mode = -1
             sign = vel_sgn(mode)
             pub_sgn.publish(sign)
 
             # need this sequence to change to backward mode
             i = 0
-            while i < 5:
-                motor_pwm = 60
+            j = 0
+            latched = 0
+            while i < 40:
+                motor_pwm = 65
                 update_arduino()
                 rate.sleep()
+                if abs(vel) > 0.1:
+                    latched = 1
+                    break
                 i+=1
-            motor_pwm = 90
-            update_arduino()
-            rate.sleep()
-
-        rospy.loginfo("here")
+            if latched == 0:
+                while j < 40:
+                    motor_pwm = 90
+                    update_arduino()
+                    rate.sleep()
+                    j+=1
         motor_pwm   =  FxR/b0 + 87
-            
+        update_arduino()    
     else:
         motor_pwm = 90
     update_arduino()
@@ -89,7 +100,7 @@ def update_arduino():
     ecu_pub.publish(ecu_cmd)
 
 def arduino_interface():
-    global ecu_pub, pub_sgn, b0
+    global ecu_pub, pub_sgn, b0, time
 
     # launch node, subscribe to motorPWM and servoPWM, publish ecu
     init_node('arduino_interface')
@@ -100,6 +111,25 @@ def arduino_interface():
     pub_sgn = Publisher('vel_sgn', vel_sgn, queue_size = 10)
     ecu_pub = Publisher('ecu_pwm', ECU, queue_size = 10)
 
+  #  rate = rospy.Rate(10)
+
+  #  if abs(vel) <= 0.05:
+  #      time += 0.1
+  #  if abs(vel) > 0.05:
+  #      time = 0
+  #  if time > 50:
+  #      k = 0
+  #      l = 0
+  #      while k < 50:
+  #          motor_pwm = 60
+  #          update_arduino()
+  #          rate.sleep()
+  #          k+=1
+  #      while l < 50:
+  #          motor_pwm = 90
+  #          update_arduino()
+  #          rate.sleep()
+  #          l+=1
     # Set motor to neutral on shutdown
     on_shutdown(neutralize)
 
