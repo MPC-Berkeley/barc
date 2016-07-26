@@ -119,37 +119,22 @@ for i in 1:N
     @addNLConstraint(mdl, psi[i+1]  == psi[i]    + dt*(v[i]/L_b * sin(bta[i]))  )
     @addNLConstraint(mdl, v[i+1]    == v[i]      + dt*(a[i])  )
 
-    @addNLConstraint(mdl, d[(i-1)*16 + 1]*(x[i] + Lf*cos(psi[i]) - width/2*sin(psi[i]) - xl ) 
-                   + d[(i-1)*16 + 2]*(y[i] + Lf*sin(psi[i]) + width/2*cos(psi[i]) - yt) >= 0)
+    @addNLConstraint(mdl, d[(i-1)*16 + 1]*(x[i] + Lf*cos(psi[i]) - width/2*sin(psi[i]) - xl ) + d[(i-1)*16 + 2]*(y[i] + Lf*sin(psi[i]) + width/2*cos(psi[i]) - yt) >= 0)
     @addNLConstraint(mdl, d[(i-1)*16 + 1] + d[(i-1)*16 + 2] == 1)               
-
-    @addNLConstraint(mdl, d[(i-1)*16 + 3]*(x[i] + Lf*cos(psi[i]) + width/2*sin(psi[i]) - xl ) 
-                   + d[(i-1)*16 + 4]*(y[i] + Lf*sin(psi[i]) + width/2*cos(psi[i]) - yt) >= 0)
+    @addNLConstraint(mdl, d[(i-1)*16 + 3]*(x[i] + Lf*cos(psi[i]) + width/2*sin(psi[i]) - xl ) + d[(i-1)*16 + 4]*(y[i] + Lf*sin(psi[i]) + width/2*cos(psi[i]) - yt) >= 0)
     @addNLConstraint(mdl, d[(i-1)*16 + 3] + d[(i-1)*16 + 4] == 1)               
-
-    @addNLConstraint(mdl, d[(i-1)*16 + 5]*(x[i] - Lr*cos(psi[i]) + width/2*sin(psi[i]) - xl ) 
-                   + d[(i-1)*16 + 6]*(y[i] - Lr*sin(psi[i]) - width/2*cos(psi[i]) - yt) >= 0)
+    @addNLConstraint(mdl, d[(i-1)*16 + 5]*(x[i] - Lr*cos(psi[i]) + width/2*sin(psi[i]) - xl ) + d[(i-1)*16 + 6]*(y[i] - Lr*sin(psi[i]) - width/2*cos(psi[i]) - yt) >= 0)
     @addNLConstraint(mdl, d[(i-1)*16 + 5] + d[(i-1)*16 + 6] == 1)               
-
-    @addNLConstraint(mdl, d[(i-1)*16 + 7]*(x[i] - Lr*cos(psi[i]) - width/2*sin(psi[i]) - xl ) 
-                   + d[(i-1)*16 + 8]*(y[i] - Lr*sin(psi[i]) + width/2*cos(psi[i]) - yt) >= 0)
+    @addNLConstraint(mdl, d[(i-1)*16 + 7]*(x[i] - Lr*cos(psi[i]) - width/2*sin(psi[i]) - xl ) + d[(i-1)*16 + 8]*(y[i] - Lr*sin(psi[i]) + width/2*cos(psi[i]) - yt) >= 0)
     @addNLConstraint(mdl, d[(i-1)*16 + 7] + d[(i-1)*16 + 8] == 1)               
 
-
-    @addNLConstraint(mdl, d[(i-1)*16 + 9]*(-(x[i] + Lf*cos(psi[i]) - width/2*sin(psi[i])) + xr)
-                   + d[(i-1)*16 + 10]*(y[i] + Lf*sin(psi[i]) + width/2*cos(psi[i]) - yt) >= 0)
+    @addNLConstraint(mdl, d[(i-1)*16 + 9]*(-(x[i] + Lf*cos(psi[i]) - width/2*sin(psi[i])) + xr) + d[(i-1)*16 + 10]*(y[i] + Lf*sin(psi[i]) + width/2*cos(psi[i]) - yt) >= 0)
     @addNLConstraint(mdl, d[(i-1)*16 + 9] + d[(i-1)*16 + 10] == 1)               
-
-    @addNLConstraint(mdl, d[(i-1)*16 + 11]*(-(x[i] + Lf*cos(psi[i]) + width/2*sin(psi[i]))+ xr)
-                   + d[(i-1)*16 + 12]*(y[i] + Lf*sin(psi[i]) - width/2*cos(psi[i]) - yt) >= 0)
+    @addNLConstraint(mdl, d[(i-1)*16 + 11]*(-(x[i] + Lf*cos(psi[i]) + width/2*sin(psi[i]))+ xr) + d[(i-1)*16 + 12]*(y[i] + Lf*sin(psi[i]) - width/2*cos(psi[i]) - yt) >= 0)
     @addNLConstraint(mdl, d[(i-1)*16 + 11] + d[(i-1)*16 + 12] == 1)               
-
-    @addNLConstraint(mdl, d[(i-1)*16 + 13]*(-(x[i] - Lr*cos(psi[i]) + width/2*sin(psi[i]))+xr) 
-                   + d[(i-1)*16 + 14]*(y[i] - Lr*sin(psi[i]) - width/2*cos(psi[i]) - yt) >= 0)
+    @addNLConstraint(mdl, d[(i-1)*16 + 13]*(-(x[i] - Lr*cos(psi[i]) + width/2*sin(psi[i]))+ xr) + d[(i-1)*16 + 14]*(y[i] - Lr*sin(psi[i]) - width/2*cos(psi[i]) - yt) >= 0)
     @addNLConstraint(mdl, d[(i-1)*16 + 13] + d[(i-1)*16 + 14] == 1)               
-
-    @addNLConstraint(mdl, d[(i-1)*16 + 15]*(-(x[i] - Lr*cos(psi[i]) - width/2*sin(psi[i]))+xr) 
-                   + d[(i-1)*16 + 16]*(y[i] - Lr*sin(psi[i]) + width/2*cos(psi[i]) - yt) >= 0)
+    @addNLConstraint(mdl, d[(i-1)*16 + 15]*(-(x[i] - Lr*cos(psi[i]) - width/2*sin(psi[i]))+ xr) + d[(i-1)*16 + 16]*(y[i] - Lr*sin(psi[i]) + width/2*cos(psi[i]) - yt) >= 0)
     @addNLConstraint(mdl, d[(i-1)*16 + 15] + d[(i-1)*16 + 16] == 1)               
 
 end
