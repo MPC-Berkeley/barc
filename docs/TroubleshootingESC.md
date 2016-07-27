@@ -1,6 +1,6 @@
 # Troubleshooting blinking red LED on ESC
 
-Thanks to Vince Viola for writting this troubleshooting guide
+Thanks to Vince Viola for writing this troubleshooting guide
 
 #### Calibrating ESC
 If the ESC blinks red and fails to respond to any command, do the following:

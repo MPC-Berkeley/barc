@@ -89,6 +89,7 @@ Recommended reading and resources
 + [Julia JuMP](https://jump.readthedocs.io/en/latest/), Mathematical Programming using the Julia programming language
 + [Git - the simple guide](http://rogerdudler.github.io/git-guide/), or for a more in-depth reading, consider [this](https://www.atlassian.com/git/tutorials/ ) tutorial by Atlassian
 + [Electronic Speed Control (ESC) manual](http://propeleris.lt/failai/wp-s10c-rtr_manual.pdf), which details how to calibrate and program the ESC
++ [Mass moment of inertia calculation](http://www.mathworks.com/company/newsletters/articles/improving-mass-moment-of-inertia-measurements.html), a MATLAB newsletter explaining how to estimate the mass moment of inertia
 
 
 ## Student projects
