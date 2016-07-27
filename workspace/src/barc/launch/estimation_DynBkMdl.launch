@@ -15,7 +15,7 @@
     <param name="tire_model/mu" type="double" value="0.234" />
 
     <!-- IMU -->
-    <node pkg="myahrs_driver" type="myahrs_driver" name="myahrs_driver">
+   <node pkg="myahrs_driver" type="myahrs_driver" name="myahrs_driver">
         <param name="port" value="/dev/ttyACM0" />
         <param name="baud_rate" value="115200" />
     </node>
@@ -27,7 +27,7 @@
     </node>
 
     <!-- OBSERVER-->
-    <node pkg="barc" type="state_estimation_DynBkMdl.py" name="state_estimation">
+    <node pkg="barc" type="state_estimation_DynBkMdl_6s.py" name="state_estimation" output = "screen">
         <!-- v_x estimation sample time-->
         <param name="dt_v_enc" type="double" value="0.2" />
 
