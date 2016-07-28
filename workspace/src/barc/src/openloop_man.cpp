@@ -4,6 +4,7 @@
 #include "data_service/TimeData.h"
 #include "nav_msgs/Odometry.h"
 #include "barc/ECU.h"
+#include "barc/six_states.h"
 #include <iostream>
 #include <fstream>
 #include "pid.h"
@@ -31,34 +32,17 @@ int max_steer,min_steer,max_motor,min_motor;
 
 float vx,vy,yr,X,Y,yaw;
 
-void state_Callback(const geometry_msgs::Vector3 msg)
+void state_Callback(const barc::six_states msg)
 {
-  vx_est = msg.x;
-  vy_est = msg.y;
-  r_est= msg.z;
-  //beta_est =atan(vy_est/vx_est);
+  X = msg.X;
+  Y = msg.Y;
+  yaw = msg.yaw;
+  vx = msg.vx;
+  vy = msg.vy;
+  yr= msg.yr;
 }
 
-void odom_Callback(const nav_msgs::Odometry  msg)
- {
-  float temp = msg.twist.twist.linear.x/odom_P;
-  if (abs(temp - odom_vx) > 1) // donot updat when the state change large
-  {
-  }
-  else{
-  odom_vx = msg.twist.twist.linear.x/odom_P;
-  odom_vy = msg.twist.twist.linear.y/odom_P;
-  odom_wz = msg.twist.twist.angular.z/odom_P;
-  odom_x = msg.pose.pose.position.x/odom_P;
-  odom_y = msg.pose.pose.position.y/odom_P;
-  }
-}
 
-void gps_Callback(const geometry_msgs::Vector3  msg)
-{
-  X = msg.x;
-  Y = msg.y;
-}
 int main(int argc, char **argv)
 {
  
@@ -90,12 +74,6 @@ int main(int argc, char **argv)
   param.getParam("/openloop_man/d_f_turn",d_f_turn) ;// steering angle when introducing steering
   param.getParam("/openloop_man/d_f_counter",d_f_counter) ;// steering angle when introducing counter-steering
 
-
-  time_t time_now;
-  time(&time_now);
-  std::string s = ctime(&time_now); 
-  std::ofstream Data (("/home/odroid/Data/Drift_corner/"+s+".csv").c_str());
-  Data << "t,vx,vy,yawrate,X,Y,yaw,steeing,F_xR"<<std::endl;
   while(ros::ok())
   {
 
@@ -134,7 +112,6 @@ int main(int argc, char **argv)
       d_f = 0;
     }
 
-    Data << t << "," << vx << "," << vy << "," << std::endl;
     //std::cout << "d_f :" << d_f <<std::endl;
     //std::cout << "F_xR :" << F_xR <<std::endl;
 

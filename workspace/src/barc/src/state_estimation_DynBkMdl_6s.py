@@ -131,7 +131,7 @@ def state_estimation():
     rospy.Subscriber('/encoder', Encoder, enc_callback)
     rospy.Subscriber('/ecu', ECU, ecu_callback)
     rospy.Subscriber('/indoor_gps',Vector3 , gps_callback)
-    rospy.Subscriber('/camera/vel_est',Vector3 , optic_callback)
+    rospy.Subscriber('/vel_est',Vector3 , optic_callback)
     state_pub 	= rospy.Publisher('state_estimate', six_states, queue_size = 10)
 
 	# get vehicle dimension parameters
@@ -172,6 +172,22 @@ def state_estimation():
     P           = eye(6)                # initial dynamics coveriance matrix
     Q           = (q_std**2)*eye(6)     # process noise coveriance matrix
     R           = (r_std**2)*eye(6)     # measurement noise coveriance matrix
+    #time_t time_now;
+    #time(&time_now);
+    #struct tm*now = localtime(&time_now);
+    #std::stringstream ss_mon,ss_day,ss_hour,ss_min,ss_sec;
+    #ss_mon << now->tm_mon+1;
+    #ss_day << now->tm_mday;
+    #ss_hour << now->tm_hour;
+    #ss_min << now->tm_min;
+    #ss_sec << now->tm_sec;
+    #std::string s_mon = ss_mon.str();
+    #std::string s_day = ss_day.str();
+    #std::string s_hour = ss_hour.str();
+    #std::string s_min = ss_min.str();
+    #std::string s_sec = ss_sec.str();
+    #std::ofstream Data (("/home/odroid/Data/Drift_corner/"+s_mon+ "."+s_day+"."+s_hour+"."+s_min+"."+s_sec +".csv").c_str());
+    #Data << "t,X_raw,Y_raw,yaw_raw,vx_raw,vy_raw,yawrate_raw,X,Y,yaw,vx,vy,yawrate,steeing,F_xR"<<std::endl;
 
     while not rospy.is_shutdown():
 
@@ -180,6 +196,7 @@ def state_estimation():
 
         # publish information
         state_pub.publish( six_states(X, Y, phi, v_x, v_y, r) )
+        # Data << t << "," << X_gps << "," << Y_gps << "," << yaw << "," << v_x_optic << "," << v_y_optic << "," << w_z<< X << "," << Y << "," << phi << "," << vx << "," << vy << "," << yr << "," << d_f << "," << F_xR << "," <<std::endl;
 
         # apply EKF
         if v_x_optic > v_x_min:
