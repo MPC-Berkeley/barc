@@ -110,8 +110,8 @@ def enc_callback(data):
 # indoor gps measurement update
 def gps_callback(data):
     global X_gps, Y_gps
-    X_gps = data.x
-    Y_gps = data.y
+    X_gps = data.x/100  #cm->m
+    Y_gps = data.y/100  #cm->m
     #rospy.loginfo("I heard indoor gps")
 
 # indoor gps measurement update
@@ -170,9 +170,19 @@ def state_estimation():
 
     # estimation variables for EKF
     P           = eye(6)                # initial dynamics coveriance matrix
-    Q           = (q_std**2)*eye(6)     # process noise coveriance matrix
-    R           = (r_std**2)*eye(6)     # measurement noise coveriance matrix
-    #time_t time_now;
+    R           = array([[0.01, 0, 0, 0, 0, 0],
+                         [0, 0.01, 0, 0, 0, 0],
+                         [0, 0, 0.01, 0, 0, 0],
+                         [0, 0, 0, 100.0, 0, 0],
+                         [0, 0, 0, 0, 100.0, 0],
+                         [0, 0, 0, 0, 0, 1.0]])   # measurement noise coveriance matrix
+  
+    Q           = array([[0.01, 0, 0, 0, 0, 0],
+                         [0, 0.01, 0, 0, 0, 0],
+                         [0, 0, 0.01, 0, 0, 0],
+                         [0, 0, 0, 10.0, 0, 0],
+                         [0, 0, 0, 0, 10.0, 0],
+                         [0, 0, 0, 0, 0, 10.0]])    # process noise coveriance matrix  
     #time(&time_now);
     #struct tm*now = localtime(&time_now);
     #std::stringstream ss_mon,ss_day,ss_hour,ss_min,ss_sec;
@@ -188,7 +198,18 @@ def state_estimation():
     #std::string s_sec = ss_sec.str();
     #std::ofstream Data (("/home/odroid/Data/Drift_corner/"+s_mon+ "."+s_day+"."+s_hour+"."+s_min+"."+s_sec +".csv").c_str());
     #Data << "t,X_raw,Y_raw,yaw_raw,vx_raw,vy_raw,yawrate_raw,X,Y,yaw,vx,vy,yawrate,steeing,F_xR"<<std::endl;
-
+    date 				= time.strftime("%Y.%m.%d")
+    BASE_PATH   		= "/home/odroid/Data/" + date + "/"
+    if not os.path.exists(BASE_PATH):
+        os.makedirs(BASE_PATH)
+    data_file_name   	= BASE_PATH + time.strftime("%H.%M.%S") + '.csv'
+    data_file     		= open(data_file_name, 'a')
+    columns             = 't,' + \
+                          'X_raw,Y_raw,yaw_raw,' +  \
+                          'vx_raw,vy_raw,r_raw,' + \
+                          'X,Y,yaw,vx,vy,r,' + \
+                          'd_f,FxR\n'
+    data_file.write(columns)
     while not rospy.is_shutdown():
 
 		# publish state estimate
@@ -197,6 +218,14 @@ def state_estimation():
         # publish information
         state_pub.publish( six_states(X, Y, phi, v_x, v_y, r) )
         # Data << t << "," << X_gps << "," << Y_gps << "," << yaw << "," << v_x_optic << "," << v_y_optic << "," << w_z<< X << "," << Y << "," << phi << "," << vx << "," << vy << "," << yr << "," << d_f << "," << F_xR << "," <<std::endl;
+        t  	= time.time() - t0
+        raw_data    = [X_gps,Y_gps,yaw,v_x_optic,v_y_optic,w_z]
+        filter_data    = [X,Y,phi,v_x,v_y,r]
+        command = [d_f,FxR]
+        all_data    = [t] + raw_data + filter_data + command 
+        N = len(all_data)
+        str_fmt = '%.4f,'*N
+        data_file.write( (str_fmt[0:-1]+'\n') % tuple(all_data))
 
         # apply EKF
         if v_x_optic > v_x_min:
@@ -223,6 +252,7 @@ def state_estimation():
 
 		# wait
         rate.sleep()
+        rospy.loginfo("yaw angle : %f",yaw)
 
 if __name__ == '__main__':
 	try:
