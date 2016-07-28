@@ -31,25 +31,6 @@ int max_steer,min_steer,max_motor,min_motor;
 
 float vx,vy,yr,X,Y,yaw;
 
-void enc_Callback(const geometry_msgs::Vector3  msg)
-{
-  n_FL = msg.x;
-  n_FR = msg.y;
-}
-
-void imu_Callback(const data_service::TimeData  msg)
-{
-  if(read_yaw0 == 0)
-  {
-    yaw0 = msg.value[2];
-    read_yaw0 = 1;
-  }
-  else
-  {
-  yr = msg.value[8];
-  yaw = msg.value[2];
-  }
-}
 void state_Callback(const geometry_msgs::Vector3 msg)
 {
   vx_est = msg.x;
@@ -82,19 +63,11 @@ int main(int argc, char **argv)
 {
  
   ros::init(argc, argv, "LQR_odo");
-  ros::NodeHandle enc;
-  ros::NodeHandle imu;
-  ros::NodeHandle odom;
   ros::NodeHandle state_est;
   ros::NodeHandle command;
-  ros::NodeHandle gps;
   ros::NodeHandle param;
 
- // ros::Subscriber enc_sub = enc.subscribe("enc_data", 1000, enc_Callback);
-  //ros::Subscriber imu_sub = imu.subscribe("imu_data", 1000, imu_Callback);
-  //ros::Subscriber odom_sub = odom.subscribe("mono_odometer/odometry", 1000, odom_Callback);
-  //ros::Subscriber state_sub = state_est.subscribe("state_estimate",100,state_Callback);
-  ros::Subscriber gps_sub = state_est.subscribe("indoor_gps",100,gps_Callback);
+  ros::Subscriber state_sub = state_est.subscribe("/state_estimate",100,state_Callback);
   ros::Publisher com_pub = command.advertise<barc::ECU>("ecu",100);
   float d_f,F_xR;
   barc::ECU ecu;

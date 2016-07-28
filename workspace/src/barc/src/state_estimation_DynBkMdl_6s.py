@@ -16,7 +16,7 @@
 import rospy
 import time
 import os
-from barc.msg import ECU, Encoder
+from barc.msg import ECU, Encoder, six_states
 from sensor_msgs.msg import Imu
 from geometry_msgs.msg import Vector3
 from numpy import pi, cos, sin, eye, array, zeros
@@ -77,7 +77,7 @@ def imu_callback(data):
     a_x = data.linear_acceleration.x
     a_y = data.linear_acceleration.y
     a_z = data.linear_acceleration.z
-    rospy.loginfo("I heard IMU")
+    #rospy.loginfo("I heard IMU")
 
 # encoder measurement update
 def enc_callback(data):
@@ -112,14 +112,14 @@ def gps_callback(data):
     global X_gps, Y_gps
     X_gps = data.x
     Y_gps = data.y
-    rospy.loginfo("I heard indoor gps")
+    #rospy.loginfo("I heard indoor gps")
 
 # indoor gps measurement update
 def optic_callback(data):
     global v_x_optic,v_y_optic
     v_x_optic = data.x
     v_y_optic = data.y
-    rospy.loginfo("I heard optic flow")
+    #rospy.loginfo("I heard optic flow")
 
 # state estimation node
 def state_estimation():
@@ -132,7 +132,7 @@ def state_estimation():
     rospy.Subscriber('/ecu', ECU, ecu_callback)
     rospy.Subscriber('/indoor_gps',Vector3 , gps_callback)
     rospy.Subscriber('/camera/vel_est',Vector3 , optic_callback)
-    state_pub 	= rospy.Publisher('state_estimate', Vector3, queue_size = 10)
+    state_pub 	= rospy.Publisher('state_estimate', six_states, queue_size = 10)
 
 	# get vehicle dimension parameters
     L_a = rospy.get_param("/L_a")       # distance from CoG to front axel
@@ -166,25 +166,25 @@ def state_estimation():
     t0 			= time.time()
 
     # estimation variables for Luemberger observer
-    z_EKF       = array([1.0, 0.0, 0.0])
+    z_EKF       = array([0.0, 0.0, 0.0, 1.0, 0.0, 0.0])
 
     # estimation variables for EKF
     P           = eye(6)                # initial dynamics coveriance matrix
     Q           = (q_std**2)*eye(6)     # process noise coveriance matrix
-    R           = (r_std**2)*eye(5)     # measurement noise coveriance matrix
+    R           = (r_std**2)*eye(6)     # measurement noise coveriance matrix
 
     while not rospy.is_shutdown():
 
 		# publish state estimate
-        (v_x, v_y, r) = z_EKF           # note, r = EKF estimate yaw rate
+        (X, Y, phi, v_x, v_y, r) = z_EKF           # note, r = EKF estimate yaw rate
 
         # publish information
-        state_pub.publish( Vector3(v_x, v_y, r) )
+        state_pub.publish( six_states(X, Y, phi, v_x, v_y, r) )
 
         # apply EKF
-        if v_x_enc > v_x_min:
+        if v_x_optic > v_x_min:
             # get measurement
-            y = array([v_x_enc, w_z])
+            y = array([X_gps, Y_gps, yaw, v_x_optic, v_y_optic, w_z])
 
             # define input
             u       = array([ d_f, FxR ])
@@ -197,16 +197,14 @@ def state_estimation():
             (z_EKF,P) = ekf(f_6s, z_EKF, P, h_6s, y, Q, R, args )
 
         else:
-            z_EKF[0] = float(v_x_enc)
-            z_EKF[2] = float(w_z)
-        
+            z_EKF[0] = float(X_gps)
+            z_EKF[1] = float(Y_gps)
+            z_EKF[2] = float(yaw)
+            z_EKF[3] = float(v_x_optic)
+            z_EKF[4] = float(v_y_optic)
+            z_EKF[5] = float(w_z)
+
 		# wait
-        rospy.loginfo(" X: %f", X_gps)
-        rospy.loginfo(" Y: %f", Y_gps)
-        rospy.loginfo(" yaw angle: %f", yaw)
-        rospy.loginfo(" yaw rate: %f", w_z)
-        rospy.loginfo(" vx: %f", v_x_optic)
-        rospy.loginfo(" vy: %f", v_y_optic)
         rate.sleep()
 
 if __name__ == '__main__':
