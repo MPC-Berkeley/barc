@@ -30,15 +30,17 @@
     </node>
 
     <!-- LOW LEVEL CONTROLLER -->
-    <node pkg="barc" type="controller_low_level.py" name="low_level_controller" />
+    <node pkg="barc" type="controller_low_level.py" name="low_level_controller" output="screen" />
 
 	<!-- HIGH LEVEL CONTROLLER -->
 	<node pkg="barc" type="controller_circular.py" name="controller" output="screen">
          <!-- PROPERTIES -->
-        <param name="FxR_target" type="int" value="2" />
-        <param name="d_f_target" type="int" value="6" />
+        <param name="FxR_target" type="double" value="0.7" />
+        <param name="d_f_target" type="double" value="6" />
         <param name="t_0" type="int" value="2" />
 		<param name="t_f" type="int" value="6" />
+
+		<param name="rate" type="int" value="50" />
    </node>
 
     <!-- Record the experiment data -->

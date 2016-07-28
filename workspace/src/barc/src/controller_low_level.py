@@ -26,25 +26,28 @@ import rospy
 
 motor_pwm = 90
 servo_pwm = 90
+str_ang_max = 35
+str_ang_min = -35
 
 def pwm_converter_callback(msg):
     global motor_pwm, servo_pwm, b0
+    global str_ang_max, str_ang_min
 
     # translate from SI units in vehicle model
     # to pwm angle units (i.e. to send command signal to actuators)
 
-    # compute servo command
-    str_ang     = 180.0/pi*msg.servo  # convert steering angle to degrees
+    # convert desired steering angle to degrees, saturate based on input limits
+    str_ang     = max( min( 180.0/pi*msg.servo, str_ang_max), str_ang_min)
     servo_pwm   = 92.0558 + 1.8194*str_ang  - 0.0104*str_ang**2
 
     # compute motor command
     FxR         =  float(msg.motor) 
     if FxR == 0:
-        motor_pwm = 90
+        motor_pwm = 90.0
     elif FxR > 0:
-        motor_pwm   =  FxR/b0 + 95
+        motor_pwm   =  FxR/b0 + 95.0
     else:
-        motor_pwm = 90
+        motor_pwm = 90.0
     update_arduino()
 
 def neutralize():
@@ -54,7 +57,7 @@ def neutralize():
     update_arduino()
 
 def update_arduino():
-    global motor_pwm, servo_cmd, ecu_pub
+    global motor_pwm, servo_pwm, ecu_pub
     ecu_cmd = ECU(motor_pwm, servo_pwm)
     ecu_pub.publish(ecu_cmd)
 

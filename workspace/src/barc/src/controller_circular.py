@@ -46,7 +46,7 @@ def main_auto():
     nh = Publisher('ecu', ECU, queue_size = 10)
 
 	# set node rate
-    rateHz  = 50
+    rateHz  = get_param("controller/rate")
     rate 	= Rate(rateHz)
     dt   	= 1.0 / rateHz
     t_i     = 0

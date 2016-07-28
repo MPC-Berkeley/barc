@@ -15,7 +15,7 @@
 
 from rospy import init_node, Subscriber, Publisher, get_param
 from rospy import Rate, is_shutdown, ROSInterruptException
-from barc.msg import ECU
+from barc.msg import ECU, Z_KinBkMdl
 from sensor_msgs.msg import Imu
 from math import pi
 from numpy import zeros, array
@@ -25,38 +25,52 @@ from pid import PID
 import numpy as np
 import rospy
 
-# pid control for constrant yaw angle 
-yaw0        = 0      
+# raw measurement variables
+yaw_prev = 0
+(roll, pitch, yaw, a_x, a_y, a_z, w_x, w_y, w_z) = zeros(9)
+yaw_prev    = 0
+yaw_local   = 0
 read_yaw0   = False
-yaw_prev    = 0      
-yaw         = 0
-err         = 0
 
-############################################################
+# imu measurement update
 def imu_callback(data):
     # units: [rad] and [rad/s]
-    global yaw0, read_yaw0, yaw_prev, yaw, err
-    global yaw_prev
-    
+    global yaw
+    global yaw_prev, yaw0, read_yaw0, yaw_local
+
     # get orientation from quaternion data, and convert to roll, pitch, yaw
     # extract angular velocity and linear acceleration data
-    ori  = data.orientation
+    ori         = data.orientation
     quaternion  = (ori.x, ori.y, ori.z, ori.w)
-    (roll, pitch, yaw) = transformations.euler_from_quaternion(quaternion)
-    yaw         = unwrap(array([yaw_prev, yaw]), discont = pi)[1]
-    yaw_prev    = yaw
+    (_,_, yaw) = transformations.euler_from_quaternion(quaternion)
 
     # save initial measurements
     if not read_yaw0:
-        read_yaw0 = True
-        yaw0    = yaw
-    else:
-        temp        = unwrap(array([yaw_prev, yaw]))
-        yaw         = temp[1]
+        read_yaw0   = True
         yaw_prev    = yaw
+        yaw0        = yaw
+    
+    # unwrap measurement
+    yaw         = unwrap(array([yaw_prev, yaw]), discont = pi)[1]
+    yaw_prev    = yaw
+    yaw_local   = yaw - yaw0
+
+    # extract angular velocity and linear acceleration data
+    # w_z = data.angular_velocity.z
+
+
+############################################################
+def se_callback(data):
+    global yaw, read_yaw0
+    yaw = data.psi
+
+    if not read_yaw0:
+        read_yaw0 = True
 
 #############################################################
 def straight(t_i, pid, time_params,FxR_target):
+    global yaw_local
+
     # unpack parameters
     (t_0, t_f, dt)  = time_params
 
@@ -67,7 +81,7 @@ def straight(t_i, pid, time_params,FxR_target):
 
     # start moving
     elif (t_i < t_f):
-        d_f         = pid.update(yaw, dt)
+        d_f         = pid.update(yaw_local, dt)
         step_up     = float(t_i - t_0) / 50.0
         FxR         = np.min([ step_up, FxR_target])
 
@@ -80,15 +94,17 @@ def straight(t_i, pid, time_params,FxR_target):
 
 #############################################################
 def main_auto():
+    global read_yaw0, yaw_local
+
     # initialize ROS node
     init_node('auto_mode', anonymous=True)
-    Subscriber('imu/data', Imu, imu_callback)
-    nh = Publisher('ecu', ECU, queue_size = 10)
+    ecu_pub = Publisher('ecu', ECU, queue_size = 10)
+    se_sub = Subscriber('imu/data', Imu, imu_callback)
 
 	# set node rate
-    rateHz  = 50
-    rate 	= Rate(rateHz)
-    dt      = 1.0 / rateHz
+    rateHz      = get_param("controller/rate") 
+    rate 	    = Rate(rateHz)
+    dt          = 1.0 / rateHz
 
     # get PID parameters
     p 		= get_param("controller/p")
@@ -109,14 +125,14 @@ def main_auto():
         if read_yaw0:
             # set reference angle
             if not setReference:
-                pid.setPoint(yaw0)
+                pid.setPoint(yaw_local)
                 setReference    = True
                 t_i             = 0.0
             # apply open loop command
             else:
                 (FxR, d_f)      = straight(t_i, pid, t_params, FxR_target)
                 ecu_cmd             = ECU(FxR, d_f)
-                nh.publish(ecu_cmd)
+                ecu_pub.publish(ecu_cmd)
                 t_i += dt
 	
         # wait
