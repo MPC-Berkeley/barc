@@ -32,6 +32,10 @@ FxR         = 0
 # raw measurement variables from IMU
 yaw_prev = 0
 (roll, pitch, yaw, a_x, a_y, a_z, w_x, w_y, w_z) = zeros(9)
+yaw_local   = 0
+read_yaw0   = False
+psi         = 0
+psi_meas    = 0
 
 
 # raw measurement variables from indoor GPS
@@ -60,16 +64,24 @@ def ecu_callback(data):
 def imu_callback(data):
     # units: [rad] and [rad/s]
     global roll, pitch, yaw, a_x, a_y, a_z, w_x, w_y, w_z
-    global yaw_prev
-    
+    global yaw_prev, yaw0, read_yaw0, yaw_local, psi_meas
+
     # get orientation from quaternion data, and convert to roll, pitch, yaw
     # extract angular velocity and linear acceleration data
     ori  = data.orientation
     quaternion  = (ori.x, ori.y, ori.z, ori.w)
     (roll, pitch, yaw) = transformations.euler_from_quaternion(quaternion)
+    # save initial measurements
+    if not read_yaw0:
+        read_yaw0   = True
+        yaw_prev    = yaw
+        yaw0        = yaw
+    
+    # unwrap measurement
     yaw         = unwrap(array([yaw_prev, yaw]), discont = pi)[1]
     yaw_prev    = yaw
-    
+    yaw_local   = yaw - yaw0
+
     # extract angular velocity and linear acceleration data
     w_x = data.angular_velocity.x
     w_y = data.angular_velocity.y
@@ -219,7 +231,7 @@ def state_estimation():
         state_pub.publish( six_states(X, Y, phi, v_x, v_y, r) )
         # Data << t << "," << X_gps << "," << Y_gps << "," << yaw << "," << v_x_optic << "," << v_y_optic << "," << w_z<< X << "," << Y << "," << phi << "," << vx << "," << vy << "," << yr << "," << d_f << "," << F_xR << "," <<std::endl;
         t  	= time.time() - t0
-        raw_data    = [X_gps,Y_gps,yaw,v_x_optic,v_y_optic,w_z]
+        raw_data    = [X_gps,Y_gps,yaw_local,v_x_optic,v_y_optic,w_z]
         filter_data    = [X,Y,phi,v_x,v_y,r]
         command = [d_f,FxR]
         all_data    = [t] + raw_data + filter_data + command 
@@ -230,7 +242,7 @@ def state_estimation():
         # apply EKF
         if v_x_optic > v_x_min:
             # get measurement
-            y = array([X_gps, Y_gps, yaw, v_x_optic, v_y_optic, w_z])
+            y = array([X_gps, Y_gps, yaw_local, v_x_optic, v_y_optic, w_z])
 
             # define input
             u       = array([ d_f, FxR ])
@@ -245,14 +257,14 @@ def state_estimation():
         else:
             z_EKF[0] = float(X_gps)
             z_EKF[1] = float(Y_gps)
-            z_EKF[2] = float(yaw)
+            z_EKF[2] = float(yaw_local)
             z_EKF[3] = float(v_x_optic)
             z_EKF[4] = float(v_y_optic)
             z_EKF[5] = float(w_z)
 
 		# wait
         rate.sleep()
-        rospy.loginfo("yaw angle : %f",yaw)
+        rospy.loginfo("yaw angle : %f",yaw_local)
 
 if __name__ == '__main__':
 	try:
