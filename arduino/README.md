@@ -64,8 +64,37 @@ and
     <td>D17 = A3</td> 
   </tr>
 </table>
+___
+## ROS communication test
+To ensure that ROS master can communicate with the arduino node, run the following commands in separate terminal windows
+```
+roscore
+rosrun rosserial_python serial_node.py
+```
+Your terminal should output connection information similar to the following. If you see any error messages, then something is wrong with the connection, try reflashing the arduino
 
-Notes
+(barc)odroid@odroid:~$ rosrun rosserial_python serial_node.py
+
+[INFO] [WallTime: 1469676336.827668] ROS Serial Python Node
+
+[INFO] [WallTime: 1469676336.843514] Connecting to /dev/ttyUSB0 at 57600 baud
+
+[INFO] [WallTime: 1469676339.335939] Note: publish buffer size is 280 bytes
+
+[INFO] [WallTime: 1469676339.338132] Setup publisher on encoder [barc/Encoder]
+
+[INFO] [WallTime: 1469676339.346496] Setup publisher on rc_inputs [barc/ECU]
+
+[INFO] [WallTime: 1469676339.358420] Setup publisher on ultrasound [barc/Ultrasound]
+
+[INFO] [WallTime: 1469676339.374436] Note: subscribe buffer size is 280 bytes
+
+[INFO] [WallTime: 1469676339.376341] Setup subscriber on ecu_pwm [barc/ECU]
+
+
+
+___
+## Notes
 <ul>
   <li>The ultrasound sensor code is commented out. Uncomment it when the sensors have been connected, otherwise serial communication may not work properly</li>
   <li>Encoders now use software interrupts (formerly hardware interrupts. Install the necessary library by running `source ~/barc/scripts/install_enable_interrupt.sh`</li>
