@@ -75,29 +75,27 @@ Your terminal should output connection information similar to the following. If 
 
 (barc)odroid@odroid:~$ rosrun rosserial_python serial_node.py
 
-[INFO] [WallTime: 1469676336.827668] ROS Serial Python Node
+[INFO]  [WallTime: 1469676336.827668] ROS Serial Python Node
 
-[INFO] [WallTime: 1469676336.843514] Connecting to /dev/ttyUSB0 at 57600 baud
+[INFO]  [WallTime: 1469676336.843514] Connecting to /dev/ttyUSB0 at 57600 baud
 
-[INFO] [WallTime: 1469676339.335939] Note: publish buffer size is 280 bytes
+[INFO]  [WallTime: 1469676339.335939] Note: publish buffer size is 280 bytes
 
-[INFO] [WallTime: 1469676339.338132] Setup publisher on encoder [barc/Encoder]
+[INFO]  [WallTime: 1469676339.338132] Setup publisher on encoder [barc/Encoder]
 
-[INFO] [WallTime: 1469676339.346496] Setup publisher on rc_inputs [barc/ECU]
+[INFO]  [WallTime: 1469676339.346496] Setup publisher on rc_inputs [barc/ECU]
 
-[INFO] [WallTime: 1469676339.358420] Setup publisher on ultrasound [barc/Ultrasound]
+[INFO]  [WallTime: 1469676339.358420] Setup publisher on ultrasound [barc/Ultrasound]
 
-[INFO] [WallTime: 1469676339.374436] Note: subscribe buffer size is 280 bytes
+[INFO]  [WallTime: 1469676339.374436] Note: subscribe buffer size is 280 bytes
 
-[INFO] [WallTime: 1469676339.376341] Setup subscriber on ecu_pwm [barc/ECU]
+[INFO]  [WallTime: 1469676339.376341] Setup subscriber on ecu_pwm [barc/ECU]
 
 
 
 ___
 ## Notes
-<ul>
-  <li>The ultrasound sensor code is commented out. Uncomment it when the sensors have been connected, otherwise serial communication may not work properly</li>
-  <li>Encoders now use software interrupts (formerly hardware interrupts. Install the necessary library by running `source ~/barc/scripts/install_enable_interrupt.sh`</li>
-  <li>The arduino sends commands to the servo and motor using pulse width modulation. These commands are sent using the `write(pwm_angle)` and `writemicroSeconds(us)` member functions of a `Servo` object. Refer to [this article](http://makezine.com/2014/04/23/arduinos-servo-library-angles-microseconds-and-optional-command-parameters/) for more clarification on these functions
-  </li>
-</ul>
++ The ultrasound sensor code is commented out. Uncomment it when the sensors have been connected, otherwise serial communication may not work properly
++ Encoders now use software interrupts (formerly hardware interrupts. Install the necessary library by running `source ~/barc/scripts/install_enable_interrupt.sh`
++ The arduino sends commands to the servo and motor using pulse width modulation. These commands are sent using the `write(pwm_angle)` and `writemicroSeconds(us)` member functions of a `Servo` object. Refer to [this article](http://makezine.com/2014/04/23/arduinos-servo-library-angles-microseconds-and-optional-command-parameters/) for more clarification on these functions 
+
