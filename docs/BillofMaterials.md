@@ -61,8 +61,9 @@ The items are sorted by category
 | Odroid myAHRS+ IMU                                                | 1 |[AmeriDroid](http://ameridroid.com/products/myahrs-attitude-heading-reference-system)                  | 
 
 ### Other accessories
+The HDMI-to-DVI cable is for connecting your odroid to a monitor. The odroid comes with an HDMI port for media output. We recommend a DVI connector on the other end since most monitors have it. 
 |                                        Components                           |            Quantity                 | Links |
 |-------------------------------------------------------------------|-----------------------------|----| 
 | Generic portable router                                           | 1 |[Amazon](https://www.amazon.com/ZyXEL-Wireless-Pocket-Ethernet-MWR102/dp/B005WKIKA0?ie=UTF8&keywords=portable%20router%20zyxel&qid=1440797433&ref_=sr_1_1&sr=8-1)                      | 
 | Generic USB WiFi adapter                                          | 1 |[AmeriDroid](http://ameridroid.com/products/wifi-module-3)                  | 
-| Generic HDMI cable                                                | 1 |[AmeriDroid](http://ameridroid.com/products/hdmi-cable-ultra-thin-24k-gold-plated-45ft)                  | 
+| Generic HDMI-to-DVI cable                                                | 1 |[Amazon](https://www.amazon.com/Cable-Rankie-Rated-Speed-Bi-Directional/dp/B00YOSA85Q/ref=sr_1_1?s=electronics&ie=UTF8&qid=1469833924&sr=1-1-spons&keywords=hdmi+to+dvi+cable&psc=1)                  | 
