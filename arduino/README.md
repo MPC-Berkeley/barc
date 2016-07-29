@@ -98,4 +98,6 @@ ___
 <ul>
   <li>The ultrasound sensor code is commented out. Uncomment it when the sensors have been connected, otherwise serial communication may not work properly</li>
   <li>Encoders now use software interrupts (formerly hardware interrupts. Install the necessary library by running `source ~/barc/scripts/install_enable_interrupt.sh`</li>
+  <li>The arduino sends commands to the servo and motor using pulse width modulation. These commands are sent using the `write(pwm_angle)` and `writemicroSeconds(us)` member functions of a `Servo` object. Refer to [this article](http://makezine.com/2014/04/23/arduinos-servo-library-angles-microseconds-and-optional-command-parameters/) for more clarification on these functions
+  </li>
 </ul>
