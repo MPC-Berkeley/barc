@@ -30,7 +30,7 @@ read [here](http://www.cse.sc.edu/~jokane/agitr/).
 
 ---------------------------
 ## Control Architecture
-The control architecture consists of a controller and state observer. The state observer uses measurements from sensors and input commands to estimate the vehicle state (e.g. velocity, position, orientation). A high level controller takes that state estimate and outputs a high level command (e.g. desired steering angle, desired velocity). The low level controller translates these high level commands into low level commands to send to the actuators (e.g. motor, servo)
+The control architecture consists of a controller and state observer. The state observer uses sensor measurements (e.g. from encoders, imu, camera, sonar range finder ) and input commands to estimate the vehicle state (e.g. velocity, position, orientation). A high level controller takes that state estimate and outputs a high level command (e.g. desired steering angle, desired velocity). The low level controller translates these high level commands into low level commands to send to the actuators (e.g. motor, servo)
 
 <img src="https://github.com/BARCproject/barc/raw/master/docs/imgs/control_architecture.PNG" alt="Drawing" style="width: 400px;"/>
 
