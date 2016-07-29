@@ -1,0 +1,91 @@
+<launch>
+    <!-- SYSTEM MODEL -->
+    <!-- vehicle parameters -->
+    <param name="m" type="double" value="1.98" />
+    <param name="I_z" type="double" value="0.24" />
+    <param name="L_a" type="double" value="0.125" />
+    <param name="L_b" type="double" value="0.125" />
+    <!-- control parameters -->
+    <param name="input_gain" type="double" value="0.3" />
+    <param name="air_drag_coeff" type="double" value="0.1308" />
+    <param name="friction" type="double" value="0.1711" />
+    <!-- tire parameters -->
+    <param name="tire_model/B" type="double" value="0.3" />
+    <param name="tire_model/C" type="double" value="1.25" />
+    <param name="tire_model/mu" type="double" value="0.234" />
+
+    <!-- IMU -->
+    <node pkg="myahrs_driver" type="myahrs_driver" name="myahrs_driver">
+        <param name="port" value="/dev/ttyACM1" />
+        <param name="baud_rate" value="115200" />
+    </node>
+
+    <!--  indoor gps-->
+    <node pkg = "marvelmind_indoor_gps" type = "indoor_gps.py" name = "indoor_gps">
+      <param name = "port" value = "/dev/ttyACM0"/>
+      <param name = "baud" value = "115200"/>
+    </node> 
+
+    <!-- ARDUINO -->
+    <!--  * encoders and ultrasound sensors -->
+    <node pkg="rosserial_python" type="serial_node.py" name="arduino_node" >
+        <param name="port" value="/dev/ttyUSB0" />
+    </node>
+
+    <!--CAMERA -->
+    <node pkg = "usb_cam" type = "usb_cam_node" name = "usb_cam_node" ns = "camera">
+      <param name = "video_device" value = "/dev/video0"/>
+      <param name = "image_width" value = "640"/>
+      <param name = "image_height" value = "480"/>
+      <param name = "pixel_format" value = "yuyv"/>
+      <param name = "framerate" value = "30"/>
+    </node>
+
+    <!-- image rectification --> 
+    <node pkg = "image_proc" type = "image_proc" name = "image_rectifier">
+    <env name = "ROS_NAMESPACE" value = "camera"/>
+    <remap from = "image_raw" to = "usb_cam_node/image_raw"/>
+    </node>
+    <env name = "ROS_NAMESAPCE" value = "/"/>
+
+    <!--optic flow node-->
+    <node pkg = "optic_flow_example" type = "optic_flow_lucas_kanade.py" name = "optic_flow_lucas_kanade">
+    </node>
+    <node pkg = "optic_flow_example" type = "velocity_filter" name = "velocity_filter">
+    </node>
+
+    <!-- OBSERVER-->
+    <node pkg="barc" type="state_estimation_DynBkMdl_6s.py" name="state_estimation" output = "screen">
+        <!-- v_x estimation sample time-->
+        <param name="dt_v_enc" type="double" value="0.2" />
+
+        <!-- ekf properties -->
+        <param name="q_std" type="double" value="0.1" />
+        <param name="r_std" type="double" value="0.1" />
+        <param name="v_x_min" type="double" value="0.3" />
+    </node>
+
+    <!-- LOW LEVEL CONTROLLER --> 
+    <node pkg="barc" type="controller_low_level.py" name="low_level_controller" />
+
+	<!-- HIGH LEVEL CONTROLLER -->
+	<node pkg="barc" type="openloop_man" name="openloop_man" output="screen">
+         <!-- PROPERTIES -->
+        <param name="t_hold" type="double" value="2" />
+        <param name="t_straight" type="double" value="3" />
+        <param name="t_turn" type="double" value="0" />
+		<param name="t_counter" type="double" value="0" />
+		<param name="t_recover" type="double" value="0" />
+
+
+		<param name="F_xR_straight" type="double" value="1" />
+		<param name="F_xR_turn" type="double" value="1" />
+		<param name="F_xR_counter" type="double" value="1" />
+		<param name="F_xR_recover" type="double" value="1" />
+
+
+		<param name="d_f_turn" type="double" value="-10" />
+		<param name="d_f_counter" type="double" value="30" />
+   </node>
+
+</launch>
