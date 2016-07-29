@@ -19,7 +19,7 @@ import os
 from sensor_msgs.msg import Imu
 from barc.msg import ECU, Encoder, Z_KinBkMdl
 from numpy import pi, cos, sin, eye, array, zeros, unwrap
-from observers import kinematicLuembergerObserver, ekf
+from ekf import ekf
 from system_models import f_KinBkMdl, h_KinBkMdl
 from tf import transformations
 from numpy import unwrap

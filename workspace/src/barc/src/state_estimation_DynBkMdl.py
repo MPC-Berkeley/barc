@@ -20,7 +20,7 @@ from barc.msg import ECU, Encoder
 from sensor_msgs.msg import Imu
 from geometry_msgs.msg import Vector3
 from numpy import pi, cos, sin, eye, array, zeros
-from observers import kinematicLuembergerObserver, ekf
+from ekf import ekf
 from system_models import f_3s, h_3s
 from tf import transformations
 from numpy import unwrap
