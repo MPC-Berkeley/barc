@@ -116,7 +116,8 @@
                         <div class="form-group pull-right">
                             <!-- <a href="{{ uiState.experiment.experiment_link }}"/> -->
                         <label class="small dator-spaced-title">Media</label>
-                        <button class="btn btn-link" role="link" name="op" value="{{ uiState.experiment.media_link }}">{{ uiState.experiment.media_link }}</button>
+                        <a type="button" class="btn btn-link" role="link" name="op" value="{{ uiState.experiment.media_link }}"
+                           href="{{ uiState.experiment.media_link }}"><p style="overflow:hidden;text-overflow:ellipsis;max-width:200px">{{ uiState.experiment.media_link }}</p></a>
 
 
                         <button type="button" data-toggle="modal" data-target="#myModal" data-link="media">
