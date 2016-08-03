@@ -89,7 +89,12 @@ Recommended reading and resources
 + [Julia JuMP](https://jump.readthedocs.io/en/latest/), Mathematical Programming using the Julia programming language
 + [Git - the simple guide](http://rogerdudler.github.io/git-guide/), or for a more in-depth reading, consider [this](https://www.atlassian.com/git/tutorials/ ) tutorial by Atlassian
 + [Electronic Speed Control (ESC) manual](http://propeleris.lt/failai/wp-s10c-rtr_manual.pdf), which details how to calibrate and program the ESC
++ [Open source ESC](http://vedder.se/2015/01/vesc-open-source-esc/), for building your own ESC
++ [Pulse Wide Modulation (PWM)](http://www.egr.msu.edu/classes/ece480/capstone/fall14/group07/PDFs/PWM_Application_Note.pdf), notes from Michigan State ECE480 class, explaining the concept of PWM and its usage in an arduino.
++ [Arduino Servo Library](http://makezine.com/2014/04/23/arduinos-servo-library-angles-microseconds-and-optional-command-parameters/), article by Make magazine, clarifying the usage of some functions within the library
 + [Mass moment of inertia calculation](http://www.mathworks.com/company/newsletters/articles/improving-mass-moment-of-inertia-measurements.html), a MATLAB newsletter explaining how to estimate the mass moment of inertia
++ [Computer Vision lecture series](https://www.youtube.com/watch?v=N_a6IP6KUSE), from Professor Peter Corke aat Queensland University of Technology
+
 
 
 ## Student projects
