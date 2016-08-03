@@ -198,3 +198,7 @@ add_dependencies(drift_corner geometry_msgs)
 add_executable (openloop_man src/openloop_man src/pid)
 target_link_libraries(openloop_man ${catkin_LIBRARIES})
 add_dependencies(openloop_man geometry_msgs)
+
+add_executable (pid src/pid)
+target_link_libraries(pid ${catkin_LIBRARIES})
+add_dependencies(pid geometry_msgs)
