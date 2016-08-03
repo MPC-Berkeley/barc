@@ -141,9 +141,7 @@ def f_6s(z, u, vhMdl, trMdl, F_ext, dt):
     # ensure that magnitude of longitudinal/lateral force lie within friction circle
     FyR_paj     = -f_pajecka(TM_param, a_R)
     FyR_max     = sqrt((mu*Fn)**2 - FxR**2)
-    Fy          = array([FyR_max, FyR_paj])
-    idx         = argmin(abs(Fy))
-    FyR         = Fy[idx]
+    FyR         = min(FyR_max, max(-FyR_max, FyR_paj))
 
     # compute next state
     X_next      = X + dt*(v_x*cos(phi) - v_y*sin(phi)) 
@@ -175,7 +173,19 @@ def h_3s(x):
     C = array([[1, 0, 0],
                [0, 0, 1]])
     return dot(C, x)
-    
+
+def h_4s(x):
+    """
+    measurement model
+    input   := state z at time k, z[k] := [X[k],Y[k],phi[k], r[k]])
+    output  := [X,Y,phi,v_x,r] (yaw rate)
+    """
+    C = array([[1, 0, 0, 0, 0, 0],
+               [0, 1, 0, 0, 0, 0],
+               [0, 0, 1, 0, 0, 0],
+               [0, 0, 0, 0, 0, 1]])
+    return dot(C, x)
+   
 def h_6s(x):
     """
     measurement model

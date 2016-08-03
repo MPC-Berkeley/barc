@@ -34,12 +34,20 @@ float vx,vy,yr,X,Y,yaw;
 
 void state_Callback(const barc::six_states msg)
 {
-  X = msg.X;
-  Y = msg.Y;
-  yaw = msg.yaw;
-  vx = msg.vx;
-  vy = msg.vy;
-  yr= msg.yr;
+  if (read_yaw0 == 0 )
+  {
+    yaw0 = msg.yaw;
+    read_yaw0 = 1;
+  }
+  else 
+  {
+    X = msg.X;
+    Y = msg.Y;
+    yaw = msg.yaw;
+    vx = msg.vx;
+    vy = msg.vy;
+    yr= msg.yr;
+  }
 }
 
 
@@ -62,6 +70,7 @@ int main(int argc, char **argv)
   float t_hold,t_straight,t_turn,t_counter,t_recover;
   float F_xR_straight,F_xR_turn,F_xR_counter,F_xR_recover;
   float d_f_turn,d_f_counter;
+  PID pid(0.02,30,-30,50,5,0);
   param.getParam("/openloop_man/t_hold",t_hold) ;// time duration of stay still
   param.getParam("/openloop_man/t_straight",t_straight) ;// time duration of go straight 
   param.getParam("/openloop_man/t_turn",t_turn) ;// time duration of turning
@@ -87,7 +96,7 @@ int main(int argc, char **argv)
     else if (t.toSec() < t_hold + t_straight) // go straight 
     {
       F_xR = F_xR_straight;
-      d_f = 0;
+      d_f = pid.calculate(yaw0,yaw);
 
     }
     else if (t.toSec() < t_hold + t_straight + t_turn)  // make a turn 

@@ -10,19 +10,19 @@
     <param name="air_drag_coeff" type="double" value="0.1308" />
     <param name="friction" type="double" value="0.1711" />
     <!-- tire parameters -->
-    <param name="tire_model/B" type="double" value="0.3" />
+    <param name="tire_model/B" type="double" value="7.4" />
     <param name="tire_model/C" type="double" value="1.25" />
     <param name="tire_model/mu" type="double" value="0.234" />
 
     <!-- IMU -->
     <node pkg="myahrs_driver" type="myahrs_driver" name="myahrs_driver">
-        <param name="port" value="/dev/ttyACM1" />
+        <param name="port" value="/dev/ttyACM0" />
         <param name="baud_rate" value="115200" />
     </node>
 
     <!--  indoor gps-->
     <node pkg = "marvelmind_indoor_gps" type = "indoor_gps.py" name = "indoor_gps">
-      <param name = "port" value = "/dev/ttyACM0"/>
+      <param name = "port" value = "/dev/ttyACM1"/>
       <param name = "baud" value = "115200"/>
     </node> 
 
@@ -55,7 +55,7 @@
     </node>
 
     <!-- OBSERVER-->
-    <node pkg="barc" type="state_estimation_DynBkMdl_6s.py" name="state_estimation" output = "screen">
+    <node pkg="barc" type="state_estimation_DynBkMdl_4s.py" name="state_estimation" output = "screen">
         <!-- v_x estimation sample time-->
         <param name="dt_v_enc" type="double" value="0.2" />
 
@@ -73,15 +73,15 @@
          <!-- PROPERTIES -->
         <param name="t_hold" type="double" value="2" />
         <param name="t_straight" type="double" value="3" />
-        <param name="t_turn" type="double" value="0" />
-		<param name="t_counter" type="double" value="0" />
+        <param name="t_turn" type="double" value="3" />
+		<param name="t_counter" type="double" value="3" />
 		<param name="t_recover" type="double" value="0" />
 
 
 		<param name="F_xR_straight" type="double" value="1" />
 		<param name="F_xR_turn" type="double" value="1" />
 		<param name="F_xR_counter" type="double" value="1" />
-		<param name="F_xR_recover" type="double" value="1" />
+		<param name="F_xR_recover" type="double" value="3" />
 
 
 		<param name="d_f_turn" type="double" value="-10" />
