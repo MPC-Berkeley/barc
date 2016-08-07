@@ -4,7 +4,7 @@ We provide an image file of the odroid which you can flash onto your odroid usin
 
  014a8d3030e348660493b17575b43759
 
-Before flashing the eMMC, you will need to a labtop, a microSD-to-eMMC adaptor and a microSD card reader (if your laptop doesn't have an SD port). The main steps for flashing are as follows 
+Before flashing the eMMC, you will need to a laptop, a microSD-to-eMMC adaptor and a microSD card reader (if your laptop doesn't have an SD port). The main steps for flashing are as follows 
 
 1. Remove eMMC from odroid (refer to odroid diagram bottom view, below)
 2. Connect eMMC to microSD-to-eMMC adapter (refer to adapter diagram below)
