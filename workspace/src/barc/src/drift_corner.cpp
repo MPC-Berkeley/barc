@@ -8,12 +8,16 @@
 #include "pid.h"
 #include <vector>
 #include <cmath>
+#include "barc/ECU.h"
+#include "barc/six_states.h"
+
 
 ros::Duration t ;
 ros::Time t0 ;
 
 // current vehicle state 
 float X,Y,yaw,vx,vy,yr;
+
 
 
 // parameter definition 
@@ -37,64 +41,34 @@ float odom_vx,odom_vy;
 float odom_wz,odom_x,odom_y;
 float odom_P;
 float vx_est,vy_est,r_est,beta_est;
-float m = 1.98,mu = 0.234,L_a,L_b,Iz;
-float C_af,C_ar;
+float m = 1.98,L_a = 0.125,L_b = 0.125,Iz = 0.24;
+float C_af = -1.673,C_ar = -1.673;
 float pi = 3.1415926;
 int motorCMD_LQR,servoCMD_LQR;
 int max_steer,min_steer,max_motor,min_motor;
 
 
-int  angle_2_servo(float x)
-{
-    int  u   = 92.0558 + 1.8194*x  - 0.0104*x*x;
-    return u;
-}
 
-int  servo_2_angle(float x)
-{
-  int d_f  = -(39.2945 - 0.3013*x  - 0.0014*x*x);
-  return d_f;
-}
-void enc_Callback(const geometry_msgs::Vector3  msg)
-{
-  n_FL = msg.x;
-  n_FR = msg.y;
-}
 
-void imu_Callback(const data_service::TimeData  msg)
+void state_Callback(const barc::six_states msg)
 {
-  if(read_yaw0 == 0)
+  if (read_yaw0 == 0 )
   {
-    yaw0 = msg.value[2];
+    yaw0 = msg.yaw;
     read_yaw0 = 1;
   }
-  else
+  else 
   {
-  yr = msg.value[8];
-  yaw = msg.value[2];
+    X = msg.X;
+    Y = msg.Y;
+    yaw = msg.yaw;
+    vx = msg.vx;
+    vy = msg.vy;
+    yr= msg.yr;
+
   }
-}
-void state_Callback(const geometry_msgs::Vector3 msg)
-{
-  vx_est = msg.x;
-  vy_est = msg.y;
-  r_est= msg.z;
 }
 
-void odom_Callback(const nav_msgs::Odometry  msg)
- {
-  float temp = msg.twist.twist.linear.x/odom_P;
-  if (abs(temp - odom_vx) > 1) // donot updat when the state change large
-  {
-  }
-  else{
-  odom_vx = msg.twist.twist.linear.x/odom_P;
-  odom_vy = msg.twist.twist.linear.y/odom_P;
-  odom_wz = msg.twist.twist.angular.z/odom_P;
-  odom_x = msg.pose.pose.position.x/odom_P;
-  odom_y = msg.pose.pose.position.y/odom_P;
-  }
-}
 
 States vehicle_mdl(States pre_state,double dt,States noise,States mdl_err,double d_f,double F_xR)
 {
@@ -111,6 +85,7 @@ States vehicle_mdl(States pre_state,double dt,States noise,States mdl_err,double
   dyr = dyr - (pow(L_a,2)*C_af + pow(L_b,2)*C_ar)/Iz/pre_state.vx*pre_state.yr;
   dyr = dyr + L_a*C_af/Iz*d_f;
 
+
   nx_state.X = pre_state.X + dt*(dX + mdl_err.X + noise.X);
   nx_state.Y = pre_state.Y + dt*(dY + mdl_err.Y + noise.Y);
   nx_state.yaw = pre_state.yaw + dt*(dyaw + mdl_err.yaw + noise.yaw);
@@ -126,18 +101,12 @@ int main(int argc, char **argv)
 {
  
   ros::init(argc, argv, "drift_corner");
-  ros::NodeHandle enc;
-  ros::NodeHandle imu;
-  ros::NodeHandle odom;
   ros::NodeHandle state_est;
   ros::NodeHandle command;
   ros::NodeHandle param;
 
-  ros::Subscriber enc_sub = enc.subscribe("enc_data", 1000, enc_Callback);
-  ros::Subscriber imu_sub = imu.subscribe("imu_data", 1000, imu_Callback);
-  ros::Subscriber odom_sub = odom.subscribe("mono_odometer/odometry", 1000, odom_Callback);
-  ros::Subscriber state_sub = state_est.subscribe("state_estimate",100,state_Callback);
-  ros::Publisher com_pub = command.advertise<geometry_msgs::Vector3>("ecu_cmd",100);
+  ros::Subscriber state_sub = state_est.subscribe("/state_estimate",100,state_Callback);
+  ros::Publisher com_pub = command.advertise<barc::ECU>("ecu",100);
 
 
   // obtain parameters
@@ -149,7 +118,7 @@ int main(int argc, char **argv)
 
   //read open loop states and control inputs 
 
-  std::ifstream file("/home/odroid/Desktop/test.csv");
+  std::ifstream file("/home/odroid/barc/workspace/src/barc/src/openloop_state_maneuver.csv");
   std::string line;
   while (std::getline(file,line))
   {
@@ -166,12 +135,12 @@ int main(int argc, char **argv)
      vx_ol.push_back(ol_st_tr[3]);
      vy_ol.push_back(ol_st_tr[4]);
      yr_ol.push_back(ol_st_tr[5]);
-     K_d_f.push_back(ol_st_tr[6]);
-     K_F_xR.push_back(ol_st_tr[7]);
+     d_f_ol.push_back(ol_st_tr[6]);
+     F_xR_ol.push_back(ol_st_tr[7]);
   }
 
-  // read open loop model error and close loop control policy
-  std::ifstream file1("/home/odroid/Desktop/model_tro_poli.csv");
+  // read open loop model error
+  std::ifstream file1("/home/odroid/barc/workspace/src/barc/src/model_error.csv");
   std::string line1;
   while (std::getline(file1,line1))
   {
@@ -188,11 +157,25 @@ int main(int argc, char **argv)
      vx_err.push_back(model_tro_poli[3]);
      vy_err.push_back(model_tro_poli[4]);
      yr_err.push_back(model_tro_poli[5]);
-     d_f_ol.push_back(model_tro_poli[6]);
-     F_xR_ol.push_back(model_tro_poli[7]);
   }
 
    
+  // read close loop maneuver
+  std::ifstream file2("/home/odroid/barc/workspace/src/barc/src/closeloop_maneuver.csv");
+  std::string line2;
+  while (std::getline(file2,line2))
+  {
+     std::istringstream iss(line2);
+     std::string result;
+     std::vector<double>  closeloop;
+     while (std::getline(iss,result,','))
+     {
+       closeloop.push_back(atof(result.c_str()));
+     }
+     K_d_f.push_back(closeloop[0]);
+     K_F_xR.push_back(closeloop[1]);
+  }
+
 
   int N_state = 6,N_contol = 2;
   int ct_sp = 10; // 10 control step
@@ -208,13 +191,27 @@ int main(int argc, char **argv)
   States pre_des[ct_sp]; // the desired state trajectory
   States mdl_err[ct_sp];
   States noise; // vehicle states
+  
 
+  // nosie 
 
-  int motor_CMD,servo_CMD;
-  float d_f;
-  geometry_msgs::Vector3 ecu;
+  noise.X = 0;
+  noise.Y = 0;
+  noise.yaw = 0;
+  noise.vx = 0.1;
+  noise.vy = 0.05;
+  noise.yr = 0.1;
+
+  barc::ECU ecu;
+  int closeloop_flag = 0;
   ros::Rate r(50); // 50 Hz
 
+  X = -2.36;
+  Y = 3.73;
+  yaw = -0.0019;
+  vx = 0.01;
+  vy = 0;
+  yr = 0;
 
 
   while(ros::ok())
@@ -233,17 +230,22 @@ int main(int argc, char **argv)
         dis = temp_dis;
       }
     }
+     
+    std::cout << "nearest point : "<<flag_nearest_pt<<std::endl;
 
     // compute the desired state trajectory
     for (int i = 0; i< ct_sp;i++)
     {
-      pre_des[i].X =   X_ol[i + count_nearest_pt];
-      pre_des[i].Y =   Y_ol[i + count_nearest_pt];
-      pre_des[i].yaw = yaw_ol[i + count_nearest_pt];
-      pre_des[i].vx =  vx_ol[i + count_nearest_pt];
-      pre_des[i].vy =  vy_ol[i + count_nearest_pt];
-      pre_des[i].yr =  yr_ol[i + count_nearest_pt];
+      pre_des[i].X =   X_ol[i + flag_nearest_pt];
+      pre_des[i].Y =   Y_ol[i + flag_nearest_pt];
+      pre_des[i].yaw = yaw_ol[i + flag_nearest_pt];
+      pre_des[i].vx =  vx_ol[i + flag_nearest_pt];
+      pre_des[i].vy =  vy_ol[i + flag_nearest_pt];
+      pre_des[i].yr =  yr_ol[i + flag_nearest_pt];
+
     }
+
+    
     
    // model error 
 
@@ -275,9 +277,10 @@ int main(int argc, char **argv)
     pre_ol[0].vy = vy;
     pre_ol[0].yr = yr;
 
-    for (int i = 1; i < ct_sp;i++)
+    for (int i = 1; i < ct_sp + 1;i++)
     {
       pre_ol[i] = vehicle_mdl(pre_ol[i-1],dt,noise,mdl_err[i-1],d_f_ol_man[i-1],F_xR_ol_man[i-1]);
+      //std::cout << "pre_ol" << i << ":" <<pre_ol[i].vy<<std::endl;
     }
 
 
@@ -291,25 +294,29 @@ int main(int argc, char **argv)
     pre_cl[0].vy = vy;
     pre_cl[0].yr = yr;
 
-    for (int i = 1; i < ct_sp;i++)
+    for (int i = 1; i < ct_sp + 1;i++)
     {
       d_f_cl_man[i-1] =  K_d_f[(i-1) + N_state*count_nearest_pt]*pre_cl[i-1].vx + \
                          K_d_f[(i-1) + N_state*count_nearest_pt + 1]*pre_cl[i-1].vy + \
                          K_d_f[(i-1) + N_state*count_nearest_pt + 2]*pre_cl[i-1].yr + \
                          K_d_f[(i-1) + N_state*count_nearest_pt + 3]*pre_cl[i-1].X + \
                          K_d_f[(i-1) + N_state*count_nearest_pt + 4]*pre_cl[i-1].Y + \
-                         K_d_f[(i-1) + N_state*count_nearest_pt + 5]*pre_cl[i-1].yaw ;
+                         K_d_f[(i-1) + N_state*count_nearest_pt + 5]*pre_cl[i-1].yaw + d_f_ol_man[i-1];
       F_xR_cl_man[i-1] = K_F_xR[(i-1) + N_state*count_nearest_pt]*pre_cl[i-1].vx + \
                          K_F_xR[(i-1) + N_state*count_nearest_pt + 1]*pre_cl[i-1].vy + \
                          K_F_xR[(i-1) + N_state*count_nearest_pt + 2]*pre_cl[i-1].yr + \
                          K_F_xR[(i-1) + N_state*count_nearest_pt + 3]*pre_cl[i-1].X + \
                          K_F_xR[(i-1) + N_state*count_nearest_pt + 4]*pre_cl[i-1].Y + \
-                         K_F_xR[(i-1) + N_state*count_nearest_pt + 5]*pre_cl[i-1].yaw ;
-     pre_cl[i] = vehicle_mdl(pre_cl[i-1],dt,noise,mdl_err[i-1],d_f_cl_man[i-1],F_xR_cl_man[i-1]);  
+                         K_F_xR[(i-1) + N_state*count_nearest_pt + 5]*pre_cl[i-1].yaw + F_xR_ol_man[i-1];
+      std::cout << "d_f_cl" << i << ": " << d_f_cl_man[i-1]<<std::endl;
+      std::cout << "F_xR_cl" << i << ": " << F_xR_cl_man[i-1]<<std::endl;
+      pre_cl[i] = vehicle_mdl(pre_cl[i-1],dt,noise,mdl_err[i-1],d_f_cl_man[i-1],F_xR_cl_man[i-1]);  
+
+      std::cout << "pre_cl.X" << i << ": " << pre_cl[i].X<<std::endl;
     }
 
 
-    // compute the cost function of open loop
+    // compute the cost function of open loop and close loop maneuver
   
 
    double cost_fn_ol = 0,cost_fn_cl = 0;
@@ -325,9 +332,36 @@ int main(int argc, char **argv)
 
      double temp_cost = del_vx*Q[0]*del_vx + del_vy*Q[1]*del_vy + del_yr*Q[2]*del_yr +\
                         del_X*Q[3]*del_X + del_Y*Q[4]*del_Y + del_yaw*Q[5]*del_yaw;
-     double cost_fn_ol = cost_fn_ol + temp_cost;
+     cost_fn_ol = cost_fn_ol + temp_cost;
+   }
+   for (int i = 0; i < ct_sp;i++)
+   {
+     double del_vx  = pre_cl[i+1].vx - pre_des[i].vx;
+     double del_vy  = pre_cl[i+1].vy - pre_des[i].vy;
+     double del_yr  = pre_cl[i+1].yr - pre_des[i].yr;
+     double del_X   = pre_cl[i+1].X - pre_des[i].X;
+     double del_Y   = pre_cl[i+1].Y - pre_des[i].Y;
+     double del_yaw = pre_cl[i+1].yaw - pre_des[i].yaw;
+
+     double temp_cost = del_vx*Q[0]*del_vx + del_vy*Q[1]*del_vy + del_yr*Q[2]*del_yr +\
+                        del_X*Q[3]*del_X + del_Y*Q[4]*del_Y + del_yaw*Q[5]*del_yaw;
+     cost_fn_cl = cost_fn_cl + temp_cost;
    }
 
+    // decide open loop or closed loop
+    
+    if (cost_fn_cl > cost_fn_ol)
+    {
+      closeloop_flag = 0;
+      ecu.motor = F_xR_ol_man[0];
+      ecu.servo = d_f_ol_man[0];
+    }
+    else
+    {
+      closeloop_flag = 1;
+      ecu.motor = F_xR_cl_man[0];
+      ecu.servo = d_f_cl_man[0];
+    }
     com_pub.publish(ecu);
     
     ros::spinOnce();
