@@ -70,7 +70,7 @@ int main(int argc, char **argv)
   float t_hold,t_straight,t_turn,t_counter,t_recover;
   float F_xR_straight,F_xR_turn,F_xR_counter,F_xR_recover;
   float d_f_turn,d_f_counter;
-  PID pid(0.02,30,-30,50,5,0);
+  PID pid(0.02,30,-30,50,5,5);
   param.getParam("/openloop_man/t_hold",t_hold) ;// time duration of stay still
   param.getParam("/openloop_man/t_straight",t_straight) ;// time duration of go straight 
   param.getParam("/openloop_man/t_turn",t_turn) ;// time duration of turning
@@ -97,6 +97,10 @@ int main(int argc, char **argv)
     {
       F_xR = F_xR_straight;
       d_f = pid.calculate(yaw0,yaw);
+      //std::cout << "yaw0 :" << yaw0 <<"yaw" <<yaw <<std::endl;
+      //std::cout << "d_yaw:"<< (yaw - yaw0)*180/pi<<std::endl;
+      //std::cout << "d_f:" << d_f<<std::endl;
+      
 
     }
     else if (t.toSec() < t_hold + t_straight + t_turn)  // make a turn 
@@ -107,18 +111,13 @@ int main(int argc, char **argv)
     }
     else if (t.toSec() < t_hold + t_straight + t_turn + t_counter)      //introduce counter_steering 
     {
-    F_xR = F_xR_counter;
-    d_f = d_f_counter;
-    }
-    else if (t.toSec() < t_hold + t_straight + t_turn + t_counter + t_recover)//         go back to straight
-    {
-      F_xR = F_xR_recover;
-      d_f = 0;
+      F_xR = F_xR_counter +  (1.4 - F_xR_counter)*(t.toSec()-t_hold-t_straight-t_turn)/t_counter;
+      d_f = d_f_counter +   (0 - d_f_counter)*(t.toSec()-t_hold-t_straight-t_turn)/t_counter;
     }
     else
     {
-      F_xR = 0;
-      d_f = 0;
+      F_xR = 1.2;
+      d_f = pid.calculate(-pi,yaw);
     }
 
     //std::cout << "d_f :" << d_f <<std::endl;
@@ -126,7 +125,6 @@ int main(int argc, char **argv)
 
 
     
-
     ecu.motor = F_xR;
     ecu.servo = d_f*pi/180; //degree -> rad
     com_pub.publish(ecu);
