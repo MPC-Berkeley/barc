@@ -72,20 +72,20 @@
 	<node pkg="barc" type="openloop_man" name="openloop_man" output="screen">
          <!-- PROPERTIES -->
         <param name="t_hold" type="double" value="2" />
-        <param name="t_straight" type="double" value="3" />
-        <param name="t_turn" type="double" value="3" />
-		<param name="t_counter" type="double" value="3" />
+        <param name="t_straight" type="double" value="3"/>
+        <param name="t_turn" type="double" value="0.6" />
+		<param name="t_counter" type="double" value="1.2" />
 		<param name="t_recover" type="double" value="0" />
 
 
 		<param name="F_xR_straight" type="double" value="1" />
-		<param name="F_xR_turn" type="double" value="1" />
-		<param name="F_xR_counter" type="double" value="1" />
-		<param name="F_xR_recover" type="double" value="3" />
+		<param name="F_xR_turn" type="double" value="2.3" />
+		<param name="F_xR_counter" type="double" value="0" />
+		<param name="F_xR_recover" type="double" value="0" />
 
 
-		<param name="d_f_turn" type="double" value="-10" />
-		<param name="d_f_counter" type="double" value="30" />
+		<param name="d_f_turn" type="double" value="-25"/>
+		<param name="d_f_counter" type="double" value="20" />
    </node>
 
 </launch>
