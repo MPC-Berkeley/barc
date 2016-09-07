@@ -37,10 +37,10 @@ The items are sorted by category
 | Male pin headers                                                  | 1 |[Amazon](https://www.amazon.com/Single-40Pin-2-54mm-Header-Connector/dp/B00R1LEIL8?ie=UTF8&keywords=male%20header%20pins&qid=1452565257&ref_=sr_1_3&sr=8-3)                      | 
 | Female pin headers                                                | 1 |[Amazon](https://www.amazon.com/Straight-Female-Header-Spacing-Connector/dp/B00TGOJE1W?ie=UTF8&dpID=51giDgngCCL&dpSrc=sims&preST=_AC_UL160_SR160%2C160_&refRID=1KSKJTP2V9XPRNW59K9B&ref_=pd_sim_147_6)                      | 
 | Prototyping board                                                 | 1 |[Amazon](https://www.amazon.com/DIY-Prototype-Paper-Universal-Board/dp/B014EPO1FG?ie=UTF8&keywords=prototype%20pcb&qid=1452565934&ref_=sr_1_1&sr=8-1)                      | 
-| 24 AWG wire                                                       | 1 |[Amazon](https://www.amazon.com/Remington-Industries-24UL1007STRKIT-Stranded-Diameter/dp/B00N51OJNK?ie=UTF8&keywords=stranded%20wire&qid=1452565725&ref_=sr_1_3&sr=8-3)                      | 
+| 24 AWG wire                                                       | 1 |[Amazon](https://www.amazon.com/Stranded-Length-0-0201-Diameter-UL1007/dp/B00N51OJNK/ref=sr_1_3?ie=UTF8&qid=1452565725&sr=8-3&keywords=stranded+wire)                      | 
 | Heat shrink tubing                                                | 1 |[Amazon](http://www.amazon.com/gp/product/B00Q7V49RQ?psc=1&redirect=true&ref_=oh_aui_detailpage_o03_s00)                      | 
 | Electrical tape                                                   | 1 |[Amazon](http://www.amazon.com/gp/product/B00004WCCP?psc=1&redirect=true&ref_=oh_aui_detailpage_o08_s00)                      | 
-| 18 AWG wire (red and black)                                       | 1 |[Amazon](https://www.amazon.com/3M-Electrical-75-Inch-66-Foot-0085-Inch/dp/B00004WCCP?ie=UTF8&psc=1&redirect=true&ref_=oh_aui_detailpage_o08_s00)                   |                             | 
+| 18 AWG wire (red and black)                                       | 1 |[Amazon](https://www.amazon.com/BNTECHGO-electrical-resistance-efficient-connection/dp/B01708AYYQ/ref=sr_1_1?s=lamps-light&ie=UTF8&qid=1473290746&sr=1-1&refinements=p_n_feature_keywords_browse-bin%3A3605500011)                   |                             | 
 
 ### Mechanical assembly
 
@@ -62,6 +62,7 @@ The items are sorted by category
 
 ### Other accessories
 The HDMI-to-DVI cable is for connecting your odroid to a monitor. The odroid comes with an HDMI port for media output. We recommend a DVI connector on the other end since most monitors have it. 
+
 |                                        Components                           |            Quantity                 | Links |
 |-------------------------------------------------------------------|-----------------------------|----| 
 | Generic portable router                                           | 1 |[Amazon](https://www.amazon.com/ZyXEL-Wireless-Pocket-Ethernet-MWR102/dp/B005WKIKA0?ie=UTF8&keywords=portable%20router%20zyxel&qid=1440797433&ref_=sr_1_1&sr=8-1)                      | 
