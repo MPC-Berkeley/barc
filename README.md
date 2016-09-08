@@ -27,7 +27,7 @@ All software to control the vehicle resides in the *Arduino* and *Workspace* fol
 ## Getting started
 1. Get the parts, [list](https://github.com/BARCproject/barc/blob/master/docs/BillofMaterials.md)
 2. Flash the odroid, [instructions](https://github.com/BARCproject/barc/blob/master/docs/FlashingEMMC.md) 
-3. Assembly the car, [instructions](https://docs.google.com/document/d/1T8O4JhUlw09ALUGPSX7DlSO7Hc7vcKl_ahBeHncMguE/edit?usp=sharing)
+3. Assemble the car, [instructions](https://docs.google.com/document/d/1T8O4JhUlw09ALUGPSX7DlSO7Hc7vcKl_ahBeHncMguE/edit?usp=sharing)
 4. Charge the battery, [instructions](https://github.com/BARCproject/barc/blob/master/docs/ChargingBattery.md)
 5. Connect to the RC remotely, [instructions](https://github.com/BARCproject/barc/blob/master/docs/ConnectingToOdroid.md)
 
