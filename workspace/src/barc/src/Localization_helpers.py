@@ -202,13 +202,14 @@ class Localization:
 		ey 				= eyabs*sign(sin(xyVectorAngle-xyPathAngle))
 
 		# Calculate epsi
-		epsi = self.psi-xyPathAngle
-		if abs(epsi) > pi/2:
-			if epsi < pi/2:
-				epsi = epsi + 2*pi
-			else:
-				epsi = epsi - 2*pi
-
+		epsi = (self.psi+pi)%(2*pi)-pi-xyPathAngle
+		epsi = (epsi+pi)%(2*pi)-pi
+		#if abs(epsi) > pi/2:
+		#	if epsi < pi/2:
+		#		epsi = epsi + 2*pi
+		#	else:
+		#		epsi = epsi - 2*pi
+        #epsi = (self.psi+pi)%(2*pi)+pi-xyPathAngle
 		self.epsi 			= epsi
 		self.ey 			= ey
 		self.s 				= s

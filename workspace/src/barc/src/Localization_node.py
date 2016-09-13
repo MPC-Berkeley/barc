@@ -17,15 +17,14 @@ epsi_prev = 0
 
 # State estimate callback function
 def state_estimate_callback(data):
-	global l, epsi_prev
-	# Set current position and orientation
-	l.set_pos(data.x,data.y,data.psi,data.v)
-	# Update position and trajectory information
-	l.find_s()
-
+    global l, epsi_prev
+    # Set current position and orientation
+    l.set_pos(data.x,data.y,data.psi,data.v)
+    # Update position and trajectory information
+    l.find_s()
     # unwrap epsi
-    l.epsi = unwrap(array([epsi_prev,l.epsi]),discont=pi)[1]
-    epsi_prev = l.epsi;
+    # l.epsi = unwrap(array([epsi_prev,l.epsi]),discont=pi)[1]
+    epsi_prev = l.epsi
 
 # localization node
 def localization_node():
@@ -41,7 +40,7 @@ def localization_node():
     # create localization class and trajectory
     l = Localization()
     # l.create_circle(1,100,array([3.2,0.5]))
-    l.create_racetrack(2.5,1.5,0.2,array([3.5,1.0]),0)
+    l.create_racetrack(1.0,2.0,0.1,array([3.5,1.0]),0)
     # l.create_ellipse(1.5,0.8,100,array([2.8,1.6]))
     l.prepare_trajectory(0.063)
 
