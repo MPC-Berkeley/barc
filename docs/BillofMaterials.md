@@ -18,13 +18,14 @@ The items are sorted by category
 |                                        Components                           |            Quantity                 | Links |
 |-------------------------------------------------------------------|-----------------------------|----| 
 | Odroid XU4 w/ outlet adapter                                      | 1 |[AmeriDroid](http://ameridroid.com/products/odroid-xu4)                  | 
-| Odroid XU4 eMMC storage 16GB (w/ microSD adapter)                 | 1 |[AmeriDroid](http://ameridroid.com/products/16gb-emmc-50-module-xu3-linux)                  | 
+| \*Odroid XU4 eMMC storage (w/ microSD adapter)                 | 1 |(16GB) [AmeriDroid](http://ameridroid.com/products/16gb-emmc-50-module-xu3-linux), (32GB)[AmeriDroid](http://ameridroid.com/products/32gb-emmc-5-0-module-xu3-linux),(64GB)[AmeriDroid](http://ameridroid.com/products/64gb-emmc-50-module-xu3-linux)   | 
 | Odroid XU4 Real-Time-Clock battery                                | 1 |[AmeriDroid](http://ameridroid.com/products/rtc-battery)                  | 
 | Generic USB WiFi adapter                                          | 1 |[AmeriDroid](http://ameridroid.com/products/wifi-module-3)                  | 
 | Generic power cable (barrel jack to bare leads)                   | 1 |[AmeriDroid](http://ameridroid.com/products/dc-plug-and-cable-assembly-5-5mm)                  | 
 | Arduino Nano w/ micro USB to USB cable                            | 1 |[Amazon](http://www.amazon.com/ATmega328P-Microcontroller-Board-Cable-Arduino/dp/B00NLAMS9C/ref=sr_1_22?ie=UTF8&qid=1442638774&sr=8-22&keywords=arduino)                      | 
 | Arduino Nano shield                                          | 1 |[Amazon](https://www.amazon.com/Arduino-Nano-I-O-Shield/dp/B00BD6KEYC/ref=sr_1_sc_1?s=pc&ie=UTF8&qid=1473727162&sr=1-1-spell&keywords=arduino+nano+sheild)                      | 
 | micro USB to USB cable                                            | 1 |[Amazon](https://www.amazon.com/StarTech-com-Inch-Micro-USB-Cable/dp/B003YKX6WM?ie=UTF8&keywords=usb%20to%20micro%20usb%20cable%206%20in&qid=1452628187&ref_=sr_1_1&sr=8-1)                      | 
+\* Only one eMMC storage is neccessary, three are listed as options depending on budget and system requirements. For projects that require storing GBs of video data from experiments, the 32GB or 64GB option is recommended
 
 
 ### Electronics
