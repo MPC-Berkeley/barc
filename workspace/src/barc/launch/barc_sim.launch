@@ -1,0 +1,36 @@
+<launch>
+
+    <!-- SYSTEM MODEL -->
+    <!-- vehicle parameters -->
+    <param name="L_a" type="double" value="0.125" />
+    <param name="L_b" type="double" value="0.125" />
+    <param name="est_mode" type="double" value="1" />
+
+    <!-- Start simulator -->
+    <node pkg="barc" type="barc_simulator.jl" name="barc_sim" output="screen" />
+
+    <!-- control parameters -->
+    <param name="input_gain" type="double" value="0.3" />
+
+
+    <!-- OBSERVER-->
+    <node pkg="barc" type="state_estimation_KinBkMdl.py" name="state_estimation">
+        <!-- v_x estimation sample time-->
+        <param name="dt_v_enc" type="double" value="0.2" />
+
+        <!-- ekf properties -->
+        <param name="q_std" type="double" value="0.1" />
+        <param name="r_std" type="double" value="0.1" />
+    </node>
+
+    <!-- LOCALIZATION -->
+    <node pkg="barc" type="Localization_node.py" name="localization" />
+
+    <!-- LOW LEVEL CONTROLLER -->
+    <node pkg="barc" type="controller_low_level.py" name="low_level_controller" />
+
+    <!-- MPC FOLLOW TRAJECTORY -->
+    <node pkg="barc" type="controller_MPC_traj_oldj.jl" name="MPC" output="screen" />
+
+
+</launch>

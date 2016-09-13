@@ -47,6 +47,8 @@ find_package(catkin REQUIRED COMPONENTS
 ## Generate messages in the 'msg' folder
 add_message_files(
    FILES
+   pos_info.msg
+   Logging.msg
    Ultrasound.msg
    Encoder.msg
    ECU.msg

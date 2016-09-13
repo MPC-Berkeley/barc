@@ -69,6 +69,7 @@ def imu_callback(data):
     ori         = data.orientation
     quaternion  = (ori.x, ori.y, ori.z, ori.w)
     (roll, pitch, yaw) = transformations.euler_from_quaternion(quaternion)
+    rospy.loginfo("yaw = %f", yaw)
 
     # save initial measurements
     if not read_yaw0:
