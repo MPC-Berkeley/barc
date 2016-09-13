@@ -32,7 +32,7 @@ dt      = 0.1           # time step of system
 coeffCurvature   = [0,0,0,0]
 
 # preview horizon
-N       = 15
+N       = 10
 
 # define targets [generic values]
 v_ref   = 0.8
@@ -51,7 +51,7 @@ c_epsi_f = 0
 # states: position (x,y), yaw angle, and velocity
 # inputs: acceleration, steering angle 
 println("Creating kinematic bicycle model ....")
-mdl     = Model(solver = IpoptSolver(print_level=3,max_cpu_time=0.1,linear_solver="ma97",print_user_options="yes"))
+mdl     = Model(solver = IpoptSolver(print_level=3,max_cpu_time=0.1)) # ,linear_solver="ma97",print_user_options="yes"))
 
 @defVar( mdl, s[1:(N+1)] )
 @defVar( mdl, ey[1:(N+1)] )

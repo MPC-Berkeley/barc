@@ -14,13 +14,15 @@
 
 
     <!-- OBSERVER-->
-    <node pkg="barc" type="state_estimation_KinBkMdl.py" name="state_estimation">
+    <node pkg="barc" type="state_estimation_KinBkMdl.py" name="state_estimation" output="screen">
         <!-- v_x estimation sample time-->
         <param name="dt_v_enc" type="double" value="0.2" />
 
         <!-- ekf properties -->
         <param name="q_std" type="double" value="0.1" />
-        <param name="r_std" type="double" value="0.1" />
+        <param name="psi_std" type="double" value="0.1" />
+        <param name="v_std" type="double" value="1" />
+        <param name="gps_std" type="double" value="0.01" />
     </node>
 
     <!-- LOCALIZATION -->

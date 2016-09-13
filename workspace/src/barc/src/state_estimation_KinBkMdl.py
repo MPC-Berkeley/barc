@@ -199,9 +199,8 @@ def state_estimation():
     else:
         rospy.logerr("No estimation mode selected.")
 
-    count = 0
-    x_prev = 0
-    y_prev = 0
+    x_meas = 0
+    y_meas = 0
 
     # start loop
     while not rospy.is_shutdown():
@@ -213,15 +212,6 @@ def state_estimation():
         state_pub.publish( Z_KinBkMdl(x_e, y_e, psi_e, v_e) )
 
         # collect measurements, inputs, system properties
-
-        # check gps values for *single* outlier
-        if count > 100:      # only if estimation is already about right
-            if est_mode == 1 or est_mode == 3:      # if gps is included in the measurements
-               gps_diff = array([x_meas-x_e,y_meas-y_e])    # vector difference between estimate and gps position
-               if (gps_diff[0]**2+gps_diff[1]**2)**0.5 > 0.8:       # outlier distance: 0.8m
-                   x_meas = x_prev
-                   y_meas = y_prev
-
         if est_mode==1:
             y   = array([x_meas, y_meas, psi_meas, v_meas])
         elif est_mode==2:
@@ -234,10 +224,6 @@ def state_estimation():
         args = (u,vhMdl,dt)
         # apply EKF and get each state estimate
         (z_EKF,P) = ekf(f_KinBkMdl, z_EKF, P, h_KinBkMdl, y, Q, R, args )
-
-        x_prev = x_meas
-        y_prev = y_meas
-        count = count + 1
 
         # wait
         rate.sleep()

@@ -31,8 +31,8 @@ function simModel(z,u,dt,l_A,l_B)
     zNext = z
     zNext[1] = z[1] + dt*(z[4]*cos(z[3]+bta))       # x
     zNext[2] = z[2] + dt*(z[4]*sin(z[3] + bta))      # y
-    zNext[3] = z[3] + dt*(z[4]/L_b*sin(bta))        # psi
-    zNext[4] = z[4] + dt*(u[1])                     # v
+    zNext[3] = z[3] + dt*(z[4]/L_b*sin(bta))        # psi
+    zNext[4] = z[4] + dt*(u[1] - 0.63*z[4]^2 * sign(z[4]))                     # v
 
     return zNext
 end
@@ -87,12 +87,12 @@ function main()
         z_current[i,:] = simModel(z_current[i-1,:]',u_current, dt, l_A,l_B)'
         dist_traveled += z_current[i,4]*dt
 
-        # Encoder measurements
+        # Encoder measurements, might be adapted according to the number of encoders on the car
         if dist_traveled - last_updated >= quarterCirc
             last_updated = dist_traveled
             FL += 1
             FR += 1
-            BL += 1
+            BL += 0
             BR += 0
             enc_data = Encoder(FL, FR, BL, BR)
             publish(pub_enc, enc_data)
@@ -119,8 +119,9 @@ function main()
     end
 
     # Save simulation data to file
-    println("Exiting node... Saving data. Simulated $((i-1)*dt) seconds.")
-    writedlm("/home/test.txt",z_current[1:i-1,:])
+    log_path = "$(homedir())/simulations/output.txt"
+    println("Exiting node... Saving data to $log_path. Simulated $((i-1)*dt) seconds.")
+    writedlm(log_path,z_current[1:i-1,:])
 end
 
 if ! isinteractive()
