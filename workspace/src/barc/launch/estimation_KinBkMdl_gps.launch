@@ -2,7 +2,8 @@
     <!-- VEHICLE PROPERTIES -->
     <param name="L_a" type="double" value="0.125" />
     <param name="L_b" type="double" value="0.125" />
-    <param name="est_mode" type="double" value="2" />
+    <param name="est_mode" type="double" value="1" />
+
     <!-- control parameters -->
     <param name="input_gain" type="double" value="0.3" />
 
@@ -11,6 +12,12 @@
         <param name="port" value="/dev/ttyACM0" />
         <param name="baud_rate" value="115200" />
     </node>
+
+	<!-- GPS -->
+	<node pkg="marvelmind_indoor_gps" type="indoor_gps.py" name="indoor_gps" output="screen">
+		<param name="port" value="/dev/ttyACM1" />
+		<param name="baud" value="115200" />
+	</node>
 
     <!-- ARDUINO -->
     <!--  * encoders and ultrasound sensors -->
@@ -25,7 +32,7 @@
 
         <!-- ekf properties -->
         <param name="q_std" type="double" value="0.1" />
-        <param name="psi_std" type="double" value="0.01" />
+        <param name="psi_std" type="double" value="0.1" />
         <param name="v_std" type="double" value="1" />
         <param name="gps_std" type="double" value="0.01" />
     </node>
