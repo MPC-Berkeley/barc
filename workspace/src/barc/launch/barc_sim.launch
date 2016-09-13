@@ -24,7 +24,7 @@
     </node>
 
     <!-- LOCALIZATION -->
-    <node pkg="barc" type="Localization_node.py" name="localization" />
+    <node pkg="barc" type="Localization_node.py" name="localization" output="screen"/>
 
     <!-- LOW LEVEL CONTROLLER -->
     <node pkg="barc" type="controller_low_level.py" name="low_level_controller" />

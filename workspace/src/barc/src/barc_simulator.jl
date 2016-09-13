@@ -84,7 +84,7 @@ function main()
     dt = 0.01
     loop_rate = Rate(1/dt)
 
-    i = 1
+    i = 2
 
     dist_traveled = 0
     last_updated  = 0
@@ -92,18 +92,25 @@ function main()
     r_tire      = 0.036                  # radius from tire center to perimeter along magnets [m]
     quarterCirc = 0.5 * pi * r_tire
     
-    println("Publishing sensor information. Simulator running.")
 
     FL = 0
     FR = 0
     BL = 0
     BR = 0
 
+    plot()
+    draw()
+    hold(0)
+    grid(1)
+    xlim(-2,4)
+    ylim(-3,1)
+
+    println("Publishing sensor information. Simulator running.")
     while ! is_shutdown()
-        println("Current state = $(z_current)")
+        # println("Current state = $(z_current)")
 
         z_current[i,:] = simModel(z_current[i-1,:]',u_current, dt, l_A,l_B)'
-        dist_traveled += z_current[4]*dt
+        dist_traveled += z_current[i,4]*dt
 
         # Encoder measurements
         if dist_traveled - last_updated >= quarterCirc
@@ -118,15 +125,15 @@ function main()
 
         # IMU measurements
         imu_data = Imu()
-        imu_data.orientation = geometry_msgs.msg.Quaternion(cos(z_current[3]/2), sin(z_current[3]/2), 0, 0)
+        imu_data.orientation = geometry_msgs.msg.Quaternion(cos(z_current[i,3]/2), sin(z_current[i,3]/2), 0, 0)
         if i%2 == 0
             publish(pub_imu, imu_data)      # Imu format is defined by ROS, you can look it up by google "rosmsg Imu"
                                             # It's sufficient to only fill the orientation part of the Imu-type (with one quaternion)
         end
 
         # GPS measurements
-        x = z_current[1]*100        # Indoor gps measures in cm
-        y = z_current[2]*100
+        x = z_current[i,1]*100        # Indoor gps measures in cm
+        y = z_current[i,2]*100
         if i % 14 == 0
             gps_data = Vector3(x,y,0)
             publish(pub_gps, gps_data)
@@ -138,6 +145,8 @@ function main()
         i += 1
         rossleep(loop_rate)
     end
+    println("Exiting node... Saving data.")
+    writedlm("/home/felix/Felixspace/test.txt",z_current[1:i,:])
 end
 
 if ! isinteractive()
