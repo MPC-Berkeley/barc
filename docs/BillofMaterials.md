@@ -23,7 +23,10 @@ The items are sorted by category
 | Generic USB WiFi adapter                                          | 1 |[AmeriDroid](http://ameridroid.com/products/wifi-module-3)                  | 
 | Generic power cable (barrel jack to bare leads)                   | 1 |[AmeriDroid](http://ameridroid.com/products/dc-plug-and-cable-assembly-5-5mm)                  | 
 | Arduino Nano w/ micro USB to USB cable                            | 1 |[Amazon](http://www.amazon.com/ATmega328P-Microcontroller-Board-Cable-Arduino/dp/B00NLAMS9C/ref=sr_1_22?ie=UTF8&qid=1442638774&sr=8-22&keywords=arduino)                      | 
+| Arduino Nano shield                                          | 1 |[Amazon](https://www.amazon.com/Arduino-Nano-I-O-Shield/dp/B00BD6KEYC/ref=sr_1_sc_1?s=pc&ie=UTF8&qid=1473727162&sr=1-1-spell&keywords=arduino+nano+sheild)                      | 
 | micro USB to USB cable                                            | 1 |[Amazon](https://www.amazon.com/StarTech-com-Inch-Micro-USB-Cable/dp/B003YKX6WM?ie=UTF8&keywords=usb%20to%20micro%20usb%20cable%206%20in&qid=1452628187&ref_=sr_1_1&sr=8-1)                      | 
+
+https://www.amazon.com/Arduino-Nano-I-O-Shield/dp/B00BD6KEYC/ref=sr_1_sc_1?s=pc&ie=UTF8&qid=1473727162&sr=1-1-spell&keywords=arduino+nano+sheild
 
 ### Electronics
 
