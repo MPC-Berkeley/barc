@@ -1,14 +1,12 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(barc)
+project(marvelmind_indoor_gps)
 
 ## Find catkin macros and libraries
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
-  roscpp
-  rospy
   std_msgs
-  message_generation
+  rospy
 )
 
 ## System dependencies are found with CMake's conventions
@@ -45,18 +43,17 @@ find_package(catkin REQUIRED COMPONENTS
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 ## Generate messages in the 'msg' folder
-add_message_files(
-   FILES
-   Ultrasound.msg
-   Encoder.msg
-   ECU.msg
-   Z_KinBkMdl.msg
-   pos_info.msg
-)
+# add_message_files(
+#   FILES
+#   Message1.msg
+#   Message2.msg
+# )
 
 ## Generate services in the 'srv' folder
 # add_service_files(
 #   FILES
+#   Service1.srv
+#   Service2.srv
 # )
 
 ## Generate actions in the 'action' folder
@@ -67,10 +64,10 @@ add_message_files(
 # )
 
 ## Generate added messages and services with any dependencies listed here
- generate_messages(
-   DEPENDENCIES
-   std_msgs
- )
+# generate_messages(
+#   DEPENDENCIES
+#   std_msgs  # Or other packages containing msgs
+# )
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##
@@ -103,11 +100,9 @@ add_message_files(
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
 #  INCLUDE_DIRS include
-#  LIBRARIES barc
-   CATKIN_DEPENDS rospy std_msgs message_runtime
-#   roscpp rospy std_msgs
+#  LIBRARIES marvelmind_indoor_gps
+#  CATKIN_DEPENDS rospy
 #  DEPENDS system_lib
-   
 )
 
 ###########
@@ -122,24 +117,24 @@ include_directories(
 )
 
 ## Declare a C++ library
-# add_library(barc
-#   src/${PROJECT_NAME}/barc.cpp
+# add_library(marvelmind_indoor_gps
+#   src/${PROJECT_NAME}/marvelmind_indoor_gps.cpp
 # )
 
 ## Add cmake target dependencies of the library
 ## as an example, code may need to be generated before libraries
 ## either from message generation or dynamic reconfigure
-# add_dependencies(barc ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# add_dependencies(marvelmind_indoor_gps ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Declare a C++ executable
-# add_executable(barc_node src/barc_node.cpp)
+# add_executable(marvelmind_indoor_gps_node src/marvelmind_indoor_gps_node.cpp)
 
 ## Add cmake target dependencies of the executable
 ## same as for the library above
-# add_dependencies(barc_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
+# add_dependencies(marvelmind_indoor_gps_node ${${PROJECT_NAME}_EXPORTED_TARGETS} ${catkin_EXPORTED_TARGETS})
 
 ## Specify libraries to link a library or executable target against
-# target_link_libraries(barc_node
+# target_link_libraries(marvelmind_indoor_gps_node
 #   ${catkin_LIBRARIES}
 # )
 
@@ -158,7 +153,7 @@ include_directories(
 # )
 
 ## Mark executables and/or libraries for installation
-# install(TARGETS barc barc_node
+# install(TARGETS marvelmind_indoor_gps marvelmind_indoor_gps_node
 #   ARCHIVE DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   LIBRARY DESTINATION ${CATKIN_PACKAGE_LIB_DESTINATION}
 #   RUNTIME DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
@@ -183,7 +178,7 @@ include_directories(
 #############
 
 ## Add gtest based cpp test target and link libraries
-# catkin_add_gtest(${PROJECT_NAME}-test test/test_barc.cpp)
+# catkin_add_gtest(${PROJECT_NAME}-test test/test_marvelmind_indoor_gps.cpp)
 # if(TARGET ${PROJECT_NAME}-test)
 #   target_link_libraries(${PROJECT_NAME}-test ${PROJECT_NAME})
 # endif()
