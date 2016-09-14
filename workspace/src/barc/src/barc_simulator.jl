@@ -24,40 +24,30 @@ using data_service.msg
 using geometry_msgs.msg
 using sensor_msgs.msg
 using JuMP
-using Rotations
+using Rotations #not in use atm should be used for trafo to quaternion
 using Ipopt
 using PyPlot
 
-# bta[i = 1:N], atan( L_a / (L_a + L_b) * tan(d_f[i]) ) 
-# for i in 1:N
-#     @addNLConstraint(mdl, x[i+1]    == x[i]      + dt*(v[i]*cos( psi[i] + bta[i] ))  )
-#     @addNLConstraint(mdl, y[i+1]    == y[i]      + dt*(v[i]*sin( psi[i] + bta[i] ))  )
-#     @addNLConstraint(mdl, psi[i+1]  == psi[i]    + dt*(v[i]/L_b * sin(bta[i]))  )
-#     @addNLConstraint(mdl, v[i+1]    == v[i]      + dt*(a[i])  )
+u_current = zeros(2,1)
 
 function simModel(z,u,dt,l_A,l_B)
 
-    # Needs to be remodeled for x-y-bicycle model!!
-    # z = [x, y, psi, v]
-    # u = [a, d_f]
+   # kinematic bicycle model
+   # u[1] = acceleration
+   # u[2] = steering angle
 
-    bta = atan(L_a/(L_a+L_b)*tan(u[2]))
+    bta = atan(l_A/(l_A+l_B)*tan(u[2]))
 
-    zNext = z
+    zNext = z #??
     zNext[1] = z[1] + dt*(z[4]*cos(z[3]+bta))       # x
     zNext[2] = z[2] + dt*(z[4]*sin(z[3] + bta))      # y
-    zNext[3] = z[3] + dt*(z[4]/L_b*sin(bta))        # psi
-    zNext[4] = z[4] + dt*(u[1])                     # v
+    zNext[3] = z[3] + dt*(z[4]/l_B*sin(bta))        # psi
+    zNext[4] = z[4] + dt*(u[1] - 0.63 * z[4]^2 * sign(z[4]))                     # v
 
     return zNext
 end
 
 
-# define model parameters
-L_a     = 0.125         # distance from CoG to front axel
-L_b     = 0.125         # distance from CoG to rear axel
-
-u_current = zeros(2,1)
 function ECU_callback(msg::ECU)
 
     global u_current
@@ -72,6 +62,8 @@ function main()
     pub_gps = Publisher("indoor_gps", Vector3, queue_size=10)
     pub_imu = Publisher("imu/data", Imu, queue_size=10)
 
+
+    # read the axle distances from the launch file
     l_A = get_param("L_a")       # distance from CoG to front axel
     l_B = get_param("L_b")       # distance from CoG to rear axel
 
@@ -86,41 +78,38 @@ function main()
 
     i = 2
 
+    #initialization of distances for encoder measurements
     dist_traveled = 0
     last_updated  = 0
 
     r_tire      = 0.036                  # radius from tire center to perimeter along magnets [m]
-    quarterCirc = 0.5 * pi * r_tire
+    quarterCirc = 0.5 * pi * r_tire      # length of a quarter of a tire, distance from one to the next encoder
     
+    FL = 0 #front left wheel encoder counter
+    FR = 0 #front right wheel encoder counter
+    BL = 0 #back left wheel encoder counter
+    BR = 0 #back right wheel encoder counter
 
-    FL = 0
-    FR = 0
-    BL = 0
-    BR = 0
-
-    plot()
-    draw()
-    hold(0)
-    grid(1)
-    xlim(-2,4)
-    ylim(-3,1)
 
     println("Publishing sensor information. Simulator running.")
     while ! is_shutdown()
         # println("Current state = $(z_current)")
 
+        # update current state with a new row vector
         z_current[i,:] = simModel(z_current[i-1,:]',u_current, dt, l_A,l_B)'
-        dist_traveled += z_current[i,4]*dt
 
-        # Encoder measurements
+
+        
+        # Encoder measurements calculation
+        dist_traveled += z_current[i,4]*dt #count the total traveled distance since the beginning of the simulation
         if dist_traveled - last_updated >= quarterCirc
             last_updated = dist_traveled
             FL += 1
             FR += 1
             BL += 1
-            BR += 0
+            BR += 0 #no encoder on back right wheel
             enc_data = Encoder(FL, FR, BL, BR)
-            publish(pub_enc, enc_data)
+            publish(pub_enc, enc_data) #publish a message everytime the encoder counts up
         end
 
         # IMU measurements
@@ -134,14 +123,11 @@ function main()
         # GPS measurements
         x = z_current[i,1]*100        # Indoor gps measures in cm
         y = z_current[i,2]*100
-        if i % 14 == 0
+        if i % 7 == 0
             gps_data = Vector3(x,y,0)
             publish(pub_gps, gps_data)
         end
-        if i % 50 == 0
-            plot(z_current[:,1],z_current[:,2])
-        end
-
+       
         i += 1
         rossleep(loop_rate)
     end
