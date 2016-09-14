@@ -17,25 +17,28 @@ import rospy
 import time
 import os
 from sensor_msgs.msg import Imu
+from geometry_msgs.msg import Vector3
 from barc.msg import ECU, Encoder, Z_KinBkMdl
 from numpy import pi, cos, sin, eye, array, zeros, unwrap
-from ekf import ekf
+from observers import kinematicLuembergerObserver, ekf
 from system_models import f_KinBkMdl, h_KinBkMdl
 from tf import transformations
-from numpy import unwrap
+from numpy import unwrap, diag
 
 # input variables [default values]
 d_f         = 0         # steering angle [deg]
 acc         = 0         # acceleration [m/s]
 
 # raw measurement variables
-yaw_prev = 0
+yaw_prev    = 0
 (roll, pitch, yaw, a_x, a_y, a_z, w_x, w_y, w_z) = zeros(9)
 yaw_prev    = 0
 yaw_local   = 0
 read_yaw0   = False
 psi         = 0
 psi_meas    = 0
+x_meas      = 0
+y_meas      = 0
 
 # from encoder
 v           = 0
@@ -49,8 +52,9 @@ n_FL_prev   = 0
 n_FR_prev   = 0
 n_BL_prev   = 0
 n_BR_prev   = 0
-r_tire      = 0.036                  # radius from tire center to perimeter along magnets [m]
+r_tire      = 0.036                 # radius from tire center to perimeter along magnets [m]
 dx_qrt      = 2.0*pi*r_tire/4.0     # distance along quarter tire edge [m]
+
 
 # ecu command update
 def ecu_callback(data):
@@ -69,7 +73,6 @@ def imu_callback(data):
     ori         = data.orientation
     quaternion  = (ori.x, ori.y, ori.z, ori.w)
     (roll, pitch, yaw) = transformations.euler_from_quaternion(quaternion)
-    rospy.loginfo("yaw = %f", yaw)
 
     # save initial measurements
     if not read_yaw0:
@@ -90,6 +93,13 @@ def imu_callback(data):
     a_x = data.linear_acceleration.x
     a_y = data.linear_acceleration.y
     a_z = data.linear_acceleration.z
+
+# ultrasound gps data
+def gps_callback(data):
+    # units: [rad] and [rad/s]
+    global x_meas, y_meas
+    x_meas = data.x/100 # data is given in cm
+    y_meas = data.y/100
 
 # encoder measurement update
 def enc_callback(data):
@@ -117,7 +127,7 @@ def enc_callback(data):
         # Uncomment/modify according to your encoder setup
         # v_meas    = (v_FL + v_FR)/2.0
         # Modification for 3 working encoders
-        v_meas = (v_FL + v_BL + v_BR)/3.0
+        v_meas = (v_FL + v_BL + v_BR)/2.0
         # Modification for bench testing (driven wheels only)
         # v = (v_BL + v_BR)/2.0
 
@@ -126,13 +136,13 @@ def enc_callback(data):
         n_FR_prev   = n_FR
         n_BL_prev   = n_BL
         n_BR_prev   = n_BR
-        t0          = time.time()
-
+        t0          = tf
 
 # state estimation node
 def state_estimation():
     global dt_v_enc
     global v_meas, psi_meas
+    global est_mode
     # initialize node
     rospy.init_node('state_estimation', anonymous=True)
 
@@ -140,11 +150,16 @@ def state_estimation():
     rospy.Subscriber('imu/data', Imu, imu_callback)
     rospy.Subscriber('encoder', Encoder, enc_callback)
     rospy.Subscriber('ecu', ECU, ecu_callback)
+    rospy.Subscriber('indoor_gps', Vector3, gps_callback)
     state_pub   = rospy.Publisher('state_estimate', Z_KinBkMdl, queue_size = 10)
 
     # get vehicle dimension parameters
     L_a = rospy.get_param("L_a")       # distance from CoG to front axel
     L_b = rospy.get_param("L_b")       # distance from CoG to rear axel
+    est_mode = rospy.get_param("est_mode")  # estimation mode
+        # mode 1: gps, IMU for orientation and encoders for v
+        # mode 2: no gps, IMU for orientation and encoders for v, x, y
+        # mode 3: only pgps, no IMU, no encoders (experimental)
     vhMdl   = (L_a, L_b)
 
     # get encoder parameters
@@ -152,8 +167,15 @@ def state_estimation():
 
     # get EKF observer properties
     q_std   = rospy.get_param("state_estimation/q_std")             # std of process noise
-    r_std   = rospy.get_param("state_estimation/r_std")             # std of measurementnoise
+    psi_std   = rospy.get_param("state_estimation/psi_std")             # std of measurementnoise
+    v_std = rospy.get_param("state_estimation/v_std")
+    gps_std = rospy.get_param("state_estimation/gps_std")           # std of gps measurements
 
+    t = time.localtime(time.time())
+    # file = open("/home/felix/rosbag/info_%i_%02i_%02i_%02i_%02i_%02i.txt"%(t.tm_year,t.tm_mon,t.tm_mday,t.tm_hour,t.tm_min,t.tm_sec),'w')
+    # file.write("EKF parameters\n===============\n")
+    # file.write("q = %f\ngps_std = %f\npsi_std = %f\nv_std = %f"%(q_std,gps_std,psi_std,v_std))
+    # file.close()
     # set node rate
     loop_rate   = 50
     dt          = 1.0 / loop_rate
@@ -166,24 +188,41 @@ def state_estimation():
     # estimation variables for EKF
     P           = eye(4)                # initial dynamics coveriance matrix
     Q           = (q_std**2)*eye(4)     # process noise coveriance matrix
-    R           = (r_std**2)*eye(2)     # measurement noise coveriance matrix
+   # R           = (r_std**2)*eye(4)     # measurement noise coveriance matrix
+    if est_mode==1:
+        R = diag([gps_std,gps_std,psi_std,v_std])**2
+    elif est_mode==2:
+        R = diag([psi_std,v_std])**2
+    elif est_mode==3:
+        R = (gps_std**2)*eye(2)
+    else:
+        rospy.logerr("No estimation mode selected.")
 
+
+    # start loop
     while not rospy.is_shutdown():
 
         # publish state estimate
-        (x, y, psi, v) = z_EKF
+        (x_e, y_e, psi_e, v_e) = z_EKF
 
         # publish information
-        state_pub.publish( Z_KinBkMdl(x, y, psi, v) )
+        state_pub.publish( Z_KinBkMdl(x_e, y_e, psi_e, v_e) )
 
         # collect measurements, inputs, system properties
+
+        if est_mode==1:
+            y   = array([x_meas, y_meas, psi_meas, v_meas])
+        elif est_mode==2:
+            y   = array([psi_meas, v_meas])
+        elif est_mode==3:
+            y   = array([x_meas, y_meas])
+
         # collect inputs
-        y   = array([psi_meas, v_meas])
         u   = array([ d_f, acc ])
         args = (u,vhMdl,dt)
-
         # apply EKF and get each state estimate
         (z_EKF,P) = ekf(f_KinBkMdl, z_EKF, P, h_KinBkMdl, y, Q, R, args )
+
 
         # wait
         rate.sleep()

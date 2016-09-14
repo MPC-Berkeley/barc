@@ -1,0 +1,21 @@
+<<<<<<< HEAD
+# This is a message to hold data with position and trajectory information
+float32 s
+float32 ey
+float32 epsi
+float32 v
+float32[] coeffX
+float32[] coeffY
+float32[] coeffTheta
+float32[] coeffCurvature
+=======
+# This is a message to hold data with position and trajectory information
+float32 s
+float32 ey
+float32 epsi
+float32 v
+float32[] coeffX
+float32[] coeffY
+float32[] coeffTheta
+float32[] coeffCurvature
+>>>>>>> a37e2ece380822470d8d7993c488bd95c598b43c

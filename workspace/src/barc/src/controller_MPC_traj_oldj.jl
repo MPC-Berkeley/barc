@@ -32,7 +32,7 @@ dt      = 0.1           # time step of system
 coeffCurvature   = [0,0,0,0]
 
 # preview horizon
-N       = 7
+N       = 15
 
 # define targets [generic values]
 v_ref   = 0.8

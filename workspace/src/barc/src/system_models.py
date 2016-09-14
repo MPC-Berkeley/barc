@@ -197,7 +197,8 @@ def f_KinBkMdl(z,u,vhMdl, dt):
     input: state z at time k, z[k] := [x[k], y[k], psi[k], v[k]]
     output: state at next time step z[k+1]
     """
-    
+    #c = array([0.5431, 1.2767, 2.1516, -2.4169])
+
     # get states / inputs
     x       = z[0]
     y       = z[1]
@@ -217,7 +218,7 @@ def f_KinBkMdl(z,u,vhMdl, dt):
     x_next      = x + dt*( v*cos(psi + bta) ) 
     y_next      = y + dt*( v*sin(psi + bta) ) 
     psi_next    = psi + dt*v/L_b*sin(bta)
-    v_next      = v + dt*a
+    v_next      = v + dt*(a - 0.63*sign(v)*v**2)
 
     return array([x_next, y_next, psi_next, v_next])
  
@@ -225,7 +226,9 @@ def h_KinBkMdl(x):
     """
     measurement model
     """
-    C = array([[0, 0, 1, 0],
+    C = array([[1, 0, 0, 0],
+               [0, 1, 0, 0],
+               [0, 0, 1, 0],
                [0, 0, 0, 1]])
     return dot(C, x)
  
