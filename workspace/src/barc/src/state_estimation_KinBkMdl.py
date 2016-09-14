@@ -74,7 +74,6 @@ def imu_callback(data):
     ori         = data.orientation
     quaternion  = (ori.x, ori.y, ori.z, ori.w)
     (roll, pitch, yaw) = transformations.euler_from_quaternion(quaternion)
-    # yaw = -yaw  # added for wrong coordinate frame
 
     # save initial measurements
     if not read_yaw0:
@@ -174,10 +173,10 @@ def state_estimation():
     gps_std = rospy.get_param("state_estimation/gps_std")           # std of gps measurements
 
     t = time.localtime(time.time())
-    file = open("%s/rosbag/info_%i_%02i_%02i_%02i_%02i_%02i.txt"%(expanduser('~'),t.tm_year,t.tm_mon,t.tm_mday,t.tm_hour,t.tm_min,t.tm_sec),'w')
-    file.write("EKF parameters\n===============\n")
-    file.write("q = %f\ngps_std = %f\npsi_std = %f\nv_std = %f"%(q_std,gps_std,psi_std,v_std))
-    file.close()
+    # file = open("/home/felix/rosbag/info_%i_%02i_%02i_%02i_%02i_%02i.txt"%(t.tm_year,t.tm_mon,t.tm_mday,t.tm_hour,t.tm_min,t.tm_sec),'w')
+    # file.write("EKF parameters\n===============\n")
+    # file.write("q = %f\ngps_std = %f\npsi_std = %f\nv_std = %f"%(q_std,gps_std,psi_std,v_std))
+    # file.close()
     # set node rate
     loop_rate   = 50
     dt          = 1.0 / loop_rate
@@ -200,8 +199,6 @@ def state_estimation():
     else:
         rospy.logerr("No estimation mode selected.")
 
-    x_meas = 0
-    y_meas = 0
 
     # start loop
     while not rospy.is_shutdown():
@@ -213,6 +210,7 @@ def state_estimation():
         state_pub.publish( Z_KinBkMdl(x_e, y_e, psi_e, v_e) )
 
         # collect measurements, inputs, system properties
+
         if est_mode==1:
             y   = array([x_meas, y_meas, psi_meas, v_meas])
         elif est_mode==2:
@@ -225,6 +223,7 @@ def state_estimation():
         args = (u,vhMdl,dt)
         # apply EKF and get each state estimate
         (z_EKF,P) = ekf(f_KinBkMdl, z_EKF, P, h_KinBkMdl, y, Q, R, args )
+
 
         # wait
         rate.sleep()

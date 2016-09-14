@@ -32,7 +32,7 @@ dt      = 0.1           # time step of system
 coeffCurvature   = [0,0,0,0]
 
 # preview horizon
-N       = 10
+N       = 15
 
 # define targets [generic values]
 v_ref   = 0.8
@@ -40,9 +40,9 @@ v_ref   = 0.8
 # define objective function values
 c_ey = 50
 c_ev = 10
-c_epsi = 5
-c_df = 0.3
-c_a = 0.2
+c_epsi = 50
+c_df = 1
+c_a = 0.36
 c_ey_f = 0
 c_ev_f = 0
 c_epsi_f = 0
@@ -51,17 +51,17 @@ c_epsi_f = 0
 # states: position (x,y), yaw angle, and velocity
 # inputs: acceleration, steering angle 
 println("Creating kinematic bicycle model ....")
-mdl     = Model(solver = IpoptSolver(print_level=3,max_cpu_time=0.1)) # ,linear_solver="ma97",print_user_options="yes"))
+mdl     = Model(solver = IpoptSolver(print_level=0,max_cpu_time=0.1))
 
 @defVar( mdl, s[1:(N+1)] )
 @defVar( mdl, ey[1:(N+1)] )
 @defVar( mdl, epsi[1:(N+1)] )
 @defVar( mdl, 0.0 <= v[1:(N+1)] <= 3.0 )
 @defVar( mdl, 2.0 >= a[1:N] >= -1.0 )
-@defVar( mdl, -0.6 <= d_f[1:N] <= 0.6 )
+@defVar( mdl, -0.3 <= d_f[1:N] <= 0.3 )
 
 # define objective function
-@setNLObjective(mdl, Min, sum{c_ey*ey[i]^2+c_ev*(v[i]-v_ref)^2+c_epsi*epsi[i]^2+c_df*d_f[i]^2+c_a*a[i]^2,i=1:N} + c_ey_f*ey[N+1]^2 + c_ev_f*(v[N+1]-v_ref)^2 + c_epsi_f*epsi[N+1]^2)
+@setNLObjective(mdl, Min, sum{c_ey*ey[i]^2+c_ev*(v[i]-v_ref)^2+c_epsi*epsi[i]^2+c_df*d_f[i]^2+(a[i])^2,i=1:N} + c_ey_f*ey[N+1]^2 + c_ev_f*(v[N+1]-v_ref)^2 + c_epsi_f*epsi[N+1]^2)
 
 # define constraints
 # define system dynamics
@@ -92,16 +92,16 @@ println("finished initial solve!")
 
 
 # write info in logfile
-currenttime = now()
-f = open("$(homedir())/rosbag/MPClog_$currenttime.txt","w")
-byteswritten=write(f,"MPC LOG, created $currenttime\n=========================\nv_ref = $v_ref\nN = $N\nc_ey = $c_ey\nc_ev = $c_ev\nc_epsi = $c_epsi\nc_df = $c_df\nc_a = $c_a\nc_ey_f = $c_ey_f\nc_ev_f = $c_ev_f\nc_epsi_f = $c_epsi_f")
-close(f)
+# currenttime = now()
+# f = open("/home/odroid/rosbag/MPClog_$currenttime.txt","w")
+# byteswritten=write(f,"MPC LOG, created $currenttime\n=========================\nv_ref = $v_ref\nN = $N\nc_ey = $c_ey\nc_ev = $c_ev\nc_epsi = $c_epsi\nc_df = $c_df\nc_a = $c_a\nc_ey_f = $c_ey_f\nc_ev_f = $c_ev_f\nc_epsi_f = $c_epsi_f")
+# close(f)
 
-if byteswritten>0
-    println("Successfully written to Logfile MPClog_$currenttime.txt")
-else
-    println("Problem with Logfile")
-end
+# if byteswritten>0
+#     println("Successfully written to Logfile MPClog_$currenttime.txt")
+# else
+#     println("Problem with Logfile")
+# end
 
 
 function SE_callback(msg::pos_info)

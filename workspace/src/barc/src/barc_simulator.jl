@@ -24,25 +24,25 @@ using data_service.msg
 using geometry_msgs.msg
 using sensor_msgs.msg
 
+u_current = zeros(2,1)
+
 function simModel(z,u,dt,l_A,l_B)
 
-    bta = atan(L_a/(L_a+L_b)*tan(u[2]))
+   # kinematic bicycle model
+   # u[1] = acceleration
+   # u[2] = steering angle
+
+    bta = atan(l_A/(l_A+l_B)*tan(u[2]))
 
     zNext = z
     zNext[1] = z[1] + dt*(z[4]*cos(z[3]+bta))       # x
     zNext[2] = z[2] + dt*(z[4]*sin(z[3] + bta))      # y
-    zNext[3] = z[3] + dt*(z[4]/L_b*sin(bta))        # psi
-    zNext[4] = z[4] + dt*(u[1] - 0.63*z[4]^2 * sign(z[4]))                     # v
+    zNext[3] = z[3] + dt*(z[4]/l_B*sin(bta))        # psi
+    zNext[4] = z[4] + dt*(u[1] - 0.63 * z[4]^2 * sign(z[4]))                     # v
 
     return zNext
 end
 
-
-# define model parameters
-L_a     = 0.125         # distance from CoG to front axel
-L_b     = 0.125         # distance from CoG to rear axel
-
-u_current = zeros(2,1)
 
 function ECU_callback(msg::ECU)
 
@@ -57,6 +57,8 @@ function main()
     pub_gps = Publisher("indoor_gps", Vector3, queue_size=10)
     pub_imu = Publisher("imu/data", Imu, queue_size=10)
 
+
+    # read the axle distances from the launch file
     l_A = get_param("L_a")       # distance from CoG to front axel
     l_B = get_param("L_b")       # distance from CoG to rear axel
 
@@ -73,43 +75,47 @@ function main()
     last_updated  = 0
 
     r_tire      = 0.036                  # radius from tire center to perimeter along magnets [m]
-    quarterCirc = 0.5 * pi * r_tire
+    quarterCirc = 0.5 * pi * r_tire      # length of a quarter of a tire, distance from one to the next encoder
     
-    FL = 0
-    FR = 0
-    BL = 0
-    BR = 0
+    FL = 0 #front left wheel encoder counter
+    FR = 0 #front right wheel encoder counter
+    BL = 0 #back left wheel encoder counter
+    BR = 0 #back right wheel encoder counter
+
 
     println("Publishing sensor information. Simulator running.")
     while ! is_shutdown()
 
-        # Simulate state
+        # update current state with a new row vector
         z_current[i,:] = simModel(z_current[i-1,:]',u_current, dt, l_A,l_B)'
         dist_traveled += z_current[i,4]*dt
 
-        # Encoder measurements, might be adapted according to the number of encoders on the car
+
+        
+        # Encoder measurements calculation
+        dist_traveled += z_current[i,4]*dt #count the total traveled distance since the beginning of the simulation
         if dist_traveled - last_updated >= quarterCirc
             last_updated = dist_traveled
             FL += 1
             FR += 1
-            BL += 0
-            BR += 0
+            BL += 1
+            BR += 0 #no encoder on back right wheel
             enc_data = Encoder(FL, FR, BL, BR)
-            publish(pub_enc, enc_data)
+            publish(pub_enc, enc_data) #publish a message everytime the encoder counts up
         end
 
         # IMU measurements
         imu_data = Imu()
-        imu_data.orientation = geometry_msgs.msg.Quaternion(cos(z_current[i,3]/2), sin(z_current[i,3]/2), 0, 0)
+        imu_data.orientation = geometry_msgs.msg.Quaternion(cos(z_current[i,3]/2)+randn()*0.01, sin(z_current[i,3]/2)+randn()*0.01, 0, 0)
         if i%2 == 0
             publish(pub_imu, imu_data)      # Imu format is defined by ROS, you can look it up by google "rosmsg Imu"
                                             # It's sufficient to only fill the orientation part of the Imu-type (with one quaternion)
         end
 
         # GPS measurements
-        x = z_current[i,1]*100        # Indoor gps measures in cm
-        y = z_current[i,2]*100
-        if i % 14 == 0
+        x = z_current[i,1]*100 + randn()       # Indoor gps measures in cm
+        y = z_current[i,2]*100 + randn()
+        if i % 7 == 0
             gps_data = Vector3(x,y,0)
             publish(pub_gps, gps_data)
         end
