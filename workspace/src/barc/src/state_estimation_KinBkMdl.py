@@ -24,6 +24,7 @@ from observers import kinematicLuembergerObserver, ekf
 from system_models import f_KinBkMdl, h_KinBkMdl
 from tf import transformations
 from numpy import unwrap, diag
+from os.path import expanduser
 
 # input variables [default values]
 d_f         = 0         # steering angle [deg]
@@ -173,7 +174,7 @@ def state_estimation():
     gps_std = rospy.get_param("state_estimation/gps_std")           # std of gps measurements
 
     t = time.localtime(time.time())
-    file = open("/home/odroid/rosbag/info_%i_%02i_%02i_%02i_%02i_%02i.txt"%(t.tm_year,t.tm_mon,t.tm_mday,t.tm_hour,t.tm_min,t.tm_sec),'w')
+    file = open("%s/rosbag/info_%i_%02i_%02i_%02i_%02i_%02i.txt"%(expanduser('~'),t.tm_year,t.tm_mon,t.tm_mday,t.tm_hour,t.tm_min,t.tm_sec),'w')
     file.write("EKF parameters\n===============\n")
     file.write("q = %f\ngps_std = %f\npsi_std = %f\nv_std = %f"%(q_std,gps_std,psi_std,v_std))
     file.close()

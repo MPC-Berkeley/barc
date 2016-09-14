@@ -93,7 +93,7 @@ println("finished initial solve!")
 
 # write info in logfile
 currenttime = now()
-f = open("/home/odroid/rosbag/MPClog_$currenttime.txt","w")
+f = open("$(homedir())/rosbag/MPClog_$currenttime.txt","w")
 byteswritten=write(f,"MPC LOG, created $currenttime\n=========================\nv_ref = $v_ref\nN = $N\nc_ey = $c_ey\nc_ev = $c_ev\nc_epsi = $c_epsi\nc_df = $c_df\nc_a = $c_a\nc_ey_f = $c_ey_f\nc_ev_f = $c_ev_f\nc_epsi_f = $c_epsi_f")
 close(f)
 
