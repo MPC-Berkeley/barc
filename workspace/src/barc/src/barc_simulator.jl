@@ -23,8 +23,30 @@ using barc.msg
 using data_service.msg
 using geometry_msgs.msg
 using sensor_msgs.msg
+using JLD
 
 u_current = zeros(2,1)
+t0 = 0
+t = 0
+
+
+# This type contains measurement data (time, values and a counter)
+type Measurements{T}
+    i::Int64          # measurement counter
+    t::Array{T}       # time data
+    z::Array{T}       # measurement values
+end
+# This function cleans the zeros from the type above once the simulation is finished
+function clean_up(m::Measurements)
+    m.t = m.t[1:m.i-1]
+    m.z = m.z[1:m.i-1,:]
+end
+
+buffersize = 60000
+gps_meas = Measurements{Float64}(0,zeros(buffersize,1),zeros(buffersize,2))
+imu_meas = Measurements{Float64}(0,zeros(buffersize,1),zeros(buffersize,1))
+est_meas = Measurements{Float32}(0,zeros(Float32,buffersize,1),zeros(Float32,buffersize,4))
+z_real   = Measurements{Float64}(0,zeros(buffersize,1),zeros(buffersize,4))
 
 function simModel(z,u,dt,l_A,l_B)
 
@@ -36,18 +58,28 @@ function simModel(z,u,dt,l_A,l_B)
 
     zNext = z
     zNext[1] = z[1] + dt*(z[4]*cos(z[3]+bta))       # x
-    zNext[2] = z[2] + dt*(z[4]*sin(z[3] + bta))      # y
+    zNext[2] = z[2] + dt*(z[4]*sin(z[3] + bta))     # y
     zNext[3] = z[3] + dt*(z[4]/l_B*sin(bta))        # psi
     zNext[4] = z[4] + dt*(u[1] - 0.63 * z[4]^2 * sign(z[4]))                     # v
+
+    # Add process noise (depending on velocity)
+    zNext = zNext + 0.01*diagm([0.01*z[4],0.01*z[4],0.001,0.01*z[4]])*randn(4,1)
 
     return zNext
 end
 
 
 function ECU_callback(msg::ECU)
-
     global u_current
     u_current = [msg.motor, msg.servo] 
+end
+
+function est_callback(msg::Z_KinBkMdl)
+    global t0
+    t = time() - t0
+    est_meas.i += 1
+    est_meas.t[est_meas.i]      = t
+    est_meas.z[est_meas.i,:]    = [msg.x msg.y msg.psi msg.v]
 end
 
 function main() 
@@ -63,6 +95,7 @@ function main()
     l_B = get_param("L_b")       # distance from CoG to rear axel
 
     s1  = Subscriber("ecu", ECU, ECU_callback, queue_size=10)
+    s2  = Subscriber("state_estimate", Z_KinBkMdl, est_callback, queue_size=10)
 
     z_current = zeros(60000,4)
 
@@ -82,13 +115,19 @@ function main()
     BL = 0 #back left wheel encoder counter
     BR = 0 #back right wheel encoder counter
 
+    imu_drift = 0       # simulates yaw-sensor drift over time (slow sine)
+
+    global t0 = time()     # Start time of the simulation
 
     println("Publishing sensor information. Simulator running.")
     while ! is_shutdown()
 
+        t = time() - t0
+
         # update current state with a new row vector
-        z_current[i,:] = simModel(z_current[i-1,:]',u_current, dt, l_A,l_B)'
-        dist_traveled += z_current[i,4]*dt
+        z_current[i,:]  = simModel(z_current[i-1,:]',u_current, dt, l_A,l_B)'
+        z_real.t[i]     = t
+        dist_traveled  += z_current[i,4]*dt
 
 
         
@@ -106,16 +145,24 @@ function main()
 
         # IMU measurements
         imu_data = Imu()
-        imu_data.orientation = geometry_msgs.msg.Quaternion(cos(z_current[i,3]/2)+randn()*0.01, sin(z_current[i,3]/2)+randn()*0.01, 0, 0)
+        imu_drift = sin(t/100*pi/2)     # drifts to 1 in 100 seconds
+        yaw = z_current[i,3] + randn()*0.05 + imu_drift
+        imu_data.orientation = geometry_msgs.msg.Quaternion(cos(yaw/2), sin(yaw/2), 0, 0)
         if i%2 == 0
+            imu_meas.i += 1
+            imu_meas.t[imu_meas.i] = t
+            imu_meas.z[imu_meas.i] = yaw
             publish(pub_imu, imu_data)      # Imu format is defined by ROS, you can look it up by google "rosmsg Imu"
                                             # It's sufficient to only fill the orientation part of the Imu-type (with one quaternion)
         end
 
         # GPS measurements
-        x = z_current[i,1]*100 + randn()       # Indoor gps measures in cm
-        y = z_current[i,2]*100 + randn()
+        x = z_current[i,1]*100 + randn()*2       # Indoor gps measures in cm
+        y = z_current[i,2]*100 + randn()*2
         if i % 7 == 0
+            gps_meas.i += 1
+            gps_meas.t[gps_meas.i] = t
+            gps_meas.z[gps_meas.i,:] = [x y]
             gps_data = Vector3(x,y,0)
             publish(pub_gps, gps_data)
         end
@@ -124,10 +171,20 @@ function main()
         rossleep(loop_rate)
     end
 
+    # Clean up buffers
+
+    clean_up(gps_meas)
+    clean_up(est_meas)
+    clean_up(imu_meas)
+    z_real.z[1:i-1,:] = z_current[1:i-1,:]
+    z_real.i = i
+    clean_up(z_real)
+
     # Save simulation data to file
-    log_path = "$(homedir())/simulations/output.txt"
+    log_path = "$(homedir())/simulations/output.jld"
+    save(log_path,"gps_meas",gps_meas,"z",z_real,"estimate",est_meas,"imu_meas",imu_meas)
     println("Exiting node... Saving data to $log_path. Simulated $((i-1)*dt) seconds.")
-    writedlm(log_path,z_current[1:i-1,:])
+    #writedlm(log_path,z_current[1:i-1,:])
 end
 
 if ! isinteractive()

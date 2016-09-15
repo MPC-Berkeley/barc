@@ -53,35 +53,35 @@ c_epsi_f = 0
 println("Creating kinematic bicycle model ....")
 mdl     = Model(solver = IpoptSolver(print_level=0,max_cpu_time=0.1))
 
-@defVar( mdl, s[1:(N+1)] )
-@defVar( mdl, ey[1:(N+1)] )
-@defVar( mdl, epsi[1:(N+1)] )
-@defVar( mdl, 0.0 <= v[1:(N+1)] <= 3.0 )
-@defVar( mdl, 2.0 >= a[1:N] >= -1.0 )
-@defVar( mdl, -0.3 <= d_f[1:N] <= 0.3 )
+@variable( mdl, s[1:(N+1)] )
+@variable( mdl, ey[1:(N+1)] )
+@variable( mdl, epsi[1:(N+1)] )
+@variable( mdl, 0.0 <= v[1:(N+1)] <= 3.0 )
+@variable( mdl, 2.0 >= a[1:N] >= -1.0 )
+@variable( mdl, -0.3 <= d_f[1:N] <= 0.3 )
 
 # define objective function
-@setNLObjective(mdl, Min, sum{c_ey*ey[i]^2+c_ev*(v[i]-v_ref)^2+c_epsi*epsi[i]^2+c_df*d_f[i]^2+(a[i])^2,i=1:N} + c_ey_f*ey[N+1]^2 + c_ev_f*(v[N+1]-v_ref)^2 + c_epsi_f*epsi[N+1]^2)
+@NLobjective(mdl, Min, sum{c_ey*ey[i]^2+c_ev*(v[i]-v_ref)^2+c_epsi*epsi[i]^2+c_df*d_f[i]^2+(a[i])^2,i=1:N} + c_ey_f*ey[N+1]^2 + c_ev_f*(v[N+1]-v_ref)^2 + c_epsi_f*epsi[N+1]^2)
 
 # define constraints
 # define system dynamics
 # Reference: R.Rajamani, Vehicle Dynamics and Control, set. Mechanical Engineering Series,
 #               Spring, 2011, page 26
 
-@defNLParam(mdl, s0      == 0); @addNLConstraint(mdl, s[1]      == s0);
-@defNLParam(mdl, ey0     == 0); @addNLConstraint(mdl, ey[1]     == ey0);
-@defNLParam(mdl, epsi0   == 0); @addNLConstraint(mdl, epsi[1]   == epsi0 );
-@defNLParam(mdl, v0      == 0); @addNLConstraint(mdl, v[1]      == v0);
-@defNLParam(mdl, coeff[i=1:length(coeffCurvature)]==coeffCurvature[i]);
-@defNLExpr(mdl, c[i = 1:N],    coeff[1]*s[i]^3+coeff[2]*s[i]^2+coeff[3]*s[i]+coeff[4])
-@defNLExpr(mdl, bta[i = 1:N],    atan( L_a / (L_a + L_b) * tan( d_f[i]) ) )
+@NLparameter(mdl, s0      == 0); @NLconstraint(mdl, s[1]      == s0);
+@NLparameter(mdl, ey0     == 0); @NLconstraint(mdl, ey[1]     == ey0);
+@NLparameter(mdl, epsi0   == 0); @NLconstraint(mdl, epsi[1]   == epsi0 );
+@NLparameter(mdl, v0      == 0); @NLconstraint(mdl, v[1]      == v0);
+@NLparameter(mdl, coeff[i=1:length(coeffCurvature)]==coeffCurvature[i]);
+@NLexpression(mdl, c[i = 1:N],    coeff[1]*s[i]^3+coeff[2]*s[i]^2+coeff[3]*s[i]+coeff[4])
+@NLexpression(mdl, bta[i = 1:N],    atan( L_a / (L_a + L_b) * tan( d_f[i]) ) )
 
-@defNLExpr(mdl, dsdt[i = 1:N], v[i]*cos(epsi[i]+bta[i])/(1-ey[i]*c[i]))
+@NLexpression(mdl, dsdt[i = 1:N], v[i]*cos(epsi[i]+bta[i])/(1-ey[i]*c[i]))
 for i in 1:N
-    @addNLConstraint(mdl, s[i+1]     == s[i]       + dt*dsdt[i]  )
-    @addNLConstraint(mdl, ey[i+1]    == ey[i]      + dt*v[i]*sin(epsi[i]+bta[i])  )
-    @addNLConstraint(mdl, epsi[i+1]  == epsi[i]    + dt*(v[i]/L_a*sin(bta[i])-dsdt[i]*c[i])  )
-    @addNLConstraint(mdl, v[i+1]     == v[i]       + dt*(a[i]  - 0.63 *abs(v[i])*v[i])  )
+    @NLconstraint(mdl, s[i+1]     == s[i]       + dt*dsdt[i]  )
+    @NLconstraint(mdl, ey[i+1]    == ey[i]      + dt*v[i]*sin(epsi[i]+bta[i])  )
+    @NLconstraint(mdl, epsi[i+1]  == epsi[i]    + dt*(v[i]/L_a*sin(bta[i])-dsdt[i]*c[i])  )
+    @NLconstraint(mdl, v[i+1]     == v[i]       + dt*(a[i]  - 0.63 *abs(v[i])*v[i])  )
 end
 
 
@@ -106,11 +106,11 @@ println("finished initial solve!")
 
 function SE_callback(msg::pos_info)
     # update mpc initial condition 
-    setValue(s0,     msg.s)
-    setValue(ey0,    msg.ey)
-    setValue(epsi0,  msg.epsi)
-    setValue(v0,     msg.v)
-    setValue(coeff,  msg.coeffCurvature)
+    setvalue(s0,     msg.s)
+    setvalue(ey0,    msg.ey)
+    setvalue(epsi0,  msg.epsi)
+    setvalue(v0,     msg.v)
+    setvalue(coeff,  msg.coeffCurvature)
 end
 
 function main()
@@ -129,8 +129,8 @@ function main()
         solvetime = toc()
         if status == Symbol("Optimal")
             # get optimal solutions
-            a_opt   = getValue(a[1])
-            d_f_opt = getValue(d_f[1])
+            a_opt   = getvalue(a[1])
+            d_f_opt = getvalue(d_f[1])
             cmd = ECU(a_opt, d_f_opt)     
             # publish commands
             if cmdcount>10      # ignore first 10 commands since MPC often stagnates during the first seconds (why?)
@@ -145,7 +145,7 @@ function main()
             end
         end
         println("Solve Status: ", string(status), "\nSolve Time: ", solvetime,"\n\n")
-        loginfo = Logging(getObjectiveValue(mdl),string(status),solvetime,getValue(s),getValue(ey),getValue(epsi),getValue(v),getValue(a),getValue(d_f))
+        loginfo = Logging(getobjectivevalue(mdl),string(status),solvetime,getvalue(s),getvalue(ey),getvalue(epsi),getvalue(v),getvalue(a),getvalue(d_f))
         publish(pub2, loginfo)
         cmdcount = cmdcount + 1
         rossleep(loop_rate)
