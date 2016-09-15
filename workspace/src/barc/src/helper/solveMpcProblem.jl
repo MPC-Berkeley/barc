@@ -21,15 +21,20 @@ function solveMpcProblem(mpcCoeff,mpcParams,trackCoeff,lapStatus,posInfo,modelPa
     s_target        = posInfo.s_target
     ey_max          = trackCoeff.width/2
 
+    #zCurr[1]        = posInfo.s             # current relative s (used in interpolation)
+
     QderivZ         = mpcParams.QderivZ
     QderivU         = mpcParams.QderivU
 
     v_ref           = mpcParams.vPathFollowing
-    if lapStatus.currentLap > 1
-        #v_ref = 10
-    end
 
     global mdl
+
+    println("************************************** MPC SOLVER **************************************")
+    println("zCurr    = $(zCurr')")
+    println("s_start  = $s_start")
+    println("s_target = $s_target")
+    println("s_total  = $((zCurr[1]+s_start)%s_target)")
 
     # Create function-specific parameters
     z_Ref           = cat(1,s_target*ones(1,N+1),zeros(2,N+1),v_ref*ones(1,N+1))       # Reference trajectory: path following -> stay on line and keep constant velocity
@@ -53,7 +58,7 @@ function solveMpcProblem(mpcCoeff,mpcParams,trackCoeff,lapStatus,posInfo,modelPa
 
     # Lane cost
     # ---------------------------------
-    @NLexpression(mdl, laneCost, 10*sum{(0.5+0.5*tanh(50*(z_Ol[2,i]-ey_max))) + (0.5-0.5*tanh(50*(z_Ol[2,i]+ey_max))),i=1:N+1})
+    @NLexpression(mdl, laneCost, 0*sum{(0.5+0.5*tanh(50*(z_Ol[2,i]-ey_max))) + (0.5-0.5*tanh(50*(z_Ol[2,i]+ey_max))),i=1:N+1})
 
     # Control Input cost
     # ---------------------------------
@@ -73,34 +78,25 @@ function solveMpcProblem(mpcCoeff,mpcParams,trackCoeff,lapStatus,posInfo,modelPa
 
     # Terminal cost
     # ---------------------------------
-    if zCurr[1] + s_start > s_target                # if finish line crossed
-        println("Crossed finish line. I should not be here.")
-        @NLexpression(mdl, costZTerm, 0)            # terminal cost is zero
-    else
-        if lapStatus.currentLap > 2     # if at least in the 3rd lap
-            # costZTerm =     ParInt*polyval(coeffTermCost, nPolyOrderTermCost, ZOlGlobal[Hp*nz+5]) +
-            #            + (1-ParInt)*polyval(coeffTermCost_1, nPolyOrderTermCost, ZOlGlobal[Hp*nz+5]);
-            @NLexpression(mdl, costZTerm, ParInt*sum{coeffTermCost[i,1,1]*z_Ol[1,N+1]^(order+1-i),i=1:order+1}+
-                                      (1-ParInt)*sum{coeffTermCost[i,1,2]*z_Ol[1,N+1]^(order+1-i),i=1:order+1})
-            #@NLexpression(mdl, costZTerm, costZTerm_h * (0.5-0.5*tanh(50*(z_Ol[1,N+1]+s_start-s_target))))
-                # line above not necessary since the polynomial goes to zero anyways!
-        elseif lapStatus.currentLap == 2         # if we're in the second second lap
-            # costZTerm =     polyval(coeffTermCost, nPolyOrderTermCost, ZOlGlobal[Hp*nz+5]);
-            @NLexpression(mdl, costZTerm, sum{coeffTermCost[i,1,1]*z_Ol[1,N+1]^(order+1-i),i=1:order+1})
-            #@NLexpression(mdl, costZTerm, costZTerm_h * (0.5-0.5*tanh(50*(z_Ol[1,N+1]+s_start-s_target))))
-        end
+    if lapStatus.currentLap > 2     # if at least in the 3rd lap
+        # costZTerm =     ParInt*polyval(coeffTermCost, nPolyOrderTermCost, ZOlGlobal[Hp*nz+5]) +
+        #            + (1-ParInt)*polyval(coeffTermCost_1, nPolyOrderTermCost, ZOlGlobal[Hp*nz+5]);
+        @NLexpression(mdl, costZTerm, ParInt*sum{coeffTermCost[i,1,1]*z_Ol[1,N+1]^(order+1-i),i=1:order+1}+
+                                  (1-ParInt)*sum{coeffTermCost[i,1,2]*z_Ol[1,N+1]^(order+1-i),i=1:order+1})
+        #@NLexpression(mdl, costZTerm, costZTerm_h * (0.5-0.5*tanh(50*(z_Ol[1,N+1]+s_start-s_target))))
+            # line above not necessary since the polynomial goes to zero anyways!
+    elseif lapStatus.currentLap == 2         # if we're in the second second lap
+        # costZTerm =     polyval(coeffTermCost, nPolyOrderTermCost, ZOlGlobal[Hp*nz+5]);
+        @NLexpression(mdl, costZTerm, sum{coeffTermCost[i,1,1]*z_Ol[1,N+1]^(order+1-i),i=1:order+1})
+        #@NLexpression(mdl, costZTerm, costZTerm_h * (0.5-0.5*tanh(50*(z_Ol[1,N+1]+s_start-s_target))))
     end
 
     # State cost
     # ---------------------------------
-    if lapStatus.currentLap == 1 || zCurr[1] + s_start > s_target      # if we're in the first lap or crossed finish line, just do path following
-        # currCostZ = 0.5*Q[j]*pow(ZOlGlobal[(i+1)*nz+j]-ZRefGlobal[(i+1)*nz+j],2);
-        if lapStatus.currentLap > 1
-            println("I should not be here.")
-        end
+    if lapStatus.currentLap == 1      # if we're in the first lap, just do path following
         @NLexpression(mdl, costZ, 0.5*sum{Q[i]*sum{(z_Ol[i,j]-z_Ref[i,j])^2,j=1:N+1},i=1:4})    # Follow trajectory
-        #println(z_Ref)
-    else
+
+    else        # if we're in another lap, put cost on z (actually should put cost only on z before finishing the lap)
         #@NLexpression(mdl, costZ_h, 0)          # zero state cost after crossing the finish line
         #@NLexpression(mdl, costZ, 1 + (costZ_h-1) * (0.5+0.5*tanh(50*(z_Ol[1,N+1]+s_start-s_target))))
         @NLexpression(mdl, costZ, 1)

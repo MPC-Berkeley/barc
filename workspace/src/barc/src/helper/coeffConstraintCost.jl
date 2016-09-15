@@ -10,7 +10,7 @@
 
 # structure of oldTrajectory: 1st dimension = state number, 2nd dimension = step number (time equiv.), 3rd dimennsion = lap number
 
-function coeffConstraintCost(oldTraj, lapStatus, mpcCoeff, posInfo, mpcParams)
+function coeffConstraintCost(oldTraj::OldTrajectory, lapStatus::LapStatus, mpcCoeff::MpcCoeff, posInfo::PosInfo, mpcParams::MpcParams)
     # this computes the coefficients for the cost and constraints
 
     # Outputs: 
@@ -18,6 +18,7 @@ function coeffConstraintCost(oldTraj, lapStatus, mpcCoeff, posInfo, mpcParams)
     # coeffCost
 
     # Read Inputs
+    tic()
     oldTrajectory   = oldTraj.oldTraj           # [:,:,1] = 1st, [:,:,2] = 2nd
     oldInput        = oldTraj.oldInput
 
@@ -48,11 +49,14 @@ function coeffConstraintCost(oldTraj, lapStatus, mpcCoeff, posInfo, mpcParams)
     N_points        = size(oldTrajectory,2)     # second dimension = length
 
     if lapNumber > 1
+        tt=toc()
+        println("Loading parameters: $tt")
+        tic()
         deltaOld = oldInput[1,:,:]
         aOld     = oldInput[2,:,:]
         
         # Compute the total s (current position along track)
-        s_total = s_start + s
+        s_total = (s_start + s) % s_target
 
         # Compute the index
         DistS = ( s_total - oldS ).^2
@@ -74,12 +78,24 @@ function coeffConstraintCost(oldTraj, lapStatus, mpcCoeff, posInfo, mpcParams)
         beY_Vector      = cat(3, oldeY[vec_range[1]],   oldeY[vec_range[2]])
         bePsi_Vector    = cat(3, oldePsi[vec_range[1]], oldePsi[vec_range[2]])
         bV_Vector       = cat(3, oldV[vec_range[1]],    oldV[vec_range[2]])
+
+        tt = toc()
+        println("2nd: $tt")
+        tic()
+        println("************************************** COEFFICIENTS **************************************")
+        println("idx_s[1]  = $(idx_s[1]), idx_s[2] = $(idx_s[2])")
+        println("s_total   = $s_total")
+        # println("bS_Vector[1] = $(bS_Vector[:,:,1]')")
         # These matrices (above) contain two vectors each (for both old trajectories), stored in the 3rd dimension
         
         # The states are parametrized with resprect to the curvilinear abscissa,
         # so we select the point used for the interpolation. Need to subtract an
         # offset to be coherent with the MPC formulation
         s_forinterpy   = bS_Vector - s_start
+        if s_total - s_start < 0
+            s_forinterpy += s_target
+        end
+        println("s_forinterpy[:,1,1]' = $(s_forinterpy[:,1,1]')")
         # Create the Matrices for the interpolation
         MatrixInterp = zeros(pLength+1,Order+1,2)
 
@@ -91,17 +107,22 @@ function coeffConstraintCost(oldTraj, lapStatus, mpcCoeff, posInfo, mpcParams)
         CoefficientsFor_ey      = zeros(Order+1,1,2)
         CoefficientsFor_ePsi    = zeros(Order+1,1,2)
         CoefficientsFor_V       = zeros(Order+1,1,2)
+        println("Calculating coefficients...")
         for i=1:2
             CoefficientsFor_ey[:,:,i]      = MatrixInterp[:,:,i]\beY_Vector[:,:,i]
             CoefficientsFor_ePsi[:,:,i]    = MatrixInterp[:,:,i]\bePsi_Vector[:,:,i]
             CoefficientsFor_V[:,:,i]       = MatrixInterp[:,:,i]\bV_Vector[:,:,i]
         end
+        println("Done.")
         
         # Stack the coefficients
         coeffConst = zeros(3,Order+1,1,2)
         coeffConst[1,:,:,:]                       = CoefficientsFor_ey
         coeffConst[2,:,:,:]                       = CoefficientsFor_ePsi
         coeffConst[3,:,:,:]                       = CoefficientsFor_V
+        tt = toc()
+        println("3rd: $tt")
+        tic()
         # structure of coeffConst:
         # 1st dimension specifies state
         # 2nd dimension specifies steps
@@ -168,7 +189,10 @@ function coeffConstraintCost(oldTraj, lapStatus, mpcCoeff, posInfo, mpcParams)
             #     grid()
             #     readline()
             # end
+
         end
+        tt = toc()
+        println("4th: $tt")
 
         # if maximum(coeffConst) > 1e4
         #     warn("Large coefficients in constraints, might cause numerical problems.")
@@ -185,7 +209,6 @@ function coeffConstraintCost(oldTraj, lapStatus, mpcCoeff, posInfo, mpcParams)
         
 
     else        # if it is the first lap
-        println("First lap, so everything's zero..")
         coeffCost            = zeros(Order+1,1,2)
         coeffConst           = zeros(nz-1,Order+1,1,2) # nz-1 because no coeff for s
     end

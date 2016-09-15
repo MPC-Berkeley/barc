@@ -22,10 +22,10 @@ type MpcCoeff           # coefficients for trajectory approximation
 end
 
 type OldTrajectory      # information about previous trajectories
-    oldTraj
-    oldInput
-    oldCost
-    OldTrajectory(oldTraj=0,oldInput=0,oldCost=0) = new(oldTraj,oldInput,oldCost)
+    oldTraj::Array{Float64}
+    oldInput::Array{Float64}
+    oldCost::Array{Int64}
+    OldTrajectory(oldTraj=zeros(100,4,2),oldInput=zeros(100,2,2),oldCost=[0,0]) = new(oldTraj,oldInput,oldCost)
 end
 
 type MpcParams          # parameters for MPC solver

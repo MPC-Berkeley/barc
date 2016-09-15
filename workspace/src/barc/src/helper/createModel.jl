@@ -17,8 +17,8 @@ trackCoeff.coeffCurvature   = [0.0,0.0,0.0,0.0,0.0]         # polynomial coeffic
 trackCoeff.nPolyCurvature   = 4                   # 4th order polynomial for curvature approximation
 trackCoeff.width            = 0.4                 # width of the track (0.5m)
 
-modelParams.u_lb            = [-2.0 -pi/6]' * ones(1,mpcParams.N)                    # lower bounds on steering
-modelParams.u_ub            = [2.0  pi/6]' * ones(1,mpcParams.N)                    # upper bounds
+modelParams.u_lb            = [-1.0 -pi/6]' * ones(1,mpcParams.N)                    # lower bounds on steering
+modelParams.u_ub            = [1.0  pi/6]' * ones(1,mpcParams.N)                    # upper bounds
 modelParams.z_lb            = [-Inf -trackCoeff.width/2 -Inf -Inf]' * ones(1,mpcParams.N+1)                    # lower bounds on states
 modelParams.z_ub            = [Inf   trackCoeff.width/2  Inf  Inf]' * ones(1,mpcParams.N+1)                    # upper bounds
 modelParams.c0              = [0.5431, 1.2767, 2.1516, -2.4169]         # BARC-specific parameters (measured)
@@ -38,7 +38,7 @@ L_b             = modelParams.l_B
 N               = mpcParams.N
 c0              = modelParams.c0
 
-mdl             = Model(solver = IpoptSolver(print_level=0,max_cpu_time=0.01))#,linear_solver="ma57",print_user_options="yes"))
+mdl             = Model(solver = IpoptSolver(print_level=0,max_cpu_time=0.1))#,linear_solver="ma57",print_user_options="yes"))
 
 #@variable( mdl, modelParams.z_ub[i,j] >= z_Ol[i=1:4,j=1:(N+1)] >= modelParams.z_lb[i,j])      # z = s, ey, epsi, v
 @variable( mdl, z_Ol[1:4,1:(N+1)])      # z = s, ey, epsi, v

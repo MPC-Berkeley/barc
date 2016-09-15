@@ -9,6 +9,7 @@ end
 
 
 log_path = "$(homedir())/simulations/output.jld"
+log_path_LMPC = "$(homedir())/simulations/output_LMPC.jld"
 
 function eval_sim()
     d = load(log_path)
@@ -25,4 +26,11 @@ function eval_sim()
     plot(z.t,z.z[:,3],imu_meas.t,imu_meas.z,est.t,est.z[:,3])
     grid(1)
     legend(["Real psi","psi meas","estimate"])
+end
+
+function eval_LMPC()
+    d = load(log_path_LMPC)
+    oldTraj = d["oldTraj"]
+    plot(oldTraj[:,:,1,1])
+    grid(1)
 end

@@ -44,17 +44,19 @@ class Localization:
 		#self.ds 	= rad*2*pi/n
 		self.ds 	= 2*rad*tan(2*pi/n/2)
 	def create_racetrack(self,L=1.0,b=1.0,ds=0.5,c=array([0,0]),ang=0):		# problem: points are not equidistant at connecing points
-		x = arange(-L/2.0,L/2.0,ds)											# otherwise: would create a racetrack with parallel lines
+		x = linspace(0,L/2.0,5)#arange(0,L/2.0,ds)											# otherwise: would create a racetrack with parallel lines
 		s = size(x)
 		da = 2*pi/360*5
 		x = hstack((x,L/2.0+b/2*cos(arange(pi/2,-pi/2,-da))))
-		x = hstack((x,arange(L/2.0,-L/2.0,-ds)))
+		x = hstack((x,linspace(L/2.0,-L/2.0,5)))
 		x = hstack((x,-L/2.0+b/2*cos(arange(pi/2,1.5*pi+da,da))))
+		x = hstack((x,linspace(-L/2.0,0,5)))
 
 		y = ones(s)*b/2.0
 		y = hstack((y,b/2*sin(arange(pi/2,-pi/2,-da))))
 		y = hstack((y,-ones(s)*b/2))
 		y = hstack((y,-b/2*sin(arange(pi/2,1.5*pi+da,da))))
+		y = hstack((y,ones(s)*b/2.0))
 
 		s_tot = size(x)
 

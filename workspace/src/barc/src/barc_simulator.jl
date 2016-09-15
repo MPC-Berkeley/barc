@@ -146,7 +146,7 @@ function main()
         # IMU measurements
         imu_data = Imu()
         imu_drift = sin(t/100*pi/2)     # drifts to 1 in 100 seconds
-        yaw = z_current[i,3] + randn()*0.05 + imu_drift
+        yaw = z_current[i,3] + 0*(randn()*0.05 + imu_drift)
         imu_data.orientation = geometry_msgs.msg.Quaternion(cos(yaw/2), sin(yaw/2), 0, 0)
         if i%2 == 0
             imu_meas.i += 1
@@ -157,8 +157,8 @@ function main()
         end
 
         # GPS measurements
-        x = round(z_current[i,1]*100 + randn()*2)       # Indoor gps measures in cm
-        y = round(z_current[i,2]*100 + randn()*2)
+        x = round(z_current[i,1]*100 + 0*randn()*2)       # Indoor gps measures in cm
+        y = round(z_current[i,2]*100 + 0*randn()*2)
         if i % 7 == 0
             gps_meas.i += 1
             gps_meas.t[gps_meas.i] = t
