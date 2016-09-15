@@ -21,6 +21,9 @@ function solveMpcProblem(mpcCoeff,mpcParams,trackCoeff,lapStatus,posInfo,modelPa
     s_target        = posInfo.s_target
     ey_max          = trackCoeff.width/2
 
+    QderivZ         = mpcParams.QderivZ
+    QderivU         = mpcParams.QderivU
+
     v_ref           = mpcParams.vPathFollowing
     if lapStatus.currentLap > 1
         #v_ref = 10

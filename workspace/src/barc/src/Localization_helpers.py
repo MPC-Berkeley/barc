@@ -18,7 +18,7 @@ class Localization:
 	ds 					= 0						# distance between nodes
 	nPoints 			= N_nodes_poly_front+N_nodes_poly_back+1	# number of points for interpolation in total
 	OrderXY 			= 6						# order of x-y-polynomial interpolation
-	OrderThetaCurv 		= 3						# order of theta interpolation
+	OrderThetaCurv 		= 4						# order of theta interpolation
 	closed				= True					# open or closed trajectory?
 
 	coeffX = 0
@@ -83,6 +83,7 @@ class Localization:
 		#	ds = hstack((ds,((x[n-1]-x[0])**2+(y[n-1]-y[0])**2)**0.5))
 		s = hstack((0,cumsum(ds)))
 		length = sum(ds)
+		print "Track length = %fm"%length
 		dsn = ds_in						# optimal new step size (might be calculated externally for now)
 		rem = lambda x:mod(length,x)    # function to calculate optimal step size (for evenly distributed steps)
 		sol = scipy.optimize.fmin(func=rem,x0=dsn)

@@ -185,6 +185,7 @@ function coeffConstraintCost(oldTraj, lapStatus, mpcCoeff, posInfo, mpcParams)
         
 
     else        # if it is the first lap
+        println("First lap, so everything's zero..")
         coeffCost            = zeros(Order+1,1,2)
         coeffConst           = zeros(nz-1,Order+1,1,2) # nz-1 because no coeff for s
     end
