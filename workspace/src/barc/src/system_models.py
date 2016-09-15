@@ -226,9 +226,14 @@ def h_KinBkMdl(x):
     """
     measurement model
     """
+    # For GPS, IMU and encoders:
+    # C = array([[1, 0, 0, 0],
+    #            [0, 1, 0, 0],
+    #            [0, 0, 1, 0],
+    #            [0, 0, 0, 1]])
+    
+    # For GPS only:
     C = array([[1, 0, 0, 0],
-               [0, 1, 0, 0],
-               [0, 0, 1, 0],
-               [0, 0, 0, 1]])
+               [0, 1, 0, 0]])
     return dot(C, x)
  
