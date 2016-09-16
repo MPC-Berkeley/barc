@@ -28,28 +28,16 @@ solve(mdl)
 println("Finished initial solve.")
 
 # Global variables:
-z_est = zeros(1,4)
-coeffCurvature_update       = 0             # use extra update variables so that they're not suddenly changed within functions
-s_start_update              = 0
+z_est                       = zeros(1,4)
+coeffCurvature_update       = zeros(5)             # use extra update variables so that they're not suddenly changed within functions
+s_start_update              = 0.0
 
-function SE_callback(msg::pos_info)         # update current position and track data
-    # update mpc initial condition
-    global z_est, coeffCurvature_update, s_start_update
-    z_est                     = [msg.s msg.ey msg.epsi msg.v]
-    s_start_update            = msg.s_start
-    coeffCurvature_update     = msg.coeffCurvature
-    #println("Received pos info: $msg")
-    #println("coeffCurvature = $(trackCoeff.coeffCurvature)")
-end
 
 function main()
     println("now starting the node")
     # initiate node, set up publisher / subscriber topics
-    init_node("mpc_traj")
-    pub     = Publisher("ecu", ECU, queue_size=10)
-    pub2    = Publisher("logging", Logging, queue_size=10)
-    s1      = Subscriber("pos_info", pos_info, SE_callback, queue_size=10)
-    loop_rate = Rate(10)
+    #init_node("mpc_traj")
+    #loop_rate = Rate(10)
 
     buffersize                  = 700
 
@@ -97,9 +85,13 @@ function main()
     # Precompile functions by running them once:
     solve(mdl)
     #coeffConstraintCost(oldTraj,lapStatus,mpcCoeff,posInfo,mpcParams)
-    #precompile(saveOldTraj,(OldTrajectory,Array{Float64},Array{Float64},LapStatus,Int64,Float64))
+    precompile(saveOldTraj,(OldTrajectory,Array{Float64},Array{Float64},LapStatus,Int64,Float64))
 
-    while ! is_shutdown()
+    z_sim = [0 0 0 0.5]
+    #while ! is_shutdown()
+    for j=1:300
+        z_sim[1] += 0.05
+        z_est = z_sim
         if z_est[1] > 0         # check if data has been received (s > 0)            
 
             # ============================= Initialize iteration parameters =============================
@@ -115,6 +107,7 @@ function main()
             # ======================================= Lap trigger =======================================
             # This part takes pretty long (about 0.6 seconds on my Mac) and should be faster!
             if (posInfo.s_start + posInfo.s)%posInfo.s_target <= s_lapTrigger && switchLap      # if we are switching to the next lap...
+                z_sim[1] = 0
                 # ... then select and save data
                 println("Saving data")
                 tic()
@@ -167,8 +160,8 @@ function main()
             #println("trackCoeff = $trackCoeff")
             println("Finished solving, status: $(mpcSol.solverStatus), u = $(uCurr[i,:]), t = $tt s")
             # ... and publish data
-            cmd = ECU(mpcSol.a_x, mpcSol.d_f)
-            publish(pub, cmd)
+            # cmd = ECU(mpcSol.a_x, mpcSol.d_f)
+            # publish(pub, cmd)
 
             zCurr[i,1] = (posInfo.s_start + posInfo.s)%posInfo.s_target   # save absolute position in s (for oldTrajectory)
             println("\n")
@@ -176,7 +169,7 @@ function main()
         else
             println("No estimation data received!")
         end
-        rossleep(loop_rate)
+        #rossleep(loop_rate)
     end
     # Save simulation data to file
 

@@ -1,7 +1,7 @@
 # Define Variables
-trackCoeff              = TrackCoeff()      # info about track (at current position, approximated)
-const modelParams       = ModelParams()
-const mpcParams         = MpcParams()
+trackCoeff        = TrackCoeff()      # info about track (at current position, approximated)
+modelParams       = ModelParams()
+mpcParams         = MpcParams()
 
 # ===============================
 # Initialize Parameters
@@ -10,8 +10,9 @@ const mpcParams         = MpcParams()
 
 mpcParams.N                 = 5
 mpcParams.nz                = 4
-mpcParams.Q                 = [0.0 1.0 1.0 1.0]     # put weights on ey, epsi and v
-mpcParams.vPathFollowing    = 0.2
+mpcParams.Q                 = [0.0,1.0,1.0,1.0]     # put weights on ey, epsi and v
+mpcParams.R                 = [0.0,0.0]     # put weights on ey, epsi and v
+mpcParams.vPathFollowing    = 0.5
 
 trackCoeff.coeffCurvature   = [0.0,0.0,0.0,0.0,0.0]         # polynomial coefficients for curvature approximation (zeros for straight line)
 trackCoeff.nPolyCurvature   = 4                   # 4th order polynomial for curvature approximation

@@ -7,26 +7,27 @@
 # i = 3 -> epsi
 # i = 4 -> v
 
-function solveMpcProblem(mpcCoeff::MpcCoeff,mpcParams::MpcParams,trackCoeff::TrackCoeff,lapStatus::LapStatus,posInfo::PosInfo,modelParams::ModelParams,zCurr,uCurr)
+function solveMpcProblem(mpcSol::MpcSol,mpcCoeff::MpcCoeff,mpcParams::MpcParams,trackCoeff::TrackCoeff,lapStatus::LapStatus,posInfo::PosInfo,modelParams::ModelParams,zCurr::Array{Float64},uCurr::Array{Float64})
 
     # Load Parameters
-    mpcSol::MpcSol
     
-    coeffCurvature  = trackCoeff.coeffCurvature
+    coeffCurvature  = trackCoeff.coeffCurvature::Array{Float64,1}
     N               = mpcParams.N
     Q               = mpcParams.Q
     R               = mpcParams.R
-    coeffTermCost   = mpcCoeff.coeffCost
-    coeffTermConst  = mpcCoeff.coeffConst
+    coeffTermCost   = mpcCoeff.coeffCost::Array{Float64,2}
+    coeffTermConst  = mpcCoeff.coeffConst::Array{Float64,3}
     order           = mpcCoeff.order       # polynomial order of terminal constraints and cost approximation
     s_start         = posInfo.s_start
     s_target        = posInfo.s_target
     ey_max          = trackCoeff.width/2
 
-    QderivZ         = mpcParams.QderivZ
-    QderivU         = mpcParams.QderivU
+    QderivZ         = mpcParams.QderivZ::Array{Float64,1}
+    QderivU         = mpcParams.QderivU::Array{Float64,1}
 
     v_ref           = mpcParams.vPathFollowing
+
+    sol_u::Array{Float64,2}
 
     global mdl
 
@@ -37,6 +38,7 @@ function solveMpcProblem(mpcCoeff::MpcCoeff,mpcParams::MpcParams,trackCoeff::Tra
     println("s_total  = $((zCurr[1]+s_start)%s_target)")
 
     # Create function-specific parameters
+    z_Ref::Array{Float64,2}
     z_Ref           = cat(2,s_target*ones(N+1,1),zeros(N+1,2),v_ref*ones(N+1,1))       # Reference trajectory: path following -> stay on line and keep constant velocity
     u_Ref           = zeros(N,2)
 
@@ -109,7 +111,9 @@ function solveMpcProblem(mpcCoeff::MpcCoeff,mpcParams::MpcParams,trackCoeff::Tra
     sol_status  = solve(mdl)
     sol_u       = getvalue(u_Ol)
     #mpcSol      = MpcSol(sol_u[1,1],sol_u[2,1],sol_status,getvalue(u_Ol),getvalue(z_Ol),[getvalue(costZ),getvalue(costZTerm),getvalue(constZTerm),getvalue(derivCost),getvalue(controlCost),getvalue(laneCost)])
-    mpcSol      = MpcSol(sol_u[1,1],sol_u[2,1]) # Fast version without logging
+    mpcSol.a_x = sol_u[1,1]
+    mpcSol.d_f = sol_u[2,1]
+    #mpcSol = MpcSol(sol_u[1,1],sol_u[2,1]) # Fast version without logging
     #println(getvalue(costZTerm))
     #println(getvalue(z_Ol[1,N+1]))
     #println(getvalue(constZTerm))
@@ -128,5 +132,5 @@ function solveMpcProblem(mpcCoeff::MpcCoeff,mpcParams::MpcParams,trackCoeff::Tra
     # println(getvalue(z_Ol))
     # println("==============")
     # println(getvalue(u_Ol))
-    return mpcSol
+    nothing
 end

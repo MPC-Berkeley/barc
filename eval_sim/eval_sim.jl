@@ -1,5 +1,6 @@
 using JLD
 using PyPlot
+using HDF5, JLD, ProfileView
 
 type Measurements{T}
     i::Int64          # measurement counter
@@ -10,6 +11,7 @@ end
 
 log_path = "$(homedir())/simulations/output.jld"
 log_path_LMPC = "$(homedir())/simulations/LMPC_output.jld"
+log_path_profile = "$(homedir())/simulations/profile.jlprof"
 
 function eval_sim()
     d = load(log_path)
@@ -37,4 +39,10 @@ function eval_LMPC()
     oldTraj = d["oldTraj"]
     plot(oldTraj[:,:,1,1])
     grid(1)
+end
+
+function eval_prof()
+    Profile.clear()
+    @load "$(homedir())/simulations/profile.jlprof"
+    ProfileView.view(li, lidict=lidict)
 end

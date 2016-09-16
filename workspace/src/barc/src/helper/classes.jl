@@ -32,8 +32,8 @@ type MpcParams          # parameters for MPC solver
     N::Int64
     nz::Int64
     OrderCostCons::Int64
-    Q::Array{Float64}
-    R::Array{Float64}
+    Q::Array{Float64,1}
+    R::Array{Float64,1}
     vPathFollowing::Float64
     QderivZ::Array{Float64}
     QderivU::Array{Float64}
@@ -50,29 +50,29 @@ end
 type MpcSol             # MPC solution output
     a_x::Float64
     d_f::Float64
-    solverStatus
+    solverStatus::Int64
     u::Array{Float64}
     z::Array{Float64}
     cost::Array{Float64}
-    MpcSol(a_x=0.0,d_f=0.0,solverStatus=0,u=Float64[],z=Float64[],cost=Float64[]) = new(a_x,d_f,solverStatus,u,z,cost)
+    MpcSol(a_x=0.0,d_f=0.0,solverStatus=1,u=Float64[],z=Float64[],cost=Float64[]) = new(a_x,d_f,solverStatus,u,z,cost)
 end
 
 type TrackCoeff         # coefficients of track
-    coeffAngle
-    coeffCurvature
-    nPolyCurvature      # order of the interpolation polynom
-    width               # lane width -> is used in cost function as soft constraints (to stay on track)
-    TrackCoeff(coeffAngle=0,coeffCurvature=0,nPolyCurvature=4) = new(coeffAngle,coeffCurvature,nPolyCurvature)
+    coeffAngle::Array{Float64}
+    coeffCurvature::Array{Float64}
+    nPolyCurvature::Int64      # order of the interpolation polynom
+    width::Float64               # lane width -> is used in cost function as soft constraints (to stay on track)
+    TrackCoeff(coeffAngle=Float64[],coeffCurvature=Float64[],nPolyCurvature=4,width=1.0) = new(coeffAngle,coeffCurvature,nPolyCurvature)
 end
 
 type ModelParams
     l_A::Float64
     l_B::Float64
     dt::Float64
-    u_lb        # lower bounds for u
-    u_ub        # upper bounds
-    z_lb
-    z_ub
-    c0
-    ModelParams(l_A=0.25,l_B=0.25,dt=0.1,u_lb=0,u_ub=0,z_lb=0,z_ub=0,c0=0) = new(l_A,l_B,dt,u_lb,u_ub,z_lb,z_ub,c0)
+    u_lb::Array{Float64}        # lower bounds for u
+    u_ub::Array{Float64}        # upper bounds
+    z_lb::Array{Float64}
+    z_ub::Array{Float64}
+    c0::Array{Float64}
+    ModelParams(l_A=0.25,l_B=0.25,dt=0.1,u_lb=Float64[],u_ub=Float64[],z_lb=Float64[],z_ub=Float64[],c0=Float64[]) = new(l_A,l_B,dt,u_lb,u_ub,z_lb,z_ub,c0)
 end
