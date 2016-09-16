@@ -10,7 +10,7 @@ using data_service.msg
 using geometry_msgs.msg
 using JuMP
 using Ipopt
-#using JLD
+using JLD
 
 include("helper/classes.jl")
 include("helper/coeffConstraintCost.jl")
@@ -58,7 +58,7 @@ function main()
     buffersize                  = 700
 
     # Create data to be saved
-    # save_oldTraj = zeros(buffersize,4,2,4)  # max. 4 laps
+    save_oldTraj = zeros(buffersize,4,2,4)  # max. 4 laps
 
     # Define and initialize variables
     global mpcParams, trackCoeff, modelParams, z_est, posInfo, coeffCurvature_update, s_start_update
@@ -91,6 +91,9 @@ function main()
     zCurr       = zeros(10000,4)    # contains state information in current Lap (max. 10'000 steps)
     uCurr       = zeros(10000,2)    # contains input information
 
+    zCurr_export = zeros(buffersize,4)
+    uCurr_export = zeros(buffersize,2)
+
     # Precompile functions by running them once:
     solve(mdl)
     coeffConstraintCost(oldTraj,lapStatus,mpcCoeff,posInfo,mpcParams)
@@ -110,6 +113,7 @@ function main()
 
 
             # ======================================= Lap trigger =======================================
+            # This part takes pretty long (about 0.6 seconds on my Mac) and should be faster!
             if (posInfo.s_start + posInfo.s)%posInfo.s_target <= s_lapTrigger && switchLap      # if we are switching to the next lap...
                 # ... then select and save data
                 tic()
@@ -136,6 +140,8 @@ function main()
                 #println(size(save_oldTraj))
                 #println(size(oldTraj.oldTraj))
                 #save_oldTraj[:,:,:,lapStatus.currentLap] = oldTraj.oldTraj[:,:,:]
+                save_oldTraj[:,:,:,lapStatus.currentLap] = oldTraj.oldTraj[:,:,:]
+
                 zCurr[1,:] = zCurr[i,:]         # reset counter to 1 and set current state
                 uCurr[1,:] = uCurr[i+1,:]       # ... and input
                 i                     = 1       
@@ -143,9 +149,14 @@ function main()
                 lapStatus.currentIt   = 1       # reset current iteration
                 switchLap = false
                 tt = toq()
+
                 println("======================================== NEXT LAP ========================================")
+                println("Saved data, t = $tt")
+                println("cost: $(oldTraj.oldCost)")
                 println("oldTraj.oldTraj[:,1,1]:")
                 println(oldTraj.oldTraj[:,1,1])
+                println("oldTraj.oldTraj[:,1,2]:")
+                println(oldTraj.oldTraj[:,1,2])
             elseif (posInfo.s_start+posInfo.s)%posInfo.s_target > s_lapTrigger
                 switchLap = true
             end
@@ -188,9 +199,9 @@ function main()
         rossleep(loop_rate)
     end
     # Save simulation data to file
-    # log_path = "$(homedir())/simulations/LMPC_output.jld"
-    # save(log_path,"oldTraj",save_oldTraj)
-    # println("Exiting LMPC node. Saved data.")
+    log_path = "$(homedir())/simulations/output_LMPC.jld"
+    save(log_path,"oldTraj",save_oldTraj)
+    println("Exiting LMPC node. Saved data.")
 end
 
 if ! isinteractive()

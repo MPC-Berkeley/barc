@@ -9,7 +9,7 @@ end
 
 
 log_path = "$(homedir())/simulations/output.jld"
-log_path_LMPC = "$(homedir())/simulations/output_LMPC.jld"
+log_path_LMPC = "$(homedir())/simulations/LMPC_output.jld"
 
 function eval_sim()
     d = load(log_path)
