@@ -27,28 +27,19 @@ println("Initial solve...")
 solve(mdl)
 println("Finished initial solve.")
 
-# Global variables:
-z_est = zeros(1,4)
-coeffCurvature_update       = 0             # use extra update variables so that they're not suddenly changed within functions
-s_start_update              = 0
 
-function SE_callback(msg::pos_info)         # update current position and track data
+function SE_callback(msg::pos_info,s_start_update::Array{Float64},coeffCurvature_update::Array{Float64,1},z_est::Array{Float64,1})         # update current position and track data
     # update mpc initial condition
-    global z_est, coeffCurvature_update, s_start_update
-    z_est                     = [msg.s msg.ey msg.epsi msg.v]
-    s_start_update            = msg.s_start
-    coeffCurvature_update     = msg.coeffCurvature
-    #println("Received pos info: $msg")
-    #println("coeffCurvature = $(trackCoeff.coeffCurvature)")
+    z_est[:]                  = [msg.s,msg.ey,msg.epsi,msg.v]     # use z_est as pointer
+    s_start_update[1]         = msg.s_start
+    coeffCurvature_update[:]  = msg.coeffCurvature
+    println("Updated values.")
 end
 
 function main()
     println("now starting the node")
     # initiate node, set up publisher / subscriber topics
     init_node("mpc_traj")
-    pub     = Publisher("ecu", ECU, queue_size=10)
-    pub2    = Publisher("logging", Logging, queue_size=10)
-    s1      = Subscriber("pos_info", pos_info, SE_callback, queue_size=10)
     loop_rate = Rate(10)
 
     buffersize                  = 700
@@ -57,12 +48,23 @@ function main()
     save_oldTraj = zeros(buffersize,4,2,4)  # max. 4 laps
 
     # Define and initialize variables
-    global mpcParams, trackCoeff, modelParams, z_est, coeffCurvature_update, s_start_update
+    global mpcParams, trackCoeff, modelParams
     oldTraj                     = OldTrajectory()
     posInfo                     = PosInfo()
     mpcCoeff                    = MpcCoeff()
     lapStatus                   = LapStatus(1,1)
     mpcSol                      = MpcSol()
+    
+
+    z_est = zeros(4)
+    coeffCurvature_update = zeros(5)
+    s_start_update = [0.0]
+
+    pub     = Publisher("ecu", ECU, queue_size=10)
+    pub2    = Publisher("logging", Logging, queue_size=10)
+
+    # The subscriber passes 3 arguments (s_start, coeffCurvature and z_est) which are updated by the callback function:
+    s1      = Subscriber("pos_info", pos_info, SE_callback, (s_start_update,coeffCurvature_update,z_est,),queue_size=10)
 
     posInfo.s_start             = 0
     posInfo.s_target            = 8.281192
@@ -100,7 +102,10 @@ function main()
     #precompile(saveOldTraj,(OldTrajectory,Array{Float64},Array{Float64},LapStatus,Int64,Float64))
 
     while ! is_shutdown()
-        if z_est[1] > 0         # check if data has been received (s > 0)            
+        if z_est[1] > 0         # check if data has been received (s > 0) 
+            println("Received data: z_est = $z_est")
+            println("curvature = $coeffCurvature_update")
+            println("s_start = $s_start_update")           
 
             # ============================= Initialize iteration parameters =============================
             lapStatus.currentIt += 1                            # count iteration
@@ -108,7 +113,7 @@ function main()
             i                   = lapStatus.currentIt           # current iteration number, just to make notation shorter
             zCurr[i,:]          = z_est                         # update state information
             posInfo.s           = z_est[1]                      # update position info
-            posInfo.s_start     = s_start_update
+            posInfo.s_start     = s_start_update[1]
             trackCoeff.coeffCurvature = coeffCurvature_update
 
 

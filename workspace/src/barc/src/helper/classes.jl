@@ -58,8 +58,8 @@ type MpcSol             # MPC solution output
 end
 
 type TrackCoeff         # coefficients of track
-    coeffAngle::Array{Float64}
-    coeffCurvature::Array{Float64}
+    coeffAngle::Array{Float64,1}
+    coeffCurvature::Array{Float64,1}
     nPolyCurvature::Int64      # order of the interpolation polynom
     width::Float64               # lane width -> is used in cost function as soft constraints (to stay on track)
     TrackCoeff(coeffAngle=Float64[],coeffCurvature=Float64[],nPolyCurvature=4,width=1.0) = new(coeffAngle,coeffCurvature,nPolyCurvature)
