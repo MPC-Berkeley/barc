@@ -16,9 +16,10 @@ function coeffConstraintCost(oldTraj::OldTrajectory, lapStatus::LapStatus, mpcCo
     # Outputs: 
     # coeffConst
     # coeffCost
+    mpcCoeff::MpcCoeff
 
     # Read Inputs
-    tic()
+    #tic()
     oldTrajectory   = oldTraj.oldTraj           # [:,:,1] = 1st, [:,:,2] = 2nd
     oldInput        = oldTraj.oldInput
 
@@ -37,23 +38,21 @@ function coeffConstraintCost(oldTraj::OldTrajectory, lapStatus::LapStatus, mpcCo
 
     pLength         = mpcCoeff.pLength              # interpolation length for polynomials
 
-    coeffCost       = zeros(Order+1,1,2)            # polynomial coefficients for cost
-    coeffConst      = zeros(nz-1,Order+1,1,2)       # nz-1 beacuse no coeff for s
+    coeffCost       = zeros(Order+1,2)            # polynomial coefficients for cost
+    coeffConst      = zeros(Order+1,2,3)       # nz-1 beacuse no coeff for s
 
     # Select the old data
-    oldS            = oldTrajectory[1,:,:]
-    oldeY           = oldTrajectory[2,:,:]
-    oldePsi         = oldTrajectory[3,:,:]
-    oldV            = oldTrajectory[4,:,:]
+    oldS            = oldTrajectory[:,1,:]
+    oldeY           = oldTrajectory[:,2,:]
+    oldePsi         = oldTrajectory[:,3,:]
+    oldV            = oldTrajectory[:,4,:]
 
-    N_points        = size(oldTrajectory,2)     # second dimension = length
+    N_points        = size(oldTrajectory,1)     # second dimension = length
 
     if lapNumber > 1
-        tt=toc()
-        println("Loading parameters: $tt")
-        tic()
-        deltaOld = oldInput[1,:,:]
-        aOld     = oldInput[2,:,:]
+        # tt=toq()
+        # println("Loading parameters: $tt")
+        # tic()
         
         # Compute the total s (current position along track)
         s_total = (s_start + s) % s_target
@@ -61,27 +60,32 @@ function coeffConstraintCost(oldTraj::OldTrajectory, lapStatus::LapStatus, mpcCo
         # Compute the index
         DistS = ( s_total - oldS ).^2
 
-        idx_s = findmin(DistS,2)[2]              # contains both indices for the closest distances for both oldS !!
+        idx_s = findmin(DistS,1)[2]              # contains both indices for the closest distances for both oldS !!
 
-        vec_range = (idx_s[1]:min(idx_s[1]+pLength,N_points),idx_s[2]:min(idx_s[2]+pLength,N_points*2))
-        if idx_s[1]+pLength > N_points || idx_s[2]+pLength > 2*N_points
-            warn("Out of range!")
-            println("vec_range = $vec_range")
-            println("idx_s = $idx_s")
-            println("s_total = $s_total")
-        end
+        vec_range = (idx_s[1]:idx_s[1]+pLength,idx_s[2]:idx_s[2]+pLength)
+        # if idx_s[1]+pLength > N_points || idx_s[2]+pLength > 2*N_points
+        #     warn("Out of range!")
+        #     println("vec_range = $vec_range")
+        #     println("idx_s = $idx_s")
+        #     println("s_total = $s_total")
+        # end
         
         # Create the vectors used for the interpolation
         # **************** WHAT IF MINIMUM INDEX + PLENGTH IS LONGER THAN ENTIRE OLD TRAJECTORY ? *******************************
         # -> oldTrajectory is designed to go way beyond the "real" measured limit
-        bS_Vector       = cat(3, oldS[vec_range[1]],    oldS[vec_range[2]])
-        beY_Vector      = cat(3, oldeY[vec_range[1]],   oldeY[vec_range[2]])
-        bePsi_Vector    = cat(3, oldePsi[vec_range[1]], oldePsi[vec_range[2]])
-        bV_Vector       = cat(3, oldV[vec_range[1]],    oldV[vec_range[2]])
+        bS_Vector       = zeros(pLength+1,2)
+        beY_Vector      = zeros(pLength+1,2)
+        bePsi_Vector    = zeros(pLength+1,2)
+        bV_Vector       = zeros(pLength+1,2)
 
-        tt = toc()
-        println("2nd: $tt")
-        tic()
+        bS_Vector       = cat(2, oldS[vec_range[1]],    oldS[vec_range[2]])
+        beY_Vector      = cat(2, oldeY[vec_range[1]],   oldeY[vec_range[2]])
+        bePsi_Vector    = cat(2, oldePsi[vec_range[1]], oldePsi[vec_range[2]])
+        bV_Vector       = cat(2, oldV[vec_range[1]],    oldV[vec_range[2]])
+
+        # tt = toq()
+        # println("2nd: $tt")
+        # tic()
         println("************************************** COEFFICIENTS **************************************")
         println("idx_s[1]  = $(idx_s[1]), idx_s[2] = $(idx_s[2])")
         println("s_total   = $s_total")
@@ -100,29 +104,29 @@ function coeffConstraintCost(oldTraj::OldTrajectory, lapStatus::LapStatus, mpcCo
         MatrixInterp = zeros(pLength+1,Order+1,2)
 
         for k = 0:Order
-            MatrixInterp[:,Order+1-k,:] = s_forinterpy[:,1,:].^k
+            MatrixInterp[:,Order+1-k,:] = s_forinterpy[:,:].^k
         end
         
         # Compute the coefficients
-        CoefficientsFor_ey      = zeros(Order+1,1,2)
-        CoefficientsFor_ePsi    = zeros(Order+1,1,2)
-        CoefficientsFor_V       = zeros(Order+1,1,2)
+        CoefficientsFor_ey      = zeros(Order+1,2)
+        CoefficientsFor_ePsi    = zeros(Order+1,2)
+        CoefficientsFor_V       = zeros(Order+1,2)
         println("Calculating coefficients...")
         for i=1:2
-            CoefficientsFor_ey[:,:,i]      = MatrixInterp[:,:,i]\beY_Vector[:,:,i]
-            CoefficientsFor_ePsi[:,:,i]    = MatrixInterp[:,:,i]\bePsi_Vector[:,:,i]
-            CoefficientsFor_V[:,:,i]       = MatrixInterp[:,:,i]\bV_Vector[:,:,i]
+            CoefficientsFor_ey[:,i]      = MatrixInterp[:,:,i]\beY_Vector[:,i]
+            CoefficientsFor_ePsi[:,i]    = MatrixInterp[:,:,i]\bePsi_Vector[:,i]
+            CoefficientsFor_V[:,i]       = MatrixInterp[:,:,i]\bV_Vector[:,i]
         end
         println("Done.")
         
         # Stack the coefficients
-        coeffConst = zeros(3,Order+1,1,2)
-        coeffConst[1,:,:,:]                       = CoefficientsFor_ey
-        coeffConst[2,:,:,:]                       = CoefficientsFor_ePsi
-        coeffConst[3,:,:,:]                       = CoefficientsFor_V
-        tt = toc()
-        println("3rd: $tt")
-        tic()
+        coeffConst = zeros(Order+1,2,3)
+        coeffConst[:,:,1]                       = CoefficientsFor_ey
+        coeffConst[:,:,2]                       = CoefficientsFor_ePsi
+        coeffConst[:,:,3]                       = CoefficientsFor_V
+        #tt = toq()
+        #println("3rd: $tt")
+        #tic()
         # structure of coeffConst:
         # 1st dimension specifies state
         # 2nd dimension specifies steps
@@ -140,31 +144,10 @@ function coeffConstraintCost(oldTraj::OldTrajectory, lapStatus::LapStatus, mpcCo
         for i=1:2
             Qfunction  = zeros(N_points,1)
             IndexBezierS = idx_s[i] - (i-1)*N_points        # IndexBezierS is the index specifying the current position
-            idx_s_target = find(oldS[1,:,i].>s_target)[1]
+            idx_s_target = find(oldS[:,i].>s_target)[1]
             dist_to_s_target = (idx_s_target - IndexBezierS)
-            dist_to_s_target = dist_to_s_target + 30         # set distance to finish line a bit higher
-            # for k=1:N_points
-            #     # Start from the end ---> reverse the index
-            #     indx = N_points-k+1
+            #dist_to_s_target = dist_to_s_target + 30
 
-            #     # Here the if for the cost, minimize the distance to a straight line
-            #     if oldS[1,indx,i] <= s_target
-            #         QMatrix = 0.1
-            #     else
-            #         QMatrix = 0
-            #     end
-
-            #     # Here actually computing the cost
-            #     if (indx >=  IndexBezierS)
-            #         if k == 1
-            #             # If last point --> No Input
-            #             Qfunction[indx] = QMatrix         # [1] to transform 1-element-array to scalar
-            #         else
-            #             Qfunction[indx] = Qfunction[indx + 1] + QMatrix
-            #         end
-            #     end
-            # end
-            # NEEDS TO BE IMPROVED **************************
             bQfunction_Vector = zeros(pLength+1,1)
             # Select the part needed for the interpolation
             #bQfunction_Vector                   = Qfunction[IndexBezierS:IndexBezierS+pLength]
@@ -179,7 +162,7 @@ function coeffConstraintCost(oldTraj::OldTrajectory, lapStatus::LapStatus, mpcCo
             #readline()
 
             # Compute coefficient for the cost
-            coeffCost[:,1,i]      = MatrixInterp[:,:,i]\bQfunction_Vector
+            coeffCost[:,i]      = MatrixInterp[:,:,i]\bQfunction_Vector
             # if maximum(coeffCost) > 1e4
             #     warn("Large coefficients in cost, might cause numerical problems.")
             #     s = s_forinterpy[:,1,i]
@@ -191,8 +174,8 @@ function coeffConstraintCost(oldTraj::OldTrajectory, lapStatus::LapStatus, mpcCo
             # end
 
         end
-        tt = toc()
-        println("4th: $tt")
+        #tt = toq()
+        #println("4th: $tt")
 
         # if maximum(coeffConst) > 1e4
         #     warn("Large coefficients in constraints, might cause numerical problems.")
@@ -209,8 +192,10 @@ function coeffConstraintCost(oldTraj::OldTrajectory, lapStatus::LapStatus, mpcCo
         
 
     else        # if it is the first lap
-        coeffCost            = zeros(Order+1,1,2)
-        coeffConst           = zeros(nz-1,Order+1,1,2) # nz-1 because no coeff for s
+        coeffCost            = zeros(Order+1,2)
+        coeffConst           = zeros(Order+1,2,3) # nz-1 because no coeff for s
     end
-    return MpcCoeff(coeffCost, coeffConst, mpcCoeff.order, mpcCoeff.pLength)
+    mpcCoeff = MpcCoeff(coeffCost, coeffConst, mpcCoeff.order, mpcCoeff.pLength)
+    return mpcCoeff
+    #return MpcCoeff(coeffCost, coeffConst, mpcCoeff.order, mpcCoeff.pLength)
 end

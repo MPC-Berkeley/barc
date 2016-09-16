@@ -26,6 +26,10 @@ function eval_sim()
     plot(z.t,z.z[:,3],imu_meas.t,imu_meas.z,est.t,est.z[:,3])
     grid(1)
     legend(["Real psi","psi meas","estimate"])
+    figure()
+    plot(z.t,z.z[:,4])
+    grid()
+    legend(["Velocity"])
 end
 
 function eval_LMPC()

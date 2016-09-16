@@ -1,7 +1,7 @@
 # Define Variables
-trackCoeff      = TrackCoeff()      # info about track (at current position, approximated)
-modelParams     = ModelParams()
-mpcParams       = MpcParams()
+trackCoeff              = TrackCoeff()      # info about track (at current position, approximated)
+const modelParams       = ModelParams()
+const mpcParams         = MpcParams()
 
 # ===============================
 # Initialize Parameters

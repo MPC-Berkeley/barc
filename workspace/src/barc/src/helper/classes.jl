@@ -12,32 +12,32 @@ end
 # 4th dimension specifies one of the two lap numbers between which are iterated
 
 type MpcCoeff           # coefficients for trajectory approximation
-    coeffCost
-    coeffConst
-    order
-    pLength             # small values here may lead to numerical problems since the functions are only approximated in a short horizon
+    coeffCost::Array{Float64}
+    coeffConst::Array{Float64}
+    order::Int64
+    pLength::Int64      # small values here may lead to numerical problems since the functions are only approximated in a short horizon
                         # "small" values are about 2*N, good values about 4*N
                         # numerical problems occur at the edges (s=0, when v is almost 0 and s does not change fast and at s=s_target)
-    MpcCoeff(coeffCost=0, coeffConst=0, order=4, pLength=0) = new(coeffCost, coeffConst, order, pLength)
+    MpcCoeff(coeffCost=Float64[], coeffConst=Float64[], order=4, pLength=0) = new(coeffCost, coeffConst, order, pLength)
 end
 
 type OldTrajectory      # information about previous trajectories
     oldTraj::Array{Float64}
     oldInput::Array{Float64}
     oldCost::Array{Int64}
-    OldTrajectory(oldTraj=zeros(100,4,2),oldInput=zeros(100,2,2),oldCost=[0,0]) = new(oldTraj,oldInput,oldCost)
+    OldTrajectory(oldTraj=Float64[],oldInput=Float64[],oldCost=Float64[]) = new(oldTraj,oldInput,oldCost)
 end
 
 type MpcParams          # parameters for MPC solver
     N::Int64
     nz::Int64
     OrderCostCons::Int64
-    Q
-    R
+    Q::Array{Float64}
+    R::Array{Float64}
     vPathFollowing::Float64
-    QderivZ
-    QderivU
-    MpcParams(N=0,nz=0,OrderCostCons=0,Q=0,R=0,vPathFollowing=1.0,QderivZ=0.0,QderivU=0.0) = new(N,nz,OrderCostCons,Q,R,vPathFollowing)
+    QderivZ::Array{Float64}
+    QderivU::Array{Float64}
+    MpcParams(N=0,nz=0,OrderCostCons=0,Q=Float64[],R=Float64[],vPathFollowing=1.0,QderivZ=Float64[],QderivU=Float64[]) = new(N,nz,OrderCostCons,Q,R,vPathFollowing)
 end
 
 type PosInfo            # current position information
@@ -51,10 +51,10 @@ type MpcSol             # MPC solution output
     a_x::Float64
     d_f::Float64
     solverStatus
-    u
-    z
-    cost
-    MpcSol(a_x=0,d_f=0,solverStatus=0,u=0,z=0,cost=0) = new(a_x,d_f,solverStatus,u,z,cost)
+    u::Array{Float64}
+    z::Array{Float64}
+    cost::Array{Float64}
+    MpcSol(a_x=0.0,d_f=0.0,solverStatus=0,u=Float64[],z=Float64[],cost=Float64[]) = new(a_x,d_f,solverStatus,u,z,cost)
 end
 
 type TrackCoeff         # coefficients of track

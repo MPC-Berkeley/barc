@@ -72,11 +72,11 @@ function main()
     mpcParams.R                 = 0.0*[1 1]                 # cost matrix for control inputs
     mpcParams.Q                 = [0.0 10.0 1.0 1.0]        # put weights on ey, epsi and v
 
-    oldTraj.oldTraj             = zeros(4,buffersize,2)
-    oldTraj.oldInput            = zeros(2,buffersize,2)
+    oldTraj.oldTraj             = zeros(buffersize,4,2)
+    oldTraj.oldInput            = zeros(buffersize,2,2)
 
-    mpcCoeff.coeffCost          = 0
-    mpcCoeff.coeffConst         = 0
+    mpcCoeff.coeffCost          = Float64[]
+    mpcCoeff.coeffConst         = Float64[]
     mpcCoeff.order              = 5
     mpcCoeff.pLength            = 4*mpcParams.N        # small values here may lead to numerical problems since the functions are only approximated in a short horizon
 
@@ -90,6 +90,10 @@ function main()
     # buffer in current lap
     zCurr       = zeros(10000,4)    # contains state information in current Lap (max. 10'000 steps)
     uCurr       = zeros(10000,2)    # contains input information
+
+    # Precompile functions by running them once:
+    solve(mdl)
+    coeffConstraintCost(oldTraj,lapStatus,mpcCoeff,posInfo,mpcParams)
 
     println("Starting loop")
     while ! is_shutdown()
@@ -114,10 +118,10 @@ function main()
                 costLap         = lapStatus.currentIt               # the cost of the current lap is the time it took to reach the finish line
                 # Save all data in oldTrajectory:
                 if lapStatus.currentLap == 1                        # if it's the first lap
-                    oldTraj.oldTraj[:,:,1]  = zCurr_export'         # ... just save everything
-                    oldTraj.oldInput[:,:,1] = uCurr_export'
-                    oldTraj.oldTraj[:,:,2]  = zCurr_export'
-                    oldTraj.oldInput[:,:,2] = uCurr_export'
+                    oldTraj.oldTraj[:,:,1]  = zCurr_export         # ... just save everything
+                    oldTraj.oldInput[:,:,1] = uCurr_export
+                    oldTraj.oldTraj[:,:,2]  = zCurr_export
+                    oldTraj.oldInput[:,:,2] = uCurr_export
                     oldTraj.oldCost = [costLap,costLap]
                 else                                                # idea: always copy the new trajectory in the first array!
                     if oldTraj.oldCost[1] < oldTraj.oldCost[2]      # if the first old traj is better than the second
@@ -125,8 +129,8 @@ function main()
                         oldTraj.oldInput[:,:,2] = oldTraj.oldInput[:,:,1]   # ... same for the input
                         oldTraj.oldCost[2] = oldTraj.oldCost[1]
                     end
-                    oldTraj.oldTraj[:,:,1]  = zCurr_export'                 # ... and write the new traj in the first
-                    oldTraj.oldInput[:,:,1] = uCurr_export'
+                    oldTraj.oldTraj[:,:,1]  = zCurr_export                 # ... and write the new traj in the first
+                    oldTraj.oldInput[:,:,1] = uCurr_export
                     oldTraj.oldCost[1] = costLap
                 end
                 #println(size(save_oldTraj))
@@ -138,10 +142,10 @@ function main()
                 lapStatus.currentLap += 1       # start next lap
                 lapStatus.currentIt   = 1       # reset current iteration
                 switchLap = false
-                tt = toc()
+                tt = toq()
                 println("======================================== NEXT LAP ========================================")
-                println("oldTraj.oldTraj[1,:,1]:")
-                println(oldTraj.oldTraj[1,:,1])
+                println("oldTraj.oldTraj[:,1,1]:")
+                println(oldTraj.oldTraj[:,1,1])
             elseif (posInfo.s_start+posInfo.s)%posInfo.s_target > s_lapTrigger
                 switchLap = true
             end
@@ -160,13 +164,13 @@ function main()
             # Find coefficients for cost and constraints
             tic()
             mpcCoeff    = coeffConstraintCost(oldTraj,lapStatus,mpcCoeff,posInfo,mpcParams)
-            tt = toc()
+            tt = toq()
             println("Finished coefficients, t = $tt s")
             #println("Found coefficients: mpcCoeff = $mpcCoeff")
             # Solve the MPC problem
             tic()
             mpcSol      = solveMpcProblem(mpcCoeff,mpcParams,trackCoeff,lapStatus,posInfo,modelParams,zCurr[i,:]',uCurr[i,:]')
-            tt = toc()
+            tt = toq()
             # Write in current input information
             uCurr[i+1,:]  = [mpcSol.a_x mpcSol.d_f]
             #println("trackCoeff = $trackCoeff")
