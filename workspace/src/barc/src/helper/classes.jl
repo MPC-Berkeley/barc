@@ -35,8 +35,8 @@ type MpcParams          # parameters for MPC solver
     Q::Array{Float64,1}
     R::Array{Float64,1}
     vPathFollowing::Float64
-    QderivZ::Array{Float64}
-    QderivU::Array{Float64}
+    QderivZ::Array{Float64,1}
+    QderivU::Array{Float64,1}
     MpcParams(N=0,nz=0,OrderCostCons=0,Q=Float64[],R=Float64[],vPathFollowing=1.0,QderivZ=Float64[],QderivU=Float64[]) = new(N,nz,OrderCostCons,Q,R,vPathFollowing)
 end
 
@@ -50,11 +50,11 @@ end
 type MpcSol             # MPC solution output
     a_x::Float64
     d_f::Float64
-    solverStatus::Int64
+    solverStatus::Symbol
     u::Array{Float64}
     z::Array{Float64}
     cost::Array{Float64}
-    MpcSol(a_x=0.0,d_f=0.0,solverStatus=1,u=Float64[],z=Float64[],cost=Float64[]) = new(a_x,d_f,solverStatus,u,z,cost)
+    MpcSol(a_x=0.0,d_f=0.0,solverStatus=Symbol(),u=Float64[],z=Float64[],cost=Float64[]) = new(a_x,d_f,solverStatus,u,z,cost)
 end
 
 type TrackCoeff         # coefficients of track
@@ -75,4 +75,37 @@ type ModelParams
     z_ub::Array{Float64}
     c0::Array{Float64}
     ModelParams(l_A=0.25,l_B=0.25,dt=0.1,u_lb=Float64[],u_ub=Float64[],z_lb=Float64[],z_ub=Float64[],c0=Float64[]) = new(l_A,l_B,dt,u_lb,u_ub,z_lb,z_ub,c0)
+end
+
+type MpcModel
+    mdl::JuMP.Model
+
+    z0::Array{JuMP.NonlinearParameter,1}
+    coeff::Array{JuMP.NonlinearParameter,1}
+
+    z_Ol::Array{JuMP.Variable,2}
+    u_Ol::Array{JuMP.Variable,2}
+    ParInt::JuMP.Variable
+
+    dsdt::Array{JuMP.NonlinearExpression,1}
+    bta::Array{JuMP.NonlinearExpression,1}
+    c::Array{JuMP.NonlinearExpression,1}
+
+    MpcModel(mdl=JuMP.Model(),
+                z0=@NLparameter(mdl,z0[i=1:4]==0),
+                coeff=@NLparameter(mdl,coeff[i=1:5]==0),
+                z_Ol=@variable(mdl,[1:4,1:10]),
+                u_Ol=@variable(mdl,[1:2,1:9]),
+                ParInt=@variable(mdl,0<=ParInt<=1),
+                dsdt=@NLexpression(mdl,dsdt[1:10],0),
+                bta=@NLexpression(mdl,bta[1:10],0),
+                c=@NLexpression(mdl,c[1:10],0)) = new(mdl,
+                                                        z0,
+                                                        coeff,
+                                                        z_Ol,
+                                                        u_Ol,
+                                                        ParInt,
+                                                        dsdt,
+                                                        bta,
+                                                        c)
 end

@@ -18,22 +18,11 @@ include("helper/solveMpcProblem.jl")
 include("helper/computeCostLap.jl")
 include("helper/functions.jl")
 
-# Load Variables and create Model:
-println("Loading and defining variables...")
-include("helper/createModel.jl")
-
-# Initialize model by solving it once
-println("Initial solve...")
-solve(mdl)
-println("Finished initial solve.")
-
-
 function SE_callback(msg::pos_info,s_start_update::Array{Float64},coeffCurvature_update::Array{Float64,1},z_est::Array{Float64,1})         # update current position and track data
     # update mpc initial condition
     z_est[:]                  = [msg.s,msg.ey,msg.epsi,msg.v]     # use z_est as pointer
     s_start_update[1]         = msg.s_start
     coeffCurvature_update[:]  = msg.coeffCurvature
-    println("Updated values.")
 end
 
 function main()
@@ -48,58 +37,52 @@ function main()
     save_oldTraj = zeros(buffersize,4,2,4)  # max. 4 laps
 
     # Define and initialize variables
-    global mpcParams, trackCoeff, modelParams
     oldTraj                     = OldTrajectory()
     posInfo                     = PosInfo()
     mpcCoeff                    = MpcCoeff()
     lapStatus                   = LapStatus(1,1)
     mpcSol                      = MpcSol()
-    
+    trackCoeff                  = TrackCoeff()      # info about track (at current position, approximated)
+    modelParams                 = ModelParams()
+    mpcParams                   = MpcParams()
 
-    z_est = zeros(4)
-    coeffCurvature_update = zeros(5)
-    s_start_update = [0.0]
+    z_est                       = zeros(4)
+    coeffCurvature_update       = zeros(5)
+    s_start_update              = [0.0]
+    cmd                         = ECU(0.0,0.0)
 
-    pub     = Publisher("ecu", ECU, queue_size=10)
-    pub2    = Publisher("logging", Logging, queue_size=10)
-
+    pub                         = Publisher("ecu", ECU, queue_size=10)
+    pub2                        = Publisher("logging", Logging, queue_size=10)
     # The subscriber passes 3 arguments (s_start, coeffCurvature and z_est) which are updated by the callback function:
-    s1      = Subscriber("pos_info", pos_info, SE_callback, (s_start_update,coeffCurvature_update,z_est,),queue_size=10)
+    s1                          = Subscriber("pos_info", pos_info, SE_callback, (s_start_update,coeffCurvature_update,z_est,),queue_size=10)
 
-    posInfo.s_start             = 0
-    posInfo.s_target            = 8.281192
-
-    mpcParams.QderivZ           = 0.0*[1,1,1,1]             # cost matrix for derivative cost of states
-    mpcParams.QderivU           = 0.1*[1,1]                 # cost matrix for derivative cost of inputs
-    mpcParams.R                 = 0.0*[1,1]                 # cost matrix for control inputs
-    mpcParams.Q                 = [0.0,10.0,1.0,1.0]        # put weights on ey, epsi and v
-
-    oldTraj.oldTraj             = zeros(buffersize,4,2)
-    oldTraj.oldInput            = zeros(buffersize,2,2)
-
-    mpcCoeff.order              = 5
-    mpcCoeff.coeffCost          = zeros(mpcCoeff.order+1,2)
-    mpcCoeff.coeffConst         = zeros(mpcCoeff.order+1,2,3) # nz-1 because no coeff for s
-    mpcCoeff.pLength            = 4*mpcParams.N        # small values here may lead to numerical problems since the functions are only approximated in a short horizon
-
-    lapStatus.currentLap        = 1         # initialize lap number
-    lapStatus.currentIt         = 0         # current iteration in lap
-
+    InitializeParameters(mpcParams,trackCoeff,modelParams,posInfo,oldTraj,mpcCoeff,lapStatus,buffersize)
+    println("Finished initialization.")
     # Lap parameters
-    switchLap               = false     # initialize lap lap trigger
-    s_lapTrigger            = 0.3       # next lap is triggered in the interval s_start in [0,s_lapTrigger]
+    switchLap                   = false     # initialize lap lap trigger
+    s_lapTrigger                = 0.3       # next lap is triggered in the interval s_start in [0,s_lapTrigger]
     
     # buffer in current lap
-    zCurr       = zeros(10000,4)    # contains state information in current Lap (max. 10'000 steps)
-    uCurr       = zeros(10000,2)    # contains input information
+    zCurr                       = zeros(10000,4)    # contains state information in current Lap (max. 10'000 steps)
+    uCurr                       = zeros(10000,2)    # contains input information
 
-    zCurr_export = zeros(buffersize,4)
-    uCurr_export = zeros(buffersize,2)
+    zCurr_export                = zeros(buffersize,4)
+    uCurr_export                = zeros(buffersize,2)
 
-    # Precompile functions by running them once:
-    solve(mdl)
-    #coeffConstraintCost(oldTraj,lapStatus,mpcCoeff,posInfo,mpcParams)
-    #precompile(saveOldTraj,(OldTrajectory,Array{Float64},Array{Float64},LapStatus,Int64,Float64))
+    
+    # DEFINE MODEL ***************************************************************************
+    # ****************************************************************************************
+    println("Building model...")
+
+    z_Init          = zeros(4)
+
+    mdl             = MpcModel()
+    InitializeModel(mdl,mpcParams,modelParams,trackCoeff,z_Init)
+
+    # Initial solve:
+    println("Initial solve...")
+    solve(mdl.mdl)
+    println("Finished.")
 
     while ! is_shutdown()
         if z_est[1] > 0         # check if data has been received (s > 0) 
@@ -123,7 +106,7 @@ function main()
                 # ... then select and save data
                 println("Saving data")
                 tic()
-                saveOldTraj(oldTraj,zCurr,uCurr,lapStatus,buffersize,dt)
+                saveOldTraj(oldTraj,zCurr,uCurr,lapStatus,buffersize,modelParams.dt)
                 save_oldTraj[:,:,:,lapStatus.currentLap] = oldTraj.oldTraj[:,:,:]
                 zCurr[1,:] = zCurr[i,:]         # reset counter to 1 and set current state
                 uCurr[1,:] = uCurr[i+1,:]       # ... and input
@@ -165,7 +148,7 @@ function main()
             #println("Found coefficients: mpcCoeff = $mpcCoeff")
             # Solve the MPC problem
             tic()
-            solveMpcProblem(mpcSol,mpcCoeff,mpcParams,trackCoeff,lapStatus,posInfo,modelParams,zCurr[i,:]',uCurr[i,:]')
+            solveMpcProblem(mdl,mpcSol,mpcCoeff,mpcParams,trackCoeff,lapStatus,posInfo,modelParams,zCurr[i,:]',uCurr[i,:]')
             tt = toq()
             # Write in current input information
             uCurr[i+1,:]  = [mpcSol.a_x mpcSol.d_f]
