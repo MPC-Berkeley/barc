@@ -20,6 +20,7 @@ function eval_sim()
     imu_meas    = d["imu_meas"]
     gps_meas    = d["gps_meas"]
     z           = d["z"]
+    cmd_log     = d["cmd_log"]
 
     plot(z.z[:,1],z.z[:,2],"-",gps_meas.z[:,1]/100,gps_meas.z[:,2]/100,".",est.z[:,1],est.z[:,2],"-")
     grid(1)
@@ -32,6 +33,10 @@ function eval_sim()
     plot(z.t,z.z[:,4])
     grid()
     legend(["Velocity"])
+    figure()
+    plot(cmd_log.t,cmd_log.z)
+    legend(["a","d_f"])
+    grid()
 end
 
 function eval_LMPC()

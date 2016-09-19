@@ -57,7 +57,7 @@ function solveMpcProblem(mdl::MpcModel,mpcSol::MpcSol,mpcCoeff::MpcCoeff,mpcPara
 
     # Lane cost
     # ---------------------------------
-    @NLexpression(mdl.mdl, laneCost, 0*sum{(0.5+0.5*tanh(50*(mdl.z_Ol[2,i]-ey_max))) + (0.5-0.5*tanh(50*(mdl.z_Ol[2,i]+ey_max))),i=1:N+1})
+    @NLexpression(mdl.mdl, laneCost, 10*sum{(0.5+0.5*tanh(50*(mdl.z_Ol[2,i]-ey_max))) + (0.5-0.5*tanh(50*(mdl.z_Ol[2,i]+ey_max))),i=1:N+1})
 
     # Control Input cost
     # ---------------------------------
@@ -66,10 +66,10 @@ function solveMpcProblem(mdl::MpcModel,mpcSol::MpcSol,mpcCoeff::MpcCoeff,mpcPara
     # Terminal constraints (soft), starting from 2nd lap
     # ---------------------------------
     if lapStatus.currentLap > 2    # if at least in the 3rd lap
-              # termStateErr =       (ParInt*polyval(coeffTermCons[j], nPolyOrderTermCons, ZOlGlobal[Hp*nz+5]) +
-              #               + (1 - ParInt)*polyval(coeffTermCons_1[j], nPolyOrderTermCons, ZOlGlobal[Hp*nz+5])) - ZOlGlobal[Hp*nz+j];
-        @NLexpression(mdl.mdl, constZTerm, 10*(sum{(ParInt*sum{coeffTermConst[i,1,j]*mdl.z_Ol[1,N+1]^(order+1-i),i=1:order+1}+
-                                        (1-ParInt)*sum{coeffTermConst[i,2,j]*mdl.z_Ol[1,N+1]^(order+1-i),i=1:order+1}-mdl.z_Ol[j+1,N+1])^2,j=1:3}))
+              # termStateErr =       (mdl.ParInt[1]*polyval(coeffTermCons[j], nPolyOrderTermCons, ZOlGlobal[Hp*nz+5]) +
+              #               + (1 - mdl.ParInt[1])*polyval(coeffTermCons_1[j], nPolyOrderTermCons, ZOlGlobal[Hp*nz+5])) - ZOlGlobal[Hp*nz+j];
+        @NLexpression(mdl.mdl, constZTerm, 10*(sum{(mdl.ParInt[1]*sum{coeffTermConst[i,1,j]*mdl.z_Ol[1,N+1]^(order+1-i),i=1:order+1}+
+                                        (1-mdl.ParInt[1])*sum{coeffTermConst[i,2,j]*mdl.z_Ol[1,N+1]^(order+1-i),i=1:order+1}-mdl.z_Ol[j+1,N+1])^2,j=1:3}))
     elseif lapStatus.currentLap == 2        # if in the 2nd lap
         # termStateErr =       polyval(coeffTermCons[j], nPolyOrderTermCons, ZOlGlobal[Hp*nz+5]) - ZOlGlobal[Hp*nz+j];
         @NLexpression(mdl.mdl, constZTerm, 10*sum{(sum{coeffTermConst[i,1,j]*mdl.z_Ol[1,N+1]^(order+1-i),i=1:order+1}-mdl.z_Ol[j+1,N+1])^2,j=1:3})
@@ -78,10 +78,10 @@ function solveMpcProblem(mdl::MpcModel,mpcSol::MpcSol,mpcCoeff::MpcCoeff,mpcPara
     # Terminal cost
     # ---------------------------------
     if lapStatus.currentLap > 2     # if at least in the 3rd lap
-        # costZTerm =     ParInt*polyval(coeffTermCost, nPolyOrderTermCost, ZOlGlobal[Hp*nz+5]) +
-        #            + (1-ParInt)*polyval(coeffTermCost_1, nPolyOrderTermCost, ZOlGlobal[Hp*nz+5]);
-        @NLexpression(mdl.mdl, costZTerm, ParInt*sum{coeffTermCost[i,1]*mdl.z_Ol[1,N+1]^(order+1-i),i=1:order+1}+
-                                  (1-ParInt)*sum{coeffTermCost[i,2]*mdl.z_Ol[1,N+1]^(order+1-i),i=1:order+1})
+        # costZTerm =     mdl.ParInt[1]*polyval(coeffTermCost, nPolyOrderTermCost, ZOlGlobal[Hp*nz+5]) +
+        #            + (1-mdl.ParInt[1])*polyval(coeffTermCost_1, nPolyOrderTermCost, ZOlGlobal[Hp*nz+5]);
+        @NLexpression(mdl.mdl, costZTerm, mdl.ParInt[1]*sum{coeffTermCost[i,1]*mdl.z_Ol[1,N+1]^(order+1-i),i=1:order+1}+
+                                  (1-mdl.ParInt[1])*sum{coeffTermCost[i,2]*mdl.z_Ol[1,N+1]^(order+1-i),i=1:order+1})
         #@NLexpression(mdl.mdl, costZTerm, costZTerm_h * (0.5-0.5*tanh(50*(mdl.z_Ol[1,N+1]+s_start-s_target))))
             # line above not necessary since the polynomial goes to zero anyways!
     elseif lapStatus.currentLap == 2         # if we're in the second second lap
@@ -104,23 +104,29 @@ function solveMpcProblem(mdl::MpcModel,mpcSol::MpcSol,mpcCoeff::MpcCoeff,mpcPara
 
     @NLobjective(mdl.mdl, Min, costZ + costZTerm + constZTerm + derivCost + controlCost + laneCost)
 
-    println("Model formulation:")
+    #println("Model formulation:")
     #println(mdl.mdl)
     # Solve Problem and return solution
     sol_status  = solve(mdl.mdl)
     sol_u       = getvalue(mdl.u_Ol)
     sol_z       = getvalue(mdl.z_Ol)
-    println("coeff: $(getvalue(mdl.coeff))")
-    println("z0: $(getvalue(mdl.z0))")
-    println("Solution status: $sol_status")
-    println("Objective value: $(getobjectivevalue(mdl.mdl))")
-    println("Control Cost: $(getvalue(controlCost))")
-    println("CostZ:        $(getvalue(costZ))")
-    println("DerivCost:    $(getvalue(derivCost))")
 
-    println("cost_ey:      $(0.5*sum(sol_z[2,:].^2)*Q[2])")
-    println("cost_ePsi:    $(0.5*sum(sol_z[3,:].^2)*Q[3])")
-    println("cost_V:       $(0.5*sum((sol_z[4,:]-z_Ref[:,4]').^2)*Q[4])")
+    # COST PRINTS: ********************************************************
+    # println("coeff: $(getvalue(mdl.coeff))")
+    # println("z0: $(getvalue(mdl.z0))")
+    # println("Solution status: $sol_status")
+    # println("Objective value: $(getobjectivevalue(mdl.mdl))")
+    # println("Control Cost: $(getvalue(controlCost))")
+    # println("CostZ:        $(getvalue(costZ))")
+    # println("DerivCost:    $(getvalue(derivCost))")
+    # println("LaneCost:     $(getvalue(laneCost))")
+    # println("costZTerm:    $(getvalue(costZTerm))")
+    # println("constZTerm:   $(getvalue(constZTerm))")
+
+    # println("cost_ey:      $(0.5*sum(sol_z[2,:].^2)*Q[2])")
+    # println("cost_ePsi:    $(0.5*sum(sol_z[3,:].^2)*Q[3])")
+    # println("cost_V:       $(0.5*sum((sol_z[4,:]-z_Ref[:,4]').^2)*Q[4])")
+
     #println("z:")
     #println(getvalue(mdl.z_Ol))
     #println("u:")
@@ -132,7 +138,7 @@ function solveMpcProblem(mdl::MpcModel,mpcSol::MpcSol,mpcCoeff::MpcCoeff,mpcPara
     #println(getvalue(costZTerm))
     #println(getvalue(mdl.z_Ol[1,N+1]))
     #println(getvalue(constZTerm))
-    #println("ParInt = $(getvalue(ParInt))")
+    #println("mdl.ParInt[1] = $(getvalue(mdl.ParInt[1]))")
     #println("u = $(sol_u[:,1])")
 
     # if lapStatus.currentLap > 100

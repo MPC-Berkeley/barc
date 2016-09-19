@@ -85,7 +85,7 @@ type MpcModel
 
     z_Ol::Array{JuMP.Variable,2}
     u_Ol::Array{JuMP.Variable,2}
-    ParInt::JuMP.Variable
+    ParInt::Array{JuMP.Variable,1}
 
     dsdt::Array{JuMP.NonlinearExpression,1}
     bta::Array{JuMP.NonlinearExpression,1}
@@ -96,7 +96,7 @@ type MpcModel
                 coeff=@NLparameter(mdl,coeff[i=1:5]==0),
                 z_Ol=@variable(mdl,[1:4,1:10]),
                 u_Ol=@variable(mdl,[1:2,1:9]),
-                ParInt=@variable(mdl,0<=ParInt<=1),
+                ParInt=@variable(mdl,[1:1]),
                 dsdt=@NLexpression(mdl,dsdt[1:10],0),
                 bta=@NLexpression(mdl,bta[1:10],0),
                 c=@NLexpression(mdl,c[1:10],0)) = new(mdl,

@@ -34,7 +34,7 @@ function main()
     buffersize                  = 700
 
     # Create data to be saved
-    save_oldTraj = zeros(buffersize,4,2,4)  # max. 4 laps
+    save_oldTraj = zeros(buffersize,4,2,20)  # max. 10 laps
 
     # Define and initialize variables
     oldTraj                     = OldTrajectory()

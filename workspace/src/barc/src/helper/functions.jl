@@ -34,19 +34,18 @@ function InitializeParameters(mpcParams::MpcParams,trackCoeff::TrackCoeff,modelP
                                 posInfo::PosInfo,oldTraj::OldTrajectory,mpcCoeff::MpcCoeff,lapStatus::LapStatus,buffersize::Int64)
     mpcParams.N                 = 10
     mpcParams.nz                = 4
-    mpcParams.Q                 = [0.0,10.0,10.0,1.0]         # put weights on ey, epsi and v
-    mpcParams.R                 = [0.0,0.0]                 # put weights on ey, epsi and v
-    mpcParams.vPathFollowing    = 0.5
+    mpcParams.Q                 = [0.0,10.0,1.0,1.0]       # put weights on ey, epsi and v
+    mpcParams.R                 = [0.0,0.0]                 # put weights on a and d_f
     mpcParams.QderivZ           = 0.0*[1,1,1,1]             # cost matrix for derivative cost of states
-    mpcParams.QderivU           = 0.1*[1,1]                 # cost matrix for derivative cost of inputs
-    mpcParams.vPathFollowing    = 0.5
+    mpcParams.QderivU           = 1*[1,10]                 # cost matrix for derivative cost of inputs
+    mpcParams.vPathFollowing    = 0.8
 
     trackCoeff.coeffCurvature   = [0.0,0.0,0.0,0.0,0.0]         # polynomial coefficients for curvature approximation (zeros for straight line)
     trackCoeff.nPolyCurvature   = 4                   # 4th order polynomial for curvature approximation
-    trackCoeff.width            = 1.0                 # width of the track (0.5m)
+    trackCoeff.width            = 0.4                 # width of the track (0.5m)
 
     modelParams.u_lb            = [-1.0 -pi/6]' * ones(1,mpcParams.N)                    # lower bounds on steering
-    modelParams.u_ub            = [1.0  pi/6]' * ones(1,mpcParams.N)                    # upper bounds
+    modelParams.u_ub            = [1.0   pi/6]' * ones(1,mpcParams.N)                    # upper bounds
     modelParams.z_lb            = [-Inf -trackCoeff.width/2 -Inf -Inf]' * ones(1,mpcParams.N+1)                    # lower bounds on states
     modelParams.z_ub            = [Inf   trackCoeff.width/2  Inf  Inf]' * ones(1,mpcParams.N+1)                    # upper bounds
     #modelParams.c0              = [0.5431, 1.2767, 2.1516, -2.4169]         # BARC-specific parameters (measured)
@@ -56,7 +55,7 @@ function InitializeParameters(mpcParams::MpcParams,trackCoeff::TrackCoeff,modelP
     modelParams.dt              = 0.1
 
     posInfo.s_start             = 0
-    posInfo.s_target            = 16.281192
+    posInfo.s_target            = 10.281192
 
     oldTraj.oldTraj             = zeros(buffersize,4,2)
     oldTraj.oldInput            = zeros(buffersize,2,2)
@@ -87,6 +86,7 @@ function InitializeModel(m::MpcModel,mpcParams::MpcParams,modelParams::ModelPara
 
     @variable( m.mdl, m.z_Ol[1:4,1:(N+1)])      # z = s, ey, epsi, v
     @variable( m.mdl, m.u_Ol[1:2,1:N])
+    @variable( m.mdl, 0 <= m.ParInt[1:1] <= 1)
 
     for i=1:2       # I don't know why but somehow the short method returns errors sometimes
         for j=1:N

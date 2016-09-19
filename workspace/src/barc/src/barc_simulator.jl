@@ -46,6 +46,7 @@ buffersize = 60000
 gps_meas = Measurements{Float64}(0,zeros(buffersize,1),zeros(buffersize,2))
 imu_meas = Measurements{Float64}(0,zeros(buffersize,1),zeros(buffersize,1))
 est_meas = Measurements{Float32}(0,zeros(Float32,buffersize,1),zeros(Float32,buffersize,4))
+cmd_log  = Measurements{Float64}(0,zeros(buffersize,1),zeros(buffersize,2))
 z_real   = Measurements{Float64}(0,zeros(buffersize,1),zeros(buffersize,4))
 
 function simModel(z,u,dt,l_A,l_B)
@@ -57,21 +58,24 @@ function simModel(z,u,dt,l_A,l_B)
     bta = atan(l_A/(l_A+l_B)*tan(u[2]))
 
     zNext = z
-    zNext[1] = z[1] + dt*(z[4]*cos(z[3]+bta))       # x
+    zNext[1] = z[1] + dt*(z[4]*cos(z[3] + bta))       # x
     zNext[2] = z[2] + dt*(z[4]*sin(z[3] + bta))     # y
     zNext[3] = z[3] + dt*(z[4]/l_B*sin(bta))        # psi
     zNext[4] = z[4] + dt*(u[1] - 0.63 * z[4]^2 * sign(z[4]))                     # v
 
     # Add process noise (depending on velocity)
-    zNext = zNext + 0.01*diagm([0.01*z[4],0.01*z[4],0.001,0.01*z[4]])*randn(4,1)
+    zNext = zNext + 0.0*diagm([0.01*z[4],0.01*z[4],0.001,0.01*z[4]])*randn(4,1)
 
     return zNext
 end
 
 
 function ECU_callback(msg::ECU)
-    global u_current
-    u_current = [msg.motor, msg.servo] 
+    global u_current, t0
+    u_current = [msg.motor, msg.servo]
+    cmd_log.i += 1
+    cmd_log.t[cmd_log.i] = time()-t0
+    cmd_log.z[cmd_log.i,:] = u_current'
 end
 
 function est_callback(msg::Z_KinBkMdl)
@@ -176,13 +180,14 @@ function main()
     clean_up(gps_meas)
     clean_up(est_meas)
     clean_up(imu_meas)
+    clean_up(cmd_log)
     z_real.z[1:i-1,:] = z_current[1:i-1,:]
     z_real.i = i
     clean_up(z_real)
 
     # Save simulation data to file
     log_path = "$(homedir())/simulations/output.jld"
-    save(log_path,"gps_meas",gps_meas,"z",z_real,"estimate",est_meas,"imu_meas",imu_meas)
+    save(log_path,"gps_meas",gps_meas,"z",z_real,"estimate",est_meas,"imu_meas",imu_meas,"cmd_log",cmd_log)
     println("Exiting node... Saving data to $log_path. Simulated $((i-1)*dt) seconds.")
     #writedlm(log_path,z_current[1:i-1,:])
 end
