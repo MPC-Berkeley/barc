@@ -32,7 +32,7 @@ end
 
 function InitializeParameters(mpcParams::MpcParams,trackCoeff::TrackCoeff,modelParams::ModelParams,
                                 posInfo::PosInfo,oldTraj::OldTrajectory,mpcCoeff::MpcCoeff,lapStatus::LapStatus,buffersize::Int64)
-    mpcParams.N                 = 15
+    mpcParams.N                 = 10
     mpcParams.nz                = 4
     mpcParams.Q                 = [0.0,10.0,1.0,1.0]       # put weights on ey, epsi and v
     mpcParams.R                 = 0.1*[1.0,1.0]                 # put weights on a and d_f
@@ -45,7 +45,7 @@ function InitializeParameters(mpcParams::MpcParams,trackCoeff::TrackCoeff,modelP
     trackCoeff.width            = 0.4                 # width of the track (0.5m)
 
     modelParams.u_lb            = [-1.0 -pi/6]' * ones(1,mpcParams.N)                    # lower bounds on steering
-    modelParams.u_ub            = [1.0   pi/6]' * ones(1,mpcParams.N)                    # upper bounds
+    modelParams.u_ub            = [2.0   pi/6]' * ones(1,mpcParams.N)                    # upper bounds
     modelParams.z_lb            = [-Inf -trackCoeff.width/2 -Inf -Inf]' * ones(1,mpcParams.N+1)                    # lower bounds on states
     modelParams.z_ub            = [Inf   trackCoeff.width/2  Inf  Inf]' * ones(1,mpcParams.N+1)                    # upper bounds
     #modelParams.c0              = [0.5431, 1.2767, 2.1516, -2.4169]         # BARC-specific parameters (measured)
@@ -55,7 +55,7 @@ function InitializeParameters(mpcParams::MpcParams,trackCoeff::TrackCoeff,modelP
     modelParams.dt              = 0.1
 
     posInfo.s_start             = 0
-    posInfo.s_target            = 13.20#10.281192
+    posInfo.s_target            = 25.62#13.20#10.281192
 
     oldTraj.oldTraj             = zeros(buffersize,4,2)
     oldTraj.oldInput            = zeros(buffersize,2,2)
@@ -96,12 +96,12 @@ function InitializeModel(m::MpcModel,mpcParams::MpcParams,modelParams::ModelPara
             setupperbound(m.u_Ol[i,j], modelParams.u_ub[i,j])
         end
     end
-    for i=1:4       # I don't know why but somehow the short method returns errors sometimes
-        for j=1:N+1
-            setlowerbound(m.z_Ol[i,j], modelParams.z_lb[i,j])
-            setupperbound(m.z_Ol[i,j], modelParams.z_ub[i,j])
-        end
-    end
+    # for i=1:4
+    #     for j=1:N+1
+    #         setlowerbound(m.z_Ol[i,j], modelParams.z_lb[i,j])
+    #         setupperbound(m.z_Ol[i,j], modelParams.z_ub[i,j])
+    #     end
+    # end
     #@variable( m.mdl, 1 >= m.ParInt >= 0 )
 
     @NLparameter(m.mdl, m.z0[i=1:4] == z_Init[i])
@@ -141,4 +141,15 @@ function simModel(zNext::Array{Float64},z::Array{Float64},u::Array{Float64},dt::
     zNext[4] = z[4] + dt*(u[1] - 0.63 * z[4]^2 * sign(z[4]))                     # v
 
     nothing
+end
+
+function extendOldTraj(oldTraj::OldTrajectory,posInfo::PosInfo,zCurr::Array{Float64,2})
+    #println(size(zCurr[1:21,:]))
+    #println(size(oldTraj.oldTraj[oldTraj.oldCost[1]:oldTraj.oldCost[1]+20,1:4,1]))
+    for i=1:4
+        for j=1:50
+            oldTraj.oldTraj[oldTraj.oldCost[1]+j-1,i,1] = zCurr[j,i]
+        end
+    end
+    oldTraj.oldTraj[oldTraj.oldCost[1]:oldTraj.oldCost[1]+49,1,1] += posInfo.s_target
 end

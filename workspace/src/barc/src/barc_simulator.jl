@@ -64,7 +64,7 @@ function simModel(z,u,dt,l_A,l_B)
     zNext[4] = z[4] + dt*(u[1] - 0.63 * z[4]^2 * sign(z[4]))                     # v
 
     # Add process noise (depending on velocity)
-    zNext = zNext + 0.0*diagm([0.01*z[4],0.01*z[4],0.001,0.01*z[4]])*randn(4,1)
+    zNext = zNext + 0*diagm([0.01*z[4],0.01*z[4],0.001,0.01*z[4]])*randn(4,1)
 
     return zNext
 end

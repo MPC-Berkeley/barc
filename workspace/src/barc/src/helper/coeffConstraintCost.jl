@@ -115,7 +115,7 @@ function coeffConstraintCost(oldTraj::OldTrajectory, lapStatus::LapStatus, mpcCo
         idx_s_target = find(oldS[:,i].>s_target)[1]
         dist_to_s_target = (idx_s_target - IndexBezierS)
         # println("dist_to_s_target $i = $dist_to_s_target")
-        #dist_to_s_target = dist_to_s_target + 30
+        dist_to_s_target = dist_to_s_target + 30
 
         bQfunction_Vector = zeros(pLength+1,1)
         # Select the part needed for the interpolation

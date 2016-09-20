@@ -25,7 +25,7 @@ function eval_sim()
     track = create_track(0.2)
     hold(1)
     plot(z.z[:,1],z.z[:,2],"-",gps_meas.z[:,1]/100,gps_meas.z[:,2]/100,".",est.z[:,1],est.z[:,2],"-")
-    plot(track[:,1],track[:,2],track[:,3],track[:,4],track[:,5],track[:,6])
+    plot(track[:,1],track[:,2],"b-",track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")
     grid(1)
     legend(["real state","GPS meas","estimate"])
     figure()
@@ -52,17 +52,21 @@ function eval_LMPC()
     cost    = d["cost"]
     curv    = d["curv"]
     plot(oldTraj[:,1,1,1],oldTraj[:,2:4,1,1],"-o")
-    legend([""])
+    legend(["e_y","e_psi","v"])
     grid(1)
     figure()
+    ax1=subplot(211)
     plot(t,state)
+    legend(["s","e_y","e_psi","v"])
     grid(1)
+    #figure()
+    subplot(212,sharex = ax1)
     plot(t,cost)
     grid(1)
     legend(["costZ","costZTerm","constZTerm","derivCost","controlCost","laneCost"])
     figure()
     plot(t,curv)
-    legend(["1","2","3","4","5","6","7"])
+    legend(["1","2","3","4","5","6","7","8","9"])
 end
 
 function anim_MPC(z)
@@ -107,38 +111,45 @@ function create_track(w)
     x_r = [0.0]           # starting point
     y_r = [-w]
     ds = 0.06
-    theta = 0.0
-    d_theta = 0.0
 
-    N = 40
+    theta = [0.0]
 
-    halfcircle = sum(1:N)
+    add_curve(theta,10,0.0)
+    add_curve(theta,50,-2*pi/3)
+    add_curve(theta,70,pi)
+    add_curve(theta,60,-5*pi/6)
+    add_curve(theta,10,0.0)
+    add_curve(theta,30,-pi/2)
+    add_curve(theta,40,0.0)
+    add_curve(theta,20,-pi/4)
+    add_curve(theta,20,pi/4)
+    add_curve(theta,50,-pi/2)
+    add_curve(theta,22,0.0)
+    add_curve(theta,30,-pi/2)
+    add_curve(theta,14,0.0)
 
-    for i=0:219
-            if i < 10
-                d_theta = 0
-            elseif i < 51
-                d_theta = d_theta + pi/(2*halfcircle+N)
-            elseif i < 90
-                d_theta = d_theta - pi/(2*halfcircle+N)
-            elseif i < 120
-                d_theta = 0#d_theta + pi / halfcircle
-            elseif i < 161
-                d_theta = d_theta + pi/(2*halfcircle+N)
-            elseif i < 200
-                d_theta = d_theta - pi/(2*halfcircle+N)
-            else
-                d_theta = 0
-            end
-            theta = theta + d_theta
-            push!(x, x[end] + cos(theta)*ds)
-            push!(y, y[end] + sin(theta)*ds)
-            push!(x_l, x[end-1] + cos(theta+pi/2)*w)
-            push!(y_l, y[end-1] + sin(theta+pi/2)*w)
-            push!(x_r, x[end-1] + cos(theta-pi/2)*w)
-            push!(y_r, y[end-1] + sin(theta-pi/2)*w)
+    for i=1:length(theta)
+            push!(x, x[end] + cos(theta[i])*ds)
+            push!(y, y[end] + sin(theta[i])*ds)
+            push!(x_l, x[end-1] + cos(theta[i]+pi/2)*w)
+            push!(y_l, y[end-1] + sin(theta[i]+pi/2)*w)
+            push!(x_r, x[end-1] + cos(theta[i]-pi/2)*w)
+            push!(y_r, y[end-1] + sin(theta[i]-pi/2)*w)
     end
     track = cat(2, x, y, x_l, y_l, x_r, y_r)
     return track
     #plot(x,y,x_l,y_l,x_r,y_r)
+end
+
+function add_curve(theta::Array{Float64}, length::Int64, angle)
+    d_theta = 0
+    curve = 2*sum(1:length/2)+length/2
+    for i=0:length-1
+        if i < length/2+1
+            d_theta = d_theta + angle / curve
+        else
+            d_theta = d_theta - angle / curve
+        end
+        push!(theta, theta[end] + d_theta)
+    end
 end

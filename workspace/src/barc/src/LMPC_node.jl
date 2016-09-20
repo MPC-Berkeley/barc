@@ -145,6 +145,10 @@ function main()
                 switchLap = true
             end
 
+            # if we are at least in the 2nd lap, concatenate the beginning to the end of the previous track
+            if lapStatus.currentLap > 1 && lapStatus.currentIt == 80
+                extendOldTraj(oldTraj,posInfo,zCurr)
+            end
 
             #  ======================================= Calculate input =======================================
             println("======================================== NEW ITERATION # $i ========================================")

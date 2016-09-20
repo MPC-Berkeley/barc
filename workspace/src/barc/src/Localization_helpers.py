@@ -7,6 +7,17 @@ def create_circle(rad,n,c):
     y = rad*sin(ang)+c[1]
     return array([x,y])
 
+def add_curve(theta, length, angle):
+    d_theta = 0
+    curve = 2*sum(arange(1,length/2+1,1))+length/2
+    for i in range(0,length):
+        if i < length/2+1:
+            d_theta = d_theta + angle / curve
+        else:
+            d_theta = d_theta - angle / curve
+        theta = hstack((theta,theta[-1] + d_theta))
+    return theta
+
 class Localization:
     n                   = 0                     # number of nodes
     c                   = 0                     # center of circle (in case of circular trajectory)
@@ -47,35 +58,31 @@ class Localization:
         x = array([0])           # starting point
         y = array([0])
         ds = 0.06
-        theta = 0
-        d_theta = 0
+        theta = array([0])
 
-        N = 40
+        theta = add_curve(theta,10,0)
+        theta = add_curve(theta,50,-2*pi/3)
+        theta = add_curve(theta,70,pi)
+        theta = add_curve(theta,60,-5*pi/6)
+        theta = add_curve(theta,10,0)
+        theta = add_curve(theta,30,-pi/2)
+        theta = add_curve(theta,40,0)
+        theta = add_curve(theta,20,-pi/4)
+        theta = add_curve(theta,20,pi/4)
+        theta = add_curve(theta,50,-pi/2)
+        theta = add_curve(theta,22,0)
+        theta = add_curve(theta,30,-pi/2)
+        theta = add_curve(theta,14,0)
 
-        halfcircle = sum(arange(1,N+1,1))
-
-        for i in range(0,220):
-            if i < 10:
-                d_theta = 0
-            elif i < 51:
-                d_theta = d_theta + pi/(2*halfcircle+N)
-            elif i < 90:
-                d_theta = d_theta - pi/(2*halfcircle+N)
-            elif i < 120:
-                d_theta = 0#d_theta + pi / halfcircle
-            elif i < 161:
-                d_theta = d_theta + pi/(2*halfcircle+N)
-            elif i < 200:
-                d_theta = d_theta - pi/(2*halfcircle+N)
-            else:
-                d_theta = 0
-            theta = theta + d_theta
-            x = hstack((x, x[-1] + cos(theta)*ds))
-            y = hstack((y, y[-1] + sin(theta)*ds))
+        for i in range(0,size(theta)):
+            x = hstack((x, x[-1] + cos(theta[i])*ds))
+            y = hstack((y, y[-1] + sin(theta[i])*ds))
 
         self.nodes = array([x,y])
         self.ds = ds
         self.n = size(x)
+        print "number of nodes: %i"%self.n
+        print "length : %f"%((self.n-1)*ds)
 
     def create_racetrack(self,L=1.0,b=1.0,ds=0.5,c=array([0,0]),ang=0):     # problem: points are not equidistant at connecing points
         x = linspace(0,L/2.0,5)#arange(0,L/2.0,ds)                                          # otherwise: would create a racetrack with parallel lines

@@ -43,7 +43,7 @@ def localization_node():
     #l.create_racetrack(2.0,2.0,0.2,array([0.0,-1.0]),0)
     l.create_track()
     # l.create_ellipse(1.5,0.8,100,array([2.8,1.6]))
-    #l.prepare_trajectory(0.063)
+    # l.prepare_trajectory(0.063)
 
     # set node rate
     loop_rate   = 50
