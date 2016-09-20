@@ -27,6 +27,7 @@ function solveMpcProblem(mdl::MpcModel,mpcSol::MpcSol,mpcCoeff::MpcCoeff,mpcPara
     v_ref           = mpcParams.vPathFollowing
 
     sol_u::Array{Float64,2}
+    sol_z::Array{Float64,2}
 
     println("************************************** MPC SOLVER **************************************")
     println("zCurr    = $(zCurr')")
@@ -68,26 +69,20 @@ function solveMpcProblem(mdl::MpcModel,mpcSol::MpcSol,mpcCoeff::MpcCoeff,mpcPara
     if lapStatus.currentLap > 2    # if at least in the 3rd lap
               # termStateErr =       (mdl.ParInt[1]*polyval(coeffTermCons[j], nPolyOrderTermCons, ZOlGlobal[Hp*nz+5]) +
               #               + (1 - mdl.ParInt[1])*polyval(coeffTermCons_1[j], nPolyOrderTermCons, ZOlGlobal[Hp*nz+5])) - ZOlGlobal[Hp*nz+j];
-        @NLexpression(mdl.mdl, constZTerm, 10*(sum{(mdl.ParInt[1]*sum{coeffTermConst[i,1,j]*mdl.z_Ol[1,N+1]^(order+1-i),i=1:order+1}+
+        @NLexpression(mdl.mdl, constZTerm, 100*(sum{(mdl.ParInt[1]*sum{coeffTermConst[i,1,j]*mdl.z_Ol[1,N+1]^(order+1-i),i=1:order+1}+
                                         (1-mdl.ParInt[1])*sum{coeffTermConst[i,2,j]*mdl.z_Ol[1,N+1]^(order+1-i),i=1:order+1}-mdl.z_Ol[j+1,N+1])^2,j=1:3}))
     elseif lapStatus.currentLap == 2        # if in the 2nd lap
         # termStateErr =       polyval(coeffTermCons[j], nPolyOrderTermCons, ZOlGlobal[Hp*nz+5]) - ZOlGlobal[Hp*nz+j];
-        @NLexpression(mdl.mdl, constZTerm, 10*sum{(sum{coeffTermConst[i,1,j]*mdl.z_Ol[1,N+1]^(order+1-i),i=1:order+1}-mdl.z_Ol[j+1,N+1])^2,j=1:3})
+        @NLexpression(mdl.mdl, constZTerm, 100*sum{(sum{coeffTermConst[i,1,j]*mdl.z_Ol[1,N+1]^(order+1-i),i=1:order+1}-mdl.z_Ol[j+1,N+1])^2,j=1:3})
     end
 
     # Terminal cost
     # ---------------------------------
     if lapStatus.currentLap > 2     # if at least in the 3rd lap
-        # costZTerm =     mdl.ParInt[1]*polyval(coeffTermCost, nPolyOrderTermCost, ZOlGlobal[Hp*nz+5]) +
-        #            + (1-mdl.ParInt[1])*polyval(coeffTermCost_1, nPolyOrderTermCost, ZOlGlobal[Hp*nz+5]);
         @NLexpression(mdl.mdl, costZTerm, mdl.ParInt[1]*sum{coeffTermCost[i,1]*mdl.z_Ol[1,N+1]^(order+1-i),i=1:order+1}+
                                   (1-mdl.ParInt[1])*sum{coeffTermCost[i,2]*mdl.z_Ol[1,N+1]^(order+1-i),i=1:order+1})
-        #@NLexpression(mdl.mdl, costZTerm, costZTerm_h * (0.5-0.5*tanh(50*(mdl.z_Ol[1,N+1]+s_start-s_target))))
-            # line above not necessary since the polynomial goes to zero anyways!
     elseif lapStatus.currentLap == 2         # if we're in the second second lap
-        # costZTerm =     polyval(coeffTermCost, nPolyOrderTermCost, ZOlGlobal[Hp*nz+5]);
         @NLexpression(mdl.mdl, costZTerm, sum{coeffTermCost[i,1]*mdl.z_Ol[1,N+1]^(order+1-i),i=1:order+1})
-        #@NLexpression(mdl.mdl, costZTerm, costZTerm_h * (0.5-0.5*tanh(50*(mdl.z_Ol[1,N+1]+s_start-s_target))))
     end
 
     # State cost
@@ -134,6 +129,9 @@ function solveMpcProblem(mdl::MpcModel,mpcSol::MpcSol,mpcCoeff::MpcCoeff,mpcPara
     #mpcSol      = MpcSol(sol_u[1,1],sol_u[2,1],sol_status,getvalue(mdl.u_Ol),getvalue(mdl.z_Ol),[getvalue(costZ),getvalue(costZTerm),getvalue(constZTerm),getvalue(derivCost),getvalue(controlCost),getvalue(laneCost)])
     mpcSol.a_x = sol_u[1,1]
     mpcSol.d_f = sol_u[2,1]
+    mpcSol.u   = sol_u
+    mpcSol.z   = sol_z
+    mpcSol.cost = [getvalue(costZ) getvalue(costZTerm) getvalue(constZTerm) getvalue(derivCost) getvalue(controlCost) getvalue(laneCost)]
     #mpcSol = MpcSol(sol_u[1,1],sol_u[2,1]) # Fast version without logging
     #println(getvalue(costZTerm))
     #println(getvalue(mdl.z_Ol[1,N+1]))

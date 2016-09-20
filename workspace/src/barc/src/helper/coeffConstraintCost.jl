@@ -18,7 +18,6 @@ function coeffConstraintCost(oldTraj::OldTrajectory, lapStatus::LapStatus, mpcCo
     # coeffCost
 
     # Read Inputs
-    tic()
     lapNumber       = lapStatus.currentLap
 
     s_start         = posInfo.s_start
@@ -61,11 +60,6 @@ function coeffConstraintCost(oldTraj::OldTrajectory, lapStatus::LapStatus, mpcCo
         # Compute the index
         DistS = ( s_total - oldS ).^2
 
-
-        tt=toq()
-        println("Loading parameters: $tt")
-        tic()
-
         idx_s = findmin(DistS,1)[2]              # contains both indices for the closest distances for both oldS !!
 
         vec_range = (idx_s[1]:idx_s[1]+pLength,idx_s[2]:idx_s[2]+pLength)
@@ -78,9 +72,6 @@ function coeffConstraintCost(oldTraj::OldTrajectory, lapStatus::LapStatus, mpcCo
         end
     # bS_Vector       = cat(2, oldS[vec_range[1]],    oldS[vec_range[2]])
 
-    tt = toq()
-    println("2nd: $tt")
-    tic()
     println("************************************** COEFFICIENTS **************************************")
     println("idx_s[1]  = $(idx_s[1]), idx_s[2] = $(idx_s[2])")
     println("s_total   = $s_total")
@@ -103,18 +94,12 @@ function coeffConstraintCost(oldTraj::OldTrajectory, lapStatus::LapStatus, mpcCo
     end
     
     # Compute the coefficients
-    println("Calculating coefficients...")
     coeffConst = zeros(Order+1,2,3)
     for i=1:2
         coeffConst[:,i,1]    = MatrixInterp[:,:,i]\oldeY[vec_range[i]]
         coeffConst[:,i,2]    = MatrixInterp[:,:,i]\oldePsi[vec_range[i]]
         coeffConst[:,i,3]    = MatrixInterp[:,:,i]\oldV[vec_range[i]]
     end
-    println("Done.")
-    
-    tt = toq()
-    println("3rd: $tt")
-    tic()
 
     # Finished with calculating the constraint coefficients
     
@@ -149,8 +134,6 @@ function coeffConstraintCost(oldTraj::OldTrajectory, lapStatus::LapStatus, mpcCo
         coeffCost[:,i]      = MatrixInterp[:,:,i]\bQfunction_Vector
 
     end
-    tt = toq()
-    println("4th: $tt")
 
     mpcCoeff.coeffCost = coeffCost
     mpcCoeff.coeffConst = coeffConst

@@ -40,8 +40,8 @@ function InitializeParameters(mpcParams::MpcParams,trackCoeff::TrackCoeff,modelP
     mpcParams.QderivU           = 1*[1,10]                 # cost matrix for derivative cost of inputs
     mpcParams.vPathFollowing    = 0.8
 
-    trackCoeff.coeffCurvature   = [0.0,0.0,0.0,0.0,0.0]         # polynomial coefficients for curvature approximation (zeros for straight line)
-    trackCoeff.nPolyCurvature   = 4                   # 4th order polynomial for curvature approximation
+    trackCoeff.nPolyCurvature   = 6                   # 4th order polynomial for curvature approximation
+    trackCoeff.coeffCurvature   = zeros(trackCoeff.nPolyCurvature+1)         # polynomial coefficients for curvature approximation (zeros for straight line)
     trackCoeff.width            = 0.4                 # width of the track (0.5m)
 
     modelParams.u_lb            = [-1.0 -pi/6]' * ones(1,mpcParams.N)                    # lower bounds on steering
@@ -81,6 +81,8 @@ function InitializeModel(m::MpcModel,mpcParams::MpcParams,modelParams::ModelPara
     z_ub = modelParams.z_ub
 
     N    = mpcParams.N
+
+    n_poly_curv = trackCoeff.nPolyCurvature         # polynomial degree of curvature approximation
     
     m.mdl = Model(solver = IpoptSolver(print_level=0,max_cpu_time=0.1))#,linear_solver="ma57",print_user_options="yes"))
 
@@ -99,9 +101,10 @@ function InitializeModel(m::MpcModel,mpcParams::MpcParams,modelParams::ModelPara
     @NLparameter(m.mdl, m.z0[i=1:4] == z_Init[i])
     @NLconstraint(m.mdl, [i=1:4], m.z_Ol[i,1] == m.z0[i])
 
-    @NLparameter(m.mdl, m.coeff[i=1:length(trackCoeff.coeffCurvature)] == trackCoeff.coeffCurvature[i]);
+    @NLparameter(m.mdl, m.coeff[i=1:n_poly_curv+1] == trackCoeff.coeffCurvature[i]);
 
-    @NLexpression(m.mdl, m.c[i = 1:N],    m.coeff[1]*m.z_Ol[1,i]^4+m.coeff[2]*m.z_Ol[1,i]^3+m.coeff[3]*m.z_Ol[1,i]^2+m.coeff[4]*m.z_Ol[1,i]+m.coeff[5])
+    #@NLexpression(m.mdl, m.c[i = 1:N],    m.coeff[1]*m.z_Ol[1,i]^4+m.coeff[2]*m.z_Ol[1,i]^3+m.coeff[3]*m.z_Ol[1,i]^2+m.coeff[4]*m.z_Ol[1,i]+m.coeff[5])
+    @NLexpression(m.mdl, m.c[i = 1:N],    sum{m.coeff[j]*m.z_Ol[1,i]^(n_poly_curv-j+1),j=1:n_poly_curv} + m.coeff[n_poly_curv+1])
     @NLexpression(m.mdl, m.bta[i = 1:N],  atan( L_a / (L_a + L_b) * tan( m.u_Ol[2,i] ) ) )
     @NLexpression(m.mdl, m.dsdt[i = 1:N], m.z_Ol[4,i]*cos(m.z_Ol[3,i]+m.bta[i])/(1-m.z_Ol[2,i]*m.c[i]))
 

@@ -27,14 +27,16 @@ end
 
 function main()
     println("now starting the node")
-    # initiate node, set up publisher / subscriber topics
-    init_node("mpc_traj")
-    loop_rate = Rate(10)
 
-    buffersize                  = 700
+    buffersize                  = 700       # size of oldTraj buffers
 
     # Create data to be saved
-    save_oldTraj = zeros(buffersize,4,2,20)  # max. 10 laps
+    log_oldTraj = zeros(buffersize,4,2,20)  # max. 10 laps
+    log_t       = zeros(10000,1)
+    log_state   = zeros(10000,4)
+    log_sol_z   = zeros(11,4,10000)
+    log_sol_u   = zeros(10,2,10000)
+    log_cost    = zeros(10000,6)
 
     # Define and initialize variables
     oldTraj                     = OldTrajectory()
@@ -47,16 +49,21 @@ function main()
     mpcParams                   = MpcParams()
 
     z_est                       = zeros(4)
-    coeffCurvature_update       = zeros(5)
     s_start_update              = [0.0]
     cmd                         = ECU(0.0,0.0)
 
+    InitializeParameters(mpcParams,trackCoeff,modelParams,posInfo,oldTraj,mpcCoeff,lapStatus,buffersize)
+
+    coeffCurvature_update       = zeros(trackCoeff.nPolyCurvature+1)
+    log_curv                    = zeros(10000,trackCoeff.nPolyCurvature+1)
+    # Initialize ROS node and topics
+    init_node("mpc_traj")
+    loop_rate = Rate(10)
     pub                         = Publisher("ecu", ECU, queue_size=10)
     pub2                        = Publisher("logging", Logging, queue_size=10)
     # The subscriber passes 3 arguments (s_start, coeffCurvature and z_est) which are updated by the callback function:
     s1                          = Subscriber("pos_info", pos_info, SE_callback, (s_start_update,coeffCurvature_update,z_est,),queue_size=10)
 
-    InitializeParameters(mpcParams,trackCoeff,modelParams,posInfo,oldTraj,mpcCoeff,lapStatus,buffersize)
     println("Finished initialization.")
     # Lap parameters
     switchLap                   = false     # initialize lap lap trigger
@@ -84,6 +91,8 @@ function main()
     solve(mdl.mdl)
     println("Finished.")
 
+    t0 = time()
+    k = 0
     while ! is_shutdown()
         if z_est[1] > 0         # check if data has been received (s > 0) 
             println("Received data: z_est = $z_est")
@@ -107,7 +116,7 @@ function main()
                 println("Saving data")
                 tic()
                 saveOldTraj(oldTraj,zCurr,uCurr,lapStatus,buffersize,modelParams.dt)
-                save_oldTraj[:,:,:,lapStatus.currentLap] = oldTraj.oldTraj[:,:,:]
+                log_oldTraj[1:i,:,:,lapStatus.currentLap] = oldTraj.oldTraj[1:i,:,:]
                 zCurr[1,:] = zCurr[i,:]         # reset counter to 1 and set current state
                 uCurr[1,:] = uCurr[i+1,:]       # ... and input
                 i                     = 1       
@@ -145,7 +154,7 @@ function main()
             end
             tt = toq()
             println("Finished coefficients, t = $tt s")
-            #println("Found coefficients: mpcCoeff = $mpcCoeff")
+
             # Solve the MPC problem
             tic()
             solveMpcProblem(mdl,mpcSol,mpcCoeff,mpcParams,trackCoeff,lapStatus,posInfo,modelParams,zCurr[i,:]',uCurr[i,:]')
@@ -160,7 +169,16 @@ function main()
 
             zCurr[i,1] = (posInfo.s_start + posInfo.s)%posInfo.s_target   # save absolute position in s (for oldTrajectory)
             println("\n")
-        
+
+            # Logging
+            k = k + 1       # counter
+            log_state[k,:] = z_est
+            log_t[k] = time() - t0
+            log_sol_z[:,:,k] = mpcSol.z'
+            log_sol_u[:,:,k] = mpcSol.u'
+            log_cost[k,:]    = mpcSol.cost
+            log_curv[k,:]    = trackCoeff.coeffCurvature
+
         else
             println("No estimation data received!")
         end
@@ -169,7 +187,7 @@ function main()
     # Save simulation data to file
 
     log_path = "$(homedir())/simulations/output_LMPC.jld"
-    save(log_path,"oldTraj",save_oldTraj)
+    save(log_path,"oldTraj",log_oldTraj,"state",log_state[1:k,:],"t",log_t[1:k],"sol_z",log_sol_z[:,:,1:k],"sol_u",log_sol_u[:,:,1:k],"cost",log_cost[1:k,:],"curv",log_curv[1:k,:])
     println("Exiting LMPC node. Saved data.")
 
 end

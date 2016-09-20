@@ -9,9 +9,9 @@ type Measurements{T}
 end
 
 
-log_path = "$(homedir())/simulations/output.jld"
-log_path_LMPC = "$(homedir())/simulations/LMPC_output.jld"
-log_path_profile = "$(homedir())/simulations/profile.jlprof"
+const log_path          = "$(homedir())/simulations/output.jld"
+const log_path_LMPC     = "$(homedir())/simulations/output_LMPC.jld"
+const log_path_profile  = "$(homedir())/simulations/profile.jlprof"
 
 function eval_sim()
     d = load(log_path)
@@ -42,9 +42,52 @@ end
 function eval_LMPC()
     d = load(log_path_LMPC)
     oldTraj = d["oldTraj"]
+    t       = d["t"]
+    state   = d["state"]
+    sol_z   = d["sol_z"]
+    sol_u   = d["sol_u"]
+    cost    = d["cost"]
+    curv    = d["curv"]
     plot(oldTraj[:,:,1,1])
     grid(1)
+    figure()
+    plot(t,state)
+    grid(1)
+    plot(t,cost)
+    grid(1)
+    legend(["costZ","costZTerm","constZTerm","derivCost","controlCost","laneCost"])
+    figure()
+    plot(t,curv)
+    legend(["1","2","3","4","5","6","7"])
 end
+
+function anim_MPC(z)
+    figure()
+    hold(0)
+    grid(1)
+    for i=1:size(z,3)
+        plot(z[:,:,i])
+    xlim([1,11])
+    ylim([-2,2])
+        sleep(0.1)
+    end
+end
+
+function anim_curv(curv)
+    s = 0.0:.05:2.0
+    figure()
+    hold(0)
+    ss = [s.^6 s.^5 s.^4 s.^3 s.^2 s.^1 s.^0]
+    for i=1:size(curv,1)
+        c = ss*curv[i,:]'
+        plot(s,c)
+        xlim([0,2])
+        ylim([-1.5,1.5])
+        sleep(0.25)
+    end
+end
+
+
 
 function eval_prof()
     Profile.clear()
