@@ -35,14 +35,14 @@ function InitializeParameters(mpcParams::MpcParams,trackCoeff::TrackCoeff,modelP
     mpcParams.N                 = 10
     mpcParams.nz                = 4
     mpcParams.Q                 = [0.0,10.0,1.0,1.0]       # put weights on ey, epsi and v
-    mpcParams.R                 = [0.0,0.0]                 # put weights on a and d_f
+    mpcParams.R                 = 0.1*[1.0,1.0]                 # put weights on a and d_f
     mpcParams.QderivZ           = 0.0*[1,1,1,1]             # cost matrix for derivative cost of states
     mpcParams.QderivU           = 1*[1,10]                 # cost matrix for derivative cost of inputs
     mpcParams.vPathFollowing    = 0.8
 
-    trackCoeff.nPolyCurvature   = 6                   # 4th order polynomial for curvature approximation
+    trackCoeff.nPolyCurvature   = 8                   # 4th order polynomial for curvature approximation
     trackCoeff.coeffCurvature   = zeros(trackCoeff.nPolyCurvature+1)         # polynomial coefficients for curvature approximation (zeros for straight line)
-    trackCoeff.width            = 0.4                 # width of the track (0.5m)
+    trackCoeff.width            = 0.8                 # width of the track (0.5m)
 
     modelParams.u_lb            = [-1.0 -pi/6]' * ones(1,mpcParams.N)                    # lower bounds on steering
     modelParams.u_ub            = [1.0   pi/6]' * ones(1,mpcParams.N)                    # upper bounds
@@ -55,7 +55,7 @@ function InitializeParameters(mpcParams::MpcParams,trackCoeff::TrackCoeff,modelP
     modelParams.dt              = 0.1
 
     posInfo.s_start             = 0
-    posInfo.s_target            = 10.281192
+    posInfo.s_target            = 13.20#10.281192
 
     oldTraj.oldTraj             = zeros(buffersize,4,2)
     oldTraj.oldInput            = zeros(buffersize,2,2)
@@ -94,6 +94,12 @@ function InitializeModel(m::MpcModel,mpcParams::MpcParams,modelParams::ModelPara
         for j=1:N
             setlowerbound(m.u_Ol[i,j], modelParams.u_lb[i,j])
             setupperbound(m.u_Ol[i,j], modelParams.u_ub[i,j])
+        end
+    end
+    for i=1:4       # I don't know why but somehow the short method returns errors sometimes
+        for j=1:N+1
+            setlowerbound(m.z_Ol[i,j], modelParams.z_lb[i,j])
+            setupperbound(m.z_Ol[i,j], modelParams.z_ub[i,j])
         end
     end
     #@variable( m.mdl, 1 >= m.ParInt >= 0 )

@@ -17,8 +17,8 @@ class Localization:
     N_nodes_poly_front  = 40                    # number of nodes in front
     ds                  = 0                     # distance between nodes
     nPoints             = N_nodes_poly_front+N_nodes_poly_back+1    # number of points for interpolation in total
-    OrderXY             = 6                     # order of x-y-polynomial interpolation
-    OrderThetaCurv      = 6                     # order of theta interpolation
+    OrderXY             = 8                     # order of x-y-polynomial interpolation
+    OrderThetaCurv      = 8                     # order of theta interpolation
     closed              = True                  # open or closed trajectory?
 
     coeffX = 0
@@ -43,6 +43,40 @@ class Localization:
         self.rad    = rad
         #self.ds    = rad*2*pi/n
         self.ds     = 2*rad*tan(2*pi/n/2)
+    def create_track(self):
+        x = array([0])           # starting point
+        y = array([0])
+        ds = 0.06
+        theta = 0
+        d_theta = 0
+
+        N = 40
+
+        halfcircle = sum(arange(1,N+1,1))
+
+        for i in range(0,220):
+            if i < 10:
+                d_theta = 0
+            elif i < 51:
+                d_theta = d_theta + pi/(2*halfcircle+N)
+            elif i < 90:
+                d_theta = d_theta - pi/(2*halfcircle+N)
+            elif i < 120:
+                d_theta = 0#d_theta + pi / halfcircle
+            elif i < 161:
+                d_theta = d_theta + pi/(2*halfcircle+N)
+            elif i < 200:
+                d_theta = d_theta - pi/(2*halfcircle+N)
+            else:
+                d_theta = 0
+            theta = theta + d_theta
+            x = hstack((x, x[-1] + cos(theta)*ds))
+            y = hstack((y, y[-1] + sin(theta)*ds))
+
+        self.nodes = array([x,y])
+        self.ds = ds
+        self.n = size(x)
+
     def create_racetrack(self,L=1.0,b=1.0,ds=0.5,c=array([0,0]),ang=0):     # problem: points are not equidistant at connecing points
         x = linspace(0,L/2.0,5)#arange(0,L/2.0,ds)                                          # otherwise: would create a racetrack with parallel lines
         s = size(x)
