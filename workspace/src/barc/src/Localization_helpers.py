@@ -235,7 +235,7 @@ class Localization:
 
 
         # Calculate s
-        discretization = 0.01                           # discretization to calculate s
+        discretization = 0.001                           # discretization to calculate s
         s_idx_start = max(0,idx_min-1)                  # where the discretization starts
         if self.closed and s_idx_start-idx_start<0:
             s_idx_start = s_idx_start + n

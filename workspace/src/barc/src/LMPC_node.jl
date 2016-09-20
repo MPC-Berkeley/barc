@@ -34,8 +34,6 @@ function main()
     log_oldTraj = zeros(buffersize,4,2,20)  # max. 10 laps
     log_t       = zeros(10000,1)
     log_state   = zeros(10000,4)
-    log_sol_z   = zeros(11,4,10000)
-    log_sol_u   = zeros(10,2,10000)
     log_cost    = zeros(10000,6)
 
     # Define and initialize variables
@@ -53,6 +51,9 @@ function main()
     cmd                         = ECU(0.0,0.0)
 
     InitializeParameters(mpcParams,trackCoeff,modelParams,posInfo,oldTraj,mpcCoeff,lapStatus,buffersize)
+
+    log_sol_z   = zeros(mpcParams.N+1,4,10000)
+    log_sol_u   = zeros(mpcParams.N,2,10000)
 
     coeffCurvature_update       = zeros(trackCoeff.nPolyCurvature+1)
     log_curv                    = zeros(10000,trackCoeff.nPolyCurvature+1)
@@ -91,13 +92,16 @@ function main()
     solve(mdl.mdl)
     println("Finished.")
 
+    pred_z = zeros(4,1)
+
     t0 = time()
     k = 0
     while ! is_shutdown()
-        if z_est[1] > 0         # check if data has been received (s > 0) 
-            println("Received data: z_est = $z_est")
-            println("curvature = $coeffCurvature_update")
-            println("s_start = $s_start_update")           
+        if z_est[1] > 0         # check if data has been received (s > 0)
+
+            # publish command from last calculation
+            cmd = ECU(mpcSol.a_x, mpcSol.d_f)
+            publish(pub, cmd)        
 
             # ============================= Initialize iteration parameters =============================
             lapStatus.currentIt += 1                            # count iteration
@@ -107,6 +111,11 @@ function main()
             posInfo.s           = z_est[1]                      # update position info
             posInfo.s_start     = s_start_update[1]
             trackCoeff.coeffCurvature = coeffCurvature_update
+
+            # Simulate model for next input
+            simModel(pred_z,zCurr[i,:]',uCurr[i,:]',modelParams.dt,modelParams.l_A,modelParams.l_B,trackCoeff.coeffCurvature)
+            # this simulation returns the predicted state at when the next command is going to be sent. This predicted state is used for
+            # the MPC control input calculation.
 
 
             # ======================================= Lap trigger =======================================
@@ -141,7 +150,7 @@ function main()
             println("======================================== NEW ITERATION # $i ========================================")
             println("Current Lap: $(lapStatus.currentLap), It: $(lapStatus.currentIt)")
             println("State Nr. $i    = $z_est")
-            println("Coeff Curvature = $(trackCoeff.coeffCurvature)")
+            #println("Coeff Curvature = $(trackCoeff.coeffCurvature)")
             println("posInfo         = $posInfo")
             println("s               = $(posInfo.s)")
             println("s_start         = $(posInfo.s_start)")
@@ -157,15 +166,15 @@ function main()
 
             # Solve the MPC problem
             tic()
-            solveMpcProblem(mdl,mpcSol,mpcCoeff,mpcParams,trackCoeff,lapStatus,posInfo,modelParams,zCurr[i,:]',uCurr[i,:]')
+            #solveMpcProblem(mdl,mpcSol,mpcCoeff,mpcParams,trackCoeff,lapStatus,posInfo,modelParams,zCurr[i,:]',uCurr[i,:]')
+            solveMpcProblem(mdl,mpcSol,mpcCoeff,mpcParams,trackCoeff,lapStatus,posInfo,modelParams,pred_z,uCurr[i,:]')
+
             tt = toq()
             # Write in current input information
             uCurr[i+1,:]  = [mpcSol.a_x mpcSol.d_f]
             #println("trackCoeff = $trackCoeff")
             println("Finished solving, status: $(mpcSol.solverStatus), u = $(uCurr[i,:]), t = $tt s")
             # ... and publish data
-            cmd = ECU(mpcSol.a_x, mpcSol.d_f)
-            publish(pub, cmd)
 
             zCurr[i,1] = (posInfo.s_start + posInfo.s)%posInfo.s_target   # save absolute position in s (for oldTrajectory)
             println("\n")
@@ -178,6 +187,7 @@ function main()
             log_sol_u[:,:,k] = mpcSol.u'
             log_cost[k,:]    = mpcSol.cost
             log_curv[k,:]    = trackCoeff.coeffCurvature
+            println("pred_z = $pred_z")
 
         else
             println("No estimation data received!")

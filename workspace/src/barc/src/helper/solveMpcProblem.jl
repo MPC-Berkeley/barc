@@ -29,11 +29,11 @@ function solveMpcProblem(mdl::MpcModel,mpcSol::MpcSol,mpcCoeff::MpcCoeff,mpcPara
     sol_u::Array{Float64,2}
     sol_z::Array{Float64,2}
 
-    println("************************************** MPC SOLVER **************************************")
-    println("zCurr    = $(zCurr')")
-    println("s_start  = $s_start")
-    println("s_target = $s_target")
-    println("s_total  = $((zCurr[1]+s_start)%s_target)")
+    # println("************************************** MPC SOLVER **************************************")
+    # println("zCurr    = $(zCurr')")
+    # println("s_start  = $s_start")
+    # println("s_target = $s_target")
+    # println("s_total  = $((zCurr[1]+s_start)%s_target)")
 
     # Create function-specific parameters
     z_Ref::Array{Float64,2}
@@ -58,7 +58,7 @@ function solveMpcProblem(mdl::MpcModel,mpcSol::MpcSol,mpcCoeff::MpcCoeff,mpcPara
 
     # Lane cost
     # ---------------------------------
-    @NLexpression(mdl.mdl, laneCost, 10*sum{((0.5+0.5*tanh(50*(mdl.z_Ol[2,i]-ey_max))) + (0.5-0.5*tanh(50*(mdl.z_Ol[2,i]+ey_max)))),i=1:N+1})
+    @NLexpression(mdl.mdl, laneCost, 10*sum{mdl.z_Ol[2,i]^2*((0.5+0.5*tanh(50*(mdl.z_Ol[2,i]-ey_max))) + (0.5-0.5*tanh(50*(mdl.z_Ol[2,i]+ey_max)))),i=1:N+1})
 
     # Control Input cost
     # ---------------------------------

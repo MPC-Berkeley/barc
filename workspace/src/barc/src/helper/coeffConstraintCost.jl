@@ -72,9 +72,9 @@ function coeffConstraintCost(oldTraj::OldTrajectory, lapStatus::LapStatus, mpcCo
         end
     # bS_Vector       = cat(2, oldS[vec_range[1]],    oldS[vec_range[2]])
 
-    println("************************************** COEFFICIENTS **************************************")
-    println("idx_s[1]  = $(idx_s[1]), idx_s[2] = $(idx_s[2])")
-    println("s_total   = $s_total")
+    # println("************************************** COEFFICIENTS **************************************")
+    # println("idx_s[1]  = $(idx_s[1]), idx_s[2] = $(idx_s[2])")
+    # println("s_total   = $s_total")
     # println("bS_Vector[1] = $(bS_Vector[:,:,1]')")
     # These matrices (above) contain two vectors each (for both old trajectories), stored in the 3rd dimension
     
@@ -85,7 +85,7 @@ function coeffConstraintCost(oldTraj::OldTrajectory, lapStatus::LapStatus, mpcCo
     if s_total - s_start < 0
         s_forinterpy += s_target
     end
-    println("s_forinterpy[:,1,1]' = $(s_forinterpy[:,1,1]')")
+    # println("s_forinterpy[:,1,1]' = $(s_forinterpy[:,1,1]')")
     # Create the Matrices for the interpolation
     MatrixInterp = zeros(pLength+1,Order+1,2)
 
@@ -114,7 +114,7 @@ function coeffConstraintCost(oldTraj::OldTrajectory, lapStatus::LapStatus, mpcCo
         IndexBezierS = idx_s[i] - (i-1)*N_points        # IndexBezierS is the index specifying the current position
         idx_s_target = find(oldS[:,i].>s_target)[1]
         dist_to_s_target = (idx_s_target - IndexBezierS)
-        println("dist_to_s_target $i = $dist_to_s_target")
+        # println("dist_to_s_target $i = $dist_to_s_target")
         #dist_to_s_target = dist_to_s_target + 30
 
         bQfunction_Vector = zeros(pLength+1,1)

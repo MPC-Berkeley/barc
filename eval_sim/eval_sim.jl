@@ -22,7 +22,7 @@ function eval_sim()
     z           = d["z"]
     cmd_log     = d["cmd_log"]
 
-    track = create_track(0.4)
+    track = create_track(0.2)
     hold(1)
     plot(z.z[:,1],z.z[:,2],"-",gps_meas.z[:,1]/100,gps_meas.z[:,2]/100,".",est.z[:,1],est.z[:,2],"-")
     plot(track[:,1],track[:,2],track[:,3],track[:,4],track[:,5],track[:,6])
@@ -51,7 +51,8 @@ function eval_LMPC()
     sol_u   = d["sol_u"]
     cost    = d["cost"]
     curv    = d["curv"]
-    plot(oldTraj[:,:,1,1],"-o")
+    plot(oldTraj[:,1,1,1],oldTraj[:,2:4,1,1],"-o")
+    legend([""])
     grid(1)
     figure()
     plot(t,state)

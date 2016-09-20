@@ -32,17 +32,17 @@ end
 
 function InitializeParameters(mpcParams::MpcParams,trackCoeff::TrackCoeff,modelParams::ModelParams,
                                 posInfo::PosInfo,oldTraj::OldTrajectory,mpcCoeff::MpcCoeff,lapStatus::LapStatus,buffersize::Int64)
-    mpcParams.N                 = 10
+    mpcParams.N                 = 15
     mpcParams.nz                = 4
     mpcParams.Q                 = [0.0,10.0,1.0,1.0]       # put weights on ey, epsi and v
     mpcParams.R                 = 0.1*[1.0,1.0]                 # put weights on a and d_f
     mpcParams.QderivZ           = 0.0*[1,1,1,1]             # cost matrix for derivative cost of states
     mpcParams.QderivU           = 1*[1,10]                 # cost matrix for derivative cost of inputs
-    mpcParams.vPathFollowing    = 0.8
+    mpcParams.vPathFollowing    = 1.0
 
     trackCoeff.nPolyCurvature   = 8                   # 4th order polynomial for curvature approximation
     trackCoeff.coeffCurvature   = zeros(trackCoeff.nPolyCurvature+1)         # polynomial coefficients for curvature approximation (zeros for straight line)
-    trackCoeff.width            = 0.8                 # width of the track (0.5m)
+    trackCoeff.width            = 0.4                 # width of the track (0.5m)
 
     modelParams.u_lb            = [-1.0 -pi/6]' * ones(1,mpcParams.N)                    # lower bounds on steering
     modelParams.u_ub            = [1.0   pi/6]' * ones(1,mpcParams.N)                    # upper bounds
@@ -84,7 +84,7 @@ function InitializeModel(m::MpcModel,mpcParams::MpcParams,modelParams::ModelPara
 
     n_poly_curv = trackCoeff.nPolyCurvature         # polynomial degree of curvature approximation
     
-    m.mdl = Model(solver = IpoptSolver(print_level=0,max_cpu_time=0.1))#,linear_solver="ma57",print_user_options="yes"))
+    m.mdl = Model(solver = IpoptSolver(print_level=0,max_cpu_time=0.05))#,linear_solver="ma57",print_user_options="yes"))
 
     @variable( m.mdl, m.z_Ol[1:4,1:(N+1)])      # z = s, ey, epsi, v
     @variable( m.mdl, m.u_Ol[1:2,1:N])
@@ -122,4 +122,23 @@ function InitializeModel(m::MpcModel,mpcParams::MpcParams,modelParams::ModelPara
         @NLconstraint(m.mdl, m.z_Ol[4,i+1]  == m.z_Ol[4,i] + dt*(c0[1]*m.u_Ol[1,i] - c0[2]*abs(m.z_Ol[4,i]) * m.z_Ol[4,i]))  # v
     end
 
+end
+
+function simModel(zNext::Array{Float64},z::Array{Float64},u::Array{Float64},dt::Float64,l_A::Float64,l_B::Float64,coeff::Array{Float64})
+
+   # kinematic bicycle model
+   # u[1] = acceleration
+   # u[2] = steering angle
+
+    s = z[1]
+    c = ([s.^8 s.^7 s.^6 s.^5 s.^4 s.^3 s.^2 s 1] * coeff'')[1]
+    bta = atan(l_A/(l_A+l_B)*tan(u[2]))
+    dsdt = z[4] *cos(z[3]+bta)/(1-z[2]*c)
+
+    zNext[1] = z[1] + dt*dsdt                       # s
+    zNext[2] = z[2] + dt*(z[4]*sin(z[3] + bta))     # y
+    zNext[3] = z[3] + dt*(z[4]/l_A*sin(bta)-dsdt*c)        # psi
+    zNext[4] = z[4] + dt*(u[1] - 0.63 * z[4]^2 * sign(z[4]))                     # v
+
+    nothing
 end

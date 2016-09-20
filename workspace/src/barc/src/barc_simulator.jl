@@ -102,6 +102,7 @@ function main()
     s2  = Subscriber("state_estimate", Z_KinBkMdl, est_callback, queue_size=10)
 
     z_current = zeros(60000,4)
+    z_current[1,:] = [0.1 0 0 0]
 
     dt = 0.01
     loop_rate = Rate(1/dt)
