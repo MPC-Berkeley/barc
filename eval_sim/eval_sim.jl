@@ -23,9 +23,10 @@ function eval_sim()
     cmd_log     = d["cmd_log"]
 
     track = create_track(0.2)
+    figure()
     hold(1)
     plot(z.z[:,1],z.z[:,2],"-",gps_meas.z[:,1]/100,gps_meas.z[:,2]/100,".",est.z[:,1],est.z[:,2],"-")
-    plot(track[:,1],track[:,2],"b-",track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")
+    plot(track[:,1],track[:,2],"b.",track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")
     grid(1)
     legend(["real state","GPS meas","estimate"])
     figure()
@@ -69,6 +70,12 @@ function eval_LMPC()
     legend(["1","2","3","4","5","6","7","8","9"])
 end
 
+function eval_oldTraj(i)
+    d = load(log_path_LMPC)
+    oldTraj = d["oldTraj"]
+    plot(oldTraj[:,1,1,i],oldTraj[:,2:4,1,i],"-o",oldTraj[:,1,2,i],oldTraj[:,2:4,2,i],"-*")
+end
+
 function anim_MPC(z)
     figure()
     hold(0)
@@ -77,7 +84,7 @@ function anim_MPC(z)
         plot(z[:,:,i])
     xlim([1,11])
     ylim([-2,2])
-        sleep(0.1)
+        sleep(0.01)
     end
 end
 
@@ -85,13 +92,14 @@ function anim_curv(curv)
     s = 0.0:.05:2.0
     figure()
     hold(0)
-    ss = [s.^8 s.^7 s.^6 s.^5 s.^4 s.^3 s.^2 s.^1 s.^0]
+    #ss = [s.^10 s.^9 s.^8 s.^7 s.^6 s.^5 s.^4 s.^3 s.^2 s.^1 s.^0]
+    ss = [s.^6 s.^5 s.^4 s.^3 s.^2 s.^1 s.^0]
     for i=1:size(curv,1)
         c = ss*curv[i,:]'
         plot(s,c)
         xlim([0,2])
         ylim([-1.5,1.5])
-        sleep(0.25)
+        sleep(0.1)
     end
 end
 
