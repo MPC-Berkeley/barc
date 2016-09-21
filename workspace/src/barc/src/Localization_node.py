@@ -11,7 +11,7 @@ import os
 from numpy import *
 from Localization_helpers import Localization
 from barc.msg import Z_KinBkMdl, pos_info
-
+import matplotlib.pyplot as plt
 
 l = 0
 epsi_prev = 0
@@ -46,6 +46,9 @@ def localization_node():
     #l.create_track2()
     # l.create_ellipse(1.5,0.8,100,array([2.8,1.6]))
     l.prepare_trajectory(0.06)
+    #plt.plot(l.nodes[0,:],l.nodes[1,:],'-o')
+    #print l.nodes
+    #plt.show()
 
     # set node rate
     loop_rate   = 50
@@ -56,7 +59,7 @@ def localization_node():
     while not rospy.is_shutdown():
 
         # publish information
-        state_pub.publish( pos_info(l.s,l.ey,l.epsi,l.v,l.s_start,l.coeffX,l.coeffY,l.coeffTheta,l.coeffCurvature) )
+        state_pub.publish( pos_info(l.s,l.ey,l.epsi,l.v,l.s_start,l.x,l.y,l.psi,l.coeffX,l.coeffY,l.coeffTheta,l.coeffCurvature) )
 
         # wait
         rate.sleep()

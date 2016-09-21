@@ -30,15 +30,15 @@ class Localization:
     psi                 = 0                     # current orientation
     nodes               = 0                     # all nodes are saved in a matrix
     N_nodes_poly_back   = 10                    # number of nodes behind current position
-    N_nodes_poly_front  = 40                    # number of nodes in front
+    N_nodes_poly_front  = 30                    # number of nodes in front
     ds                  = 0                     # distance between nodes
     nPoints             = N_nodes_poly_front+N_nodes_poly_back+1    # number of points for interpolation in total
     OrderXY             = 6                     # order of x-y-polynomial interpolation
-    OrderThetaCurv      = 6                     # order of theta interpolation
+    OrderThetaCurv      = 3                     # order of theta interpolation
     closed              = True                  # open or closed trajectory?
 
-    coeffX = 0
-    coeffY = 0
+    coeffX = zeros(11)
+    coeffY = zeros(11)
     coeffTheta = 0
     coeffCurvature = 0
 
@@ -47,6 +47,8 @@ class Localization:
     ey = 0                  # lateral distance to path
     epsi = 0                # error in psi (between current psi and trajectory tangent)
     v = 0                   # current velocity (not necessary for these calculations but for MPC)
+    x = 0
+    y = 0
 
     def create_circle(self,rad=1.0,n=100,c=array([0,0])):           # note: need to make sure that all points are equidistant!
         ang = linspace(0,2*pi-2*pi/n,n)
@@ -103,19 +105,26 @@ class Localization:
         ds = 0.06
         theta = array([0])
 
-        theta = add_curve(theta,10,0)
-        theta = add_curve(theta,50,-2*pi/3)
-        theta = add_curve(theta,70,pi)
-        theta = add_curve(theta,60,-5*pi/6)
-        theta = add_curve(theta,10,0)
-        theta = add_curve(theta,30,-pi/2)
-        theta = add_curve(theta,40,0)
-        theta = add_curve(theta,20,-pi/4)
-        theta = add_curve(theta,20,pi/4)
-        theta = add_curve(theta,50,-pi/2)
-        theta = add_curve(theta,22,0)
-        theta = add_curve(theta,30,-pi/2)
-        theta = add_curve(theta,14,0)
+        # theta = add_curve(theta,10,0)
+        # theta = add_curve(theta,50,-2*pi/3)
+        # theta = add_curve(theta,70,pi)
+        # theta = add_curve(theta,60,-5*pi/6)
+        # theta = add_curve(theta,10,0)
+        # theta = add_curve(theta,30,-pi/2)
+        # theta = add_curve(theta,40,0)
+        # theta = add_curve(theta,20,-pi/4)
+        # theta = add_curve(theta,20,pi/4)
+        # theta = add_curve(theta,50,-pi/2)
+        # theta = add_curve(theta,22,0)
+        # theta = add_curve(theta,30,-pi/2)
+        # theta = add_curve(theta,14,0)
+
+        # SIMPLE RACETRACK:
+        theta = add_curve(theta,50,0)
+        theta = add_curve(theta,100,-pi)
+        theta = add_curve(theta,100,0)
+        theta = add_curve(theta,100,-pi)
+        theta = add_curve(theta,49,0)
 
         for i in range(0,size(theta)):
             x = hstack((x, x[-1] + cos(theta[i])*ds))
@@ -202,6 +211,8 @@ class Localization:
         self.pos = array([x,y])
         self.psi = psi
         self.v = v
+        self.x = x
+        self.y = y
 
     def find_s(self):
         dist        = sum((self.pos*ones([self.n,2])-self.nodes.transpose())**2,1)**0.5 # distance of current position to all nodes
@@ -275,6 +286,8 @@ class Localization:
             b_curvature_vector[j] = (dX*ddY-dY*ddX)/(dX**2+dY**2)**1.5      # this calculates the curvature values for all points in the interp. interval
                                                                             # these values are going to be approximated by a polynomial!
 
+        # print b_curvature_vector[10:20]
+        # print b_curvature_vector[10:15]
         # calculate coefficients for Theta and curvature
         coeffTheta      = linalg.lstsq(Matrix3rd,b_theta_vec)[0]
         coeffCurvature  = linalg.lstsq(Matrix3rd,b_curvature_vector)[0]

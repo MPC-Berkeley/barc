@@ -13,6 +13,24 @@ const log_path          = "$(homedir())/simulations/output.jld"
 const log_path_LMPC     = "$(homedir())/simulations/output_LMPC.jld"
 const log_path_profile  = "$(homedir())/simulations/profile.jlprof"
 
+
+function simModel(z,u,dt,l_A,l_B)
+
+   # kinematic bicycle model
+   # u[1] = acceleration
+   # u[2] = steering angle
+
+    bta = atan(l_A/(l_A+l_B)*tan(u[2]))
+
+    zNext = z
+    zNext[1] = z[1] + dt*(z[4]*cos(z[3] + bta))       # x
+    zNext[2] = z[2] + dt*(z[4]*sin(z[3] + bta))     # y
+    zNext[3] = z[3] + dt*(z[4]/l_B*sin(bta))        # psi
+    zNext[4] = z[4] + dt*(u[1] - 0.63 * z[4]^2 * sign(z[4]))                     # v
+
+    return zNext
+end
+
 function eval_sim()
     d = load(log_path)
 
@@ -24,7 +42,6 @@ function eval_sim()
 
     track = create_track(0.2)
     figure()
-    hold(1)
     plot(z.z[:,1],z.z[:,2],"-",gps_meas.z[:,1]/100,gps_meas.z[:,2]/100,".",est.z[:,1],est.z[:,2],"-")
     plot(track[:,1],track[:,2],"b.",track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")
     grid(1)
@@ -44,29 +61,78 @@ function eval_sim()
 end
 
 function eval_LMPC()
-    d = load(log_path_LMPC)
-    oldTraj = d["oldTraj"]
-    t       = d["t"]
-    state   = d["state"]
-    sol_z   = d["sol_z"]
-    sol_u   = d["sol_u"]
-    cost    = d["cost"]
-    curv    = d["curv"]
+    d_sim       = load(log_path)
+    d_lmpc      = load(log_path_LMPC)
+
+    oldTraj     = d_lmpc["oldTraj"]
+    t           = d_lmpc["t"]
+    state       = d_lmpc["state"]
+    sol_z       = d_lmpc["sol_z"]
+    sol_u       = d_lmpc["sol_u"]
+    cost        = d_lmpc["cost"]
+    curv        = d_lmpc["curv"]
+    pred_z      = d_lmpc["pred_z"]
+    x_est       = d_lmpc["x_est"]
+    coeffX      = d_lmpc["coeffX"]
+    coeffY      = d_lmpc["coeffY"]
+    est         = d_sim["estimate"]
+    imu_meas    = d_sim["imu_meas"]
+    gps_meas    = d_sim["gps_meas"]
+    z           = d_sim["z"]
+    cmd_log     = d_sim["cmd_log"]
+
+    figure()
+    plot(z.t,z.z[:,3],t,x_est[:,3])
+    grid()
+
+    track = create_track(0.2)
+    figure()
+    hold(1)
+    plot(x_est[:,1],x_est[:,2],"-o")
+    plot(track[:,1],track[:,2],"b.",track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")
+    for i=1:size(x_est,1)
+        #dir = [cos(x_est[i,3]) sin(x_est[i,3])]
+        #dir2 = [cos(x_est[i,3] - state[i,3]) sin(x_est[i,3] - state[i,3])]
+        #lin = [x_est[i,1:2];x_est[i,1:2] + 0.05*dir]
+        #lin2 = [x_est[i,1:2];x_est[i,1:2] + 0.05*dir2]
+        #plot(lin[:,1],lin[:,2],"-o",lin2[:,1],lin2[:,2],"-*")
+    end
+    for i=1:size(x_est,1)
+        if i%4==0
+            z_pred = zeros(11,4)
+            z_pred[1,:] = x_est[i,:]
+            for j=2:11
+                z_pred[j,:] = simModel(z_pred[j-1,:],sol_u[j-1,:,i],0.1,0.125,0.125)
+            end
+            plot(z_pred[:,1],z_pred[:,2],"-o")
+        end
+    end
+
+    for i=1:size(x_est,1)
+        s = 0:.1:3.5
+        ss = [s.^10 s.^9 s.^8 s.^7 s.^6 s.^5 s.^4 s.^3 s.^2 s.^1 s.^0]
+        x = ss*coeffX[i,:]'
+        y = ss*coeffY[i,:]'
+        plot(x,y)
+    end
+    grid()
+
+    figure()
     plot(oldTraj[:,1,1,1],oldTraj[:,2:4,1,1],"-o")
     legend(["e_y","e_psi","v"])
     grid(1)
     figure()
     ax1=subplot(211)
-    plot(t,state)
+    plot(1:size(state,1),state,1:size(state,1),pred_z)
     legend(["s","e_y","e_psi","v"])
     grid(1)
     #figure()
     subplot(212,sharex = ax1)
-    plot(t,cost)
+    plot(1:size(cost,1),cost)
     grid(1)
     legend(["costZ","costZTerm","constZTerm","derivCost","controlCost","laneCost"])
     figure()
-    plot(t,curv)
+    plot(1:size(curv,1),curv)
     legend(["1","2","3","4","5","6","7","8","9"])
 end
 
@@ -74,6 +140,94 @@ function eval_oldTraj(i)
     d = load(log_path_LMPC)
     oldTraj = d["oldTraj"]
     plot(oldTraj[:,1,1,i],oldTraj[:,2:4,1,i],"-o",oldTraj[:,1,2,i],oldTraj[:,2:4,2,i],"-*")
+end
+
+function eval_LMPC_coeff(k)
+    d           = load(log_path_LMPC)
+    oldTraj     = d["oldTraj"]
+    sol_z       = d["sol_z"]
+    sol_u       = d["sol_u"]
+    coeffCost   = d["coeffCost"]
+    coeffConst  = d["coeffConst"]
+    s_start     = d["s_start"]
+
+    s   = sol_z[:,1,k]
+    ss  = [s.^5 s.^4 s.^3 s.^2 s.^1 s.^0]
+    subplot(311)
+    plot(s,sol_z[:,2,k],"-o",s,ss*coeffConst[:,1,1,k],s,ss*coeffConst[:,2,1,k])
+    grid()
+    title("Position = $(s_start[k] + s[1]), k = $k")
+    xlabel("s")
+    ylabel("e_Y")
+    subplot(312)
+    plot(s,sol_z[:,3,k],"-o",s,ss*coeffConst[:,1,2,k],s,ss*coeffConst[:,2,2,k])
+    grid()
+    xlabel("s")
+    ylabel("e_Psi")
+    subplot(313)
+    plot(s,sol_z[:,4,k],"-o",s,ss*coeffConst[:,1,3,k],s,ss*coeffConst[:,2,3,k])
+    grid()
+    xlabel("s")
+    ylabel("v")
+end
+
+function anim_LMPC(k1,k2)
+    d           = load(log_path_LMPC)
+    oldTraj     = d["oldTraj"]
+    sol_z       = d["sol_z"]
+    sol_u       = d["sol_u"]
+    coeffCost   = d["coeffCost"]
+    coeffConst  = d["coeffConst"]
+    s_start     = d["s_start"]
+    state       = d["state"]
+
+    N = size(sol_z,1)-1
+
+    for k=k1:k2
+        s = sol_z[1:10,1,k]
+        subplot(211)
+        plot(s,sol_u[:,1,k],"-o")
+        ylim([-1,2])
+        xlim([0,2])
+        grid()
+        subplot(212)
+        plot(s,sol_u[:,2,k],"-o")
+        ylim([-0.5,0.5])
+        xlim([0,2])
+        grid()
+        sleep(0.1)
+    end
+
+    figure()
+    hold(0)
+    for k=k1:k2
+        s_state = s_start[k:k+N] + state[k:k+N,1] - s_start[k]
+        s   = sol_z[:,1,k]
+        ss  = [s.^5 s.^4 s.^3 s.^2 s.^1 s.^0]
+        subplot(311)
+        plot(s,sol_z[:,2,k],"-o",s_state,state[k:k+N,2],"-*",s,ss*coeffConst[:,1,1,k],s,ss*coeffConst[:,2,1,k])
+        grid()
+        title("Position = $(s_start[k] + s[1]), k = $k")
+        xlabel("s")
+        xlim([0,3])
+        ylim([-0.2,0.2])
+        ylabel("e_Y")
+        subplot(312)
+        plot(s,sol_z[:,3,k],"-o",s_state,state[k:k+N,3],"-*",s,ss*coeffConst[:,1,2,k],s,ss*coeffConst[:,2,2,k])
+        grid()
+        xlabel("s")
+        ylabel("e_Psi")
+        xlim([0,3])
+        ylim([-0.2,0.2])
+        subplot(313)
+        plot(s,sol_z[:,4,k],"-o",s_state,state[k:k+N,4],"-*",s,ss*coeffConst[:,1,3,k],s,ss*coeffConst[:,2,3,k])
+        grid()
+        xlabel("s")
+        ylabel("v")
+        xlim([0,3])
+        ylim([0,2])
+        sleep(0.1)
+    end
 end
 
 function anim_MPC(z)
@@ -122,19 +276,27 @@ function create_track(w)
 
     theta = [0.0]
 
-    add_curve(theta,10,0.0)
-    add_curve(theta,50,-2*pi/3)
-    add_curve(theta,70,pi)
-    add_curve(theta,60,-5*pi/6)
-    add_curve(theta,10,0.0)
-    add_curve(theta,30,-pi/2)
-    add_curve(theta,40,0.0)
-    add_curve(theta,20,-pi/4)
-    add_curve(theta,20,pi/4)
-    add_curve(theta,50,-pi/2)
-    add_curve(theta,22,0.0)
-    add_curve(theta,30,-pi/2)
-    add_curve(theta,14,0.0)
+    # SOPHISTICATED TRACK
+    # add_curve(theta,10,0.0)
+    # add_curve(theta,50,-2*pi/3)
+    # add_curve(theta,70,pi)
+    # add_curve(theta,60,-5*pi/6)
+    # add_curve(theta,10,0.0)
+    # add_curve(theta,30,-pi/2)
+    # add_curve(theta,40,0.0)
+    # add_curve(theta,20,-pi/4)
+    # add_curve(theta,20,pi/4)
+    # add_curve(theta,50,-pi/2)
+    # add_curve(theta,22,0.0)
+    # add_curve(theta,30,-pi/2)
+    # add_curve(theta,14,0.0)
+
+    # SIMPLE track
+    add_curve(theta,50,0)
+    add_curve(theta,100,-pi)
+    add_curve(theta,100,0)
+    add_curve(theta,100,-pi)
+    add_curve(theta,49,0)
 
     for i=1:length(theta)
             push!(x, x[end] + cos(theta[i])*ds)

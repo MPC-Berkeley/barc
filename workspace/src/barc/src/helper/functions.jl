@@ -34,28 +34,28 @@ function InitializeParameters(mpcParams::MpcParams,trackCoeff::TrackCoeff,modelP
                                 posInfo::PosInfo,oldTraj::OldTrajectory,mpcCoeff::MpcCoeff,lapStatus::LapStatus,buffersize::Int64)
     mpcParams.N                 = 10
     mpcParams.nz                = 4
-    mpcParams.Q                 = [0.0,10.0,1.0,1.0]       # put weights on ey, epsi and v
-    mpcParams.R                 = 0.1*[1.0,1.0]                 # put weights on a and d_f
-    mpcParams.QderivZ           = 0.0*[1,1,1,1]             # cost matrix for derivative cost of states
-    mpcParams.QderivU           = 1*[1,10]                 # cost matrix for derivative cost of inputs
-    mpcParams.vPathFollowing    = 0.5
+    mpcParams.Q                 = [0.0,100.0,100.0,10.0]       # put weights on ey, epsi and v
+    mpcParams.R                 = 0*[1.0,1.0]                 # put weights on a and d_f
+    mpcParams.QderivZ           = 0*[0,1,1,1]             # cost matrix for derivative cost of states
+    mpcParams.QderivU           = 0*[1,1]                 # cost matrix for derivative cost of inputs
+    mpcParams.vPathFollowing    = 1.0
 
-    trackCoeff.nPolyCurvature   = 6                   # 4th order polynomial for curvature approximation
+    trackCoeff.nPolyCurvature   = 3                   # 4th order polynomial for curvature approximation
     trackCoeff.coeffCurvature   = zeros(trackCoeff.nPolyCurvature+1)         # polynomial coefficients for curvature approximation (zeros for straight line)
     trackCoeff.width            = 0.4                 # width of the track (0.5m)
 
-    modelParams.u_lb            = [-1.0 -pi/6]' * ones(1,mpcParams.N)                    # lower bounds on steering
-    modelParams.u_ub            = [2.0   pi/6]' * ones(1,mpcParams.N)                    # upper bounds
-    modelParams.z_lb            = [-Inf -trackCoeff.width/2 -Inf -Inf]' * ones(1,mpcParams.N+1)                    # lower bounds on states
-    modelParams.z_ub            = [Inf   trackCoeff.width/2  Inf  Inf]' * ones(1,mpcParams.N+1)                    # upper bounds
+    modelParams.u_lb            = ones(mpcParams.N,1) * [-1.0 -pi/6]                    # lower bounds on steering
+    modelParams.u_ub            = ones(mpcParams.N,1) * [2.0   pi/6]                  # upper bounds
+    modelParams.z_lb            = ones(mpcParams.N+1,1)*[-Inf -trackCoeff.width/2 -Inf -Inf]                    # lower bounds on states
+    modelParams.z_ub            = ones(mpcParams.N+1,1)*[Inf   trackCoeff.width/2  Inf  Inf]                    # upper bounds
     #modelParams.c0              = [0.5431, 1.2767, 2.1516, -2.4169]         # BARC-specific parameters (measured)
     modelParams.c0              = [1, 0.63, 1, 0]         # BARC-specific parameters (measured)
     modelParams.l_A             = 0.125
     modelParams.l_B             = 0.125
     modelParams.dt              = 0.1
 
-    posInfo.s_start             = 0
-    posInfo.s_target            = 25.62#29.491949#13.20#10.281192
+    posInfo.s_start             = 0.0
+    posInfo.s_target            = 24.0#25.62#29.491949#13.20#10.281192
 
     oldTraj.oldTraj             = zeros(buffersize,4,2)
     oldTraj.oldInput            = zeros(buffersize,2,2)
@@ -84,7 +84,7 @@ function InitializeModel(m::MpcModel,mpcParams::MpcParams,modelParams::ModelPara
 
     n_poly_curv = trackCoeff.nPolyCurvature         # polynomial degree of curvature approximation
     
-    m.mdl = Model(solver = IpoptSolver(print_level=0,max_cpu_time=0.05))#,linear_solver="ma57",print_user_options="yes"))
+    m.mdl = Model(solver = IpoptSolver(print_level=0))#,max_cpu_time=0.05))#,linear_solver="ma57",print_user_options="yes"))
 
     @variable( m.mdl, m.z_Ol[1:(N+1),1:4])      # z = s, ey, epsi, v
     @variable( m.mdl, m.u_Ol[1:N,1:2])
@@ -92,14 +92,14 @@ function InitializeModel(m::MpcModel,mpcParams::MpcParams,modelParams::ModelPara
 
     for i=1:2       # I don't know why but somehow the short method returns errors sometimes
         for j=1:N
-            setlowerbound(m.u_Ol[j,i], modelParams.u_lb[i,j])
-            setupperbound(m.u_Ol[j,i], modelParams.u_ub[i,j])
+            setlowerbound(m.u_Ol[j,i], modelParams.u_lb[j,i])
+            setupperbound(m.u_Ol[j,i], modelParams.u_ub[j,i])
         end
     end
     # for i=1:4
     #     for j=1:N+1
-    #         setlowerbound(m.z_Ol[i,j], modelParams.z_lb[i,j])
-    #         setupperbound(m.z_Ol[i,j], modelParams.z_ub[i,j])
+    #         setlowerbound(m.z_Ol[j,i], modelParams.z_lb[j,i])
+    #         setupperbound(m.z_Ol[j,i], modelParams.z_ub[j,i])
     #     end
     # end
     #@variable( m.mdl, 1 >= m.ParInt >= 0 )
@@ -111,7 +111,7 @@ function InitializeModel(m::MpcModel,mpcParams::MpcParams,modelParams::ModelPara
 
     #@NLexpression(m.mdl, m.c[i = 1:N],    m.coeff[1]*m.z_Ol[1,i]^4+m.coeff[2]*m.z_Ol[1,i]^3+m.coeff[3]*m.z_Ol[1,i]^2+m.coeff[4]*m.z_Ol[1,i]+m.coeff[5])
     @NLexpression(m.mdl, m.c[i = 1:N],    sum{m.coeff[j]*m.z_Ol[i,1]^(n_poly_curv-j+1),j=1:n_poly_curv} + m.coeff[n_poly_curv+1])
-    @NLexpression(m.mdl, m.bta[i = 1:N],  atan( L_a / (L_a + L_b) * tan( m.u_Ol[i,2] ) ) )
+    @NLexpression(m.mdl, m.bta[i = 1:N],  atan( L_a / (L_a + L_b) * ( m.u_Ol[i,2] ) ) )
     @NLexpression(m.mdl, m.dsdt[i = 1:N], m.z_Ol[i,4]*cos(m.z_Ol[i,3]+m.bta[i])/(1-m.z_Ol[i,2]*m.c[i]))
 
     # System dynamics
@@ -119,22 +119,25 @@ function InitializeModel(m::MpcModel,mpcParams::MpcParams,modelParams::ModelPara
         @NLconstraint(m.mdl, m.z_Ol[i+1,1]  == m.z_Ol[i,1] + dt*m.dsdt[i]  )                                             # s
         @NLconstraint(m.mdl, m.z_Ol[i+1,2]  == m.z_Ol[i,2] + dt*m.z_Ol[i,4]*sin(m.z_Ol[i,3]+m.bta[i])  )                     # ey
         @NLconstraint(m.mdl, m.z_Ol[i+1,3]  == m.z_Ol[i,3] + dt*(m.z_Ol[i,4]/L_a*sin(m.bta[i])-m.dsdt[i]*m.c[i])  )            # epsi
-        @NLconstraint(m.mdl, m.z_Ol[i+1,4]  == m.z_Ol[i,4] + dt*(c0[1]*m.u_Ol[i,1] - c0[2]*abs(m.z_Ol[i,4]) * m.z_Ol[i,4]))  # v
+        @NLconstraint(m.mdl, m.z_Ol[i+1,4]  == m.z_Ol[i,4] + dt*(m.u_Ol[i,1] - 0.0*abs(m.z_Ol[i,4]) * m.z_Ol[i,4]))  # v
     end
 
 end
 
-function simModel(zNext::Array{Float64},z::Array{Float64},u::Array{Float64},dt::Float64,l_A::Float64,l_B::Float64,trackCoeff::TrackCoeff)
+function simModel(zNext::Array{Float64},z::Array{Float64},u::Array{Float64},modelParams::ModelParams,trackCoeff::TrackCoeff)
 
    # kinematic bicycle model
    # u[1] = acceleration
    # u[2] = steering angle
-
+   dt = modelParams.dt
+   l_A = modelParams.l_A
+   l_B = modelParams.l_B
     s = z[1]
     c = 0
     for i=trackCoeff.nPolyCurvature:-1:0
         c += s^i * trackCoeff.coeffCurvature[trackCoeff.nPolyCurvature+1-i]
     end
+    # println("Sim Model, c = $c")
     #c = ([s.^10 s.^9 s.^8 s.^7 s.^6 s.^5 s.^4 s.^3 s.^2 s 1] * coeff'')[1]
     bta = atan(l_A/(l_A+l_B)*tan(u[2]))
     dsdt = z[4] *cos(z[3]+bta)/(1-z[2]*c)

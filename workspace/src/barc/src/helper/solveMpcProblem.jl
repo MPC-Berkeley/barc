@@ -53,8 +53,8 @@ function solveMpcProblem(mdl::MpcModel,mpcSol::MpcSol,mpcCoeff::MpcCoeff,mpcPara
 
     # Derivative cost
     # ---------------------------------
-    @NLexpression(mdl.mdl, derivCost, 0*sum{QderivZ[j]*((zCurr[j]-mdl.z_Ol[1,j])^2+sum{(mdl.z_Ol[i,j]-mdl.z_Ol[i+1,j])^2,i=1:N}),j=1:4} +
-                                        sum{QderivU[j]*((uCurr[j]-mdl.u_Ol[1,j])^2+sum{(mdl.u_Ol[i,j]-mdl.u_Ol[i+1,j])^2,i=1:N-1}),j=1:2})
+    @NLexpression(mdl.mdl, derivCost, sum{QderivZ[j]*((zCurr[j]-mdl.z_Ol[1,j])^2+sum{(mdl.z_Ol[i,j]-mdl.z_Ol[i+1,j])^2,i=1:N}),j=1:4} +
+                                      sum{QderivU[j]*((uCurr[j]-mdl.u_Ol[1,j])^2+sum{(mdl.u_Ol[i,j]-mdl.u_Ol[i+1,j])^2,i=1:N-1}),j=1:2})
 
     # Lane cost
     # ---------------------------------
@@ -77,10 +77,10 @@ function solveMpcProblem(mdl::MpcModel,mpcSol::MpcSol,mpcCoeff::MpcCoeff,mpcPara
     # ---------------------------------
     # The value of this cost determines how fast the algorithm learns. The higher this cost, the faster the control tries to reach the finish line.
     if lapStatus.currentLap > 2     # if at least in the 3rd lap
-        @NLexpression(mdl.mdl, costZTerm, 5*(mdl.ParInt[1]*sum{coeffTermCost[i,1]*mdl.z_Ol[N+1,1]^(order+1-i),i=1:order+1}+
+        @NLexpression(mdl.mdl, costZTerm, 1*(mdl.ParInt[1]*sum{coeffTermCost[i,1]*mdl.z_Ol[N+1,1]^(order+1-i),i=1:order+1}+
                                   (1-mdl.ParInt[1])*sum{coeffTermCost[i,2]*mdl.z_Ol[N+1,1]^(order+1-i),i=1:order+1}))
     elseif lapStatus.currentLap == 2         # if we're in the second second lap
-        @NLexpression(mdl.mdl, costZTerm, 5*sum{coeffTermCost[i,1]*mdl.z_Ol[N+1,1]^(order+1-i),i=1:order+1})
+        @NLexpression(mdl.mdl, costZTerm, 1*sum{coeffTermCost[i,1]*mdl.z_Ol[N+1,1]^(order+1-i),i=1:order+1})
     end
 
     # State cost
@@ -103,6 +103,7 @@ function solveMpcProblem(mdl::MpcModel,mpcSol::MpcSol,mpcCoeff::MpcCoeff,mpcPara
     sol_u       = getvalue(mdl.u_Ol)
     sol_z       = getvalue(mdl.z_Ol)
     println("Predicting until z = $(sol_z[end,1])")
+    println("curvature = $(getvalue(mdl.c))")
 
     # COST PRINTS: ********************************************************
     # println("coeff: $(getvalue(mdl.coeff))")
@@ -129,6 +130,7 @@ function solveMpcProblem(mdl::MpcModel,mpcSol::MpcSol,mpcCoeff::MpcCoeff,mpcPara
     mpcSol.d_f = sol_u[1,2]
     mpcSol.u   = sol_u
     mpcSol.z   = sol_z
+    mpcSol.solverStatus = sol_status
     #mpcSol.cost = zeros(6)
     mpcSol.cost = [getvalue(costZ),getvalue(costZTerm),getvalue(constZTerm),getvalue(derivCost),getvalue(controlCost),getvalue(laneCost)]
     #mpcSol = MpcSol(sol_u[1,1],sol_u[2,1]) # Fast version without logging

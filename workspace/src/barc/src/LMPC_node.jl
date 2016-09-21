@@ -18,11 +18,15 @@ include("helper/solveMpcProblem.jl")
 include("helper/computeCostLap.jl")
 include("helper/functions.jl")
 
-function SE_callback(msg::pos_info,s_start_update::Array{Float64},coeffCurvature_update::Array{Float64,1},z_est::Array{Float64,1})         # update current position and track data
+function SE_callback(msg::pos_info,s_start_update::Array{Float64},coeffCurvature_update::Array{Float64,1},z_est::Array{Float64,1},x_est::Array{Float64,1},
+                        coeffX::Array{Float64,1},coeffY::Array{Float64,1})         # update current position and track data
     # update mpc initial condition
     z_est[:]                  = [msg.s,msg.ey,msg.epsi,msg.v]     # use z_est as pointer
     s_start_update[1]         = msg.s_start
     coeffCurvature_update[:]  = msg.coeffCurvature
+    x_est[:]                  = [msg.x,msg.y,msg.psi,msg.v]
+    coeffX[:]                 = msg.coeffX
+    coeffY[:]                 = msg.coeffY
 end
 
 function main()
@@ -34,6 +38,7 @@ function main()
     log_oldTraj = zeros(buffersize,4,2,20)  # max. 10 laps
     log_t       = zeros(10000,1)
     log_state   = zeros(10000,4)
+    log_pred_z  = zeros(10000,4)
     log_cost    = zeros(10000,6)
 
     # Define and initialize variables
@@ -47,23 +52,32 @@ function main()
     mpcParams                   = MpcParams()
 
     z_est                       = zeros(4)
+    x_est                       = zeros(4)
+    coeffX                      = zeros(7)
+    coeffY                      = zeros(7)
     s_start_update              = [0.0]
     cmd                         = ECU(0.0,0.0)
 
     InitializeParameters(mpcParams,trackCoeff,modelParams,posInfo,oldTraj,mpcCoeff,lapStatus,buffersize)
 
-    log_sol_z   = zeros(mpcParams.N+1,4,10000)
-    log_sol_u   = zeros(mpcParams.N,2,10000)
+    log_coeff_Cost  = zeros(mpcCoeff.order+1,2,10000)
+    log_coeff_Const = zeros(mpcCoeff.order+1,2,3,10000)
+    log_sol_z       = zeros(mpcParams.N+1,4,10000)
+    log_sol_u       = zeros(mpcParams.N,2,10000)
 
     coeffCurvature_update       = zeros(trackCoeff.nPolyCurvature+1)
     log_curv                    = zeros(10000,trackCoeff.nPolyCurvature+1)
+    log_s_start                 = zeros(10000)
+    log_state_x                 = zeros(10000,4)
+    log_coeffX                  = zeros(10000,7)
+    log_coeffY                  = zeros(10000,7)
     # Initialize ROS node and topics
     init_node("mpc_traj")
     loop_rate = Rate(10)
     pub                         = Publisher("ecu", ECU, queue_size=10)
     pub2                        = Publisher("logging", Logging, queue_size=10)
     # The subscriber passes 3 arguments (s_start, coeffCurvature and z_est) which are updated by the callback function:
-    s1                          = Subscriber("pos_info", pos_info, SE_callback, (s_start_update,coeffCurvature_update,z_est,),queue_size=10)
+    s1                          = Subscriber("pos_info", pos_info, SE_callback, (s_start_update,coeffCurvature_update,z_est,x_est,coeffX,coeffY,),queue_size=10)
 
     println("Finished initialization.")
     # Lap parameters
@@ -100,8 +114,8 @@ function main()
         if z_est[1] > 0         # check if data has been received (s > 0)
 
             # publish command from last calculation
-            cmd = ECU(mpcSol.a_x, mpcSol.d_f)
-            publish(pub, cmd)        
+            # cmd = ECU(mpcSol.a_x, mpcSol.d_f)
+            # publish(pub, cmd)        
 
             # ============================= Initialize iteration parameters =============================
             lapStatus.currentIt += 1                            # count iteration
@@ -113,7 +127,7 @@ function main()
             trackCoeff.coeffCurvature = coeffCurvature_update
 
             # Simulate model for next input
-            simModel(pred_z,zCurr[i,:]',uCurr[i,:]',modelParams.dt,modelParams.l_A,modelParams.l_B,trackCoeff)
+            simModel(pred_z,zCurr[i,:]',uCurr[i,:]',modelParams,trackCoeff)
             # this simulation returns the predicted state at when the next command is going to be sent. This predicted state is used for
             # the MPC control input calculation.
 
@@ -161,17 +175,14 @@ function main()
             println("s_total         = $((posInfo.s+posInfo.s_start)%posInfo.s_target)")
 
             # Find coefficients for cost and constraints
-            tic()
             if lapStatus.currentLap > 1
                 coeffConstraintCost(oldTraj,lapStatus,mpcCoeff,posInfo,mpcParams)
             end
-            tt = toq()
-            println("Finished coefficients, t = $tt s")
 
             # Solve the MPC problem
             tic()
-            #solveMpcProblem(mdl,mpcSol,mpcCoeff,mpcParams,trackCoeff,lapStatus,posInfo,modelParams,zCurr[i,:]',uCurr[i,:]')
-            solveMpcProblem(mdl,mpcSol,mpcCoeff,mpcParams,trackCoeff,lapStatus,posInfo,modelParams,pred_z,uCurr[i,:]')
+            solveMpcProblem(mdl,mpcSol,mpcCoeff,mpcParams,trackCoeff,lapStatus,posInfo,modelParams,zCurr[i,:]',uCurr[i,:]')
+            #solveMpcProblem(mdl,mpcSol,mpcCoeff,mpcParams,trackCoeff,lapStatus,posInfo,modelParams,pred_z,uCurr[i,:]')
 
             tt = toq()
             # Write in current input information
@@ -185,13 +196,24 @@ function main()
 
             # Logging
             k = k + 1       # counter
-            log_state[k,:] = z_est
-            log_t[k] = time() - t0
-            log_sol_z[:,:,k] = mpcSol.z
-            log_sol_u[:,:,k] = mpcSol.u
-            log_cost[k,:]    = mpcSol.cost
-            log_curv[k,:]    = trackCoeff.coeffCurvature
+            log_state[k,:]          = z_est
+            log_t[k]                = time()
+            log_sol_z[:,:,k]        = mpcSol.z
+            log_sol_u[:,:,k]        = mpcSol.u
+            log_coeff_Cost[:,:,k]   = mpcCoeff.coeffCost
+            log_coeff_Const[:,:,:,k] = mpcCoeff.coeffConst
+            log_cost[k,:]           = mpcSol.cost
+            log_curv[k,:]           = trackCoeff.coeffCurvature
+            log_s_start[k]          = posInfo.s_start
+            log_pred_z[k,:]         = pred_z
+            log_state_x[k,:]        = x_est
+            log_coeffX[k,:]         = coeffX
+            log_coeffY[k,:]         = coeffY
             println("pred_z = $pred_z")
+
+            # publish command from last calculation
+            cmd = ECU(mpcSol.a_x, mpcSol.d_f)
+            publish(pub, cmd) 
 
         else
             println("No estimation data received!")
@@ -201,7 +223,9 @@ function main()
     # Save simulation data to file
 
     log_path = "$(homedir())/simulations/output_LMPC.jld"
-    save(log_path,"oldTraj",log_oldTraj,"state",log_state[1:k,:],"t",log_t[1:k],"sol_z",log_sol_z[:,:,1:k],"sol_u",log_sol_u[:,:,1:k],"cost",log_cost[1:k,:],"curv",log_curv[1:k,:])
+    save(log_path,"oldTraj",log_oldTraj,"state",log_state[1:k,:],"t",log_t[1:k],"sol_z",log_sol_z[:,:,1:k],"sol_u",log_sol_u[:,:,1:k],
+                    "cost",log_cost[1:k,:],"curv",log_curv[1:k,:],"coeffCost",log_coeff_Cost,"coeffConst",log_coeff_Const,
+                    "s_start",log_s_start[1:k],"pred_z",log_pred_z[1:k,:],"x_est",log_state_x[1:k,:],"coeffX",log_coeffX[1:k,:],"coeffY",log_coeffY[1:k,:])
     println("Exiting LMPC node. Saved data.")
 
 end

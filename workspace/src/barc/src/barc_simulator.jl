@@ -49,6 +49,8 @@ est_meas = Measurements{Float32}(0,zeros(Float32,buffersize,1),zeros(Float32,buf
 cmd_log  = Measurements{Float64}(0,zeros(buffersize,1),zeros(buffersize,2))
 z_real   = Measurements{Float64}(0,zeros(buffersize,1),zeros(buffersize,4))
 
+z_real.t[1] = time()
+
 function simModel(z,u,dt,l_A,l_B)
 
    # kinematic bicycle model
@@ -102,7 +104,7 @@ function main()
     s2  = Subscriber("state_estimate", Z_KinBkMdl, est_callback, queue_size=10)
 
     z_current = zeros(60000,4)
-    z_current[1,:] = [0.1 0 0 0]
+    z_current[1,:] = [0.2 0 0 0]
 
     dt = 0.01
     loop_rate = Rate(1/dt)
@@ -127,7 +129,7 @@ function main()
     println("Publishing sensor information. Simulator running.")
     while ! is_shutdown()
 
-        t = time() - t0
+        t = time()
 
         # update current state with a new row vector
         z_current[i,:]  = simModel(z_current[i-1,:]',u_current, dt, l_A,l_B)'
