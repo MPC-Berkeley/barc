@@ -53,40 +53,40 @@ function solveMpcProblem(mdl::MpcModel,mpcSol::MpcSol,mpcCoeff::MpcCoeff,mpcPara
 
     # Derivative cost
     # ---------------------------------
-    @NLexpression(mdl.mdl, derivCost, 0*sum{QderivZ[j]*((zCurr[j]-mdl.z_Ol[j,1])^2+sum{(mdl.z_Ol[j,i]-mdl.z_Ol[j,i+1])^2,i=1:N}),j=1:4} +
-                                        sum{QderivU[j]*((uCurr[j]-mdl.u_Ol[j,1])^2+sum{(mdl.u_Ol[j,i]-mdl.u_Ol[j,i+1])^2,i=1:N-1}),j=1:2})
+    @NLexpression(mdl.mdl, derivCost, 0*sum{QderivZ[j]*((zCurr[j]-mdl.z_Ol[1,j])^2+sum{(mdl.z_Ol[i,j]-mdl.z_Ol[i+1,j])^2,i=1:N}),j=1:4} +
+                                        sum{QderivU[j]*((uCurr[j]-mdl.u_Ol[1,j])^2+sum{(mdl.u_Ol[i,j]-mdl.u_Ol[i+1,j])^2,i=1:N-1}),j=1:2})
 
     # Lane cost
     # ---------------------------------
-    @NLexpression(mdl.mdl, laneCost, 100*sum{mdl.z_Ol[2,i]^2*((0.5+0.5*tanh(50*(mdl.z_Ol[2,i]-ey_max))) + (0.5-0.5*tanh(50*(mdl.z_Ol[2,i]+ey_max)))),i=1:N+1})
+    @NLexpression(mdl.mdl, laneCost, 100*sum{mdl.z_Ol[i,2]^2*((0.5+0.5*tanh(50*(mdl.z_Ol[i,2]-ey_max))) + (0.5-0.5*tanh(50*(mdl.z_Ol[i,2]+ey_max)))),i=1:N+1})
 
     # Control Input cost
     # ---------------------------------
-    @NLexpression(mdl.mdl, controlCost, 0.5*sum{R[j]*sum{(mdl.u_Ol[j,i]-u_Ref[i,j])^2,i=1:N},j=1:2})
+    @NLexpression(mdl.mdl, controlCost, 0.5*sum{R[j]*sum{(mdl.u_Ol[i,j]-u_Ref[i,j])^2,i=1:N},j=1:2})
 
     # Terminal constraints (soft), starting from 2nd lap
     # ---------------------------------
     if lapStatus.currentLap > 2    # if at least in the 3rd lap
-        @NLexpression(mdl.mdl, constZTerm, 10*(sum{(mdl.ParInt[1]*sum{coeffTermConst[i,1,j]*mdl.z_Ol[1,N+1]^(order+1-i),i=1:order+1}+
-                                        (1-mdl.ParInt[1])*sum{coeffTermConst[i,2,j]*mdl.z_Ol[1,N+1]^(order+1-i),i=1:order+1}-mdl.z_Ol[j+1,N+1])^2,j=1:3}))
+        @NLexpression(mdl.mdl, constZTerm, 10*(sum{(mdl.ParInt[1]*sum{coeffTermConst[i,1,j]*mdl.z_Ol[N+1,1]^(order+1-i),i=1:order+1}+
+                                        (1-mdl.ParInt[1])*sum{coeffTermConst[i,2,j]*mdl.z_Ol[N+1,1]^(order+1-i),i=1:order+1}-mdl.z_Ol[N+1,j+1])^2,j=1:3}))
     elseif lapStatus.currentLap == 2        # if in the 2nd lap
-        @NLexpression(mdl.mdl, constZTerm, 10*sum{(sum{coeffTermConst[i,1,j]*mdl.z_Ol[1,N+1]^(order+1-i),i=1:order+1}-mdl.z_Ol[j+1,N+1])^2,j=1:3})
+        @NLexpression(mdl.mdl, constZTerm, 10*sum{(sum{coeffTermConst[i,1,j]*mdl.z_Ol[N+1,1]^(order+1-i),i=1:order+1}-mdl.z_Ol[N+1,j+1])^2,j=1:3})
     end
 
     # Terminal cost
     # ---------------------------------
     # The value of this cost determines how fast the algorithm learns. The higher this cost, the faster the control tries to reach the finish line.
     if lapStatus.currentLap > 2     # if at least in the 3rd lap
-        @NLexpression(mdl.mdl, costZTerm, 1*(mdl.ParInt[1]*sum{coeffTermCost[i,1]*mdl.z_Ol[1,N+1]^(order+1-i),i=1:order+1}+
-                                  (1-mdl.ParInt[1])*sum{coeffTermCost[i,2]*mdl.z_Ol[1,N+1]^(order+1-i),i=1:order+1}))
+        @NLexpression(mdl.mdl, costZTerm, 5*(mdl.ParInt[1]*sum{coeffTermCost[i,1]*mdl.z_Ol[N+1,1]^(order+1-i),i=1:order+1}+
+                                  (1-mdl.ParInt[1])*sum{coeffTermCost[i,2]*mdl.z_Ol[N+1,1]^(order+1-i),i=1:order+1}))
     elseif lapStatus.currentLap == 2         # if we're in the second second lap
-        @NLexpression(mdl.mdl, costZTerm, 1*sum{coeffTermCost[i,1]*mdl.z_Ol[1,N+1]^(order+1-i),i=1:order+1})
+        @NLexpression(mdl.mdl, costZTerm, 5*sum{coeffTermCost[i,1]*mdl.z_Ol[N+1,1]^(order+1-i),i=1:order+1})
     end
 
     # State cost
     # ---------------------------------
     if lapStatus.currentLap <= 1      # if we're in the first lap, just do path following
-        @NLexpression(mdl.mdl, costZ, 0.5*sum{Q[i]*sum{(mdl.z_Ol[i,j]-z_Ref[j,i])^2,j=1:N+1},i=1:4})    # Follow trajectory
+        @NLexpression(mdl.mdl, costZ, 0.5*sum{Q[i]*sum{(mdl.z_Ol[j,i]-z_Ref[j,i])^2,j=1:N+1},i=1:4})    # Follow trajectory
 
     else        # if we're in another lap, put cost on z (actually should put cost only on z before finishing the lap)
         #@NLexpression(mdl.mdl, costZ_h, 0)          # zero state cost after crossing the finish line
@@ -102,6 +102,7 @@ function solveMpcProblem(mdl::MpcModel,mpcSol::MpcSol,mpcCoeff::MpcCoeff,mpcPara
     sol_status  = solve(mdl.mdl)
     sol_u       = getvalue(mdl.u_Ol)
     sol_z       = getvalue(mdl.z_Ol)
+    println("Predicting until z = $(sol_z[end,1])")
 
     # COST PRINTS: ********************************************************
     # println("coeff: $(getvalue(mdl.coeff))")
@@ -125,11 +126,11 @@ function solveMpcProblem(mdl::MpcModel,mpcSol::MpcSol,mpcCoeff::MpcCoeff,mpcPara
     #println(getvalue(mdl.u_Ol))
     #mpcSol      = MpcSol(sol_u[1,1],sol_u[2,1],sol_status,getvalue(mdl.u_Ol),getvalue(mdl.z_Ol),[getvalue(costZ),getvalue(costZTerm),getvalue(constZTerm),getvalue(derivCost),getvalue(controlCost),getvalue(laneCost)])
     mpcSol.a_x = sol_u[1,1]
-    mpcSol.d_f = sol_u[2,1]
+    mpcSol.d_f = sol_u[1,2]
     mpcSol.u   = sol_u
     mpcSol.z   = sol_z
-    mpcSol.cost = zeros(6)
-    #mpcSol.cost = [getvalue(costZ),getvalue(costZTerm),getvalue(constZTerm),getvalue(derivCost),getvalue(controlCost),getvalue(laneCost)]
+    #mpcSol.cost = zeros(6)
+    mpcSol.cost = [getvalue(costZ),getvalue(costZTerm),getvalue(constZTerm),getvalue(derivCost),getvalue(controlCost),getvalue(laneCost)]
     #mpcSol = MpcSol(sol_u[1,1],sol_u[2,1]) # Fast version without logging
     #println(getvalue(costZTerm))
     #println(getvalue(mdl.z_Ol[1,N+1]))

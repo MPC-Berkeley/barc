@@ -113,7 +113,7 @@ function main()
             trackCoeff.coeffCurvature = coeffCurvature_update
 
             # Simulate model for next input
-            simModel(pred_z,zCurr[i,:]',uCurr[i,:]',modelParams.dt,modelParams.l_A,modelParams.l_B,trackCoeff.coeffCurvature)
+            simModel(pred_z,zCurr[i,:]',uCurr[i,:]',modelParams.dt,modelParams.l_A,modelParams.l_B,trackCoeff)
             # this simulation returns the predicted state at when the next command is going to be sent. This predicted state is used for
             # the MPC control input calculation.
 
@@ -125,7 +125,7 @@ function main()
                 println("Saving data")
                 tic()
                 saveOldTraj(oldTraj,zCurr,uCurr,lapStatus,buffersize,modelParams.dt)
-                log_oldTraj[1:i,:,:,lapStatus.currentLap] = oldTraj.oldTraj[1:i,:,:]
+                log_oldTraj[:,:,:,lapStatus.currentLap] = oldTraj.oldTraj[:,:,:]
                 zCurr[1,:] = zCurr[i,:]         # reset counter to 1 and set current state
                 uCurr[1,:] = uCurr[i+1,:]       # ... and input
                 i                     = 1       
@@ -147,7 +147,7 @@ function main()
 
             # if we are at least in the 2nd lap, concatenate the beginning to the end of the previous track
             if lapStatus.currentLap > 1 && lapStatus.currentIt == 80
-                extendOldTraj(oldTraj,posInfo,zCurr)
+                #extendOldTraj(oldTraj,posInfo,zCurr)
             end
 
             #  ======================================= Calculate input =======================================
@@ -187,8 +187,8 @@ function main()
             k = k + 1       # counter
             log_state[k,:] = z_est
             log_t[k] = time() - t0
-            log_sol_z[:,:,k] = mpcSol.z'
-            log_sol_u[:,:,k] = mpcSol.u'
+            log_sol_z[:,:,k] = mpcSol.z
+            log_sol_u[:,:,k] = mpcSol.u
             log_cost[k,:]    = mpcSol.cost
             log_curv[k,:]    = trackCoeff.coeffCurvature
             println("pred_z = $pred_z")

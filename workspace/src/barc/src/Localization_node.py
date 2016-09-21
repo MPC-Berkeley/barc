@@ -12,6 +12,7 @@ from numpy import *
 from Localization_helpers import Localization
 from barc.msg import Z_KinBkMdl, pos_info
 
+
 l = 0
 epsi_prev = 0
 
@@ -42,8 +43,9 @@ def localization_node():
     # l.create_circle(1,100,array([3.2,0.5]))
     #l.create_racetrack(2.0,2.0,0.2,array([0.0,-1.0]),0)
     l.create_track()
+    #l.create_track2()
     # l.create_ellipse(1.5,0.8,100,array([2.8,1.6]))
-    # l.prepare_trajectory(0.063)
+    l.prepare_trajectory(0.06)
 
     # set node rate
     loop_rate   = 50

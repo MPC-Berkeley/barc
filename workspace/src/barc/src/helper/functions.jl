@@ -38,9 +38,9 @@ function InitializeParameters(mpcParams::MpcParams,trackCoeff::TrackCoeff,modelP
     mpcParams.R                 = 0.1*[1.0,1.0]                 # put weights on a and d_f
     mpcParams.QderivZ           = 0.0*[1,1,1,1]             # cost matrix for derivative cost of states
     mpcParams.QderivU           = 1*[1,10]                 # cost matrix for derivative cost of inputs
-    mpcParams.vPathFollowing    = 1.0
+    mpcParams.vPathFollowing    = 0.5
 
-    trackCoeff.nPolyCurvature   = 8                   # 4th order polynomial for curvature approximation
+    trackCoeff.nPolyCurvature   = 6                   # 4th order polynomial for curvature approximation
     trackCoeff.coeffCurvature   = zeros(trackCoeff.nPolyCurvature+1)         # polynomial coefficients for curvature approximation (zeros for straight line)
     trackCoeff.width            = 0.4                 # width of the track (0.5m)
 
@@ -55,7 +55,7 @@ function InitializeParameters(mpcParams::MpcParams,trackCoeff::TrackCoeff,modelP
     modelParams.dt              = 0.1
 
     posInfo.s_start             = 0
-    posInfo.s_target            = 25.62#13.20#10.281192
+    posInfo.s_target            = 25.62#29.491949#13.20#10.281192
 
     oldTraj.oldTraj             = zeros(buffersize,4,2)
     oldTraj.oldInput            = zeros(buffersize,2,2)
@@ -86,14 +86,14 @@ function InitializeModel(m::MpcModel,mpcParams::MpcParams,modelParams::ModelPara
     
     m.mdl = Model(solver = IpoptSolver(print_level=0,max_cpu_time=0.05))#,linear_solver="ma57",print_user_options="yes"))
 
-    @variable( m.mdl, m.z_Ol[1:4,1:(N+1)])      # z = s, ey, epsi, v
-    @variable( m.mdl, m.u_Ol[1:2,1:N])
+    @variable( m.mdl, m.z_Ol[1:(N+1),1:4])      # z = s, ey, epsi, v
+    @variable( m.mdl, m.u_Ol[1:N,1:2])
     @variable( m.mdl, 0 <= m.ParInt[1:1] <= 1)
 
     for i=1:2       # I don't know why but somehow the short method returns errors sometimes
         for j=1:N
-            setlowerbound(m.u_Ol[i,j], modelParams.u_lb[i,j])
-            setupperbound(m.u_Ol[i,j], modelParams.u_ub[i,j])
+            setlowerbound(m.u_Ol[j,i], modelParams.u_lb[i,j])
+            setupperbound(m.u_Ol[j,i], modelParams.u_ub[i,j])
         end
     end
     # for i=1:4
@@ -105,33 +105,37 @@ function InitializeModel(m::MpcModel,mpcParams::MpcParams,modelParams::ModelPara
     #@variable( m.mdl, 1 >= m.ParInt >= 0 )
 
     @NLparameter(m.mdl, m.z0[i=1:4] == z_Init[i])
-    @NLconstraint(m.mdl, [i=1:4], m.z_Ol[i,1] == m.z0[i])
+    @NLconstraint(m.mdl, [i=1:4], m.z_Ol[1,i] == m.z0[i])
 
     @NLparameter(m.mdl, m.coeff[i=1:n_poly_curv+1] == trackCoeff.coeffCurvature[i]);
 
     #@NLexpression(m.mdl, m.c[i = 1:N],    m.coeff[1]*m.z_Ol[1,i]^4+m.coeff[2]*m.z_Ol[1,i]^3+m.coeff[3]*m.z_Ol[1,i]^2+m.coeff[4]*m.z_Ol[1,i]+m.coeff[5])
-    @NLexpression(m.mdl, m.c[i = 1:N],    sum{m.coeff[j]*m.z_Ol[1,i]^(n_poly_curv-j+1),j=1:n_poly_curv} + m.coeff[n_poly_curv+1])
-    @NLexpression(m.mdl, m.bta[i = 1:N],  atan( L_a / (L_a + L_b) * tan( m.u_Ol[2,i] ) ) )
-    @NLexpression(m.mdl, m.dsdt[i = 1:N], m.z_Ol[4,i]*cos(m.z_Ol[3,i]+m.bta[i])/(1-m.z_Ol[2,i]*m.c[i]))
+    @NLexpression(m.mdl, m.c[i = 1:N],    sum{m.coeff[j]*m.z_Ol[i,1]^(n_poly_curv-j+1),j=1:n_poly_curv} + m.coeff[n_poly_curv+1])
+    @NLexpression(m.mdl, m.bta[i = 1:N],  atan( L_a / (L_a + L_b) * tan( m.u_Ol[i,2] ) ) )
+    @NLexpression(m.mdl, m.dsdt[i = 1:N], m.z_Ol[i,4]*cos(m.z_Ol[i,3]+m.bta[i])/(1-m.z_Ol[i,2]*m.c[i]))
 
     # System dynamics
     for i=1:N
-        @NLconstraint(m.mdl, m.z_Ol[1,i+1]  == m.z_Ol[1,i] + dt*m.dsdt[i]  )                                             # s
-        @NLconstraint(m.mdl, m.z_Ol[2,i+1]  == m.z_Ol[2,i] + dt*m.z_Ol[4,i]*sin(m.z_Ol[3,i]+m.bta[i])  )                     # ey
-        @NLconstraint(m.mdl, m.z_Ol[3,i+1]  == m.z_Ol[3,i] + dt*(m.z_Ol[4,i]/L_a*sin(m.bta[i])-m.dsdt[i]*m.c[i])  )            # epsi
-        @NLconstraint(m.mdl, m.z_Ol[4,i+1]  == m.z_Ol[4,i] + dt*(c0[1]*m.u_Ol[1,i] - c0[2]*abs(m.z_Ol[4,i]) * m.z_Ol[4,i]))  # v
+        @NLconstraint(m.mdl, m.z_Ol[i+1,1]  == m.z_Ol[i,1] + dt*m.dsdt[i]  )                                             # s
+        @NLconstraint(m.mdl, m.z_Ol[i+1,2]  == m.z_Ol[i,2] + dt*m.z_Ol[i,4]*sin(m.z_Ol[i,3]+m.bta[i])  )                     # ey
+        @NLconstraint(m.mdl, m.z_Ol[i+1,3]  == m.z_Ol[i,3] + dt*(m.z_Ol[i,4]/L_a*sin(m.bta[i])-m.dsdt[i]*m.c[i])  )            # epsi
+        @NLconstraint(m.mdl, m.z_Ol[i+1,4]  == m.z_Ol[i,4] + dt*(c0[1]*m.u_Ol[i,1] - c0[2]*abs(m.z_Ol[i,4]) * m.z_Ol[i,4]))  # v
     end
 
 end
 
-function simModel(zNext::Array{Float64},z::Array{Float64},u::Array{Float64},dt::Float64,l_A::Float64,l_B::Float64,coeff::Array{Float64})
+function simModel(zNext::Array{Float64},z::Array{Float64},u::Array{Float64},dt::Float64,l_A::Float64,l_B::Float64,trackCoeff::TrackCoeff)
 
    # kinematic bicycle model
    # u[1] = acceleration
    # u[2] = steering angle
 
     s = z[1]
-    c = ([s.^8 s.^7 s.^6 s.^5 s.^4 s.^3 s.^2 s 1] * coeff'')[1]
+    c = 0
+    for i=trackCoeff.nPolyCurvature:-1:0
+        c += s^i * trackCoeff.coeffCurvature[trackCoeff.nPolyCurvature+1-i]
+    end
+    #c = ([s.^10 s.^9 s.^8 s.^7 s.^6 s.^5 s.^4 s.^3 s.^2 s 1] * coeff'')[1]
     bta = atan(l_A/(l_A+l_B)*tan(u[2]))
     dsdt = z[4] *cos(z[3]+bta)/(1-z[2]*c)
 

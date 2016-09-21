@@ -18,6 +18,11 @@ def add_curve(theta, length, angle):
         theta = hstack((theta,theta[-1] + d_theta))
     return theta
 
+def create_bezier(p0,p1,p2,dt):
+    t = arange(0,1+dt,dt)[:,None]
+    p = (1-t)**2*p0 + 2*(1-t)*t*p1+t**2*p2
+    return p
+
 class Localization:
     n                   = 0                     # number of nodes
     c                   = 0                     # center of circle (in case of circular trajectory)
@@ -28,8 +33,8 @@ class Localization:
     N_nodes_poly_front  = 40                    # number of nodes in front
     ds                  = 0                     # distance between nodes
     nPoints             = N_nodes_poly_front+N_nodes_poly_back+1    # number of points for interpolation in total
-    OrderXY             = 8                     # order of x-y-polynomial interpolation
-    OrderThetaCurv      = 8                     # order of theta interpolation
+    OrderXY             = 6                     # order of x-y-polynomial interpolation
+    OrderThetaCurv      = 6                     # order of theta interpolation
     closed              = True                  # open or closed trajectory?
 
     coeffX = 0
@@ -54,6 +59,44 @@ class Localization:
         self.rad    = rad
         #self.ds    = rad*2*pi/n
         self.ds     = 2*rad*tan(2*pi/n/2)
+
+    def create_track2(self):
+        p0 = array([[0,0],
+            [2,0],
+            [2,-2],
+            [1,-4],
+            [3,-4],
+            [5,-5],
+            [3,-6],
+            [1,-6],
+            [-0.5,-5.5],
+            [-1.5,-5],
+            [-3,-4],
+            [-3,-2],
+            [0,0]])
+        p1 = array([0,0,0.75,-1,1,inf,0,0,-1,0,inf,inf,0])
+
+        p = p0[0,:]
+        for i in range(0,size(p0,0)-1):
+            b1 = p0[i,1] - p1[i]*p0[i,0]
+            b2 = p0[i+1,1] - p1[i+1]*p0[i+1,0]
+            a1 = p1[i]
+            a2 = p1[i+1]
+            x = (b2-b1)/(a1-a2)
+            y = a1*x + b1
+            if p1[i] == inf:
+                x = p0[i,0]
+                y = a2*x+b2
+            elif p1[i+1] == inf:
+                x = p0[i+1,0]
+                y = a1*x+b1
+            if a1 == a2:
+                p = vstack((p,p0[i+1,:]))
+            else:
+                p = vstack((p,create_bezier(p0[i,:],array([[x,y]]),p0[i+1,:],0.01)))
+        self.nodes = transpose(p)
+        self.ds = 0.06
+
     def create_track(self):
         x = array([0])           # starting point
         y = array([0])
@@ -128,11 +171,11 @@ class Localization:
         length = sum(ds)
         dsn = ds_in                     # optimal new step size (might be calculated externally for now)
         rem = lambda x:mod(length,x)    # function to calculate optimal step size (for evenly distributed steps)
-        sol = scipy.optimize.fmin(func=rem,x0=dsn)
+        sol = scipy.optimize.fmin(func=rem,x0=dsn,args=(),xtol=0.0000001,ftol=0.0000001)
         dsn = sol[0]
         #sn = arange(0,length,dsn)       # new steps
         #n = size(sn,0)
-        n = floor(length/dsn)+1
+        n = floor(length/dsn)
         #print(n)
         sn = arange(0,n*dsn,dsn)
         #print(sn)
@@ -148,6 +191,7 @@ class Localization:
         self.nodes = array([xn,yn])
         self.ds = dsn
         self.n = size(xn)
+        print "Finished track optimization."
         print "Track length = %fm, ds = %fm"%(length,dsn)
         print "Approximated length = %fm"%(self.nPoints*dsn)
         #print(sn)
@@ -235,7 +279,7 @@ class Localization:
         coeffTheta      = linalg.lstsq(Matrix3rd,b_theta_vec)[0]
         coeffCurvature  = linalg.lstsq(Matrix3rd,b_curvature_vector)[0]
 
-        #if max(coeffCurvature) > 50:
+        # if max(coeffCurvature) > 200:
         #    print "Large value, idx_min = %f"%(idx_min)
         #    print(nodes_X)
         #    print(nodes_Y)
@@ -243,7 +287,7 @@ class Localization:
 
         # Calculate s
         discretization = 0.001                           # discretization to calculate s
-        s_idx_start = max(0,idx_min-1)                  # where the discretization starts
+        s_idx_start = max(0,idx_min-1)                   # where the discretization starts
         if self.closed and s_idx_start-idx_start<0:
             s_idx_start = s_idx_start + n
         j           = arange((s_idx_start-idx_start)*self.ds,(s_idx_start-idx_start+2)*self.ds,discretization)
