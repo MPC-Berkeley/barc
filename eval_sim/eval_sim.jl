@@ -46,6 +46,8 @@ function eval_sim()
     plot(z.z[:,1],z.z[:,2],"-",gps_meas.z[:,1]/100,gps_meas.z[:,2]/100,".",est.z[:,1],est.z[:,2],"-")
     plot(track[:,1],track[:,2],"b.",track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")
     grid(1)
+    title("x-y-view")
+    axis("equal")
     legend(["real state","GPS meas","estimate"])
     figure()
     plot(z.t-t0,z.z[:,3],imu_meas.t-t0,imu_meas.z,est.t-t0,est.z[:,3])
@@ -56,7 +58,7 @@ function eval_sim()
     grid()
     legend(["Velocity"])
     figure()
-    plot(cmd_log.t,cmd_log.z)
+    plot(cmd_log.t-t0,cmd_log.z)
     legend(["a","d_f"])
     grid()
 end
@@ -72,7 +74,7 @@ function eval_LMPC()
     sol_u       = d_lmpc["sol_u"]
     cost        = d_lmpc["cost"]
     curv        = d_lmpc["curv"]
-    pred_z      = d_lmpc["pred_z"]
+    f_z         = d_lmpc["pred_z"]
     x_est       = d_lmpc["x_est"]
     coeffX      = d_lmpc["coeffX"]
     coeffY      = d_lmpc["coeffY"]
@@ -83,60 +85,91 @@ function eval_LMPC()
     z           = d_sim["z"]
     cmd_log     = d_sim["cmd_log"]
 
-    figure()
-    plot(z.t,z.z[:,3],t,x_est[:,3])
+    t0 = t[1]
+
+    c = zeros(size(curv,1),1)
+    for i=1:size(curv,1)
+        s = state[i,1]
+        c[i] = ([s.^8 s.^7 s.^6 s.^5 s.^4 s.^3 s.^2 s.^1 s.^0] * curv[i,:]')[1]
+    end
+    plot(s_start+state[:,1],c,"-o")
+    for i=1:2:size(curv,1)
+        s = sol_z[:,1,i]
+        c = zeros(size(curv,1),1)
+        c = [s.^8 s.^7 s.^6 s.^5 s.^4 s.^3 s.^2 s.^1 s.^0] * curv[i,:]'
+        plot(s_start[i]+s,c,"-*")
+    end
+    title("Curvature over path")
+    xlabel("Curvilinear abscissa [m]")
+    ylabel("Curvature")
     grid()
 
-    t0 = t[1]
+    figure()
+    plot(z.t-t0,z.z[:,3],t-t0,x_est[:,3])
+    legend(["psi_true","psi_est"])
+    grid()
+
     track = create_track(0.2)
     figure()
     hold(1)
     plot(x_est[:,1],x_est[:,2],"-o")
     plot(track[:,1],track[:,2],"b.",track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")
-    for i=1:size(x_est,1)
-        #dir = [cos(x_est[i,3]) sin(x_est[i,3])]
-        #dir2 = [cos(x_est[i,3] - state[i,3]) sin(x_est[i,3] - state[i,3])]
-        #lin = [x_est[i,1:2];x_est[i,1:2] + 0.05*dir]
-        #lin2 = [x_est[i,1:2];x_est[i,1:2] + 0.05*dir2]
-        #plot(lin[:,1],lin[:,2],"-o",lin2[:,1],lin2[:,2],"-*")
-    end
-    for i=1:size(x_est,1)
-        if i%1==0
-            z_pred = zeros(11,4)
-            z_pred[1,:] = x_est[i,:]
-            for j=2:11
-                z_pred[j,:] = simModel(z_pred[j-1,:],sol_u[j-1,:,i],0.1,0.125,0.125)
-            end
-            plot(z_pred[:,1],z_pred[:,2],"-*")
-        end
-    end
+    axis("equal")
+    # for i=1:size(x_est,1)
+    #     #dir = [cos(x_est[i,3]) sin(x_est[i,3])]
+    #     #dir2 = [cos(x_est[i,3] - state[i,3]) sin(x_est[i,3] - state[i,3])]
+    #     #lin = [x_est[i,1:2];x_est[i,1:2] + 0.05*dir]
+    #     #lin2 = [x_est[i,1:2];x_est[i,1:2] + 0.05*dir2]
+    #     #plot(lin[:,1],lin[:,2],"-o",lin2[:,1],lin2[:,2],"-*")
+    # end
+    # for i=1:size(x_est,1)
+    #     if i%4==0
+    #         z_pred = zeros(11,4)
+    #         z_pred[1,:] = x_est[i,:]
+    #         for j=2:11
+    #             z_pred[j,:] = simModel(z_pred[j-1,:],sol_u[j-1,:,i],0.1,0.125,0.125)
+    #         end
+    #         plot(z_pred[:,1],z_pred[:,2],"-*")
+    #     end
+    # end
 
-    for i=1:size(x_est,1)
-        s = 0.4:.1:2.5
-        ss = [s.^6 s.^5 s.^4 s.^3 s.^2 s.^1 s.^0]
-        x = ss*coeffX[i,:]'
-        y = ss*coeffY[i,:]'
-        plot(x,y)
-    end
+    # for i=1:size(x_est,1)
+    #     s = 0.4:.1:2.5
+    #     ss = [s.^6 s.^5 s.^4 s.^3 s.^2 s.^1 s.^0]
+    #     x = ss*coeffX[i,:]'
+    #     y = ss*coeffY[i,:]'
+    #     plot(x,y)
+    # end
+    grid()
+
+    figure()
+    plot(t-t0,state,"-o",t-t0,f_z,"-*")
+    legend(["s","ey","epsi","v","s_pred","ey_pred","epsi_pred","v_pred"])
     grid()
 
     figure()
     plot(oldTraj[:,1,1,1],oldTraj[:,2:4,1,1],"-o")
     legend(["e_y","e_psi","v"])
     grid(1)
+
+    figure()
+    plot(s_start+state[:,1],state[:,[2,4]],"*")
+    grid()
+
     figure()
     ax1=subplot(211)
     plot(t-t0,state,z.t-t0,z.z[:,1:2])
-    legend(["s","e_y","e_psi","v"])
+    legend(["s","e_y","e_psi","v","x","y"])
     grid(1)
-    #figure()
     subplot(212,sharex = ax1)
     plot(t-t0,cost)
     grid(1)
     legend(["costZ","costZTerm","constZTerm","derivCost","controlCost","laneCost"])
-    figure()
-    plot(1:size(curv,1),curv)
-    legend(["1","2","3","4","5","6","7","8","9"])
+    # figure()
+    # plot(1:size(curv,1),curv)
+    # grid()
+    # title("Polynomial coefficients")
+    # legend(["1","2","3","4","5","6","7","8","9"])
 end
 
 function eval_oldTraj(i)

@@ -33,7 +33,7 @@ t = 0
 # This type contains measurement data (time, values and a counter)
 type Measurements{T}
     i::Int64          # measurement counter
-    t::Array{T}       # time data
+    t::Array{Float64}       # time data
     z::Array{T}       # measurement values
 end
 # This function cleans the zeros from the type above once the simulation is finished
@@ -45,7 +45,7 @@ end
 buffersize = 60000
 gps_meas = Measurements{Float64}(0,zeros(buffersize,1),zeros(buffersize,2))
 imu_meas = Measurements{Float64}(0,zeros(buffersize,1),zeros(buffersize,1))
-est_meas = Measurements{Float32}(0,zeros(Float32,buffersize,1),zeros(Float32,buffersize,4))
+est_meas = Measurements{Float32}(0,zeros(buffersize,1),zeros(Float32,buffersize,4))
 cmd_log  = Measurements{Float64}(0,zeros(buffersize,1),zeros(buffersize,2))
 z_real   = Measurements{Float64}(0,zeros(buffersize,1),zeros(buffersize,4))
 
@@ -69,7 +69,7 @@ function simModel(z,u,dt,l_A,l_B)
     zNext[4] = z[4] + dt*(u[1] - 0.63 * z[4]^2 * sign(z[4]))                     # v
 
     # Add process noise (depending on velocity)
-    zNext = zNext + 0*diagm([0.01*z[4],0.01*z[4],0.001,0.01*z[4]])*randn(4,1)
+    zNext = zNext + diagm([0.001*z[4],0.001*z[4],0.00,0.001*z[4]])*randn(4,1)
 
     return zNext
 end
@@ -106,7 +106,7 @@ function main()
     s2  = Subscriber("state_estimate", Z_KinBkMdl, est_callback, queue_size=10)
 
     z_current = zeros(60000,4)
-    z_current[1,:] = [0.01 0.0 0.0 0.0]
+    z_current[1,:] = [0.05 0.0 0.0 0.0]
 
     dt = 0.01
     loop_rate = Rate(1/dt)
@@ -163,8 +163,8 @@ function main()
         end
 
         # GPS measurements
-        x = round(z_current[i,1]*100 + 0*randn()*2)       # Indoor gps measures in cm
-        y = round(z_current[i,2]*100 + 0*randn()*2)
+        x = round(z_current[i,1]*100 + 1*randn()*2)       # Indoor gps measures in cm
+        y = round(z_current[i,2]*100 + 1*randn()*2)
         if i % 7 == 0
             gps_meas.i += 1
             gps_meas.t[gps_meas.i] = t

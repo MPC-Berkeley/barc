@@ -89,7 +89,7 @@ function solveMpcProblem(mdl::MpcModel,mpcSol::MpcSol,mpcCoeff::MpcCoeff,mpcPara
     # State cost
     # ---------------------------------
     if lapStatus.currentLap <= 1      # if we're in the first lap, just do path following
-        @NLexpression(mdl.mdl, costZ, 0.5*sum{Q[i]*sum{(mdl.z_Ol[j,i]-z_Ref[j,i])^2,j=1:N+1},i=1:4})    # Follow trajectory
+        @NLexpression(mdl.mdl, costZ, 0.5*sum{Q[i]*sum{(mdl.z_Ol[j,i]-z_Ref[j,i])^2,j=2:N+1},i=1:4})    # Follow trajectory
 
     else        # if we're in another lap, put cost on z (actually should put cost only on z before finishing the lap)
         #@NLexpression(mdl.mdl, costZ_h, 0)          # zero state cost after crossing the finish line

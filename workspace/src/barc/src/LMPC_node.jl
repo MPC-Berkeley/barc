@@ -53,8 +53,8 @@ function main()
 
     z_est                       = zeros(4)
     x_est                       = zeros(4)
-    coeffX                      = zeros(7)
-    coeffY                      = zeros(7)
+    coeffX                      = zeros(9)
+    coeffY                      = zeros(9)
     s_start_update              = [0.0]
     cmd                         = ECU(0.0,0.0)
 
@@ -69,8 +69,8 @@ function main()
     log_curv                    = zeros(10000,trackCoeff.nPolyCurvature+1)
     log_s_start                 = zeros(10000)
     log_state_x                 = zeros(10000,4)
-    log_coeffX                  = zeros(10000,7)
-    log_coeffY                  = zeros(10000,7)
+    log_coeffX                  = zeros(10000,9)
+    log_coeffY                  = zeros(10000,9)
     # Initialize ROS node and topics
     init_node("mpc_traj")
     loop_rate = Rate(10)
@@ -104,37 +104,50 @@ function main()
     # Initial solve:
     println("Initial solve...")
     solve(mdl.mdl)
+    solve(mdl.mdl)
     println("Finished.")
 
-    pred_z = zeros(4,1)
+    pred_z = zeros(4)
 
-    t0 = time()
     k = 0
+
+    # Precompile functions
+    coeffConstraintCost(oldTraj,mpcCoeff,posInfo,mpcParams)
+    extendOldTraj(oldTraj,posInfo,zCurr)
+    lapStatus.currentIt = 100
+    saveOldTraj(oldTraj,zCurr,uCurr,lapStatus,buffersize,modelParams.dt)
+    lapStatus.currentIt = 0
+    mpcCoeff.coeffCost  = zeros(mpcCoeff.order+1,2)         # ... and set them back to zeros
+    mpcCoeff.coeffConst = zeros(mpcCoeff.order+1,2,3)
+    println("Finished precompiling.")
+
+    # Start node
     while ! is_shutdown()
         if z_est[1] > 0         # check if data has been received (s > 0)
 
             # publish command from last calculation
-            # cmd = ECU(mpcSol.a_x, mpcSol.d_f)
+            # cmd.motor = mpcSol.a_x
+            # cmd.servo = mpcSol.d_f
             # publish(pub, cmd)        
 
             # ============================= Initialize iteration parameters =============================
             lapStatus.currentIt += 1                            # count iteration
 
             i                   = lapStatus.currentIt           # current iteration number, just to make notation shorter
-            zCurr[i,:]          = z_est                         # update state information
+            zCurr[i,:]          = z_est                         # update state information: s, e_y, e_psi, v
             posInfo.s           = z_est[1]                      # update position info
             posInfo.s_start     = s_start_update[1]
             trackCoeff.coeffCurvature = coeffCurvature_update
 
             # Simulate model for next input
-            simModel(pred_z,zCurr[i,:]',uCurr[i,:]',modelParams,trackCoeff)
+            #pred_z = simModel(z_est,uCurr[i,:][:],modelParams,trackCoeff)
+
             # this simulation returns the predicted state at when the next command is going to be sent. This predicted state is used for
             # the MPC control input calculation.
 
 
             # ======================================= Lap trigger =======================================
             # This part takes pretty long (about 0.6 seconds on my Mac) and should be faster!
-            
             if (posInfo.s_start + posInfo.s)%posInfo.s_target <= s_lapTrigger && switchLap      # if we are switching to the next lap...
                 # ... then select and save data
                 println("Saving data")
@@ -145,7 +158,6 @@ function main()
                 uCurr[1,:] = uCurr[i+1,:]       # ... and input
                 i                     = 1       
                 lapStatus.currentLap += 1       # start next lap
-                #lapStatus.currentLap = 1
                 lapStatus.currentIt   = 1       # reset current iteration
                 switchLap = false
 
@@ -163,7 +175,7 @@ function main()
 
             # if we are at least in the 2nd lap, concatenate the beginning to the end of the previous track
             if lapStatus.currentLap > 1 && lapStatus.currentIt == 80
-                #extendOldTraj(oldTraj,posInfo,zCurr)
+                extendOldTraj(oldTraj,posInfo,zCurr)
             end
 
             #  ======================================= Calculate input =======================================
@@ -171,14 +183,17 @@ function main()
             println("Current Lap: $(lapStatus.currentLap), It: $(lapStatus.currentIt)")
             println("State Nr. $i    = $z_est")
             println("Coeff Curvature = $(trackCoeff.coeffCurvature)")
-            println("posInfo         = $posInfo")
             println("s               = $(posInfo.s)")
             println("s_start         = $(posInfo.s_start)")
             println("s_total         = $((posInfo.s+posInfo.s_start)%posInfo.s_target)")
 
             # Find coefficients for cost and constraints
+
             if lapStatus.currentLap > 1
-                coeffConstraintCost(oldTraj,lapStatus,mpcCoeff,posInfo,mpcParams)
+                tic()
+                coeffConstraintCost(oldTraj,mpcCoeff,posInfo,mpcParams)
+                tt = toq()
+                println("Finished coefficients, t = $tt s")
             end
 
             # Solve the MPC problem
@@ -190,7 +205,7 @@ function main()
             # Write in current input information
             uCurr[i+1,:]  = [mpcSol.a_x mpcSol.d_f]
             #println("trackCoeff = $trackCoeff")
-            println("Finished solving, status: $(mpcSol.solverStatus), u = $(uCurr[i,:]), t = $tt s")
+            println("Finished solving, status: $(mpcSol.solverStatus), u = $(uCurr[i+1,:]), t = $tt s")
             # ... and publish data
 
             zCurr[i,1] = (posInfo.s_start + posInfo.s)%posInfo.s_target   # save absolute position in s (for oldTrajectory)
@@ -211,10 +226,11 @@ function main()
             log_state_x[k,:]        = x_est
             log_coeffX[k,:]         = coeffX
             log_coeffY[k,:]         = coeffY
-            #println("pred_z = $pred_z")
+            println("pred_z = $pred_z")
 
             # publish command from last calculation
-            cmd = ECU(mpcSol.a_x, mpcSol.d_f)
+            cmd.motor = mpcSol.a_x
+            cmd.servo = mpcSol.d_f
             publish(pub, cmd) 
 
         else

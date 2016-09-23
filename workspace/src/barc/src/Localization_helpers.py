@@ -29,12 +29,12 @@ class Localization:
     pos                 = 0                     # current position
     psi                 = 0                     # current orientation
     nodes               = 0                     # all nodes are saved in a matrix
-    N_nodes_poly_back   = 10                    # number of nodes behind current position
-    N_nodes_poly_front  = 30                    # number of nodes in front
+    N_nodes_poly_back   = 20                    # number of nodes behind current position
+    N_nodes_poly_front  = 40                    # number of nodes in front
     ds                  = 0                     # distance between nodes
     nPoints             = N_nodes_poly_front+N_nodes_poly_back+1    # number of points for interpolation in total
-    OrderXY             = 6                     # order of x-y-polynomial interpolation
-    OrderThetaCurv      = 5                     # order of theta interpolation
+    OrderXY             = 8                     # order of x-y-polynomial interpolation
+    OrderThetaCurv      = 8                     # order of theta interpolation
     closed              = True                  # open or closed trajectory?
 
     coeffX = zeros(11)
@@ -207,10 +207,10 @@ class Localization:
         self.n = size(xn)
         print "Finished track optimization."
         print "Track length = %fm, ds = %fm"%(length,dsn)
-        print "Approximated length = %fm"%(self.nPoints*dsn)
+        print "Approximated length in region of s = [%.3f, %.3f]"%((self.N_nodes_poly_back-5)*dsn,(self.nPoints-5)*dsn)
         print "# Nodes: %f"%n
-        print(sn)
-        print(self.nodes)
+        #print(sn)
+        #print(self.nodes)
 
 
     def set_pos(self,x,y,psi,v):
@@ -307,7 +307,7 @@ class Localization:
 
 
         # Calculate s
-        discretization = 0.001                           # discretization to calculate s
+        discretization = 0.0001                           # discretization to calculate s
         
         j           = arange((self.N_nodes_poly_back-1)*self.ds,(self.N_nodes_poly_back+1)*self.ds,discretization)
         #print "idx_min     = %f"%idx_min

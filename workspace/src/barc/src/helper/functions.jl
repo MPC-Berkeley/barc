@@ -6,6 +6,7 @@ function saveOldTraj(oldTraj::OldTrajectory,zCurr::Array{Float64},uCurr::Array{F
                 zCurr_export    = cat(1,zCurr[1:i-1,:], [zCurr[i-1,1]+collect(1:buffersize-i+1)*dt*zCurr[i-1,4] ones(buffersize-i+1,1)*zCurr[i-1,2:4]])
                 uCurr_export    = cat(1,uCurr[1:i-1,:], zeros(buffersize-i+1,2))
                 costLap         = lapStatus.currentIt               # the cost of the current lap is the time it took to reach the finish line
+                
                 # Save all data in oldTrajectory:
                 if lapStatus.currentLap == 1                        # if it's the first lap
                     oldTraj.oldTraj[:,:,1]  = zCurr_export          # ... just save everything
@@ -23,25 +24,20 @@ function saveOldTraj(oldTraj::OldTrajectory,zCurr::Array{Float64},uCurr::Array{F
                     oldTraj.oldInput[:,:,1] = uCurr_export
                     oldTraj.oldCost[1] = costLap
                 end
-                #println(size(save_oldTraj))
-                #println(size(oldTraj.oldTraj))
-                #save_oldTraj[:,:,:,lapStatus.currentLap] = oldTraj.oldTraj[:,:,:]
-
-                
 end
 
 function InitializeParameters(mpcParams::MpcParams,trackCoeff::TrackCoeff,modelParams::ModelParams,
                                 posInfo::PosInfo,oldTraj::OldTrajectory,mpcCoeff::MpcCoeff,lapStatus::LapStatus,buffersize::Int64)
     mpcParams.N                 = 10
     mpcParams.nz                = 4
-    mpcParams.Q                 = [0.0,10.0,0.1,1.0]      # put weights on ey, epsi and v
-    mpcParams.Q_term            = [0.1,0.1,1.0]           # weights for terminal constraints (LMPC, for e_y, e_psi, and v)
+    mpcParams.Q                 = [0.0,10.0,0.0,0.1]      # put weights on ey, epsi and v
+    mpcParams.Q_term            = [0.1,0.01,1.0]           # weights for terminal constraints (LMPC, for e_y, e_psi, and v)
     mpcParams.R                 = 0*[1.0,1.0]             # put weights on a and d_f
     mpcParams.QderivZ           = 0*[0,1,1,1]             # cost matrix for derivative cost of states
-    mpcParams.QderivU           = 1*[1,1]                 # cost matrix for derivative cost of inputs
+    mpcParams.QderivU           = 1.0*[1,1]                 # cost matrix for derivative cost of inputs
     mpcParams.vPathFollowing    = 1.0                     # reference speed for first lap of path following
 
-    trackCoeff.nPolyCurvature   = 5                       # 4th order polynomial for curvature approximation
+    trackCoeff.nPolyCurvature   = 8                       # 4th order polynomial for curvature approximation
     trackCoeff.coeffCurvature   = zeros(trackCoeff.nPolyCurvature+1)         # polynomial coefficients for curvature approximation (zeros for straight line)
     trackCoeff.width            = 0.4                     # width of the track (0.5m)
 
@@ -59,7 +55,10 @@ function InitializeParameters(mpcParams::MpcParams,trackCoeff::TrackCoeff,modelP
     posInfo.s_target            = 31.62#25.62#29.491949#13.20#10.281192
 
     oldTraj.oldTraj             = zeros(buffersize,4,2)
+    oldTraj.oldTraj[:,1,1]      = 1:buffersize
+    oldTraj.oldTraj[:,1,2]      = 1:buffersize
     oldTraj.oldInput            = zeros(buffersize,2,2)
+    oldTraj.oldCost             = 100*ones(Int64,2)                   # dummies for initialization
 
     mpcCoeff.order              = 5
     mpcCoeff.coeffCost          = zeros(mpcCoeff.order+1,2)
@@ -125,30 +124,34 @@ function InitializeModel(m::MpcModel,mpcParams::MpcParams,modelParams::ModelPara
 
 end
 
-function simModel(zNext::Array{Float64},z::Array{Float64},u::Array{Float64},modelParams::ModelParams,trackCoeff::TrackCoeff)
+function simModel(z::Array{Float64},u::Array{Float64},modelParams::ModelParams,trackCoeff::TrackCoeff)
 
-   # kinematic bicycle model
-   # u[1] = acceleration
-   # u[2] = steering angle
-   dt = modelParams.dt
-   l_A = modelParams.l_A
-   l_B = modelParams.l_B
-    s = z[1]
-    c = 0
-    for i=trackCoeff.nPolyCurvature:-1:0
-        c += s^i * trackCoeff.coeffCurvature[trackCoeff.nPolyCurvature+1-i]
+    # kinematic bicycle model
+    # u[1] = acceleration
+    # u[2] = steering angle
+    println("SIMULATING: u = $u, z0 = $z")
+
+    dt  = modelParams.dt/10
+    l_A = modelParams.l_A
+    l_B = modelParams.l_B
+
+    zNext = copy(z)
+    for i=1:10
+        s = zNext[1]
+        c = 0
+        for j=trackCoeff.nPolyCurvature:-1:0
+            c += s^j * trackCoeff.coeffCurvature[trackCoeff.nPolyCurvature+1-j]
+        end
+        bta = atan(l_A/(l_A+l_B)*tan(u[2]))
+        dsdt = zNext[4] *cos(zNext[3]+bta)/(1-zNext[2]*c)
+
+        zNext[1] = zNext[1] + dt*dsdt                       # s
+        zNext[2] = zNext[2] + dt*(zNext[4]*sin(zNext[3] + bta))     # y
+        zNext[3] = zNext[3] + dt*(zNext[4]/l_A*sin(bta)-dsdt*c)        # psi
+        zNext[4] = zNext[4] + dt*(u[1] - 0.63 * zNext[4]^2 * sign(zNext[4]))                     # v
     end
-    # println("Sim Model, c = $c")
-    #c = ([s.^10 s.^9 s.^8 s.^7 s.^6 s.^5 s.^4 s.^3 s.^2 s 1] * coeff'')[1]
-    bta = atan(l_A/(l_A+l_B)*tan(u[2]))
-    dsdt = z[4] *cos(z[3]+bta)/(1-z[2]*c)
 
-    zNext[1] = z[1] + dt*dsdt                       # s
-    zNext[2] = z[2] + dt*(z[4]*sin(z[3] + bta))     # y
-    zNext[3] = z[3] + dt*(z[4]/l_A*sin(bta)-dsdt*c)        # psi
-    zNext[4] = z[4] + dt*(u[1] - 0.63 * z[4]^2 * sign(z[4]))                     # v
-
-    nothing
+    return zNext
 end
 
 function extendOldTraj(oldTraj::OldTrajectory,posInfo::PosInfo,zCurr::Array{Float64,2})
