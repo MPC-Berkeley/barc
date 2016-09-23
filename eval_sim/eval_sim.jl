@@ -40,6 +40,7 @@ function eval_sim()
     z           = d["z"]
     cmd_log     = d["cmd_log"]
 
+    t0 = est.t[1]
     track = create_track(0.2)
     figure()
     plot(z.z[:,1],z.z[:,2],"-",gps_meas.z[:,1]/100,gps_meas.z[:,2]/100,".",est.z[:,1],est.z[:,2],"-")
@@ -47,11 +48,11 @@ function eval_sim()
     grid(1)
     legend(["real state","GPS meas","estimate"])
     figure()
-    plot(z.t,z.z[:,3],imu_meas.t,imu_meas.z,est.t,est.z[:,3])
+    plot(z.t-t0,z.z[:,3],imu_meas.t-t0,imu_meas.z,est.t-t0,est.z[:,3])
     grid(1)
     legend(["Real psi","psi meas","estimate"])
     figure()
-    plot(z.t,z.z[:,4])
+    plot(z.t-t0,z.z[:,4])
     grid()
     legend(["Velocity"])
     figure()
@@ -75,6 +76,7 @@ function eval_LMPC()
     x_est       = d_lmpc["x_est"]
     coeffX      = d_lmpc["coeffX"]
     coeffY      = d_lmpc["coeffY"]
+    s_start     = d_lmpc["s_start"]
     est         = d_sim["estimate"]
     imu_meas    = d_sim["imu_meas"]
     gps_meas    = d_sim["gps_meas"]
@@ -85,6 +87,7 @@ function eval_LMPC()
     plot(z.t,z.z[:,3],t,x_est[:,3])
     grid()
 
+    t0 = t[1]
     track = create_track(0.2)
     figure()
     hold(1)
@@ -98,19 +101,19 @@ function eval_LMPC()
         #plot(lin[:,1],lin[:,2],"-o",lin2[:,1],lin2[:,2],"-*")
     end
     for i=1:size(x_est,1)
-        if i%4==0
+        if i%1==0
             z_pred = zeros(11,4)
             z_pred[1,:] = x_est[i,:]
             for j=2:11
                 z_pred[j,:] = simModel(z_pred[j-1,:],sol_u[j-1,:,i],0.1,0.125,0.125)
             end
-            plot(z_pred[:,1],z_pred[:,2],"-o")
+            plot(z_pred[:,1],z_pred[:,2],"-*")
         end
     end
 
     for i=1:size(x_est,1)
-        s = 0:.1:3.5
-        ss = [s.^10 s.^9 s.^8 s.^7 s.^6 s.^5 s.^4 s.^3 s.^2 s.^1 s.^0]
+        s = 0.4:.1:2.5
+        ss = [s.^6 s.^5 s.^4 s.^3 s.^2 s.^1 s.^0]
         x = ss*coeffX[i,:]'
         y = ss*coeffY[i,:]'
         plot(x,y)
@@ -123,12 +126,12 @@ function eval_LMPC()
     grid(1)
     figure()
     ax1=subplot(211)
-    plot(1:size(state,1),state,1:size(state,1),pred_z)
+    plot(t-t0,state,z.t-t0,z.z[:,1:2])
     legend(["s","e_y","e_psi","v"])
     grid(1)
     #figure()
     subplot(212,sharex = ax1)
-    plot(1:size(cost,1),cost)
+    plot(t-t0,cost)
     grid(1)
     legend(["costZ","costZTerm","constZTerm","derivCost","controlCost","laneCost"])
     figure()
@@ -277,26 +280,26 @@ function create_track(w)
     theta = [0.0]
 
     # SOPHISTICATED TRACK
-    # add_curve(theta,10,0.0)
-    # add_curve(theta,50,-2*pi/3)
-    # add_curve(theta,70,pi)
-    # add_curve(theta,60,-5*pi/6)
-    # add_curve(theta,10,0.0)
-    # add_curve(theta,30,-pi/2)
-    # add_curve(theta,40,0.0)
-    # add_curve(theta,20,-pi/4)
-    # add_curve(theta,20,pi/4)
-    # add_curve(theta,50,-pi/2)
-    # add_curve(theta,22,0.0)
-    # add_curve(theta,30,-pi/2)
-    # add_curve(theta,14,0.0)
+    add_curve(theta,60,0.0)
+    add_curve(theta,50,-2*pi/3)
+    add_curve(theta,70,pi)
+    add_curve(theta,60,-5*pi/6)
+    add_curve(theta,10,0.0)
+    add_curve(theta,30,-pi/2)
+    add_curve(theta,90,0.0)
+    add_curve(theta,20,-pi/4)
+    add_curve(theta,20,pi/4)
+    add_curve(theta,50,-pi/2)
+    add_curve(theta,22,0.0)
+    add_curve(theta,30,-pi/2)
+    add_curve(theta,14,0.0)
 
     # SIMPLE track
-    add_curve(theta,50,0)
-    add_curve(theta,100,-pi)
-    add_curve(theta,100,0)
-    add_curve(theta,100,-pi)
-    add_curve(theta,49,0)
+    # add_curve(theta,50,0)
+    # add_curve(theta,100,-pi)
+    # add_curve(theta,100,0)
+    # add_curve(theta,100,-pi)
+    # add_curve(theta,49,0)
 
     for i=1:length(theta)
             push!(x, x[end] + cos(theta[i])*ds)

@@ -41,7 +41,7 @@ def localization_node():
     # create localization class and trajectory
     l = Localization()
     # l.create_circle(1,100,array([3.2,0.5]))
-    #l.create_racetrack(2.0,2.0,0.2,array([0.0,-1.0]),0)
+    #l.create_racetrack(3.0,3.0,0.2,array([0.0,-1.5]),0)
     l.create_track()
     #l.create_track2()
     # l.create_ellipse(1.5,0.8,100,array([2.8,1.6]))

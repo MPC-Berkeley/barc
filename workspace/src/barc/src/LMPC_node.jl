@@ -134,6 +134,7 @@ function main()
 
             # ======================================= Lap trigger =======================================
             # This part takes pretty long (about 0.6 seconds on my Mac) and should be faster!
+            
             if (posInfo.s_start + posInfo.s)%posInfo.s_target <= s_lapTrigger && switchLap      # if we are switching to the next lap...
                 # ... then select and save data
                 println("Saving data")
@@ -144,6 +145,7 @@ function main()
                 uCurr[1,:] = uCurr[i+1,:]       # ... and input
                 i                     = 1       
                 lapStatus.currentLap += 1       # start next lap
+                #lapStatus.currentLap = 1
                 lapStatus.currentIt   = 1       # reset current iteration
                 switchLap = false
 
@@ -168,7 +170,7 @@ function main()
             println("======================================== NEW ITERATION # $i ========================================")
             println("Current Lap: $(lapStatus.currentLap), It: $(lapStatus.currentIt)")
             println("State Nr. $i    = $z_est")
-            #println("Coeff Curvature = $(trackCoeff.coeffCurvature)")
+            println("Coeff Curvature = $(trackCoeff.coeffCurvature)")
             println("posInfo         = $posInfo")
             println("s               = $(posInfo.s)")
             println("s_start         = $(posInfo.s_start)")
@@ -209,7 +211,7 @@ function main()
             log_state_x[k,:]        = x_est
             log_coeffX[k,:]         = coeffX
             log_coeffY[k,:]         = coeffY
-            println("pred_z = $pred_z")
+            #println("pred_z = $pred_z")
 
             # publish command from last calculation
             cmd = ECU(mpcSol.a_x, mpcSol.d_f)

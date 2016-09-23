@@ -26,7 +26,7 @@ using sensor_msgs.msg
 using JLD
 
 u_current = zeros(2,1)
-t0 = 0
+
 t = 0
 
 
@@ -49,7 +49,10 @@ est_meas = Measurements{Float32}(0,zeros(Float32,buffersize,1),zeros(Float32,buf
 cmd_log  = Measurements{Float64}(0,zeros(buffersize,1),zeros(buffersize,2))
 z_real   = Measurements{Float64}(0,zeros(buffersize,1),zeros(buffersize,4))
 
-z_real.t[1] = time()
+z_real.t[1]   = time()
+imu_meas.t[1] = time()
+est_meas.t[1] = time()
+cmd_log.t[1]  = time()
 
 function simModel(z,u,dt,l_A,l_B)
 
@@ -73,16 +76,15 @@ end
 
 
 function ECU_callback(msg::ECU)
-    global u_current, t0
+    global u_current
     u_current = [msg.motor, msg.servo]
     cmd_log.i += 1
-    cmd_log.t[cmd_log.i] = time()-t0
+    cmd_log.t[cmd_log.i] = time()
     cmd_log.z[cmd_log.i,:] = u_current'
 end
 
 function est_callback(msg::Z_KinBkMdl)
-    global t0
-    t = time() - t0
+    t = time()
     est_meas.i += 1
     est_meas.t[est_meas.i]      = t
     est_meas.z[est_meas.i,:]    = [msg.x msg.y msg.psi msg.v]
@@ -104,7 +106,7 @@ function main()
     s2  = Subscriber("state_estimate", Z_KinBkMdl, est_callback, queue_size=10)
 
     z_current = zeros(60000,4)
-    z_current[1,:] = [0.2 0 0 0]
+    z_current[1,:] = [0.01 0.0 0.0 0.0]
 
     dt = 0.01
     loop_rate = Rate(1/dt)
@@ -124,13 +126,10 @@ function main()
 
     imu_drift = 0       # simulates yaw-sensor drift over time (slow sine)
 
-    global t0 = time()     # Start time of the simulation
-
     println("Publishing sensor information. Simulator running.")
     while ! is_shutdown()
 
         t = time()
-
         # update current state with a new row vector
         z_current[i,:]  = simModel(z_current[i-1,:]',u_current, dt, l_A,l_B)'
         z_real.t[i]     = t

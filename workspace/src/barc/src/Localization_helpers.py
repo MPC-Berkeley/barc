@@ -34,7 +34,7 @@ class Localization:
     ds                  = 0                     # distance between nodes
     nPoints             = N_nodes_poly_front+N_nodes_poly_back+1    # number of points for interpolation in total
     OrderXY             = 6                     # order of x-y-polynomial interpolation
-    OrderThetaCurv      = 3                     # order of theta interpolation
+    OrderThetaCurv      = 5                     # order of theta interpolation
     closed              = True                  # open or closed trajectory?
 
     coeffX = zeros(11)
@@ -105,26 +105,29 @@ class Localization:
         ds = 0.06
         theta = array([0])
 
-        # theta = add_curve(theta,10,0)
-        # theta = add_curve(theta,50,-2*pi/3)
-        # theta = add_curve(theta,70,pi)
-        # theta = add_curve(theta,60,-5*pi/6)
-        # theta = add_curve(theta,10,0)
-        # theta = add_curve(theta,30,-pi/2)
-        # theta = add_curve(theta,40,0)
-        # theta = add_curve(theta,20,-pi/4)
-        # theta = add_curve(theta,20,pi/4)
-        # theta = add_curve(theta,50,-pi/2)
-        # theta = add_curve(theta,22,0)
-        # theta = add_curve(theta,30,-pi/2)
-        # theta = add_curve(theta,14,0)
+        # Sophisticated racetrack: length = 25.62m
+        theta = add_curve(theta,60,0)
+        theta = add_curve(theta,50,-2*pi/3)
+        theta = add_curve(theta,70,pi)
+        theta = add_curve(theta,60,-5*pi/6)
+        theta = add_curve(theta,10,0)
+        theta = add_curve(theta,30,-pi/2)
+        theta = add_curve(theta,90,0)
+        theta = add_curve(theta,20,-pi/4)
+        theta = add_curve(theta,20,pi/4)
+        theta = add_curve(theta,50,-pi/2)
+        theta = add_curve(theta,22,0)
+        theta = add_curve(theta,30,-pi/2)
+        theta = add_curve(theta,14,0)
 
-        # SIMPLE RACETRACK:
-        theta = add_curve(theta,50,0)
-        theta = add_curve(theta,100,-pi)
-        theta = add_curve(theta,100,0)
-        theta = add_curve(theta,100,-pi)
-        theta = add_curve(theta,49,0)
+        # SIMPLE RACETRACK (smooth curves): length = 24.0m
+        # theta = add_curve(theta,50,0)
+        # theta = add_curve(theta,100,-pi)
+        # theta = add_curve(theta,100,0)
+        # theta = add_curve(theta,100,-pi)
+        # theta = add_curve(theta,49,0)
+
+        # SIMPLER RACETRACK (half circles as curves):
 
         for i in range(0,size(theta)):
             x = hstack((x, x[-1] + cos(theta[i])*ds))
@@ -182,9 +185,11 @@ class Localization:
         rem = lambda x:mod(length,x)    # function to calculate optimal step size (for evenly distributed steps)
         sol = scipy.optimize.fmin(func=rem,x0=dsn,args=(),xtol=0.0000001,ftol=0.0000001)
         dsn = sol[0]
+        #dsn = 0.06
         #sn = arange(0,length,dsn)       # new steps
         #n = size(sn,0)
         n = floor(length/dsn)
+        #n = 500
         #print(n)
         sn = arange(0,n*dsn,dsn)
         #print(sn)
@@ -203,8 +208,9 @@ class Localization:
         print "Finished track optimization."
         print "Track length = %fm, ds = %fm"%(length,dsn)
         print "Approximated length = %fm"%(self.nPoints*dsn)
-        #print(sn)
-        #print(self.nodes)
+        print "# Nodes: %f"%n
+        print(sn)
+        print(self.nodes)
 
 
     def set_pos(self,x,y,psi,v):
@@ -250,6 +256,8 @@ class Localization:
 
         # Create Matrix for interpolation
         # x-y-Matrix
+        # The x-y-matrix is just filled with s^n values (n from 0 to the polynomial degree) for s values between s = 0 and s = nPoints*ds
+        # with nPoints = number of points that approximate the polynomial
         Matrix = zeros([self.nPoints,self.OrderXY+1])
         for i in range(0,self.nPoints):
             for k in range(0,self.OrderXY+1):
@@ -300,10 +308,15 @@ class Localization:
 
         # Calculate s
         discretization = 0.001                           # discretization to calculate s
-        s_idx_start = max(0,idx_min-1)                   # where the discretization starts
-        if self.closed and s_idx_start-idx_start<0:
-            s_idx_start = s_idx_start + n
-        j           = arange((s_idx_start-idx_start)*self.ds,(s_idx_start-idx_start+2)*self.ds,discretization)
+        
+        j           = arange((self.N_nodes_poly_back-1)*self.ds,(self.N_nodes_poly_back+1)*self.ds,discretization)
+        #print "idx_min     = %f"%idx_min
+        #print "s_idx_start = %f"%s_idx_start
+        #print "idx_start   = %f"%idx_start
+        #print "idx_end     = %f"%idx_end
+        #print "n           = %f"%n
+        #print j
+
         #print("s_discretization:")
         #print(j)
         x_eval      = polyval(self.coeffX,j)
@@ -312,6 +325,7 @@ class Localization:
         idx_s_min   = argmin(dist_eval)
         s           = j[idx_s_min]      # s = minimum distance to points between idx_min-1 and idx_min+1
         eyabs       = amin(dist_eval)   # absolute distance to curve
+        #print dist_eval
 
         # Calculate sign of y
         s0      = s - discretization
@@ -329,6 +343,7 @@ class Localization:
         # Calculate epsi
         epsi = (self.psi+pi)%(2*pi)-pi-xyPathAngle
         epsi = (epsi+pi)%(2*pi)-pi
+        #print "epsi = %f"%epsi
         #if abs(epsi) > pi/2:
         #   if epsi < pi/2:
         #       epsi = epsi + 2*pi
@@ -340,7 +355,7 @@ class Localization:
         self.s              = s
         self.coeffTheta     = coeffTheta
         self.coeffCurvature = coeffCurvature
-        self.s_start = idx_start*self.ds
+        self.s_start        = idx_start*self.ds
 
 
     def __init__(self):
