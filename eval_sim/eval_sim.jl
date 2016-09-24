@@ -4,7 +4,7 @@ using HDF5, JLD, ProfileView
 
 type Measurements{T}
     i::Int64          # measurement counter
-    t::Array{T}       # time data
+    t::Array{Float64}       # time data
     z::Array{T}       # measurement values
 end
 
@@ -48,7 +48,7 @@ function eval_sim()
     grid(1)
     title("x-y-view")
     axis("equal")
-    legend(["real state","GPS meas","estimate"])
+    legend(["Real state","GPS meas","estimate"])
     figure()
     plot(z.t-t0,z.z[:,3],imu_meas.t-t0,imu_meas.z,est.t-t0,est.z[:,3])
     grid(1)

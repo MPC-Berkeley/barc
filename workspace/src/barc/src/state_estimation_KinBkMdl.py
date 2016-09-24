@@ -21,7 +21,7 @@ from geometry_msgs.msg import Vector3
 from barc.msg import ECU, Encoder, Z_KinBkMdl
 from numpy import pi, cos, sin, eye, array, zeros, unwrap
 from observers import kinematicLuembergerObserver, ekf
-from system_models import f_KinBkMdl, h_KinBkMdl
+from system_models import f_KinBkMdl, h_KinBkMdl, f_KinBkMdl_predictive, h_KinBkMdl_predictive
 from tf import transformations
 from numpy import unwrap, diag
 from os.path import expanduser
@@ -184,11 +184,13 @@ def state_estimation():
     t0          = time.time()
 
     # estimation variables for Luemberger observer
-    z_EKF       = zeros(4)
+    #z_EKF       = zeros(4)
+    z_EKF       = zeros(8)
 
     # estimation variables for EKF
-    P           = eye(4)                # initial dynamics coveriance matrix
+    P           = eye(8)                # initial dynamics coveriance matrix
     Q           = (q_std**2)*eye(4)     # process noise coveriance matrix
+    Q_predictive= (q_std**2)*eye(8)
    # R           = (r_std**2)*eye(4)     # measurement noise coveriance matrix
     if est_mode==1:
         R = diag([gps_std,gps_std,psi_std,v_std])**2
@@ -203,11 +205,21 @@ def state_estimation():
     # start loop
     while not rospy.is_shutdown():
 
+        # collect inputs
+        u   = array([ d_f, acc ])
+        args = (u,vhMdl,dt)
+
         # publish state estimate
-        (x_e, y_e, psi_e, v_e) = z_EKF
+        #(x_e, y_e, psi_e, v_e) = z_EKF
+        (x_e, y_e, psi_e, v_e, x_e_pred, y_e_pred, psi_e_pred, v_e_pred) = z_EKF
+
+        # predict state in 0.1 seconds
+        #z_pred = f_KinBkMdl(z_EKF,u,vhMdl,0.1)
 
         # publish information
-        state_pub.publish( Z_KinBkMdl(x_e, y_e, psi_e, v_e) )
+        #state_pub.publish( Z_KinBkMdl(x_e, y_e, psi_e, v_e) )
+        #state_pub.publish( Z_KinBkMdl(z_pred[0],z_pred[1],z_pred[2],z_pred[3]))
+        state_pub.publish( Z_KinBkMdl( x_e_pred, y_e_pred, psi_e_pred, v_e_pred ))
 
         # collect measurements, inputs, system properties
 
@@ -218,11 +230,8 @@ def state_estimation():
         elif est_mode==3:
             y   = array([x_meas, y_meas])
 
-        # collect inputs
-        u   = array([ d_f, acc ])
-        args = (u,vhMdl,dt)
         # apply EKF and get each state estimate
-        (z_EKF,P) = ekf(f_KinBkMdl, z_EKF, P, h_KinBkMdl, y, Q, R, args )
+        (z_EKF,P) = ekf(f_KinBkMdl_predictive, z_EKF, P, h_KinBkMdl_predictive, y, Q_predictive, R, args )
 
 
         # wait

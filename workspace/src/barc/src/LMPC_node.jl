@@ -126,25 +126,18 @@ function main()
         if z_est[1] > 0         # check if data has been received (s > 0)
 
             # publish command from last calculation
-            # cmd.motor = mpcSol.a_x
-            # cmd.servo = mpcSol.d_f
-            # publish(pub, cmd)        
+            cmd.motor = mpcSol.a_x
+            cmd.servo = mpcSol.d_f
+            publish(pub, cmd)        
 
             # ============================= Initialize iteration parameters =============================
             lapStatus.currentIt += 1                            # count iteration
 
             i                   = lapStatus.currentIt           # current iteration number, just to make notation shorter
-            zCurr[i,:]          = z_est                         # update state information: s, e_y, e_psi, v
+            zCurr[i,:]          = z_est                         # update state information: s, e_y, e_psi, v (actually predicted by Kalman filter!)
             posInfo.s           = z_est[1]                      # update position info
             posInfo.s_start     = s_start_update[1]
             trackCoeff.coeffCurvature = coeffCurvature_update
-
-            # Simulate model for next input
-            pred_z = simModel(z_est,uCurr[i,:][:],modelParams,trackCoeff)
-
-            # this simulation returns the predicted state at when the next command is going to be sent. This predicted state is used for
-            # the MPC control input calculation.
-
 
             # ======================================= Lap trigger =======================================
             # This part takes pretty long (about 0.6 seconds on my Mac) and should be faster!
@@ -198,8 +191,8 @@ function main()
 
             # Solve the MPC problem
             tic()
-            #solveMpcProblem(mdl,mpcSol,mpcCoeff,mpcParams,trackCoeff,lapStatus,posInfo,modelParams,zCurr[i,:]',uCurr[i,:]')
-            solveMpcProblem(mdl,mpcSol,mpcCoeff,mpcParams,trackCoeff,lapStatus,posInfo,modelParams,pred_z,uCurr[i,:]')
+            solveMpcProblem(mdl,mpcSol,mpcCoeff,mpcParams,trackCoeff,lapStatus,posInfo,modelParams,zCurr[i,:]',uCurr[i,:]')
+            #solveMpcProblem(mdl,mpcSol,mpcCoeff,mpcParams,trackCoeff,lapStatus,posInfo,modelParams,pred_z,uCurr[i,:]')
 
             tt = toq()
             # Write in current input information
@@ -208,7 +201,8 @@ function main()
 
             zCurr[i,1] = (posInfo.s_start + posInfo.s)%posInfo.s_target   # save absolute position in s (for oldTrajectory)
             println("\n")
-
+            #println("Starting logging")
+            
             # Logging
             k = k + 1       # counter
             log_state[k,:]          = z_est
@@ -222,14 +216,15 @@ function main()
             log_s_start[k]          = posInfo.s_start
             log_pred_z[k,:]         = pred_z
             log_state_x[k,:]        = x_est
-            log_coeffX[k,:]         = coeffX
-            log_coeffY[k,:]         = coeffY
+            #log_coeffX[k,:]         = coeffX
+            #log_coeffY[k,:]         = coeffY
+            #println("Finished logging")
 
             # publish command from last calculation
-            cmd.motor = mpcSol.a_x
-            cmd.servo = mpcSol.d_f
-            publish(pub, cmd) 
-            println("z_pred = $(pred_z')")
+            #cmd.motor = mpcSol.a_x
+            #cmd.servo = mpcSol.d_f
+            #publish(pub, cmd) 
+            #println("z_pred = $(pred_z')")
         else
             println("No estimation data received!")
         end

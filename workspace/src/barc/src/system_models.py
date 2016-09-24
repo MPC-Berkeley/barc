@@ -221,7 +221,48 @@ def f_KinBkMdl(z,u,vhMdl, dt):
     v_next      = v + dt*(a - 0.63*sign(v)*v**2)
 
     return array([x_next, y_next, psi_next, v_next])
- 
+
+def f_KinBkMdl_predictive(z,u,vhMdl, dt):
+    """
+    process model
+    input: state z at time k, z[k] := [x[k], y[k], psi[k], v[k]]
+    output: state at next time step z[k+1]
+    """
+    #c = array([0.5431, 1.2767, 2.1516, -2.4169])
+
+    # get states / inputs
+    x       = z[0]
+    y       = z[1]
+    psi     = z[2]
+    v       = z[3]
+
+    x_pred  = z[4]
+    y_pred  = z[5]
+    psi_pred= z[6]
+    v_pred  = z[7]
+
+    d_f     = u[0]
+    a       = u[1]
+
+    # extract parameters
+    (L_a, L_b)             = vhMdl
+
+    # compute slip angle
+    bta         = arctan( L_a / (L_a + L_b) * tan(d_f) )
+
+    # compute next state
+    x_next      = x + dt*( v*cos(psi + bta) ) 
+    y_next      = y + dt*( v*sin(psi + bta) ) 
+    psi_next    = psi + dt*v/L_b*sin(bta)
+    v_next      = v + dt*(a - 0.63*sign(v)*v**2)
+
+    x_next_pred      = x_next   + 0.1*( v*cos(psi + bta) )
+    y_next_pred      = y_next   + 0.1*( v*sin(psi + bta) ) 
+    psi_next_pred    = psi_next + 0.1*v/L_b*sin(bta)
+    v_next_pred      = v_next   + 0.1*(a - 0.63*sign(v)*v**2)
+
+    return array([x_next, y_next, psi_next, v_next, x_next_pred, y_next_pred, psi_next_pred, v_next_pred])
+
 def h_KinBkMdl(x):
     """
     measurement model
@@ -236,4 +277,18 @@ def h_KinBkMdl(x):
     C = array([[1, 0, 0, 0],
                [0, 1, 0, 0]])
     return dot(C, x)
- 
+
+def h_KinBkMdl_predictive(x):
+    """
+    measurement model
+    """
+    # For GPS, IMU and encoders:
+    # C = array([[1, 0, 0, 0],
+    #            [0, 1, 0, 0],
+    #            [0, 0, 1, 0],
+    #            [0, 0, 0, 1]])
+    
+    # For GPS only:
+    C = array([[1, 0, 0, 0, 0, 0, 0, 0],
+               [0, 1, 0, 0, 0, 0, 0, 0]])
+    return dot(C, x)

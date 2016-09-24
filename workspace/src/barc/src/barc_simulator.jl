@@ -43,11 +43,11 @@ function clean_up(m::Measurements)
 end
 
 buffersize = 60000
-gps_meas = Measurements{Float64}(0,zeros(buffersize,1),zeros(buffersize,2))
-imu_meas = Measurements{Float64}(0,zeros(buffersize,1),zeros(buffersize,1))
-est_meas = Measurements{Float32}(0,zeros(buffersize,1),zeros(Float32,buffersize,4))
-cmd_log  = Measurements{Float64}(0,zeros(buffersize,1),zeros(buffersize,2))
-z_real   = Measurements{Float64}(0,zeros(buffersize,1),zeros(buffersize,4))
+gps_meas = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,2))
+imu_meas = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize))
+est_meas = Measurements{Float32}(0,zeros(buffersize),zeros(Float32,buffersize,4))
+cmd_log  = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,2))
+z_real   = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,4))
 
 z_real.t[1]   = time()
 imu_meas.t[1] = time()
@@ -84,9 +84,9 @@ function ECU_callback(msg::ECU)
 end
 
 function est_callback(msg::Z_KinBkMdl)
-    t = time()
+    global est_meas
     est_meas.i += 1
-    est_meas.t[est_meas.i]      = t
+    est_meas.t[est_meas.i]      = time()
     est_meas.z[est_meas.i,:]    = [msg.x msg.y msg.psi msg.v]
 end
 
