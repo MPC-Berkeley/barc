@@ -41,7 +41,7 @@ function eval_sim()
     cmd_log     = d["cmd_log"]
 
     t0 = est.t[1]
-    track = create_track(0.2)
+    track = create_track(0.3)
     figure()
     plot(z.z[:,1],z.z[:,2],"-",gps_meas.z[:,1]/100,gps_meas.z[:,2]/100,".",est.z[:,1],est.z[:,2],"-")
     plot(track[:,1],track[:,2],"b.",track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")
@@ -109,7 +109,7 @@ function eval_LMPC()
     legend(["psi_true","psi_est"])
     grid()
 
-    track = create_track(0.2)
+    track = create_track(0.3)
     figure()
     hold(1)
     plot(x_est[:,1],x_est[:,2],"-o")
@@ -122,16 +122,14 @@ function eval_LMPC()
     #     #lin2 = [x_est[i,1:2];x_est[i,1:2] + 0.05*dir2]
     #     #plot(lin[:,1],lin[:,2],"-o",lin2[:,1],lin2[:,2],"-*")
     # end
-    # for i=1:size(x_est,1)
-    #     if i%4==0
-    #         z_pred = zeros(11,4)
-    #         z_pred[1,:] = x_est[i,:]
-    #         for j=2:11
-    #             z_pred[j,:] = simModel(z_pred[j-1,:],sol_u[j-1,:,i],0.1,0.125,0.125)
-    #         end
-    #         plot(z_pred[:,1],z_pred[:,2],"-*")
-    #     end
-    # end
+    for i=1:4:size(x_est,1)
+            z_pred = zeros(11,4)
+            z_pred[1,:] = x_est[i,:]
+            for j=2:11
+                z_pred[j,:] = simModel(z_pred[j-1,:],sol_u[j-1,:,i],0.1,0.125,0.125)
+            end
+            plot(z_pred[:,1],z_pred[:,2],"-*")
+    end
 
     # for i=1:size(x_est,1)
     #     s = 0.4:.1:2.5
@@ -142,9 +140,19 @@ function eval_LMPC()
     # end
     grid()
 
+    rg = 100:500
     figure()
+    plot(s_start[rg]+state[rg,1],state[rg,2:4],"-o")
+    for i=100:5:500
+        plot(s_start[i]+sol_z[:,1,i],sol_z[:,2:4,i],"-*")
+    end
+    figure()
+    ax1=subplot(211)
     plot(t-t0,state,"-o",t-t0,f_z,"-*")
     legend(["s","ey","epsi","v","s_pred","ey_pred","epsi_pred","v_pred"])
+    grid()
+    subplot(212,sharex = ax1)
+    plot(t-t0,reshape(sol_u[1,:,:],2,size(sol_u,3))')
     grid()
 
     figure()
@@ -313,19 +321,20 @@ function create_track(w)
     theta = [0.0]
 
     # SOPHISTICATED TRACK
-    add_curve(theta,60,0.0)
-    add_curve(theta,50,-2*pi/3)
-    add_curve(theta,70,pi)
-    add_curve(theta,60,-5*pi/6)
+    add_curve(theta,30,0.0)
+    add_curve(theta,60,-2*pi/3)
+    add_curve(theta,90,pi)
+    add_curve(theta,80,-5*pi/6)
     add_curve(theta,10,0.0)
-    add_curve(theta,30,-pi/2)
-    add_curve(theta,90,0.0)
-    add_curve(theta,20,-pi/4)
-    add_curve(theta,20,pi/4)
     add_curve(theta,50,-pi/2)
-    add_curve(theta,22,0.0)
-    add_curve(theta,30,-pi/2)
-    add_curve(theta,14,0.0)
+    add_curve(theta,50,0.0)
+    add_curve(theta,40,-pi/4)
+    add_curve(theta,30,pi/4)
+    add_curve(theta,20,0.0)
+    add_curve(theta,50,-pi/2)
+    add_curve(theta,25,0.0)
+    add_curve(theta,50,-pi/2)
+    add_curve(theta,28,0.0)
 
     # SIMPLE track
     # add_curve(theta,50,0)

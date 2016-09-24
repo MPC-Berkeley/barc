@@ -31,15 +31,15 @@ function InitializeParameters(mpcParams::MpcParams,trackCoeff::TrackCoeff,modelP
     mpcParams.N                 = 10
     mpcParams.nz                = 4
     mpcParams.Q                 = [0.0,10.0,0.0,0.1]      # put weights on ey, epsi and v
-    mpcParams.Q_term            = [0.1,0.01,1.0]           # weights for terminal constraints (LMPC, for e_y, e_psi, and v)
+    mpcParams.Q_term            = 1*[0.1,0.01,1.0]           # weights for terminal constraints (LMPC, for e_y, e_psi, and v)
     mpcParams.R                 = 0*[1.0,1.0]             # put weights on a and d_f
-    mpcParams.QderivZ           = 0*[0,1,1,1]             # cost matrix for derivative cost of states
+    mpcParams.QderivZ           = 1.0*[0,0.0,0.1,0]             # cost matrix for derivative cost of states
     mpcParams.QderivU           = 1.0*[1,1]                 # cost matrix for derivative cost of inputs
     mpcParams.vPathFollowing    = 1.0                     # reference speed for first lap of path following
 
     trackCoeff.nPolyCurvature   = 8                       # 4th order polynomial for curvature approximation
     trackCoeff.coeffCurvature   = zeros(trackCoeff.nPolyCurvature+1)         # polynomial coefficients for curvature approximation (zeros for straight line)
-    trackCoeff.width            = 0.4                     # width of the track (0.5m)
+    trackCoeff.width            = 0.6                     # width of the track (0.5m)
 
     modelParams.u_lb            = ones(mpcParams.N,1) * [-1.0 -pi/6]                    # lower bounds on steering
     modelParams.u_ub            = ones(mpcParams.N,1) * [1.2   pi/6]                  # upper bounds
@@ -52,7 +52,7 @@ function InitializeParameters(mpcParams::MpcParams,trackCoeff::TrackCoeff,modelP
     modelParams.dt              = 0.1
 
     posInfo.s_start             = 0.0
-    posInfo.s_target            = 31.62#25.62#29.491949#13.20#10.281192
+    posInfo.s_target            = 36.84#31.62#25.62#29.491949#13.20#10.281192
 
     oldTraj.oldTraj             = zeros(buffersize,4,2)
     oldTraj.oldTraj[:,1,1]      = 1:buffersize

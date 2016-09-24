@@ -32,7 +32,7 @@ end
 function main()
     println("now starting the node")
 
-    buffersize                  = 700       # size of oldTraj buffers
+    buffersize                  = 1000       # size of oldTraj buffers
 
     # Create data to be saved
     log_oldTraj = zeros(buffersize,4,2,20)  # max. 10 laps
@@ -140,7 +140,7 @@ function main()
             trackCoeff.coeffCurvature = coeffCurvature_update
 
             # Simulate model for next input
-            #pred_z = simModel(z_est,uCurr[i,:][:],modelParams,trackCoeff)
+            pred_z = simModel(z_est,uCurr[i,:][:],modelParams,trackCoeff)
 
             # this simulation returns the predicted state at when the next command is going to be sent. This predicted state is used for
             # the MPC control input calculation.
@@ -198,15 +198,13 @@ function main()
 
             # Solve the MPC problem
             tic()
-            solveMpcProblem(mdl,mpcSol,mpcCoeff,mpcParams,trackCoeff,lapStatus,posInfo,modelParams,zCurr[i,:]',uCurr[i,:]')
-            #solveMpcProblem(mdl,mpcSol,mpcCoeff,mpcParams,trackCoeff,lapStatus,posInfo,modelParams,pred_z,uCurr[i,:]')
+            #solveMpcProblem(mdl,mpcSol,mpcCoeff,mpcParams,trackCoeff,lapStatus,posInfo,modelParams,zCurr[i,:]',uCurr[i,:]')
+            solveMpcProblem(mdl,mpcSol,mpcCoeff,mpcParams,trackCoeff,lapStatus,posInfo,modelParams,pred_z,uCurr[i,:]')
 
             tt = toq()
             # Write in current input information
             uCurr[i+1,:]  = [mpcSol.a_x mpcSol.d_f]
-            #println("trackCoeff = $trackCoeff")
             println("Finished solving, status: $(mpcSol.solverStatus), u = $(uCurr[i+1,:]), t = $tt s")
-            # ... and publish data
 
             zCurr[i,1] = (posInfo.s_start + posInfo.s)%posInfo.s_target   # save absolute position in s (for oldTrajectory)
             println("\n")
@@ -226,13 +224,12 @@ function main()
             log_state_x[k,:]        = x_est
             log_coeffX[k,:]         = coeffX
             log_coeffY[k,:]         = coeffY
-            println("pred_z = $pred_z")
 
             # publish command from last calculation
             cmd.motor = mpcSol.a_x
             cmd.servo = mpcSol.d_f
             publish(pub, cmd) 
-
+            println("z_pred = $(pred_z')")
         else
             println("No estimation data received!")
         end
