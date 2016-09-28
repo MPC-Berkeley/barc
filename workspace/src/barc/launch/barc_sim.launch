@@ -4,6 +4,20 @@
     <!-- vehicle parameters -->
     <param name="L_a" type="double" value="0.125" />
     <param name="L_b" type="double" value="0.125" />
+    <param name="m" type="double" value="1.98" />
+    <param name="I_z" type="double" value="0.24" />
+
+    <!-- control parameters -->
+    <param name="input_gain" type="double" value="0.3" />
+    <param name="air_drag_coeff" type="double" value="0.1308" />
+    <param name="friction" type="double" value="0.1711" />
+
+    <!-- tire parameters -->
+    <param name="tire_model/B" type="double" value="0.3" />
+    <param name="tire_model/C" type="double" value="1.25" />
+    <param name="tire_model/mu" type="double" value="0.234" />
+
+    <!-- Further parameters -->
     <param name="est_mode" type="double" value="3" />
 
     <!-- Start simulator -->
@@ -23,6 +37,21 @@
         <param name="psi_std" type="double" value="0.01" />
         <param name="v_std" type="double" value="1" />
         <param name="gps_std" type="double" value="0.5" />
+    </node>
+
+    <!-- OBSERVER-->
+    <node pkg="barc" type="state_estimation_DynBkMdl.py" name="state_estimation_dynamic" output="screen">
+        <!-- v_x estimation sample time-->
+        <param name="dt_v_enc" type="double" value="0.2" />
+
+        <!-- ekf properties -->
+        <param name="q_std" type="double" value="0.1" />
+        <param name="psi_std" type="double" value="0.01" />
+        <param name="v_std" type="double" value="1" />
+        <param name="gps_std" type="double" value="0.5" />
+        <param name="v_x_min" type="double" value="0.2" />
+        <param name="ang_v_std" type="double" value="0.2" />
+        <param name="est_mode" type="double" value="4" />
     </node>
 
     <!-- LOCALIZATION -->

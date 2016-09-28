@@ -40,8 +40,8 @@ def f_2s(z, u, vhMdl, trMdl, dt, v_x):
     a_R     = arctan(beta - b*r/v_x)
 
     # compute tire force
-    FyF     = f_pajecka(trMdlFront, a_F)
-    FyR     = f_pajecka(trMdlRear, a_R)
+    FyF     = f_pacejka(trMdlFront, a_F)
+    FyR     = f_pacejka(trMdlRear, a_R)
 
     # compute next state
     beta_next   = beta  + dt*(-r + (1/(m*v_x))*(FyF*cos(d_f)+FyR))
@@ -82,11 +82,11 @@ def f_3s(z, u, vhMdl, trMdl, F_ext, dt):
 
     # compute lateral tire force at the front
     TM_param    = [B, C, mu*Fn]
-    FyF         = -f_pajecka(TM_param, a_F)
+    FyF         = -f_pacejka(TM_param, a_F)
 
     # compute lateral tire force at the rear
     # ensure that magnitude of longitudinal/lateral force lie within friction circle
-    FyR_paj     = -f_pajecka(TM_param, a_R)
+    FyR_paj     = -f_pacejka(TM_param, a_R)
     FyR_max     = sqrt((mu*Fn)**2 - FxR**2)
     FyR         = min(FyR_max, max(-FyR_max, FyR_paj))
 
@@ -135,11 +135,11 @@ def f_6s(z, u, vhMdl, trMdl, F_ext, dt):
 
     # compute lateral tire force at the front
     TM_param    = [B, C, mu*Fn]
-    FyF         = -f_pajecka(TM_param, a_F)
+    FyF         = -f_pacejka(TM_param, a_F)
 
     # compute lateral tire force at the rear
     # ensure that magnitude of longitudinal/lateral force lie within friction circle
-    FyR_paj     = -f_pajecka(TM_param, a_R)
+    FyR_paj     = -f_pacejka(TM_param, a_R)
     FyR_max     = sqrt((mu*Fn)**2 - FxR**2)
     Fy          = array([FyR_max, FyR_paj])
     idx         = argmin(abs(Fy))
@@ -177,9 +177,9 @@ def h_3s(x):
     return dot(C, x)
     
    
-def f_pajecka(trMdl, alpha):
+def f_pacejka(trMdl, alpha):
     """
-    f_pajecka = d*sin(c*atan(b*alpha))    
+    f_pacejka = d*sin(c*atan(b*alpha))    
     
     inputs :
         * trMdl := tire model, a list or tuple of parameters (b,c,d)
@@ -222,6 +222,60 @@ def f_KinBkMdl(z,u,vhMdl, dt):
 
     return array([x_next, y_next, psi_next, v_next])
 
+def f_DynBkMdl(z,u,vhMdl,trMdl,dt):
+    x_I      = z[0]
+    y_I      = z[1]
+    v_x      = z[2]
+    v_y      = z[3]
+    psi      = z[4]
+    psi_dot  = z[5]
+
+    d_f      = u[0]
+    a        = u[1]
+
+    # extract parameters
+    (L_f,L_r,m,I_z)         = vhMdl
+    (trMdlFront, trMdlRear) = trMdl
+    (B,C,mu)                = trMdlFront
+    g                       = 9.81
+    Fn                      = m*g/2.0         # assuming a = b (i.e. distance from CoG to either axel)
+
+    # comptue the front/rear slip  [rad/s]
+    # ref: Hindiyeh Thesis, p58
+    a_F = 0
+    a_R = 0
+    if v_x != 0:
+        a_F     = arctan((v_y + L_f*psi_dot)/v_x) - d_f
+        a_R     = arctan((v_y - L_r*psi_dot)/v_x)
+
+    #print "v_x = %f, v_y = %f, psi_dot = %f"%(v_x,v_y,psi_dot)
+    #print "a_F = %f, a_R = %f"%(a_F, a_R)
+    # compute lateral tire force at the front
+    TM_param    = [B, C, mu*Fn]
+    FyF         = -f_pacejka(TM_param, a_F)
+
+    # compute lateral tire force at the rear
+    # ensure that magnitude of longitudinal/lateral force lie within friction circle
+    FyR_paj     = -f_pacejka(TM_param, a_R)
+    FyR_max     = sqrt((mu*Fn)**2 - a**2)       # maximum tire force (resulting from friction and motor acceleration)
+    FyR         = min(FyR_max, max(-FyR_max, FyR_paj))
+
+    C_alpha_f = 10
+    C_alpha_r = 10
+
+    FyF = -C_alpha_f * a_F
+    FyR = -C_alpha_r * a_R
+
+    # compute next state
+    x_I_next        = x_I       + dt * (cos(psi)*v_x - sin(psi)*v_y)
+    y_I_next        = y_I       + dt * (sin(psi)*v_x + cos(psi)*v_y)
+    v_x_next        = v_x       + dt * (a + v_y*psi_dot - 0.63*v_x**2*sign(v_x))
+    v_y_next        = v_y       + dt * (1/m*(FyF*cos(d_f) + FyR) - psi_dot*v_x)
+    psi_next        = psi       + dt * (psi_dot)
+    psi_dot_next    = psi_dot   + dt * (1/I_z*(L_f*FyF*cos(d_f) - L_r*FyR))
+
+    return array([x_I_next,y_I_next,v_x_next,v_y_next,psi_next,psi_dot_next])
+
 def f_KinBkMdl_predictive(z,u,vhMdl, dt):
     """
     process model
@@ -262,6 +316,13 @@ def f_KinBkMdl_predictive(z,u,vhMdl, dt):
     v_next_pred      = v_next   + 0.2*(a - 0.63*sign(v)*v**2)
 
     return array([x_next, y_next, psi_next, v_next, x_next_pred, y_next_pred, psi_next_pred, v_next_pred])
+
+def h_DynBkMdl(x):
+    # For GPS only:
+    C = array([[1, 0, 0, 0, 0, 0],
+               [0, 1, 0, 0, 0, 0],
+               [0, 0, 0, 0, 0, 1]])
+    return dot(C, x)
 
 def h_KinBkMdl(x):
     """

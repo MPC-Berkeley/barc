@@ -35,6 +35,7 @@ function eval_sim()
     d = load(log_path)
 
     est         = d["estimate"]
+    est_dyn     = d["estimate_dyn"]
     imu_meas    = d["imu_meas"]
     gps_meas    = d["gps_meas"]
     z           = d["z"]
@@ -65,6 +66,20 @@ function eval_sim()
     title("x-y-view")
     axis("equal")
     legend(["Real state","GPS meas","estimate"])
+
+    figure()
+    plot(est_dyn.t,est_dyn.z,"-*",est.t,est.z,"--",z.t,z.z,"-")
+    grid()
+    legend(["x","y","v_x","v_y","psi","psi_dot"])
+
+    figure()
+    plot(imu_meas.t,imu_meas.z,"-x",z.t,z.z[:,3],est_dyn.t,est_dyn.z[:,5:6],"-*")
+    legend(["psi_imu","psi_dot_imu","psi_true","psi_est","psi_dot_est"])
+    grid()
+
+    figure()
+    plot(est.z[:,1],est.z[:,2],"x",est_dyn.z[:,1],est_dyn.z[:,2],"-*",z.z[:,1],z.z[:,2],"-")
+
     figure()
     plot(z.t-t0,z.z[:,5],imu_meas.t-t0,imu_meas.z,est.t-t0,est.z[:,3])
     grid(1)
