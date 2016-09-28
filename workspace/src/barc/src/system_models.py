@@ -222,6 +222,26 @@ def f_KinBkMdl(z,u,vhMdl, dt):
 
     return array([x_next, y_next, psi_next, v_next])
 
+def pacejka(a):
+    B = 0.3#20
+    C = 1.25
+    mu = 0.234
+    m = 1.98
+    g = 9.81
+    D = mu * m * g/2
+    D = D*10
+
+    C_alpha_f = D*sin(C*arctan(B*a))
+    return C_alpha_f
+
+def f_DynBkMdl_exact(z,u,vhMdl,trMdl,dt):
+    zNext = z
+    dtn = dt / 10
+    for i in range(0,10):
+        zNext = f_DynBkMdl(zNext,u,vhMdl,trMdl,dtn)
+
+    return zNext
+
 def f_DynBkMdl(z,u,vhMdl,trMdl,dt):
     x_I      = z[0]
     y_I      = z[1]
@@ -244,35 +264,22 @@ def f_DynBkMdl(z,u,vhMdl,trMdl,dt):
     # ref: Hindiyeh Thesis, p58
     a_F = 0
     a_R = 0
-    if v_x != 0:
+    if abs(v_x) > 0.1:
         a_F     = arctan((v_y + L_f*psi_dot)/v_x) - d_f
         a_R     = arctan((v_y - L_r*psi_dot)/v_x)
 
-    #print "v_x = %f, v_y = %f, psi_dot = %f"%(v_x,v_y,psi_dot)
-    #print "a_F = %f, a_R = %f"%(a_F, a_R)
-    # compute lateral tire force at the front
-    TM_param    = [B, C, mu*Fn]
-    FyF         = -f_pacejka(TM_param, a_F)
-
-    # compute lateral tire force at the rear
-    # ensure that magnitude of longitudinal/lateral force lie within friction circle
-    FyR_paj     = -f_pacejka(TM_param, a_R)
-    FyR_max     = sqrt((mu*Fn)**2 - a**2)       # maximum tire force (resulting from friction and motor acceleration)
-    FyR         = min(FyR_max, max(-FyR_max, FyR_paj))
-
-    C_alpha_f = 10
-    C_alpha_r = 10
-
-    FyF = -C_alpha_f * a_F
-    FyR = -C_alpha_r * a_R
+    print "a_F = %f"%a_F
+    print "a_R = %f\n"%a_R
+    FyF = -pacejka(a_F)
+    FyR = -pacejka(a_R)
 
     # compute next state
     x_I_next        = x_I       + dt * (cos(psi)*v_x - sin(psi)*v_y)
     y_I_next        = y_I       + dt * (sin(psi)*v_x + cos(psi)*v_y)
     v_x_next        = v_x       + dt * (a + v_y*psi_dot - 0.63*v_x**2*sign(v_x))
-    v_y_next        = v_y       + dt * (1/m*(FyF*cos(d_f) + FyR) - psi_dot*v_x)
+    v_y_next        = v_y       + dt * (2/m*(FyF*cos(d_f) + FyR) - psi_dot*v_x)
     psi_next        = psi       + dt * (psi_dot)
-    psi_dot_next    = psi_dot   + dt * (1/I_z*(L_f*FyF*cos(d_f) - L_r*FyR))
+    psi_dot_next    = psi_dot   + dt * (2/I_z*(L_f*FyF - L_r*FyR))
 
     return array([x_I_next,y_I_next,v_x_next,v_y_next,psi_next,psi_dot_next])
 

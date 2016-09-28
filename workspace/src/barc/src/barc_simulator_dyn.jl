@@ -14,7 +14,7 @@
 =# 
 
 using RobotOS
-@rosimport barc.msg: ECU, pos_info, Encoder, Ultrasound, Z_KinBkMdl, Logging
+@rosimport barc.msg: ECU, pos_info, Encoder, Ultrasound, Z_KinBkMdl, Logging, Z_DynBkMdl
 @rosimport data_service.msg: TimeData
 @rosimport geometry_msgs.msg: Vector3
 @rosimport sensor_msgs.msg: Imu
@@ -55,6 +55,7 @@ buffersize = 60000
 gps_meas = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,2))
 imu_meas = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize))
 est_meas = Measurements{Float32}(0,zeros(buffersize),zeros(Float32,buffersize,4))
+est_meas_dyn = Measurements{Float32}(0,zeros(buffersize),zeros(Float32,buffersize,6))
 cmd_log  = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,2))
 z_real   = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,7))
 slip_a   = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,2))
@@ -63,6 +64,7 @@ z_real.t[1]   = time()
 slip_a.t[1]   = time()
 imu_meas.t[1] = time()
 est_meas.t[1] = time()
+est_meas_dyn.t[1] = time()
 cmd_log.t[1]  = time()
 
 function pacejka(a)
@@ -105,11 +107,8 @@ function simDynModel(z::Array{Float64},u::Array{Float64},dt::Float64,modelParams
         a_R     = atan((z[4] - L_r*z[6])/z[3])
     end
 
-    C_alpha_f = pacejka(a_F)
-    C_alpha_r = pacejka(a_R)
-
-    FyF = -C_alpha_f# * a_F
-    FyR = -C_alpha_r# * a_R
+    FyF = -pacejka(a_F)
+    FyR = -pacejka(a_R)
 
     zNext = z
     # compute next state
@@ -130,6 +129,13 @@ function ECU_callback(msg::ECU)
     cmd_log.i += 1
     cmd_log.t[cmd_log.i] = time()
     cmd_log.z[cmd_log.i,:] = u_current'
+end
+
+function est_dyn_callback(msg::Z_DynBkMdl)
+    global est_meas_dyn
+    est_meas_dyn.i += 1
+    est_meas_dyn.t[est_meas_dyn.i]      = time()
+    est_meas_dyn.z[est_meas_dyn.i,:]    = [msg.x msg.y msg.v_x msg.v_y msg.psi msg.psi_dot]
 end
 
 function est_callback(msg::Z_KinBkMdl)
@@ -153,6 +159,7 @@ function main()
 
     s1  = Subscriber("ecu", ECU, ECU_callback, queue_size=10)
     s2  = Subscriber("state_estimate", Z_KinBkMdl, est_callback, queue_size=10)
+    s3  = Subscriber("state_estimate_dynamic", Z_DynBkMdl, est_dyn_callback, queue_size=10)
 
     z_current = zeros(60000,7)
     z_current[1,:] = [0.1 0.0 0.0 0.0 0.0 0.0 0.0]
@@ -184,9 +191,9 @@ function main()
         t = time()
         # update current state with a new row vector
         z_current[i,:],slip_ang[i,:]  = simDynModel_exact(z_current[i-1,:],u_current', dt, modelParams)
-        println("z_current:")
-        println(z_current[i,:])
-        println(slip_ang[i,:])
+        p#rintln("z_current:")
+        #println(z_current[i,:])
+        #println(slip_ang[i,:])
 
         z_real.t[i]     = t
         slip_a.t[i]     = t
@@ -208,6 +215,7 @@ function main()
         imu_drift = sin(t/100*pi/2)     # drifts to 1 in 100 seconds
         yaw = z_current[i,5] + 0*(randn()*0.05 + imu_drift)
         imu_data.orientation = geometry_msgs.msg.Quaternion(cos(yaw/2), sin(yaw/2), 0, 0)
+        imu_data.angular_velocity = Vector3(0,0,z_current[i,6])
         if i%2 == 0
             imu_meas.i += 1
             imu_meas.t[imu_meas.i] = t
@@ -235,6 +243,7 @@ function main()
 
     clean_up(gps_meas)
     clean_up(est_meas)
+    clean_up(est_meas_dyn)
     clean_up(imu_meas)
     clean_up(cmd_log)
     z_real.z[1:i-1,:] = z_current[1:i-1,:]
@@ -246,7 +255,7 @@ function main()
 
     # Save simulation data to file
     log_path = "$(homedir())/simulations/output.jld"
-    save(log_path,"gps_meas",gps_meas,"z",z_real,"estimate",est_meas,"imu_meas",imu_meas,"cmd_log",cmd_log,"slip_a",slip_a)
+    save(log_path,"gps_meas",gps_meas,"z",z_real,"estimate",est_meas,"estimate_dyn",est_meas_dyn,"imu_meas",imu_meas,"cmd_log",cmd_log,"slip_a",slip_a)
     println("Exiting node... Saving data to $log_path. Simulated $((i-1)*dt) seconds.")
     #writedlm(log_path,z_current[1:i-1,:])
 end

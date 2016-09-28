@@ -69,8 +69,9 @@ function eval_sim()
 
     figure()
     plot(est_dyn.t,est_dyn.z,"-*",est.t,est.z,"--",z.t,z.z,"-")
+    title("Dyn. est. -*, est. --, real -")
     grid()
-    legend(["x","y","v_x","v_y","psi","psi_dot"])
+    legend(["x","y","v_x","v_y","psi","psi_dot","x","y","psi","v","x","y","v_x","v_y","psi","psi_dot","d_f"])
 
     figure()
     plot(imu_meas.t,imu_meas.z,"-x",z.t,z.z[:,3],est_dyn.t,est_dyn.z[:,5:6],"-*")

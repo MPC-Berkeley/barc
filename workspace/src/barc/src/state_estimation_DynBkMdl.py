@@ -20,8 +20,8 @@ from barc.msg import ECU, Encoder, Z_DynBkMdl
 from sensor_msgs.msg import Imu
 from geometry_msgs.msg import Vector3
 from numpy import pi, cos, sin, eye, array, zeros, diag
-from ekf import ekf
-from system_models import f_DynBkMdl, h_DynBkMdl
+from observers import kinematicLuembergerObserver, ekf
+from system_models import f_DynBkMdl, f_DynBkMdl_exact, h_DynBkMdl
 from tf import transformations
 from numpy import unwrap
 
@@ -163,7 +163,7 @@ def state_estimation():
     # estimation variables for EKF
     P           = eye(6)                # initial dynamics coveriance matrix
     #Q           = (q_std**2)*eye(6)     # process noise coveriance matrixif est_mode==1:
-    Q           = diag([0.01,0.01,0.1,0.1,1.0,0.01])    # values derived from inspecting P matrix during Kalman filter running
+    Q           = diag([0.01,0.01,0.1,0.0001,1.0,0.001])    # values derived from inspecting P matrix during Kalman filter running
     
     if est_mode==1:                                     # use gps, IMU, and encoder
         R = diag([gps_std,gps_std,psi_std,v_std])**2
@@ -177,6 +177,7 @@ def state_estimation():
         rospy.logerr("No estimation mode selected.")
 
     running = False
+    #running = True
     while not rospy.is_shutdown():
 
         # publish state estimate
@@ -201,6 +202,8 @@ def state_estimation():
 
             # apply EKF and get each state estimate
             (z_EKF,P) = ekf(f_DynBkMdl, z_EKF, P, h_DynBkMdl, y, Q, R, args )
+            #print "New Iteration ------"
+            #print P
             
         else:
             z_EKF[0] = float(x_meas)
