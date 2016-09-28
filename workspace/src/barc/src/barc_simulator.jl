@@ -14,7 +14,7 @@
 =# 
 
 using RobotOS
-@rosimport barc.msg: ECU, pos_info, Encoder, Ultrasound, Z_KinBkMdl, Logging
+@rosimport barc.msg: ECU, pos_info, Encoder, Ultrasound, Z_KinBkMdl, Logging, Z_DynBkMdl
 @rosimport data_service.msg: TimeData
 @rosimport geometry_msgs.msg: Vector3
 @rosimport sensor_msgs.msg: Imu
@@ -44,14 +44,16 @@ end
 
 buffersize = 60000
 gps_meas = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,2))
-imu_meas = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize))
+imu_meas = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,2))
 est_meas = Measurements{Float32}(0,zeros(buffersize),zeros(Float32,buffersize,4))
+est_meas_dyn = Measurements{Float32}(0,zeros(buffersize),zeros(Float32,buffersize,6))
 cmd_log  = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,2))
 z_real   = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,4))
 
 z_real.t[1]   = time()
 imu_meas.t[1] = time()
 est_meas.t[1] = time()
+est_meas_dyn.t[1] = time()
 cmd_log.t[1]  = time()
 
 function simModel(z,u,dt,l_A,l_B)
@@ -90,6 +92,13 @@ function est_callback(msg::Z_KinBkMdl)
     est_meas.z[est_meas.i,:]    = [msg.x msg.y msg.psi msg.v]
 end
 
+function est_dyn_callback(msg::Z_DynBkMdl)
+    global est_meas_dyn
+    est_meas_dyn.i += 1
+    est_meas_dyn.t[est_meas_dyn.i]      = time()
+    est_meas_dyn.z[est_meas_dyn.i,:]    = [msg.x msg.y msg.v_x msg.v_y msg.psi msg.psi_dot]
+end
+
 function main() 
     # initiate node, set up publisher / subscriber topics
     init_node("barc_sim")
@@ -104,9 +113,10 @@ function main()
 
     s1  = Subscriber("ecu", ECU, ECU_callback, queue_size=10)
     s2  = Subscriber("state_estimate", Z_KinBkMdl, est_callback, queue_size=10)
+    s3  = Subscriber("state_estimate_dynamic", Z_DynBkMdl, est_dyn_callback, queue_size=10)
 
     z_current = zeros(60000,4)
-    z_current[1,:] = [0.1 0.0 0.0 0.0]
+    z_current[1,:] = [0.2 0.0 0.0 0.0]
 
     dt = 0.01
     loop_rate = Rate(1/dt)
@@ -152,12 +162,14 @@ function main()
         # IMU measurements
         imu_data = Imu()
         imu_drift = sin(t/100*pi/2)     # drifts to 1 in 100 seconds
-        yaw = z_current[i,3] + 0*(randn()*0.05 + imu_drift)
+        yaw     = z_current[i,3] + 0*(randn()*0.05 + imu_drift)
+        yaw_dot = (z_current[i,3]-z_current[i-1,3])/dt
         imu_data.orientation = geometry_msgs.msg.Quaternion(cos(yaw/2), sin(yaw/2), 0, 0)
+        imu_data.angular_velocity = Vector3(0,0,yaw_dot)
         if i%2 == 0
             imu_meas.i += 1
             imu_meas.t[imu_meas.i] = t
-            imu_meas.z[imu_meas.i] = yaw
+            imu_meas.z[imu_meas.i,:] = [yaw yaw_dot]
             publish(pub_imu, imu_data)      # Imu format is defined by ROS, you can look it up by google "rosmsg Imu"
                                             # It's sufficient to only fill the orientation part of the Imu-type (with one quaternion)
         end
@@ -181,15 +193,15 @@ function main()
 
     clean_up(gps_meas)
     clean_up(est_meas)
+    clean_up(est_meas_dyn)
     clean_up(imu_meas)
     clean_up(cmd_log)
     z_real.z[1:i-1,:] = z_current[1:i-1,:]
     z_real.i = i
     clean_up(z_real)
-
     # Save simulation data to file
     log_path = "$(homedir())/simulations/output.jld"
-    save(log_path,"gps_meas",gps_meas,"z",z_real,"estimate",est_meas,"imu_meas",imu_meas,"cmd_log",cmd_log)
+    save(log_path,"gps_meas",gps_meas,"z",z_real,"estimate",est_meas,"estimate_dyn",est_meas_dyn,"imu_meas",imu_meas,"cmd_log",cmd_log)
     println("Exiting node... Saving data to $log_path. Simulated $((i-1)*dt) seconds.")
     #writedlm(log_path,z_current[1:i-1,:])
 end
