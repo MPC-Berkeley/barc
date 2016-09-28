@@ -7,7 +7,7 @@
     <param name="est_mode" type="double" value="3" />
 
     <!-- Start simulator -->
-    <node pkg="barc" type="barc_simulator.jl" name="barc_sim" output="screen" />
+    <node pkg="barc" type="barc_simulator_dyn.jl" name="barc_sim" output="screen" />
 
     <!-- control parameters -->
     <param name="input_gain" type="double" value="0.3" />

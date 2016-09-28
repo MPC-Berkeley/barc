@@ -36,6 +36,14 @@ type Measurements{T}
     t::Array{Float64}       # time data
     z::Array{T}       # measurement values
 end
+
+type ModelParams
+    l_A::Float64
+    l_B::Float64
+    m::Float64
+    I_z::Float64
+end
+
 # This function cleans the zeros from the type above once the simulation is finished
 function clean_up(m::Measurements)
     m.t = m.t[1:m.i-1]
@@ -47,33 +55,80 @@ gps_meas = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,2))
 imu_meas = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize))
 est_meas = Measurements{Float32}(0,zeros(buffersize),zeros(Float32,buffersize,4))
 cmd_log  = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,2))
-z_real   = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,4))
+z_real   = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,6))
+slip_a   = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,2))
 
 z_real.t[1]   = time()
+slip_a.t[1]   = time()
 imu_meas.t[1] = time()
 est_meas.t[1] = time()
 cmd_log.t[1]  = time()
 
-function simModel(z,u,dt,l_A,l_B)
 
-   # kinematic bicycle model
-   # u[1] = acceleration
-   # u[2] = steering angle
+function pacejka(a)
+    B = 10#0.3
+    C = 1.25
+    mu = 0.234
+    m = 1.98
+    g = 9.81
+    D = mu * m * g/2
 
-    bta = atan(l_A/(l_A+l_B)*tan(u[2]))
-
-    zNext = z
-    zNext[1] = z[1] + dt*(z[4]*cos(z[3] + bta))       # x
-    zNext[2] = z[2] + dt*(z[4]*sin(z[3] + bta))     # y
-    zNext[3] = z[3] + dt*(z[4]/l_B*sin(bta))        # psi
-    zNext[4] = z[4] + dt*(u[1] - 0.63 * z[4]^2 * sign(z[4]))                     # v
-
-    # Add process noise (depending on velocity)
-    zNext = zNext + diagm([0.001*z[4],0.001*z[4],0.00,0.001*z[4]])*randn(4,1)
-
-    return zNext
+    C_alpha_f = D*sin(C*atan(B*a))
+    return C_alpha_f
 end
 
+function simDynModel_exact(z::Array{Float64},u::Array{Float64},dt::Float64,modelParams::ModelParams)
+    dtn = dt/10
+    t = 0:dtn:dt
+    z_final = z
+    ang = zeros(2)
+    for i=1:length(t)
+        z_final, ang = simDynModel(z_final,u,dtn,modelParams)
+    end
+    return z_final, ang
+end
+
+function simDynModel(z::Array{Float64},u::Array{Float64},dt::Float64,modelParams::ModelParams)
+    zNext::Array{Float64}
+    L_f = modelParams.l_A
+    L_r = modelParams.l_B
+    m   = modelParams.m
+    I_z = modelParams.I_z
+    #m = 1
+    #I_z = 1
+
+    a_F = 0
+    a_R = 0
+    if abs(z[3]) >= 0.1
+        a_F     = atan((z[4] + L_f*z[6])/z[3]) - u[2]
+        a_R     = atan((z[4] - L_r*z[6])/z[3])
+    end
+
+    C_alpha_f = pacejka(a_F)*1
+    C_alpha_r = pacejka(a_R)*1
+
+    FyF = -C_alpha_f# * a_F
+    FyR_paj = -C_alpha_r# * a_R
+
+    mu = 0.234
+    Fn = m*9.81
+    FxR = u[1]
+    FyR_max     = sqrt((mu*Fn)^2 - FxR^2)
+    FyR         = min(FyR_max, max(-FyR_max, FyR_paj))
+
+
+    zNext = z
+    # compute next state
+    zNext[1]        = zNext[1]       + dt * (cos(z[5])*z[3] - sin(z[5])*z[4])
+    zNext[2]        = zNext[2]       + dt * (sin(z[5])*z[3] + cos(z[5])*z[4])
+    zNext[3]        = zNext[3]       + dt * (u[1] + z[4]*z[6])
+    zNext[4]        = zNext[4]       + dt * (2/m*(FyF*cos(u[2]) + FyR) - z[6]*z[3])
+    zNext[5]        = zNext[5]       + dt * (z[6])
+    zNext[6]        = zNext[6]       + dt * (2/I_z*(L_f*FyF - L_r*FyR))
+
+    #zNext = zNext + 0*randn(1,4)*0.001
+    return zNext, [a_F a_R]
+end
 
 function ECU_callback(msg::ECU)
     global u_current
@@ -105,8 +160,9 @@ function main()
     s1  = Subscriber("ecu", ECU, ECU_callback, queue_size=10)
     s2  = Subscriber("state_estimate", Z_KinBkMdl, est_callback, queue_size=10)
 
-    z_current = zeros(60000,4)
-    z_current[1,:] = [0.1 0.0 0.0 0.0]
+    z_current = zeros(60000,6)
+    z_current[1,:] = [0.1 0.0 0.0 0.0 0.0 0.0]
+    slip_ang = zeros(60000,2)
 
     dt = 0.01
     loop_rate = Rate(1/dt)
@@ -126,16 +182,23 @@ function main()
 
     imu_drift = 0       # simulates yaw-sensor drift over time (slow sine)
 
+    modelParams = ModelParams(0.125,0.125,1.98,0.24)        # L_f, L_r, m, I_z
+
     println("Publishing sensor information. Simulator running.")
     while ! is_shutdown()
 
         t = time()
         # update current state with a new row vector
-        z_current[i,:]  = simModel(z_current[i-1,:]',u_current, dt, l_A,l_B)'
+        z_current[i,:],slip_ang[i,:]  = simDynModel_exact(z_current[i-1,:],u_current', dt, modelParams)
+        println("z_current:")
+        println(z_current[i,:])
+        println(slip_ang[i,:])
+
         z_real.t[i]     = t
-        
+        slip_a.t[i]     = t
+
         # Encoder measurements calculation
-        dist_traveled += z_current[i,4]*dt #count the total traveled distance since the beginning of the simulation
+        dist_traveled += z_current[i,3]*dt #count the total traveled distance since the beginning of the simulation
         if dist_traveled - last_updated >= quarterCirc
             last_updated = dist_traveled
             FL += 1
@@ -149,7 +212,7 @@ function main()
         # IMU measurements
         imu_data = Imu()
         imu_drift = sin(t/100*pi/2)     # drifts to 1 in 100 seconds
-        yaw = z_current[i,3] + 0*(randn()*0.05 + imu_drift)
+        yaw = z_current[i,5] + 0*(randn()*0.05 + imu_drift)
         imu_data.orientation = geometry_msgs.msg.Quaternion(cos(yaw/2), sin(yaw/2), 0, 0)
         if i%2 == 0
             imu_meas.i += 1
@@ -181,12 +244,15 @@ function main()
     clean_up(imu_meas)
     clean_up(cmd_log)
     z_real.z[1:i-1,:] = z_current[1:i-1,:]
+    slip_a.z[1:i-1,:] = slip_ang[1:i-1,:]
     z_real.i = i
+    slip_a.i = i
     clean_up(z_real)
+    clean_up(slip_a)
 
     # Save simulation data to file
     log_path = "$(homedir())/simulations/output.jld"
-    save(log_path,"gps_meas",gps_meas,"z",z_real,"estimate",est_meas,"imu_meas",imu_meas,"cmd_log",cmd_log)
+    save(log_path,"gps_meas",gps_meas,"z",z_real,"estimate",est_meas,"imu_meas",imu_meas,"cmd_log",cmd_log,"slip_a",slip_a)
     println("Exiting node... Saving data to $log_path. Simulated $((i-1)*dt) seconds.")
     #writedlm(log_path,z_current[1:i-1,:])
 end

@@ -39,9 +39,20 @@ function eval_sim()
     gps_meas    = d["gps_meas"]
     z           = d["z"]
     cmd_log     = d["cmd_log"]
+    slip_a      = d["slip_a"]
 
     t0 = est.t[1]
     track = create_track(0.3)
+
+    figure()
+    plot(z.t-t0,z.z)
+    grid()
+    legend(["x","y","v_x","v_y","psi","psi_dot"])
+
+    figure()
+    plot(slip_a.t-t0,slip_a.z)
+    grid()
+    legend(["a_f","a_r"])
     figure()
     plot(z.z[:,1],z.z[:,2],"-",gps_meas.z[:,1]/100,gps_meas.z[:,2]/100,".",est.z[:,1],est.z[:,2],"-")
     plot(track[:,1],track[:,2],"b.",track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")
