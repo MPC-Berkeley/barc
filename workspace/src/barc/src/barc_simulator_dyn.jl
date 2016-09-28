@@ -42,6 +42,7 @@ type ModelParams
     l_B::Float64
     m::Float64
     I_z::Float64
+    v_steer::Float64
 end
 
 # This function cleans the zeros from the type above once the simulation is finished
@@ -55,7 +56,7 @@ gps_meas = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,2))
 imu_meas = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize))
 est_meas = Measurements{Float32}(0,zeros(buffersize),zeros(Float32,buffersize,4))
 cmd_log  = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,2))
-z_real   = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,6))
+z_real   = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,7))
 slip_a   = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,2))
 
 z_real.t[1]   = time()
@@ -64,14 +65,14 @@ imu_meas.t[1] = time()
 est_meas.t[1] = time()
 cmd_log.t[1]  = time()
 
-
 function pacejka(a)
-    B = 10#0.3
+    B = 0.3#20
     C = 1.25
     mu = 0.234
     m = 1.98
     g = 9.81
     D = mu * m * g/2
+    D = D*100
 
     C_alpha_f = D*sin(C*atan(B*a))
     return C_alpha_f
@@ -82,51 +83,44 @@ function simDynModel_exact(z::Array{Float64},u::Array{Float64},dt::Float64,model
     t = 0:dtn:dt
     z_final = z
     ang = zeros(2)
-    for i=1:length(t)
+    for i=1:length(t)-1
         z_final, ang = simDynModel(z_final,u,dtn,modelParams)
     end
     return z_final, ang
 end
 
 function simDynModel(z::Array{Float64},u::Array{Float64},dt::Float64,modelParams::ModelParams)
+
     zNext::Array{Float64}
     L_f = modelParams.l_A
     L_r = modelParams.l_B
     m   = modelParams.m
     I_z = modelParams.I_z
-    #m = 1
-    #I_z = 1
+    v_steer = modelParams.v_steer        # 0.5 rad / 0.2 seconds
 
     a_F = 0
     a_R = 0
-    if abs(z[3]) >= 0.1
-        a_F     = atan((z[4] + L_f*z[6])/z[3]) - u[2]
+    if abs(z[3]) > 0.1
+        a_F     = atan((z[4] + L_f*z[6])/z[3]) - z[7]
         a_R     = atan((z[4] - L_r*z[6])/z[3])
     end
 
-    C_alpha_f = pacejka(a_F)*1
-    C_alpha_r = pacejka(a_R)*1
+    C_alpha_f = pacejka(a_F)
+    C_alpha_r = pacejka(a_R)
 
     FyF = -C_alpha_f# * a_F
-    FyR_paj = -C_alpha_r# * a_R
-
-    mu = 0.234
-    Fn = m*9.81
-    FxR = u[1]
-    FyR_max     = sqrt((mu*Fn)^2 - FxR^2)
-    FyR         = min(FyR_max, max(-FyR_max, FyR_paj))
-
+    FyR = -C_alpha_r# * a_R
 
     zNext = z
     # compute next state
     zNext[1]        = zNext[1]       + dt * (cos(z[5])*z[3] - sin(z[5])*z[4])
     zNext[2]        = zNext[2]       + dt * (sin(z[5])*z[3] + cos(z[5])*z[4])
-    zNext[3]        = zNext[3]       + dt * (u[1] + z[4]*z[6])
-    zNext[4]        = zNext[4]       + dt * (2/m*(FyF*cos(u[2]) + FyR) - z[6]*z[3])
+    zNext[3]        = zNext[3]       + dt * (u[1] + z[4]*z[6] - 0.63*z[3]^2*sign(z[3]))
+    zNext[4]        = zNext[4]       + dt * (2/m*(FyF*cos(z[7]) + FyR) - z[6]*z[3])
     zNext[5]        = zNext[5]       + dt * (z[6])
     zNext[6]        = zNext[6]       + dt * (2/I_z*(L_f*FyF - L_r*FyR))
+    zNext[7]        = zNext[7]       + dt * v_steer * sign(u[2]-z[7])
 
-    #zNext = zNext + 0*randn(1,4)*0.001
     return zNext, [a_F a_R]
 end
 
@@ -160,8 +154,8 @@ function main()
     s1  = Subscriber("ecu", ECU, ECU_callback, queue_size=10)
     s2  = Subscriber("state_estimate", Z_KinBkMdl, est_callback, queue_size=10)
 
-    z_current = zeros(60000,6)
-    z_current[1,:] = [0.1 0.0 0.0 0.0 0.0 0.0]
+    z_current = zeros(60000,7)
+    z_current[1,:] = [0.1 0.0 0.0 0.0 0.0 0.0 0.0]
     slip_ang = zeros(60000,2)
 
     dt = 0.01
@@ -182,7 +176,7 @@ function main()
 
     imu_drift = 0       # simulates yaw-sensor drift over time (slow sine)
 
-    modelParams = ModelParams(0.125,0.125,1.98,0.24)        # L_f, L_r, m, I_z
+    modelParams = ModelParams(0.125,0.125,1.98,0.24,0.5/0.2)        # L_f, L_r, m, I_z, v_steer
 
     println("Publishing sensor information. Simulator running.")
     while ! is_shutdown()
@@ -223,8 +217,8 @@ function main()
         end
 
         # GPS measurements
-        x = round(z_current[i,1]*100 + 1*randn()*2)       # Indoor gps measures in cm
-        y = round(z_current[i,2]*100 + 1*randn()*2)
+        x = round(z_current[i,1]*100 + 0*randn()*2)       # Indoor gps measures in cm
+        y = round(z_current[i,2]*100 + 0*randn()*2)
         if i % 7 == 0
             gps_meas.i += 1
             gps_meas.t[gps_meas.i] = t

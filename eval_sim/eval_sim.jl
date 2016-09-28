@@ -45,14 +45,19 @@ function eval_sim()
     track = create_track(0.3)
 
     figure()
-    plot(z.t-t0,z.z)
+    ax1=subplot(311)
+    plot(z.t-t0,z.z,"-o")
     grid()
-    legend(["x","y","v_x","v_y","psi","psi_dot"])
-
-    figure()
-    plot(slip_a.t-t0,slip_a.z)
+    legend(["x","y","v_x","v_y","psi","psi_dot","d_f"])
+    subplot(312,sharex=ax1)
+    plot(cmd_log.t-t0,cmd_log.z,"-o")
+    grid()
+    legend(["u","d_f"])
+    subplot(313,sharex=ax1)
+    plot(slip_a.t-t0,slip_a.z,"-o")
     grid()
     legend(["a_f","a_r"])
+
     figure()
     plot(z.z[:,1],z.z[:,2],"-",gps_meas.z[:,1]/100,gps_meas.z[:,2]/100,".",est.z[:,1],est.z[:,2],"-")
     plot(track[:,1],track[:,2],"b.",track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")
@@ -61,13 +66,10 @@ function eval_sim()
     axis("equal")
     legend(["Real state","GPS meas","estimate"])
     figure()
-    plot(z.t-t0,z.z[:,3],imu_meas.t-t0,imu_meas.z,est.t-t0,est.z[:,3])
+    plot(z.t-t0,z.z[:,5],imu_meas.t-t0,imu_meas.z,est.t-t0,est.z[:,3])
     grid(1)
     legend(["Real psi","psi meas","estimate"])
-    figure()
-    plot(z.t-t0,z.z[:,4])
-    grid()
-    legend(["Velocity"])
+
     figure()
     plot(cmd_log.t-t0,cmd_log.z)
     legend(["a","d_f"])
@@ -98,6 +100,7 @@ function eval_LMPC()
 
     t0 = t[1]
 
+    figure()
     c = zeros(size(curv,1),1)
     for i=1:size(curv,1)
         s = state[i,1]
@@ -116,7 +119,13 @@ function eval_LMPC()
     grid()
 
     figure()
-    plot(z.t-t0,z.z[:,3],t-t0,x_est[:,3])
+    plot(z.t-t0,z.z[:,[1,2,5]],"-x",est.t-t0,est.z[:,1:3],"-*")
+    grid(1)
+    legend(["x","y","psi","x_est","y_est","psi_est"])
+
+    figure()
+    plot(z.t-t0,z.z[:,5],t-t0,x_est[:,3])
+    title("Comparison heading angle")
     legend(["psi_true","psi_est"])
     grid()
 
@@ -124,8 +133,10 @@ function eval_LMPC()
     figure()
     hold(1)
     plot(x_est[:,1],x_est[:,2],"-o")
+    legend(["Estimated position"])
     plot(track[:,1],track[:,2],"b.",track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")
     axis("equal")
+    grid(1)
     # for i=1:size(x_est,1)
     #     #dir = [cos(x_est[i,3]) sin(x_est[i,3])]
     #     #dir2 = [cos(x_est[i,3] - state[i,3]) sin(x_est[i,3] - state[i,3])]
@@ -149,11 +160,13 @@ function eval_LMPC()
     #     y = ss*coeffY[i,:]'
     #     plot(x,y)
     # end
-    grid()
 
     rg = 100:500
     figure()
     plot(s_start[rg]+state[rg,1],state[rg,2:4],"-o")
+    title("Comparison states and prediction")
+    legend(["ey","epsi","v"])
+    grid(1)
     for i=100:5:500
         plot(s_start[i]+sol_z[:,1,i],sol_z[:,2:4,i],"-*")
     end
@@ -161,10 +174,10 @@ function eval_LMPC()
     ax1=subplot(211)
     plot(t-t0,state,"-o",t-t0,f_z,"-*")
     legend(["s","ey","epsi","v","s_pred","ey_pred","epsi_pred","v_pred"])
-    grid()
+    grid(1)
     subplot(212,sharex = ax1)
     plot(t-t0,reshape(sol_u[1,:,:],2,size(sol_u,3))')
-    grid()
+    grid(1)
 
     figure()
     plot(oldTraj[:,1,1,1],oldTraj[:,2:4,1,1],"-o")

@@ -256,10 +256,10 @@ def f_KinBkMdl_predictive(z,u,vhMdl, dt):
     psi_next    = psi + dt*v/L_b*sin(bta)
     v_next      = v + dt*(a - 0.63*sign(v)*v**2)
 
-    x_next_pred      = x_next   + 0.1*( v*cos(psi + bta) )
-    y_next_pred      = y_next   + 0.1*( v*sin(psi + bta) ) 
-    psi_next_pred    = psi_next + 0.1*v/L_b*sin(bta)
-    v_next_pred      = v_next   + 0.1*(a - 0.63*sign(v)*v**2)
+    x_next_pred      = x_next   + 0.2*( v*cos(psi + bta) )
+    y_next_pred      = y_next   + 0.2*( v*sin(psi + bta) ) 
+    psi_next_pred    = psi_next + 0.2*v/L_b*sin(bta)
+    v_next_pred      = v_next   + 0.2*(a - 0.63*sign(v)*v**2)
 
     return array([x_next, y_next, psi_next, v_next, x_next_pred, y_next_pred, psi_next_pred, v_next_pred])
 

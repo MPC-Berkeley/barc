@@ -35,16 +35,16 @@ function InitializeParameters(mpcParams::MpcParams,trackCoeff::TrackCoeff,modelP
     mpcParams.R                 = 0*[1.0,1.0]             # put weights on a and d_f
     mpcParams.QderivZ           = 1.0*[0,0.0,0.1,0]             # cost matrix for derivative cost of states
     mpcParams.QderivU           = 1.0*[1,1]                 # cost matrix for derivative cost of inputs
-    mpcParams.vPathFollowing    = 0.2                     # reference speed for first lap of path following
+    mpcParams.vPathFollowing    = 0.6                     # reference speed for first lap of path following
 
     trackCoeff.nPolyCurvature   = 8                       # 4th order polynomial for curvature approximation
     trackCoeff.coeffCurvature   = zeros(trackCoeff.nPolyCurvature+1)         # polynomial coefficients for curvature approximation (zeros for straight line)
     trackCoeff.width            = 0.6                     # width of the track (0.5m)
 
-    modelParams.u_lb            = ones(mpcParams.N,1) * [-1.0 -pi/6]                    # lower bounds on steering
+    modelParams.u_lb            = ones(mpcParams.N,1) * [0.0  -pi/6]                    # lower bounds on steering
     modelParams.u_ub            = ones(mpcParams.N,1) * [1.2   pi/6]                  # upper bounds
-    modelParams.z_lb            = ones(mpcParams.N+1,1)*[-Inf -trackCoeff.width/2 -Inf -Inf]                    # lower bounds on states
-    modelParams.z_ub            = ones(mpcParams.N+1,1)*[Inf   trackCoeff.width/2  Inf  Inf]                    # upper bounds
+    modelParams.z_lb            = ones(mpcParams.N+1,1)*[-Inf -Inf -Inf -0.1]                    # lower bounds on states
+    modelParams.z_ub            = ones(mpcParams.N+1,1)*[ Inf  Inf  Inf  2.0]                    # upper bounds
     #modelParams.c0              = [0.5431, 1.2767, 2.1516, -2.4169]         # BARC-specific parameters (measured)
     modelParams.c0              = [1, 0.63, 1, 0]         # BARC-specific parameters (measured)
     modelParams.l_A             = 0.125
@@ -96,12 +96,12 @@ function InitializeModel(m::MpcModel,mpcParams::MpcParams,modelParams::ModelPara
             setupperbound(m.u_Ol[j,i], modelParams.u_ub[j,i])
         end
     end
-    # for i=1:4
-    #     for j=1:N+1
-    #         setlowerbound(m.z_Ol[j,i], modelParams.z_lb[j,i])
-    #         setupperbound(m.z_Ol[j,i], modelParams.z_ub[j,i])
-    #     end
-    # end
+    for i=1:4
+        for j=1:N+1
+            setlowerbound(m.z_Ol[j,i], modelParams.z_lb[j,i])
+            setupperbound(m.z_Ol[j,i], modelParams.z_ub[j,i])
+        end
+    end
     #@variable( m.mdl, 1 >= m.ParInt >= 0 )
 
     @NLparameter(m.mdl, m.z0[i=1:4] == z_Init[i])
