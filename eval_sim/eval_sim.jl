@@ -66,7 +66,6 @@ function eval_sim()
     title("x-y-view")
     axis("equal")
     legend(["Real state","GPS meas","estimate"])
-
     figure()
     plot(est_dyn.t,est_dyn.z,"-*",est.t,est.z,"--",z.t,z.z,"-")
     title("Dyn. est. -*, est. --, real -")
@@ -80,6 +79,8 @@ function eval_sim()
 
     figure()
     plot(est.z[:,1],est.z[:,2],"x",est_dyn.z[:,1],est_dyn.z[:,2],"-*",z.z[:,1],z.z[:,2],"-")
+    grid(1)
+    legend(["est","est_dyn","true"])
 
     figure()
     plot(z.t-t0,z.z[:,5],imu_meas.t-t0,imu_meas.z,est.t-t0,est.z[:,3])
