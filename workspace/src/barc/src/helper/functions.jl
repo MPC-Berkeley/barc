@@ -31,9 +31,9 @@ function InitializeParameters(mpcParams::MpcParams,trackCoeff::TrackCoeff,modelP
     mpcParams.N                 = 10
     mpcParams.nz                = 4
     mpcParams.Q                 = [0.0,10.0,0.0,0.1]      # put weights on ey, epsi and v
-    mpcParams.Q_term            = 1*[0.1,0.01,1.0]           # weights for terminal constraints (LMPC, for e_y, e_psi, and v)
+    mpcParams.Q_term            = 100*[0.01,0.01,1.0]           # weights for terminal constraints (LMPC, for e_y, e_psi, and v)
     mpcParams.R                 = 0*[1.0,1.0]             # put weights on a and d_f
-    mpcParams.QderivZ           = 1.0*[0,0.0,0.1,0]             # cost matrix for derivative cost of states
+    mpcParams.QderivZ           = 0.0*[0,0.0,0.1,0]             # cost matrix for derivative cost of states
     mpcParams.QderivU           = 1.0*[1,1]                 # cost matrix for derivative cost of inputs
     mpcParams.vPathFollowing    = 1.0                     # reference speed for first lap of path following
 

@@ -49,6 +49,11 @@ function eval_sim()
     title("x-y-view")
     axis("equal")
     legend(["Real state","GPS meas","estimate"])
+
+    figure()
+    plot(z.t,z.z,est.t,est.z,"x-")
+    grid(1)
+    
     figure()
     plot(z.t-t0,z.z[:,3],imu_meas.t-t0,imu_meas.z,est.t-t0,est.z[:,3])
     grid(1)

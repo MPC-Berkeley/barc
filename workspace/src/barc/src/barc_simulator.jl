@@ -163,8 +163,8 @@ function main()
         end
 
         # GPS measurements
-        x = round(z_current[i,1]*100 + 1*randn()*2)       # Indoor gps measures in cm
-        y = round(z_current[i,2]*100 + 1*randn()*2)
+        x = round(z_current[i,1]*100 + 0*randn()*2)       # Indoor gps measures in cm
+        y = round(z_current[i,2]*100 + 0*randn()*2)
         if i % 7 == 0
             gps_meas.i += 1
             gps_meas.t[gps_meas.i] = t
