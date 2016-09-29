@@ -61,7 +61,7 @@ function solveMpcProblem(mdl::MpcModel,mpcSol::MpcSol,mpcCoeff::MpcCoeff,mpcPara
 
     # Lane cost
     # ---------------------------------
-    @NLexpression(mdl.mdl, laneCost, 100*sum{mdl.z_Ol[i,2]^2*((0.5+0.5*tanh(50*(mdl.z_Ol[i,2]-ey_max))) + (0.5-0.5*tanh(50*(mdl.z_Ol[i,2]+ey_max)))),i=1:N+1})
+    @NLexpression(mdl.mdl, laneCost, 10*sum{mdl.z_Ol[i,2]^2*((0.5+0.5*tanh(10*(mdl.z_Ol[i,2]-ey_max))) + (0.5-0.5*tanh(10*(mdl.z_Ol[i,2]+ey_max)))),i=1:N+1})
 
     # Control Input cost
     # ---------------------------------

@@ -146,16 +146,14 @@ def f_6s(z, u, vhMdl, trMdl, F_ext, dt):
     FyR         = Fy[idx]
 
     # compute next state
-    X_next      = X + dt*(v_x*cos(phi) - v_y*sin(phi)) 
-    Y_next      = Y + dt*(v_x*sin(phi) + v_y*cos(phi)) 
+    X_next      = X + dt*(v_x*cos(phi) - v_y*sin(phi))
+    Y_next      = Y + dt*(v_x*sin(phi) + v_y*cos(phi))
     phi_next    = phi + dt*r
     v_x_next    = v_x + dt*(r*v_y +1/m*(FxR - FyF*sin(d_f)) - a0*v_x**2 - Ff)
     v_y_next    = v_y + dt*(-r*v_x +1/m*(FyF*cos(d_f) + FyR))
     r_next      = r    + dt/I_z*(a*FyF*cos(d_f) - b*FyR)
 
     return array([X_next, Y_next, phi_next, v_x_next, v_y_next, r_next])
-
-
 
 def h_2s(x):
     """
@@ -165,7 +163,7 @@ def h_2s(x):
     """
     C = array([[0, 1]])
     return dot(C, x)
- 
+
 def h_3s(x):
     """
     measurement model
@@ -175,11 +173,10 @@ def h_3s(x):
     C = array([[1, 0, 0],
                [0, 0, 1]])
     return dot(C, x)
-    
-   
+
 def f_pacejka(trMdl, alpha):
     """
-    f_pacejka = d*sin(c*atan(b*alpha))    
+    f_pacejka = d*sin(c*atan(b*alpha))
     
     inputs :
         * trMdl := tire model, a list or tuple of parameters (b,c,d)
@@ -188,7 +185,7 @@ def f_pacejka(trMdl, alpha):
         * Fy := lateral force from tire [Newtons]
     """
     (b,c,d) = trMdl
-    return  d*sin(c*arctan(b*alpha)) 
+    return  d*sin(c*arctan(b*alpha))
 
 
 def f_KinBkMdl(z,u,vhMdl, dt):
@@ -215,8 +212,8 @@ def f_KinBkMdl(z,u,vhMdl, dt):
     bta         = arctan( L_a / (L_a + L_b) * tan(d_f) )
 
     # compute next state
-    x_next      = x + dt*( v*cos(psi + bta) ) 
-    y_next      = y + dt*( v*sin(psi + bta) ) 
+    x_next      = x + dt*( v*cos(psi + bta) )
+    y_next      = y + dt*( v*sin(psi + bta) )
     psi_next    = psi + dt*v/L_b*sin(bta)
     v_next      = v + dt*(a - 0.63*sign(v)*v**2)
 
@@ -249,9 +246,17 @@ def f_DynBkMdl(z,u,vhMdl,trMdl,dt):
     v_y      = z[3]
     psi      = z[4]
     psi_dot  = z[5]
+    x_I_pred      = z[6]
+    y_I_pred      = z[7]
+    v_x_pred      = z[8]
+    v_y_pred      = z[9]
+    psi_pred      = z[10]
+    psi_dot_pred  = z[11]
 
     d_f      = u[0]
     a        = u[1]
+
+    dt_pred = 0.15
 
     # extract parameters
     (L_f,L_r,m,I_z)         = vhMdl
@@ -268,20 +273,25 @@ def f_DynBkMdl(z,u,vhMdl,trMdl,dt):
         a_F     = arctan((v_y + L_f*psi_dot)/v_x) - d_f
         a_R     = arctan((v_y - L_r*psi_dot)/v_x)
 
-    print "a_F = %f"%a_F
-    print "a_R = %f\n"%a_R
     FyF = -pacejka(a_F)
     FyR = -pacejka(a_R)
 
     # compute next state
-    x_I_next        = x_I       + dt * (cos(psi)*v_x - sin(psi)*v_y)
-    y_I_next        = y_I       + dt * (sin(psi)*v_x + cos(psi)*v_y)
-    v_x_next        = v_x       + dt * (a + v_y*psi_dot - 0.63*v_x**2*sign(v_x))
-    v_y_next        = v_y       + dt * (2/m*(FyF*cos(d_f) + FyR) - psi_dot*v_x)
-    psi_next        = psi       + dt * (psi_dot)
-    psi_dot_next    = psi_dot   + dt * (2/I_z*(L_f*FyF - L_r*FyR))
+    x_I_next             = x_I       + dt * (cos(psi)*v_x - sin(psi)*v_y)
+    y_I_next             = y_I       + dt * (sin(psi)*v_x + cos(psi)*v_y)
+    v_x_next             = v_x       + dt * (a + v_y*psi_dot - 0.63*v_x**2*sign(v_x))
+    v_y_next             = v_y       + dt * (2/m*(FyF*cos(d_f) + FyR) - psi_dot*v_x)
+    psi_next             = psi       + dt * (psi_dot)
+    psi_dot_next         = psi_dot   + dt * (2/I_z*(L_f*FyF - L_r*FyR))
 
-    return array([x_I_next,y_I_next,v_x_next,v_y_next,psi_next,psi_dot_next])
+    x_I_next_pred        = x_I       + dt_pred * (cos(psi)*v_x - sin(psi)*v_y)
+    y_I_next_pred        = y_I       + dt_pred * (sin(psi)*v_x + cos(psi)*v_y)
+    v_x_next_pred        = v_x       + dt_pred * (a + v_y*psi_dot - 0.63*v_x**2*sign(v_x))
+    v_y_next_pred        = v_y       + dt_pred * (2/m*(FyF*cos(d_f) + FyR) - psi_dot*v_x)
+    psi_next_pred        = psi       + dt_pred * (psi_dot)
+    psi_dot_next_pred    = psi_dot   + dt_pred * (2/I_z*(L_f*FyF - L_r*FyR))
+
+    return array([x_I_next,y_I_next,v_x_next,v_y_next,psi_next,psi_dot_next,x_I_next_pred,y_I_next_pred,v_x_next_pred,v_y_next_pred,psi_next_pred,psi_dot_next_pred])
 
 def f_KinBkMdl_predictive(z,u,vhMdl, dt):
     """
@@ -312,8 +322,8 @@ def f_KinBkMdl_predictive(z,u,vhMdl, dt):
     bta         = arctan( L_a / (L_a + L_b) * tan(d_f) )
 
     # compute next state
-    x_next      = x + dt*( v*cos(psi + bta) ) 
-    y_next      = y + dt*( v*sin(psi + bta) ) 
+    x_next      = x + dt*( v*cos(psi + bta) )
+    y_next      = y + dt*( v*sin(psi + bta) )
     psi_next    = psi + dt*v/L_b*sin(bta)
     v_next      = v + dt*(a - 0.63*sign(v)*v**2)
 
@@ -326,9 +336,10 @@ def f_KinBkMdl_predictive(z,u,vhMdl, dt):
 
 def h_DynBkMdl(x):
     # For GPS only:
-    C = array([[1, 0, 0, 0, 0, 0],
-               [0, 1, 0, 0, 0, 0],
-               [0, 0, 0, 0, 0, 1]])
+    C = array([[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+               [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+               [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
+               [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]])
     return dot(C, x)
 
 def h_KinBkMdl(x):
@@ -340,7 +351,6 @@ def h_KinBkMdl(x):
     #            [0, 1, 0, 0],
     #            [0, 0, 1, 0],
     #            [0, 0, 0, 1]])
-    
     # For GPS only:
     C = array([[1, 0, 0, 0],
                [0, 1, 0, 0]])
@@ -355,7 +365,6 @@ def h_KinBkMdl_predictive(x):
     #            [0, 1, 0, 0],
     #            [0, 0, 1, 0],
     #            [0, 0, 0, 1]])
-    
     # For GPS only:
     C = array([[1, 0, 0, 0, 0, 0, 0, 0],
                [0, 1, 0, 0, 0, 0, 0, 0]])

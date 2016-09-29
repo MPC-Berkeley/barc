@@ -150,7 +150,7 @@ function main()
             last_updated = dist_traveled
             FL += 1
             FR += 1
-            BL += 1
+            BL += 0 #no encoder on back left wheel
             BR += 0 #no encoder on back right wheel
             enc_data = Encoder(FL, FR, BL, BR)
             publish(pub_enc, enc_data) #publish a message everytime the encoder counts up

@@ -143,12 +143,12 @@ def state_estimation():
     Ff  = rospy.get_param("friction")
 
     # get EKF observer properties
-    q_std       = rospy.get_param("state_estimation_dynamic/q_std")             # std of process noise
-    psi_std     = rospy.get_param("state_estimation_dynamic/psi_std")             # std of measurementnoise
+    q_std       = rospy.get_param("state_estimation_dynamic/q_std")     # std of process noise
+    psi_std     = rospy.get_param("state_estimation_dynamic/psi_std")   # std of measurementnoise
     v_std       = rospy.get_param("state_estimation_dynamic/v_std")
-    gps_std     = rospy.get_param("state_estimation_dynamic/gps_std")           # std of gps measurements
-    ang_v_std   = rospy.get_param("state_estimation_dynamic/ang_v_std")           # std of gps measurements
-    v_x_min     = rospy.get_param("state_estimation_dynamic/v_x_min")  # minimum velociy before using EKF
+    gps_std     = rospy.get_param("state_estimation_dynamic/gps_std")   # std of gps measurements
+    ang_v_std   = rospy.get_param("state_estimation_dynamic/ang_v_std") # std of gps measurements
+    v_x_min     = rospy.get_param("state_estimation_dynamic/v_x_min")   # minimum velociy before using EKF
     est_mode    = rospy.get_param("state_estimation_dynamic/est_mode")  # estimation mode
 
     # set node rate
@@ -158,12 +158,12 @@ def state_estimation():
     t0          = time.time()
 
     # estimation variables for Luemberger observer
-    z_EKF       = zeros(6)
+    z_EKF       = zeros(12)
 
     # estimation variables for EKF
-    P           = eye(6)                # initial dynamics coveriance matrix
+    P           = eye(12)                # initial dynamics coveriance matrix
     #Q           = (q_std**2)*eye(6)     # process noise coveriance matrixif est_mode==1:
-    Q           = diag([0.01,0.01,0.1,0.0001,1.0,0.001])    # values derived from inspecting P matrix during Kalman filter running
+    Q           = diag([0.01,0.01,0.1,0.0001,1.0,0.001,0,0,0,0,0,0])    # values derived from inspecting P matrix during Kalman filter running
     
     if est_mode==1:                                     # use gps, IMU, and encoder
         R = diag([gps_std,gps_std,psi_std,v_std])**2
@@ -172,7 +172,7 @@ def state_estimation():
     elif est_mode==3:                                   # use gps only
         R = (gps_std**2)*eye(2)
     elif est_mode==4:                                   # use gps and angular velocity
-        R = diag([gps_std,gps_std,ang_v_std])**2
+        R = diag([gps_std,gps_std,ang_v_std,v_std])**2
     else:
         rospy.logerr("No estimation mode selected.")
 
@@ -181,17 +181,19 @@ def state_estimation():
     while not rospy.is_shutdown():
 
         # publish state estimate
-        (x,y,v_x,v_y,psi,psi_dot) = z_EKF           # note, r = EKF estimate yaw rate
+        (x,y,v_x,v_y,psi,psi_dot,x_pred,y_pred,v_x_pred,v_y_pred,psi_pred,psi_dot_pred) = z_EKF           # note, r = EKF estimate yaw rate
 
         # publish information
-        state_pub.publish( Z_DynBkMdl(x,y,v_x,v_y,psi,psi_dot) )
+        #state_pub.publish( Z_DynBkMdl(x,y,v_x,v_y,psi,psi_dot) )
+        state_pub.publish( Z_DynBkMdl(x_pred,y_pred,v_x_pred,v_y_pred,psi_pred,psi_dot_pred) )
 
         # apply EKF
         #if v_x_enc > v_x_min:
         if FxR > 0 or running:
             running = True
             # get measurement
-            y = array([x_meas,y_meas,w_z])
+            y = array([x_meas,y_meas,w_z,v_x_enc])
+            print "v_x_enc = %f"%v_x_enc
 
             # define input
             u       = array([ d_f, FxR ])
