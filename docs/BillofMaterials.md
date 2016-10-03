@@ -66,13 +66,15 @@ The items are sorted by category
 | Odroid myAHRS+ IMU                                                | 1 |[AmeriDroid](http://ameridroid.com/products/myahrs-attitude-heading-reference-system)                  | 
 
 ### Other accessories
-The HDMI-to-DVI cable is for connecting your odroid to a monitor. The odroid comes with an HDMI port for media output. We recommend a DVI connector on the other end since most monitors have it. We also recommend purchasing a toolbox to store to conveniently move hold your RC and all related accessories.
+The HDMI-to-DVI cable is for connecting your odroid to a monitor. The odroid comes with an HDMI port for media output. We recommend a DVI connector on the other end since most monitors have it. To estimate the mass of the RC, you can use a digital hand-luggage scale. We also recommend purchasing a toolbox to store to conveniently move hold your RC and all related accessories.
 
 |                                        Components                           |            Quantity                 | Links |
 |-------------------------------------------------------------------|-----------------------------|----| 
 | Generic portable router                                           | 1 |[Amazon](https://www.amazon.com/ZyXEL-Wireless-Pocket-Ethernet-MWR102/dp/B005WKIKA0?ie=UTF8&keywords=portable%20router%20zyxel&qid=1440797433&ref_=sr_1_1&sr=8-1)                      | 
 | Generic USB WiFi adapter*                                          | 1 |[Amazon](https://www.amazon.com/Edimax-EW-7811Un-150Mbps-Raspberry-Supports/dp/B003MTTJOY)                  | 
 | Generic HDMI-to-DVI cable                                                | 1 |[Amazon](https://www.amazon.com/Cable-Rankie-Rated-Speed-Bi-Directional/dp/B00YOSA85Q/ref=sr_1_1?s=electronics&ie=UTF8&qid=1469833924&sr=1-1-spons&keywords=hdmi+to+dvi+cable&psc=1)                  | 
+| Digital luggage scale                                          | 1 |[Amazon](https://www.amazon.com/Etekcity-Digital-Hanging-Luggage-Temperature/dp/B00NW62PCA/ref=sr_1_1?ie=UTF8&qid=1475535318&sr=8-1&keywords=scale+luggage)                  | 
 | Stanley toolbox (24 inch)                                             | 1 |[Amazon](https://www.amazon.com/dp/B006UJFAVO/ref=twister_B00HE69NTW?_encoding=UTF8&th=1)                  | 
+
 
 \* You can use the USB wifi-adapter as a wireless access point, which basically this chip can create its own network which you can connect to. This is an alternative to using the router. This usb-wifi chip takes up less space and reduces the overall mass of the car. Instructions will be posted soon.
