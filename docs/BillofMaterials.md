@@ -18,13 +18,15 @@ The items are sorted by category
 |                                        Components                           |            Quantity                 | Links |
 |-------------------------------------------------------------------|-----------------------------|----| 
 | Odroid XU4 w/ outlet adapter                                      | 1 |[AmeriDroid](http://ameridroid.com/products/odroid-xu4)                  | 
-| \*Odroid XU4 eMMC storage (w/ microSD adapter)                 | 1 |(16GB) [AmeriDroid](http://ameridroid.com/products/16gb-emmc-50-module-xu3-linux), (32GB)[AmeriDroid](http://ameridroid.com/products/32gb-emmc-5-0-module-xu3-linux),(64GB)[AmeriDroid](http://ameridroid.com/products/64gb-emmc-50-module-xu3-linux)   | 
+| \*Odroid XU4 eMMC storage (w/ microSD adapter)                 | 1 |(16GB)[AmeriDroid](http://ameridroid.com/products/16gb-emmc-50-module-xu3-linux), (32GB)[AmeriDroid](http://ameridroid.com/products/32gb-emmc-5-0-module-xu3-linux),(64GB)[AmeriDroid](http://ameridroid.com/products/64gb-emmc-50-module-xu3-linux)   | 
 | Odroid XU4 Real-Time-Clock battery                                | 1 |[AmeriDroid](http://ameridroid.com/products/rtc-battery)                  | 
 | Generic USB WiFi adapter                                          | 1 |[AmeriDroid](http://ameridroid.com/products/wifi-module-3)                  | 
 | Generic power cable (barrel jack to bare leads)                   | 1 |[AmeriDroid](http://ameridroid.com/products/dc-plug-and-cable-assembly-5-5mm)                  | 
-| Arduino Nano w/ micro USB to USB cable                            | 1 |[Amazon](http://www.amazon.com/ATmega328P-Microcontroller-Board-Cable-Arduino/dp/B00NLAMS9C/ref=sr_1_22?ie=UTF8&qid=1442638774&sr=8-22&keywords=arduino)                      | 
+| Arduino Nano w/ micro USB to USB cable                            | 1 |[Amazon](https://www.amazon.com/SainSmart-Nano-black-Cable-Arduino/dp/B00CJ7EARG/ref=sr_1_1?ie=UTF8&qid=1460665174&sr=8-1&keywords=arduino%2Bnano%2Bblack&th=1)                      | 
 | Arduino Nano shield                                          | 1 |[Amazon](https://www.amazon.com/Arduino-Nano-I-O-Shield/dp/B00BD6KEYC/ref=sr_1_sc_1?s=pc&ie=UTF8&qid=1473727162&sr=1-1-spell&keywords=arduino+nano+sheild)                      | 
 | micro USB to USB cable                                            | 1 |[Amazon](https://www.amazon.com/StarTech-com-Inch-Micro-USB-Cable/dp/B003YKX6WM?ie=UTF8&keywords=usb%20to%20micro%20usb%20cable%206%20in&qid=1452628187&ref_=sr_1_1&sr=8-1)                      | 
+| Sabrent 4-port USB hub                                            | 1 |[Amazon](https://www.amazon.com/Sabrent-4-Port-Individual-Switches-HB-UMLS/dp/B00BWF5U0M/ref=sr_1_1?ie=UTF8&qid=1456792062&sr=8-1&keywords=usb+hub)                      | 
+
 \* Only one eMMC storage is neccessary, three are listed as options depending on budget and system requirements. For projects that require storing GBs of video data from experiments, the 32GB or 64GB option is recommended
 
 
@@ -64,10 +66,13 @@ The items are sorted by category
 | Odroid myAHRS+ IMU                                                | 1 |[AmeriDroid](http://ameridroid.com/products/myahrs-attitude-heading-reference-system)                  | 
 
 ### Other accessories
-The HDMI-to-DVI cable is for connecting your odroid to a monitor. The odroid comes with an HDMI port for media output. We recommend a DVI connector on the other end since most monitors have it. 
+The HDMI-to-DVI cable is for connecting your odroid to a monitor. The odroid comes with an HDMI port for media output. We recommend a DVI connector on the other end since most monitors have it. We also recommend purchasing a toolbox to store to conveniently move hold your RC and all related accessories.
 
 |                                        Components                           |            Quantity                 | Links |
 |-------------------------------------------------------------------|-----------------------------|----| 
 | Generic portable router                                           | 1 |[Amazon](https://www.amazon.com/ZyXEL-Wireless-Pocket-Ethernet-MWR102/dp/B005WKIKA0?ie=UTF8&keywords=portable%20router%20zyxel&qid=1440797433&ref_=sr_1_1&sr=8-1)                      | 
-| Generic USB WiFi adapter                                          | 1 |[AmeriDroid](http://ameridroid.com/products/wifi-module-3)                  | 
+| Generic USB WiFi adapter*                                          | 1 |[Amazon](https://www.amazon.com/Edimax-EW-7811Un-150Mbps-Raspberry-Supports/dp/B003MTTJOY)                  | 
 | Generic HDMI-to-DVI cable                                                | 1 |[Amazon](https://www.amazon.com/Cable-Rankie-Rated-Speed-Bi-Directional/dp/B00YOSA85Q/ref=sr_1_1?s=electronics&ie=UTF8&qid=1469833924&sr=1-1-spons&keywords=hdmi+to+dvi+cable&psc=1)                  | 
+| Stanley toolbox (24 inch)                                             | 1 |[Amazon](https://www.amazon.com/dp/B006UJFAVO/ref=twister_B00HE69NTW?_encoding=UTF8&th=1)                  | 
+
+\* You can use the USB wifi-adapter as a wireless access point, which basically this chip can create its own network which you can connect to. This is an alternative to using the router. This usb-wifi chip takes up less space and reduces the overall mass of the car. Instructions will be posted soon.
