@@ -12,11 +12,10 @@ using JuMP
 using Ipopt
 using JLD
 
-include("helper/classes.jl")
-include("helper/coeffConstraintCost.jl")
-include("helper/solveMpcProblem.jl")
-include("helper/computeCostLap.jl")
-include("helper/functions.jl")
+include("LMC_lib/classes.jl")
+include("LMC_lib/coeffConstraintCost.jl")
+include("LMC_lib/solveMpcProblem.jl")
+include("LMC_lib/functions.jl")
 
 function SE_callback(msg::pos_info,s_start_update::Array{Float64},coeffCurvature_update::Array{Float64,1},z_est::Array{Float64,1},x_est::Array{Float64,1},
                         coeffX::Array{Float64,1},coeffY::Array{Float64,1})         # update current position and track data

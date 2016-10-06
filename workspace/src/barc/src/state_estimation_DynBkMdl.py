@@ -210,6 +210,8 @@ def state_estimation():
         else:
             z_EKF[0] = float(x_meas)
             z_EKF[1] = float(y_meas)
+            z_EKF[6] = float(x_meas)        # predicted values (these are published)
+            z_EKF[7] = float(y_meas)
         
         # wait
         rate.sleep()

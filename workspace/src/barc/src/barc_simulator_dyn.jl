@@ -25,24 +25,18 @@ using geometry_msgs.msg
 using sensor_msgs.msg
 using JLD
 
+include("LMPC_lib/classes.jl")
+include("LMPC_lib/simModel.jl")
+
 u_current = zeros(2,1)
 
 t = 0
-
 
 # This type contains measurement data (time, values and a counter)
 type Measurements{T}
     i::Int64          # measurement counter
     t::Array{Float64}       # time data
     z::Array{T}       # measurement values
-end
-
-type ModelParams
-    l_A::Float64
-    l_B::Float64
-    m::Float64
-    I_z::Float64
-    v_steer::Float64
 end
 
 # This function cleans the zeros from the type above once the simulation is finished
@@ -66,62 +60,6 @@ imu_meas.t[1] = time()
 est_meas.t[1] = time()
 est_meas_dyn.t[1] = time()
 cmd_log.t[1]  = time()
-
-function pacejka(a)
-    B = 0.3#20
-    C = 1.25
-    mu = 0.234
-    m = 1.98
-    g = 9.81
-    D = mu * m * g/2
-    D = D*100
-
-    C_alpha_f = D*sin(C*atan(B*a))
-    return C_alpha_f
-end
-
-function simDynModel_exact(z::Array{Float64},u::Array{Float64},dt::Float64,modelParams::ModelParams)
-    dtn = dt/10
-    t = 0:dtn:dt
-    z_final = z
-    ang = zeros(2)
-    for i=1:length(t)-1
-        z_final, ang = simDynModel(z_final,u,dtn,modelParams)
-    end
-    return z_final, ang
-end
-
-function simDynModel(z::Array{Float64},u::Array{Float64},dt::Float64,modelParams::ModelParams)
-
-    zNext::Array{Float64}
-    L_f = modelParams.l_A
-    L_r = modelParams.l_B
-    m   = modelParams.m
-    I_z = modelParams.I_z
-    v_steer = modelParams.v_steer        # 0.5 rad / 0.2 seconds
-
-    a_F = 0
-    a_R = 0
-    if abs(z[3]) > 0.1
-        a_F     = atan((z[4] + L_f*z[6])/z[3]) - z[7]
-        a_R     = atan((z[4] - L_r*z[6])/z[3])
-    end
-
-    FyF = -pacejka(a_F)
-    FyR = -pacejka(a_R)
-
-    zNext = z
-    # compute next state
-    zNext[1]        = zNext[1]       + dt * (cos(z[5])*z[3] - sin(z[5])*z[4])
-    zNext[2]        = zNext[2]       + dt * (sin(z[5])*z[3] + cos(z[5])*z[4])
-    zNext[3]        = zNext[3]       + dt * (u[1] + z[4]*z[6] - 0.63*z[3]^2*sign(z[3]))
-    zNext[4]        = zNext[4]       + dt * (2/m*(FyF*cos(z[7]) + FyR) - z[6]*z[3])
-    zNext[5]        = zNext[5]       + dt * (z[6])
-    zNext[6]        = zNext[6]       + dt * (2/I_z*(L_f*FyF - L_r*FyR))
-    zNext[7]        = zNext[7]       + dt * v_steer * sign(u[2]-z[7])
-
-    return zNext, [a_F a_R]
-end
 
 function ECU_callback(msg::ECU)
     global u_current
@@ -152,11 +90,6 @@ function main()
     pub_gps = Publisher("indoor_gps", Vector3, queue_size=10)
     pub_imu = Publisher("imu/data", Imu, queue_size=10)
 
-
-    # read the axle distances from the launch file
-    l_A = get_param("L_a")       # distance from CoG to front axel
-    l_B = get_param("L_b")       # distance from CoG to rear axel
-
     s1  = Subscriber("ecu", ECU, ECU_callback, queue_size=10)
     s2  = Subscriber("state_estimate", Z_KinBkMdl, est_callback, queue_size=10)
     s3  = Subscriber("state_estimate_dynamic", Z_DynBkMdl, est_dyn_callback, queue_size=10)
@@ -183,15 +116,24 @@ function main()
 
     imu_drift = 0       # simulates yaw-sensor drift over time (slow sine)
 
-    modelParams = ModelParams(0.125,0.125,1.98,0.24,0.5/0.2)        # L_f, L_r, m, I_z, v_steer
+    modelParams     = ModelParams()
+    # modelParams.l_A = copy(get_param("L_a"))      # always throws segmentation faults *after* execution!!! ??
+    # modelParams.l_B = copy(get_param("L_a"))
+    # modelParams.m   = copy(get_param("m"))
+    # modelParams.I_z = copy(get_param("I_z"))
+
+    modelParams.l_A = 0.125
+    modelParams.l_B = 0.125
+    modelParams.m = 1.98
+    modelParams.I_z = 0.24
 
     println("Publishing sensor information. Simulator running.")
     while ! is_shutdown()
 
         t = time()
         # update current state with a new row vector
-        z_current[i,:],slip_ang[i,:]  = simDynModel_exact(z_current[i-1,:],u_current', dt, modelParams)
-        p#rintln("z_current:")
+        z_current[i,:],slip_ang[i,:]  = simDynModel_exact_xy(z_current[i-1,:],u_current', dt, modelParams)
+        #println("z_current:")
         #println(z_current[i,:])
         #println(slip_ang[i,:])
 

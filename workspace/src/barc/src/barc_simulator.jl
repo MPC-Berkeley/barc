@@ -25,6 +25,8 @@ using geometry_msgs.msg
 using sensor_msgs.msg
 using JLD
 
+include("LMPC_lib/simModel.jl")
+
 u_current = zeros(2,1)
 
 t = 0
