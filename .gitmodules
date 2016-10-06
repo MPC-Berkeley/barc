@@ -1,0 +1,3 @@
+[submodule "workspace/src/barc/src/LMPC_lib"]
+	path = workspace/src/barc/src/LMPC_lib
+	url = https://github.com/maxb91/LMPC_lib
