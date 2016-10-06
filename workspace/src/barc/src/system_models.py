@@ -276,6 +276,9 @@ def f_DynBkMdl(z,u,vhMdl,trMdl,dt):
     FyF = -pacejka(a_F)
     FyR = -pacejka(a_R)
 
+    if abs(a_F) > 30/180*3.1416 or abs(a_R) > 30/180*3.1416:
+        print("WARNING: Large slip angles in estimation")
+
     # compute next state
     x_I_next             = x_I       + dt * (cos(psi)*v_x - sin(psi)*v_y)
     y_I_next             = y_I       + dt * (sin(psi)*v_x + cos(psi)*v_y)

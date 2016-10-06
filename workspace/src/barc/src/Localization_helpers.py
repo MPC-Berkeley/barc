@@ -37,10 +37,10 @@ class Localization:
     OrderThetaCurv      = 8                     # order of theta interpolation
     closed              = True                  # open or closed trajectory?
 
-    coeffX = zeros(11)
-    coeffY = zeros(11)
-    coeffTheta = 0
-    coeffCurvature = 0
+    coeffX = zeros(9)
+    coeffY = zeros(9)
+    coeffTheta = zeros(9)
+    coeffCurvature = zeros(9)
 
     s = 0                   # distance from s_start to current closest node (idx_min)
     s_start = 0             # distance along path from first node to start node (which is N_nodes_poly_back behind current closest node)
@@ -49,6 +49,9 @@ class Localization:
     v = 0                   # current velocity (not necessary for these calculations but for MPC)
     x = 0
     y = 0
+    v_x = 0
+    v_y = 0
+    psiDot = 0
 
     def create_circle(self,rad=1.0,n=100,c=array([0,0])):           # note: need to make sure that all points are equidistant!
         ang = linspace(0,2*pi-2*pi/n,n)
@@ -215,12 +218,15 @@ class Localization:
         #print(self.nodes)
 
 
-    def set_pos(self,x,y,psi,v):
+    def set_pos(self,x,y,psi,v,v_x,v_y,psiDot):
         self.pos = array([x,y])
         self.psi = psi
         self.v = v
         self.x = x
         self.y = y
+        self.v_x = v_x
+        self.v_y = v_y
+        self.psiDot = psiDot
 
     def find_s(self):
         dist        = sum((self.pos*ones([self.n,2])-self.nodes.transpose())**2,1)**0.5 # distance of current position to all nodes

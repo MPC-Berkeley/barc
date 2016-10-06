@@ -61,7 +61,7 @@
     <node pkg="barc" type="controller_low_level.py" name="low_level_controller" />
 
     <!-- MPC FOLLOW TRAJECTORY -->
-    <!--node pkg="barc" type="LMPC_node.jl" name="MPC" output="screen" /-->
+    <node pkg="barc" type="LMPC_node.jl" name="MPC" output="screen" />
 
 
 </launch>
