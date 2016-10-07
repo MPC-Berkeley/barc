@@ -184,8 +184,8 @@ def state_estimation():
         (x,y,v_x,v_y,psi,psi_dot,x_pred,y_pred,v_x_pred,v_y_pred,psi_pred,psi_dot_pred) = z_EKF           # note, r = EKF estimate yaw rate
 
         # publish information
-        #state_pub.publish( Z_DynBkMdl(x,y,v_x,v_y,psi,psi_dot) )
-        state_pub.publish( Z_DynBkMdl(x_pred,y_pred,v_x_pred,v_y_pred,psi_pred,psi_dot_pred) )
+        state_pub.publish( Z_DynBkMdl(x,y,v_x,v_y,psi,psi_dot) )
+        #state_pub.publish( Z_DynBkMdl(x_pred,y_pred,v_x_pred,v_y_pred,psi_pred,psi_dot_pred) )
 
         # apply EKF
         #if v_x_enc > v_x_min:

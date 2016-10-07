@@ -2,6 +2,8 @@ using JLD
 using PyPlot
 using HDF5, JLD, ProfileView
 
+include("../workspace/src/barc/src/LMPC_lib/classes.jl")
+
 type Measurements{T}
     i::Int64          # measurement counter
     t::Array{Float64}       # time data
@@ -118,6 +120,7 @@ function eval_LMPC()
     sol_u       = d_lmpc["sol_u"]
     cost        = d_lmpc["cost"]
     curv        = d_lmpc["curv"]
+    mpcCoeff    = d_lmpc["mpcCoeff"]
 
     x_est       = d_lmpc["x_est"]
     coeffX      = d_lmpc["coeffX"]

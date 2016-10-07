@@ -79,6 +79,7 @@ function main()
     log_t                       = zeros(10000,1)
     log_state                   = zeros(10000,6)
     log_cost                    = zeros(10000,6)
+    log_mpcCoeff                = Array(MpcCoeff,10000)
     log_oldTraj                 = zeros(buffersize,6,2,20)  # max. 20 laps
     
     # Initialize ROS node and topics
@@ -218,6 +219,7 @@ function main()
             log_curv[k,:]           = trackCoeff.coeffCurvature
             log_s_start[k]          = posInfo.s_start
             log_state_x[k,:]        = x_est
+            log_mpcCoeff[k]         = mpcCoeff
             if lapStatus.currentLap <= 2
                 log_sol_z[:,1:4,k]        = mpcSol.z        # only 4 states during path following mode (first 2 laps)
             else
@@ -236,7 +238,7 @@ function main()
     log_path = "$(homedir())/simulations/output_LMPC.jld"
     save(log_path,"oldTraj",log_oldTraj,"state",log_state[1:k,:],"t",log_t[1:k],"sol_z",log_sol_z[:,:,1:k],"sol_u",log_sol_u[:,:,1:k],
                     "cost",log_cost[1:k,:],"curv",log_curv[1:k,:],"coeffCost",log_coeff_Cost,"coeffConst",log_coeff_Const,
-                    "s_start",log_s_start[1:k],"x_est",log_state_x[1:k,:],"coeffX",log_coeffX[1:k,:],"coeffY",log_coeffY[1:k,:])
+                    "s_start",log_s_start[1:k],"x_est",log_state_x[1:k,:],"coeffX",log_coeffX[1:k,:],"coeffY",log_coeffY[1:k,:],"mpcCoeff",log_mpcCoeff)
     println("Exiting LMPC node. Saved data.")
 
 end

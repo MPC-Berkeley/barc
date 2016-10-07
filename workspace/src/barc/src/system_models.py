@@ -220,13 +220,13 @@ def f_KinBkMdl(z,u,vhMdl, dt):
     return array([x_next, y_next, psi_next, v_next])
 
 def pacejka(a):
-    B = 0.3#20
-    C = 1.25
-    mu = 0.234
+    B = 1.0
+    C = 1.0
+    mu = 0.8
     m = 1.98
     g = 9.81
     D = mu * m * g/2
-    D = D*50
+    D = D*10
 
     C_alpha_f = D*sin(C*arctan(B*a))
     return C_alpha_f
