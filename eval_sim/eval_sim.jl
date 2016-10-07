@@ -74,19 +74,32 @@ function eval_sim()
     legend(["x","y","v_x","v_y","psi","psi_dot","x","y","psi","v","x","y","v_x","v_y","psi","psi_dot","d_f"])
 
     figure()
-    plot(imu_meas.t,imu_meas.z,"-x",z.t,z.z[:,3],est_dyn.t,est_dyn.z[:,5:6],"-*")
-    legend(["psi_imu","psi_dot_imu","psi_true","psi_est","psi_dot_est"])
+    title("Comparison of psi")
+    plot(imu_meas.t,imu_meas.z,"-x",z.t,z.z[:,5:6],est_dyn.t,est_dyn.z[:,5:6],"-*")
+    legend(["imu_psi","imu_psi_dot","real_psi","real_psi_dot","est_psi","est_psi_dot"])
     grid()
 
     figure()
-    plot(est.z[:,1],est.z[:,2],"x",est_dyn.z[:,1],est_dyn.z[:,2],"-*",z.z[:,1],z.z[:,2],"-")
-    grid(1)
-    legend(["est","est_dyn","true"])
+    title("Comparison of v")
+    plot(z.t,z.z[:,3:4],est_dyn.t,est_dyn.z[:,3:4],"-*")
+    legend(["real_xDot","real_yDot","est_xDot","est_yDot"])
+    grid()
 
     figure()
-    plot(z.t-t0,z.z[:,5],imu_meas.t-t0,imu_meas.z,est.t-t0,est.z[:,3])
-    grid(1)
-    legend(["Real psi","psi meas","estimate"])
+    title("Comparison of x,y")
+    plot(z.t,z.z[:,1:2],est_dyn.t,est_dyn.z[:,1:2],"-*")
+    legend(["real_x","real_y","est_x","est_y"])
+    grid()
+
+    #figure()
+    #plot(est.z[:,1],est.z[:,2],"x",est_dyn.z[:,1],est_dyn.z[:,2],"-*",z.z[:,1],z.z[:,2],"-")
+    #grid(1)
+    #legend(["est","est_dyn","true"])
+
+    #figure()
+    #plot(z.t-t0,z.z[:,5],imu_meas.t-t0,imu_meas.z,est.t-t0,est.z[:,3])
+    #grid(1)
+    #legend(["Real psi","psi meas","estimate"])
 
     figure()
     plot(cmd_log.t-t0,cmd_log.z)
@@ -105,7 +118,7 @@ function eval_LMPC()
     sol_u       = d_lmpc["sol_u"]
     cost        = d_lmpc["cost"]
     curv        = d_lmpc["curv"]
-    f_z         = d_lmpc["pred_z"]
+
     x_est       = d_lmpc["x_est"]
     coeffX      = d_lmpc["coeffX"]
     coeffY      = d_lmpc["coeffY"]
@@ -134,17 +147,6 @@ function eval_LMPC()
     title("Curvature over path")
     xlabel("Curvilinear abscissa [m]")
     ylabel("Curvature")
-    grid()
-
-    figure()
-    plot(z.t-t0,z.z[:,[1,2,5]],"-x",est.t-t0,est.z[:,1:3],"-*")
-    grid(1)
-    legend(["x","y","psi","x_est","y_est","psi_est"])
-
-    figure()
-    plot(z.t-t0,z.z[:,5],t-t0,x_est[:,3])
-    title("Comparison heading angle")
-    legend(["psi_true","psi_est"])
     grid()
 
     track = create_track(0.3)
@@ -179,24 +181,15 @@ function eval_LMPC()
     #     plot(x,y)
     # end
 
-    rg = 100:500
-    figure()
-    plot(s_start[rg]+state[rg,1],state[rg,2:4],"-o")
-    title("Comparison states and prediction")
-    legend(["ey","epsi","v"])
-    grid(1)
-    for i=100:5:500
-        plot(s_start[i]+sol_z[:,1,i],sol_z[:,2:4,i],"-*")
-    end
-    figure()
-    ax1=subplot(211)
-    plot(t-t0,state,"-o",t-t0,f_z,"-*")
-    legend(["s","ey","epsi","v","s_pred","ey_pred","epsi_pred","v_pred"])
-    grid(1)
-    subplot(212,sharex = ax1)
-    plot(t-t0,reshape(sol_u[1,:,:],2,size(sol_u,3))')
-    grid(1)
-
+    # rg = 100:500
+    # figure()
+    # plot(s_start[rg]+state[rg,1],state[rg,2:4],"-o")
+    # title("Comparison states and prediction")
+    # legend(["ey","epsi","v"])
+    # grid(1)
+    # for i=100:5:500
+    #     plot(s_start[i]+sol_z[:,1,i],sol_z[:,2:4,i],"-*")
+    # end
     figure()
     plot(oldTraj[:,1,1,1],oldTraj[:,2:4,1,1],"-o")
     legend(["e_y","e_psi","v"])
@@ -363,27 +356,27 @@ function create_track(w)
     theta = [0.0]
 
     # SOPHISTICATED TRACK
-    add_curve(theta,30,0.0)
-    add_curve(theta,60,-2*pi/3)
-    add_curve(theta,90,pi)
-    add_curve(theta,80,-5*pi/6)
-    add_curve(theta,10,0.0)
-    add_curve(theta,50,-pi/2)
-    add_curve(theta,50,0.0)
-    add_curve(theta,40,-pi/4)
-    add_curve(theta,30,pi/4)
-    add_curve(theta,20,0.0)
-    add_curve(theta,50,-pi/2)
-    add_curve(theta,25,0.0)
-    add_curve(theta,50,-pi/2)
-    add_curve(theta,28,0.0)
+    # add_curve(theta,30,0.0)
+    # add_curve(theta,60,-2*pi/3)
+    # add_curve(theta,90,pi)
+    # add_curve(theta,80,-5*pi/6)
+    # add_curve(theta,10,0.0)
+    # add_curve(theta,50,-pi/2)
+    # add_curve(theta,50,0.0)
+    # add_curve(theta,40,-pi/4)
+    # add_curve(theta,30,pi/4)
+    # add_curve(theta,20,0.0)
+    # add_curve(theta,50,-pi/2)
+    # add_curve(theta,25,0.0)
+    # add_curve(theta,50,-pi/2)
+    # add_curve(theta,28,0.0)
 
     # SIMPLE track
-    # add_curve(theta,50,0)
-    # add_curve(theta,100,-pi)
-    # add_curve(theta,100,0)
-    # add_curve(theta,100,-pi)
-    # add_curve(theta,49,0)
+    add_curve(theta,50,0)
+    add_curve(theta,100,-pi)
+    add_curve(theta,100,0)
+    add_curve(theta,100,-pi)
+    add_curve(theta,49,0)
 
     for i=1:length(theta)
             push!(x, x[end] + cos(theta[i])*ds)

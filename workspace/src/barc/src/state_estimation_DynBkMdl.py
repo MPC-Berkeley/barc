@@ -172,7 +172,7 @@ def state_estimation():
     elif est_mode==3:                                   # use gps only
         R = (gps_std**2)*eye(2)
     elif est_mode==4:                                   # use gps and angular velocity
-        R = diag([gps_std,gps_std,ang_v_std,v_std])**2
+        R = diag([gps_std,gps_std,ang_v_std,v_std,psi_std])**2
     else:
         rospy.logerr("No estimation mode selected.")
 
@@ -184,16 +184,15 @@ def state_estimation():
         (x,y,v_x,v_y,psi,psi_dot,x_pred,y_pred,v_x_pred,v_y_pred,psi_pred,psi_dot_pred) = z_EKF           # note, r = EKF estimate yaw rate
 
         # publish information
-        state_pub.publish( Z_DynBkMdl(x,y,v_x,v_y,psi,psi_dot) )
-        #state_pub.publish( Z_DynBkMdl(x_pred,y_pred,v_x_pred,v_y_pred,psi_pred,psi_dot_pred) )
+        #state_pub.publish( Z_DynBkMdl(x,y,v_x,v_y,psi,psi_dot) )
+        state_pub.publish( Z_DynBkMdl(x_pred,y_pred,v_x_pred,v_y_pred,psi_pred,psi_dot_pred) )
 
         # apply EKF
         #if v_x_enc > v_x_min:
         if FxR > 0 or running:
             running = True
             # get measurement
-            y = array([x_meas,y_meas,w_z,v_x_enc])
-            print "v_x_enc = %f"%v_x_enc
+            y = array([x_meas,y_meas,w_z,v_x_enc,yaw])
 
             # define input
             u       = array([ d_f, FxR ])
@@ -203,7 +202,7 @@ def state_estimation():
             args    = (u, vhMdl, TrMdl, dt) 
 
             # apply EKF and get each state estimate
-            (z_EKF,P) = ekf(f_DynBkMdl, z_EKF, P, h_DynBkMdl, y, Q, R, args )
+            (z_EKF,P) = ekf(f_DynBkMdl_exact, z_EKF, P, h_DynBkMdl, y, Q, R, args )
             #print "New Iteration ------"
             #print P
             

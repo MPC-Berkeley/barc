@@ -226,7 +226,7 @@ def pacejka(a):
     m = 1.98
     g = 9.81
     D = mu * m * g/2
-    D = D*10
+    D = D*50
 
     C_alpha_f = D*sin(C*arctan(B*a))
     return C_alpha_f
@@ -240,23 +240,23 @@ def f_DynBkMdl_exact(z,u,vhMdl,trMdl,dt):
     return zNext
 
 def f_DynBkMdl(z,u,vhMdl,trMdl,dt):
-    x_I      = z[0]
-    y_I      = z[1]
-    v_x      = z[2]
-    v_y      = z[3]
-    psi      = z[4]
-    psi_dot  = z[5]
-    x_I_pred      = z[6]
-    y_I_pred      = z[7]
-    v_x_pred      = z[8]
-    v_y_pred      = z[9]
-    psi_pred      = z[10]
-    psi_dot_pred  = z[11]
+    x_I             = z[0]
+    y_I             = z[1]
+    v_x             = z[2]
+    v_y             = z[3]
+    psi             = z[4]
+    psi_dot         = z[5]
+    x_I_pred        = z[6]
+    y_I_pred        = z[7]
+    v_x_pred        = z[8]
+    v_y_pred        = z[9]
+    psi_pred        = z[10]
+    psi_dot_pred    = z[11]
 
-    d_f      = u[0]
-    a        = u[1]
+    d_f             = u[0]
+    a               = u[1]
 
-    dt_pred = 0.15
+    dt_pred         = 0.15
 
     # extract parameters
     (L_f,L_r,m,I_z)         = vhMdl
@@ -276,8 +276,13 @@ def f_DynBkMdl(z,u,vhMdl,trMdl,dt):
     FyF = -pacejka(a_F)
     FyR = -pacejka(a_R)
 
-    if abs(a_F) > 30/180*3.1416 or abs(a_R) > 30/180*3.1416:
-        print("WARNING: Large slip angles in estimation")
+    #a_F = 0         # experimental: set all forces to zero
+    #a_R = 0
+    #FyF = 0
+    #FyR = 0
+
+    if abs(a_F) > 30.0/180.0*3.1416 or abs(a_R) > 30.0/180.0*3.1416:
+        print("WARNING: Large slip angles in estimation: a_F = %f, a_R = %f"%(a_F,a_R))
 
     # compute next state
     x_I_next             = x_I       + dt * (cos(psi)*v_x - sin(psi)*v_y)
@@ -295,6 +300,50 @@ def f_DynBkMdl(z,u,vhMdl,trMdl,dt):
     psi_dot_next_pred    = psi_dot   + dt_pred * (2/I_z*(L_f*FyF - L_r*FyR))
 
     return array([x_I_next,y_I_next,v_x_next,v_y_next,psi_next,psi_dot_next,x_I_next_pred,y_I_next_pred,v_x_next_pred,v_y_next_pred,psi_next_pred,psi_dot_next_pred])
+
+def f_DynBkMdl_Kin(z,u,vhMdl,trMdl,dt):
+    x_I             = z[0]
+    y_I             = z[1]
+    v_x             = z[2]
+    v_y             = z[3]
+    psi             = z[4]
+    psi_dot         = z[5]
+    x_I_pred        = z[6]
+    y_I_pred        = z[7]
+    v_x_pred        = z[8]
+    v_y_pred        = z[9]
+    psi_pred        = z[10]
+    psi_dot_pred    = z[11]
+
+    d_f             = u[0]
+    a               = u[1]
+
+    dt_pred         = 0.15
+
+    # extract parameters
+    (L_f,L_r,m,I_z)         = vhMdl
+    (trMdlFront, trMdlRear) = trMdl
+    (B,C,mu)                = trMdlFront
+    g                       = 9.81
+    Fn                      = m*g/2.0         # assuming a = b (i.e. distance from CoG to either axel)
+
+    # compute next state
+    x_I_next             = x_I       + dt * (cos(psi)*v_x - sin(psi)*v_y)
+    y_I_next             = y_I       + dt * (sin(psi)*v_x + cos(psi)*v_y)
+    v_x_next             = v_x       + dt * (a + v_y*psi_dot - 0.63*v_x**2*sign(v_x))
+    v_y_next             = v_y       + dt * (2/m*(FyF*cos(d_f) + FyR) - psi_dot*v_x)
+    psi_next             = psi       + dt * (psi_dot)
+    psi_dot_next         = psi_dot   + dt * (2/I_z*(L_f*FyF - L_r*FyR))
+
+    x_I_next_pred        = x_I       + dt_pred * (cos(psi)*v_x - sin(psi)*v_y)
+    y_I_next_pred        = y_I       + dt_pred * (sin(psi)*v_x + cos(psi)*v_y)
+    v_x_next_pred        = v_x       + dt_pred * (a + v_y*psi_dot - 0.63*v_x**2*sign(v_x))
+    v_y_next_pred        = v_y       + dt_pred * (2/m*(FyF*cos(d_f) + FyR) - psi_dot*v_x)
+    psi_next_pred        = psi       + dt_pred * (psi_dot)
+    psi_dot_next_pred    = psi_dot   + dt_pred * (2/I_z*(L_f*FyF - L_r*FyR))
+
+    return array([x_I_next,y_I_next,v_x_next,v_y_next,psi_next,psi_dot_next,x_I_next_pred,y_I_next_pred,v_x_next_pred,v_y_next_pred,psi_next_pred,psi_dot_next_pred])
+
 
 def f_KinBkMdl_predictive(z,u,vhMdl, dt):
     """
@@ -342,7 +391,8 @@ def h_DynBkMdl(x):
     C = array([[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
                [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-               [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0]])
+               [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+               [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0]])
     return dot(C, x)
 
 def h_KinBkMdl(x):

@@ -28,7 +28,7 @@ class Localization:
     c                   = 0                     # center of circle (in case of circular trajectory)
     pos                 = 0                     # current position
     psi                 = 0                     # current orientation
-    nodes               = 0                     # all nodes are saved in a matrix
+    nodes               = array([0])            # all nodes are saved in a matrix
     N_nodes_poly_back   = 20                    # number of nodes behind current position
     N_nodes_poly_front  = 40                    # number of nodes in front
     ds                  = 0                     # distance between nodes
@@ -109,28 +109,28 @@ class Localization:
         theta = array([0])
 
         # Sophisticated racetrack: length = 25.62m
-        theta = add_curve(theta,30,0)
-        theta = add_curve(theta,60,-2*pi/3)
-        #theta = add_curve(theta,30,0)
-        theta = add_curve(theta,90,pi)
-        theta = add_curve(theta,80,-5*pi/6)
-        theta = add_curve(theta,10,0)
-        theta = add_curve(theta,50,-pi/2)
-        theta = add_curve(theta,50,0)
-        theta = add_curve(theta,40,-pi/4)
-        theta = add_curve(theta,30,pi/4)
-        theta = add_curve(theta,20,0)
-        theta = add_curve(theta,50,-pi/2)
-        theta = add_curve(theta,25,0)
-        theta = add_curve(theta,50,-pi/2)
-        theta = add_curve(theta,28,0)
+        # theta = add_curve(theta,30,0)
+        # theta = add_curve(theta,60,-2*pi/3)
+        # #theta = add_curve(theta,30,0)
+        # theta = add_curve(theta,90,pi)
+        # theta = add_curve(theta,80,-5*pi/6)
+        # theta = add_curve(theta,10,0)
+        # theta = add_curve(theta,50,-pi/2)
+        # theta = add_curve(theta,50,0)
+        # theta = add_curve(theta,40,-pi/4)
+        # theta = add_curve(theta,30,pi/4)
+        # theta = add_curve(theta,20,0)
+        # theta = add_curve(theta,50,-pi/2)
+        # theta = add_curve(theta,25,0)
+        # theta = add_curve(theta,50,-pi/2)
+        # theta = add_curve(theta,28,0)
 
         # SIMPLE RACETRACK (smooth curves): length = 24.0m
-        # theta = add_curve(theta,50,0)
-        # theta = add_curve(theta,100,-pi)
-        # theta = add_curve(theta,100,0)
-        # theta = add_curve(theta,100,-pi)
-        # theta = add_curve(theta,49,0)
+        theta = add_curve(theta,50,0)
+        theta = add_curve(theta,100,-pi)
+        theta = add_curve(theta,100,0)
+        theta = add_curve(theta,100,-pi)
+        theta = add_curve(theta,49,0)
 
         # SIMPLER RACETRACK (half circles as curves):
 
@@ -147,7 +147,7 @@ class Localization:
     def create_racetrack(self,L=1.0,b=1.0,ds=0.5,c=array([0,0]),ang=0):     # problem: points are not equidistant at connecing points
         x = linspace(0,L/2.0,5)#arange(0,L/2.0,ds)                                          # otherwise: would create a racetrack with parallel lines
         s = size(x)
-        da = 2*pi/360*5
+        da = 2.0*pi/360*5
         x = hstack((x,L/2.0+b/2*cos(arange(pi/2,-pi/2,-da))))
         x = hstack((x,linspace(L/2.0,-L/2.0,5)))
         x = hstack((x,-L/2.0+b/2*cos(arange(pi/2,1.5*pi+da,da))))

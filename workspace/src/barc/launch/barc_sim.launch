@@ -46,11 +46,11 @@
 
         <!-- ekf properties -->
         <param name="q_std" type="double" value="0.1" />
-        <param name="psi_std" type="double" value="0.01" />
-        <param name="v_std" type="double" value="0.5" />
+        <param name="psi_std" type="double" value="0.1" />
+        <param name="v_std" type="double" value="1.0" />
         <param name="gps_std" type="double" value="0.2" />
         <param name="v_x_min" type="double" value="0.2" />
-        <param name="ang_v_std" type="double" value="0.05" />
+        <param name="ang_v_std" type="double" value="0.1" />
         <param name="est_mode" type="double" value="4" />
     </node>
 

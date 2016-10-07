@@ -47,7 +47,7 @@ end
 
 buffersize = 60000
 gps_meas = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,2))
-imu_meas = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize))
+imu_meas = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,2))
 est_meas = Measurements{Float32}(0,zeros(buffersize),zeros(Float32,buffersize,4))
 est_meas_dyn = Measurements{Float32}(0,zeros(buffersize),zeros(Float32,buffersize,6))
 cmd_log  = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,2))
@@ -161,7 +161,7 @@ function main()
         if i%2 == 0
             imu_meas.i += 1
             imu_meas.t[imu_meas.i] = t
-            imu_meas.z[imu_meas.i] = yaw
+            imu_meas.z[imu_meas.i,:] = [yaw z_current[i,6]]
             publish(pub_imu, imu_data)      # Imu format is defined by ROS, you can look it up by google "rosmsg Imu"
                                             # It's sufficient to only fill the orientation part of the Imu-type (with one quaternion)
         end

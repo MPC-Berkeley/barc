@@ -47,8 +47,6 @@ function main()
     mpcParams                   = MpcParams()
     mpcParams_pF                = MpcParams()       # for 1st lap (path following)
 
-    buffersize                  = 700
-
     z_Init    = [1.0, 0.0, 0.0, 0.0, 0.0, 0.0]      # xDot needs to be > 0
     z_Init_pF = zeros(4)
 
@@ -103,24 +101,32 @@ function main()
     # Specific initializations:
     lapStatus.currentLap    = 1
     lapStatus.currentIt     = 1
-    posInfo.s_target        = 36.84
+    posInfo.s_target        = 24.0
     k                       = 0                       # overall counter for logging
     
+    # Precompile coeffConstraintCost:
+    oldTraj.oldTraj[1:buffersize,6,1] = 1:buffersize
+    oldTraj.oldTraj[1:buffersize,6,2] = 1:buffersize
+    posInfo.s = 400
+    posInfo.s_start = 0
+    coeffConstraintCost(oldTraj,mpcCoeff,posInfo,mpcParams,z_ID,u_ID,lapStatus)
+    oldTraj.oldTraj[1:buffersize,6,1] = zeros(buffersize,1)
+    oldTraj.oldTraj[1:buffersize,6,2] = zeros(buffersize,1)
+    posInfo.s = 0
+    posInfo.s_start = 0
+
     # Start node
     while ! is_shutdown()
         if z_est[6] > 0         # check if data has been received (s > 0)
-            println("Received data. Starting one iteration.")
 
             # ============================= PUBLISH COMMANDS =============================
             # this is done at the beginning of the lap because this makes sure that the command is published 0.1s after the state has been received
             # the state is predicted by 0.1s
-            println("Publishing.")
             cmd.motor = mpcSol.a_x
             cmd.servo = mpcSol.d_f
             publish(pub, cmd)        
 
             # ============================= Initialize iteration parameters =============================
-            println("Initializing iteration parameters.")
             i                           = lapStatus.currentIt           # current iteration number, just to make notation shorter
             zCurr[i,:]                  = copy(z_est)                   # update state information (actually predicted by Kalman filter!)
             posInfo.s                   = zCurr[i,6]                    # update position info
@@ -129,30 +135,22 @@ function main()
 
             # ======================================= Lap trigger =======================================
             if (posInfo.s_start + posInfo.s)%posInfo.s_target <= s_lapTrigger && switchLap      # if we are switching to the next lap...
-                println("Saving data")
-                tic()
+                println("Finishing one lap at iteration $i")
+                println("current state:  $(zCurr[i,:])")
+                println("previous state: $(zCurr[i-1,:])")
                 # Important: lapStatus.currentIt is now the number of points up to s > s_target -> -1 in saveOldTraj
-                saveOldTraj(oldTraj,zCurr,uCurr,lapStatus,buffersize,modelParams.dt)
+                saveOldTraj(oldTraj,zCurr,uCurr,lapStatus,posInfo,buffersize)
+                println("oldTraj: $(oldTraj.oldTraj[:,:,1])")
                 log_oldTraj[:,:,:,lapStatus.currentLap] = oldTraj.oldTraj[:,:,:]
                 zCurr[1,:] = zCurr[i,:]         # copy current state
-                u_final    = uCurr[i,:]         # ... and input
+                u_final    = uCurr[i-1,:]         # ... and input
                 i                     = 1
                 lapStatus.currentIt   = 1       # reset current iteration
                 lapStatus.currentLap += 1       # start next lap
                 switchLap = false
-
-                tt = toq()
-                # println("Saved data, t = $tt")
-                # println("======================================== NEXT LAP ========================================")
-                # println("cost: $(oldTraj.oldCost)")
-                # println("oldTraj.oldTraj[:,1,1]:")
-                # println(oldTraj.oldTraj[:,1,1])
-                # println("oldTraj.oldTraj[:,1,2]:")
-                # println(oldTraj.oldTraj[:,1,2])
             elseif (posInfo.s_start+posInfo.s)%posInfo.s_target > s_lapTrigger
                 switchLap = true
             end
-            println("Starting one iteration.")
 
             # For System ID: Update last 50 measurements
             z_ID = circshift(z_ID,-1)
@@ -164,13 +162,12 @@ function main()
             println("======================================== NEW ITERATION # $i ========================================")
             println("Current Lap: $(lapStatus.currentLap), It: $(lapStatus.currentIt)")
             println("State Nr. $i    = $z_est")
-            println("Coeff Curvature = $(trackCoeff.coeffCurvature)")
             println("s               = $(posInfo.s)")
             println("s_start         = $(posInfo.s_start)")
             println("s_total         = $((posInfo.s+posInfo.s_start)%posInfo.s_target)")
 
             # Find coefficients for cost and constraints
-            if lapStatus.currentLap > 1
+            if lapStatus.currentLap > 2
                 tic()
                 coeffConstraintCost(oldTraj,mpcCoeff,posInfo,mpcParams,z_ID,u_ID,lapStatus)
                 tt = toq()
@@ -192,15 +189,12 @@ function main()
             else                        # otherwise: use system-ID-model
                 solveMpcProblem(mdl,mpcSol,mpcCoeff,mpcParams,trackCoeff,lapStatus,posInfo,modelParams,zCurr[i,:]',last_u')
             end
-
-            #solveMpcProblem(mdl,mpcSol,mpcCoeff,mpcParams,trackCoeff,lapStatus,posInfo,modelParams,zCurr[i,:]',uCurr[i,:]')
-
             tt = toq()
-            # Write in current input information
-            uCurr[i,:]  = [mpcSol.a_x mpcSol.d_f]
             println("Finished solving, status: $(mpcSol.solverStatus), u = $(uCurr[i,:]), t = $tt s")
 
-            zCurr[i,1] = (posInfo.s_start + posInfo.s)%posInfo.s_target   # save absolute position in s (for oldTrajectory)
+            # Write current input information
+            uCurr[i,:]  = [mpcSol.a_x mpcSol.d_f]
+            zCurr[i,6] = (posInfo.s_start + posInfo.s)%posInfo.s_target   # save absolute position in s (for oldTrajectory)
 
             # append new states and inputs to old trajectory
             oldTraj.oldTraj[oldTraj.oldCost[1]+oldTraj.prebuf+i,:,1] = zCurr[i,:]
