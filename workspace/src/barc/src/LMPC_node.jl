@@ -157,12 +157,6 @@ function main()
                 switchLap = true
             end
 
-            # For System ID: Update last 50 measurements
-            z_ID = circshift(z_ID,-1)
-            u_ID = circshift(u_ID,-1)
-            z_ID[end,:] = zCurr[i,:]
-            u_ID[end,:] = uCurr[i,:]
-
             #  ======================================= Calculate input =======================================
             println("======================================== NEW ITERATION # $i ========================================")
             println("Current Lap: $(lapStatus.currentLap), It: $(lapStatus.currentIt)")
@@ -211,6 +205,12 @@ function main()
                 oldTraj.oldTraj[oldTraj.oldCost[1]+oldTraj.prebuf+i,6,2] += posInfo.s_target
                 oldTraj.oldInput[oldTraj.oldCost[1]+oldTraj.prebuf+i,:,2] = uCurr[i,:]
             end
+
+            # For System ID: Update last 50 measurements
+            z_ID = circshift(z_ID,-1)
+            u_ID = circshift(u_ID,-1)
+            z_ID[end,:] = zCurr[i,:]
+            u_ID[end,:] = uCurr[i,:]
 
             # Logging
             # ---------------------------

@@ -51,7 +51,7 @@ imu_meas = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,2))
 est_meas = Measurements{Float32}(0,zeros(buffersize),zeros(Float32,buffersize,4))
 est_meas_dyn = Measurements{Float32}(0,zeros(buffersize),zeros(Float32,buffersize,6))
 cmd_log  = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,2))
-z_real   = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,7))
+z_real   = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,8))
 slip_a   = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,2))
 
 z_real.t[1]   = time()
@@ -89,8 +89,8 @@ function main()
     s1  = Subscriber("ecu", ECU, ECU_callback, queue_size=1)
     s3  = Subscriber("state_estimate_dynamic", Z_DynBkMdl, est_dyn_callback, queue_size=1)
 
-    z_current = zeros(60000,7)
-    z_current[1,:] = [0.1 0.0 0.0 0.0 0.0 0.0 0.0]
+    z_current = zeros(60000,8)
+    z_current[1,:] = [0.1 0.0 0.0 0.0 0.0 0.0 0.0 0.0]
     slip_ang = zeros(60000,2)
 
     dt = 0.01

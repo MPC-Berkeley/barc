@@ -34,7 +34,7 @@
         <!-- ekf properties -->
         <param name="q_std" type="double" value="0.1" />
         <param name="psi_std" type="double" value="0.5" />
-        <param name="v_std" type="double" value="1.0" />
+        <param name="v_std" type="double" value="10.0" />
         <param name="gps_std" type="double" value="0.8" />
         <param name="v_x_min" type="double" value="0.2" />
         <param name="ang_v_std" type="double" value="0.8" />
@@ -43,7 +43,7 @@
     </node>
 
     <!-- LOCALIZATION -->
-    <node pkg="barc" type="Localization_node.py" name="localization" output="screen"/>
+    <!--node pkg="barc" type="Localization_node.py" name="localization" output="screen"/-->
 
     <!-- LOW LEVEL CONTROLLER -->
     <node pkg="barc" type="controller_low_level.py" name="low_level_controller" />

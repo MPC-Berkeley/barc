@@ -16,7 +16,8 @@
 import rospy
 import time
 import os
-from barc.msg import ECU, Encoder, Z_DynBkMdl
+from Localization_helpers import Localization
+from barc.msg import ECU, Encoder, Z_DynBkMdl, pos_info
 from sensor_msgs.msg import Imu
 from geometry_msgs.msg import Vector3
 from numpy import pi, cos, sin, eye, array, zeros, diag, arctan, tan, size, sign
@@ -120,8 +121,9 @@ def state_estimation():
     rospy.Subscriber('encoder', Encoder, enc_callback)
     rospy.Subscriber('ecu', ECU, ecu_callback)
     rospy.Subscriber('indoor_gps', Vector3, gps_callback)
-    state_pub   = rospy.Publisher('state_estimate_dynamic', Z_DynBkMdl, queue_size = 1)     # size 1 -> when there's a newer message the older one is dropped
-
+    state_pub     = rospy.Publisher('state_estimate_dynamic', Z_DynBkMdl, queue_size = 1)     # size 1 -> when there's a newer message the older one is dropped
+    state_pub_pos = rospy.Publisher('pos_info', pos_info, queue_size = 1)
+    
     # get vehicle dimension parameters
     L_f = rospy.get_param("L_a")       # distance from CoG to front axel
     L_r = rospy.get_param("L_b")       # distance from CoG to rear axel
@@ -176,13 +178,19 @@ def state_estimation():
     else:
         rospy.logerr("No estimation mode selected.")
 
+    # Set up track parameters
+    l = Localization()
+    l.create_track()
+    l.prepare_trajectory(0.06)
+
+
     w_z_f = 0         # filtered w_z (= angular velocity psiDot)
     while not rospy.is_shutdown():
         # publish state estimate
         (x,y,psi,v,x_pred,y_pred,psi_pred,v_pred) = z_EKF           # note, r = EKF estimate yaw rate
 
         # use Kalman values to predict state in 0.1s
-        dt_pred = 0.15
+        dt_pred = 0.0
 
         bta = arctan(L_f/(L_f+L_r)*tan(d_f))
         x_pred      = x   + dt_pred*( v*cos(psi + bta) )
@@ -191,12 +199,19 @@ def state_estimation():
         v_pred      = v   + dt_pred*(FxR - 0.63*sign(v)*v**2)
         v_x_pred    = cos(bta)*v_pred
         v_y_pred    = sin(bta)*v_pred
-        w_z_f       = w_z_f + 0.02*(w_z-w_z_f)
+        w_z_f       = w_z_f + 0.2*(w_z-w_z_f)
 
         psi_dot_pred = w_z_f
 
         #state_pub.publish( Z_DynBkMdl(x,y,v_x,v_y,psi,psi_dot) )
         state_pub.publish( Z_DynBkMdl(x_pred,y_pred,v_x_pred,v_y_pred,psi_pred,psi_dot_pred) )
+
+        # Update track position
+        l.set_pos(x_pred,y_pred,psi_pred,v_x_pred,v_x_pred,v_y_pred,psi_dot_pred)        # v = v_x
+        l.find_s()
+
+        # and then publish position info
+        state_pub_pos.publish( pos_info(l.s,l.ey,l.epsi,l.v,l.s_start,l.x,l.y,l.v_x,l.v_y,l.psi,l.psiDot,l.coeffX.tolist(),l.coeffY.tolist(),l.coeffTheta.tolist(),l.coeffCurvature.tolist()) )
 
         # apply EKF
         # get measurement
