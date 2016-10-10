@@ -70,29 +70,24 @@ function ECU_callback(msg::ECU)
 end
 
 function est_dyn_callback(msg::Z_DynBkMdl)
-    global est_meas_dyn
+    global est_meas_dyn, est_meas
     est_meas_dyn.i += 1
     est_meas_dyn.t[est_meas_dyn.i]      = time()
     est_meas_dyn.z[est_meas_dyn.i,:]    = [msg.x msg.y msg.v_x msg.v_y msg.psi msg.psi_dot]
-end
-
-function est_callback(msg::Z_KinBkMdl)
-    global est_meas
     est_meas.i += 1
     est_meas.t[est_meas.i]      = time()
-    est_meas.z[est_meas.i,:]    = [msg.x msg.y msg.psi msg.v]
+    est_meas.z[est_meas.i,:]    = [msg.x msg.y msg.psi sqrt((msg.v_x)^2+(msg.v_y)^2)]
 end
 
 function main() 
     # initiate node, set up publisher / subscriber topics
     init_node("barc_sim")
-    pub_enc = Publisher("encoder", Encoder, queue_size=10)
-    pub_gps = Publisher("indoor_gps", Vector3, queue_size=10)
-    pub_imu = Publisher("imu/data", Imu, queue_size=10)
+    pub_enc = Publisher("encoder", Encoder, queue_size=1)
+    pub_gps = Publisher("indoor_gps", Vector3, queue_size=1)
+    pub_imu = Publisher("imu/data", Imu, queue_size=1)
 
-    s1  = Subscriber("ecu", ECU, ECU_callback, queue_size=10)
-    s2  = Subscriber("state_estimate", Z_KinBkMdl, est_callback, queue_size=10)
-    s3  = Subscriber("state_estimate_dynamic", Z_DynBkMdl, est_dyn_callback, queue_size=10)
+    s1  = Subscriber("ecu", ECU, ECU_callback, queue_size=1)
+    s3  = Subscriber("state_estimate_dynamic", Z_DynBkMdl, est_dyn_callback, queue_size=1)
 
     z_current = zeros(60000,7)
     z_current[1,:] = [0.1 0.0 0.0 0.0 0.0 0.0 0.0]
@@ -153,22 +148,23 @@ function main()
         end
 
         # IMU measurements
-        imu_data = Imu()
-        imu_drift = sin(t/100*pi/2)     # drifts to 1 in 100 seconds
-        yaw = z_current[i,5] + 0*(randn()*0.05 + imu_drift)
+        imu_data    = Imu()
+        imu_drift   = sin(t/100*pi/2)     # drifts to 1 in 100 seconds
+        yaw         = z_current[i,5] + 0*(randn()*0.05 + imu_drift)
+        psiDot      = z_current[i,6] + 0.01*randn()
         imu_data.orientation = geometry_msgs.msg.Quaternion(cos(yaw/2), sin(yaw/2), 0, 0)
-        imu_data.angular_velocity = Vector3(0,0,z_current[i,6])
+        imu_data.angular_velocity = Vector3(0,0,psiDot)
         if i%2 == 0
             imu_meas.i += 1
             imu_meas.t[imu_meas.i] = t
-            imu_meas.z[imu_meas.i,:] = [yaw z_current[i,6]]
+            imu_meas.z[imu_meas.i,:] = [yaw psiDot]
             publish(pub_imu, imu_data)      # Imu format is defined by ROS, you can look it up by google "rosmsg Imu"
                                             # It's sufficient to only fill the orientation part of the Imu-type (with one quaternion)
         end
 
         # GPS measurements
-        x = round(z_current[i,1]*100 + 0*randn()*2)       # Indoor gps measures in cm
-        y = round(z_current[i,2]*100 + 0*randn()*2)
+        x = round(z_current[i,1]*100 + 1*randn()*2)       # Indoor gps measures in cm
+        y = round(z_current[i,2]*100 + 1*randn()*2)
         if i % 7 == 0
             gps_meas.i += 1
             gps_meas.t[gps_meas.i] = t

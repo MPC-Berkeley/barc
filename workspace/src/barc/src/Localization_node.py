@@ -49,7 +49,7 @@ def localization_node():
     # topic subscriptions / publications
     #rospy.Subscriber('state_estimate', Z_KinBkMdl, state_estimate_callback)
     rospy.Subscriber('state_estimate_dynamic', Z_DynBkMdl, dyn_state_estimate_callback)
-    state_pub = rospy.Publisher('pos_info', pos_info, queue_size = 10)
+    state_pub = rospy.Publisher('pos_info', pos_info, queue_size = 1)
 
     # create localization class and trajectory
     l = Localization()

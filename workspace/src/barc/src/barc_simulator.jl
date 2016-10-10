@@ -87,18 +87,14 @@ function ECU_callback(msg::ECU)
     cmd_log.z[cmd_log.i,:] = u_current'
 end
 
-function est_callback(msg::Z_KinBkMdl)
-    global est_meas
-    est_meas.i += 1
-    est_meas.t[est_meas.i]      = time()
-    est_meas.z[est_meas.i,:]    = [msg.x msg.y msg.psi msg.v]
-end
-
 function est_dyn_callback(msg::Z_DynBkMdl)
-    global est_meas_dyn
+    global est_meas_dyn, est_meas
     est_meas_dyn.i += 1
     est_meas_dyn.t[est_meas_dyn.i]      = time()
     est_meas_dyn.z[est_meas_dyn.i,:]    = [msg.x msg.y msg.v_x msg.v_y msg.psi msg.psi_dot]
+    est_meas.i += 1
+    est_meas.t[est_meas.i]      = time()
+    est_meas.z[est_meas.i,:]    = [msg.x msg.y msg.psi msg.v_x]
 end
 
 function main() 
@@ -114,7 +110,6 @@ function main()
     l_B = get_param("L_b")       # distance from CoG to rear axel
 
     s1  = Subscriber("ecu", ECU, ECU_callback, queue_size=10)
-    s2  = Subscriber("state_estimate", Z_KinBkMdl, est_callback, queue_size=10)
     s3  = Subscriber("state_estimate_dynamic", Z_DynBkMdl, est_dyn_callback, queue_size=10)
 
     z_current = zeros(60000,4)
@@ -162,7 +157,7 @@ function main()
         imu_data = Imu()
         imu_drift = sin(t/100*pi/2)     # drifts to 1 in 100 seconds
         yaw     = z_current[i,3] + 0*(randn()*0.05 + imu_drift)
-        yaw_dot = (z_current[i,3]-z_current[i-1,3])/dt
+        yaw_dot = (z_current[i,3]-z_current[i-1,3])/dt + 0.05*randn()
         imu_data.orientation = geometry_msgs.msg.Quaternion(cos(yaw/2), sin(yaw/2), 0, 0)
         imu_data.angular_velocity = Vector3(0,0,yaw_dot)
         if i%2 == 0
@@ -174,8 +169,8 @@ function main()
         end
 
         # GPS measurements
-        x = round(z_current[i,1]*100 + 0*randn()*2)       # Indoor gps measures in cm
-        y = round(z_current[i,2]*100 + 0*randn()*2)
+        x = round(z_current[i,1]*100 + 1*randn()*2)       # Indoor gps measures in cm
+        y = round(z_current[i,2]*100 + 1*randn()*2)
         if i % 7 == 0
             gps_meas.i += 1
             gps_meas.t[gps_meas.i] = t

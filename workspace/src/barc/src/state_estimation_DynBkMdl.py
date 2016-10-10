@@ -19,9 +19,9 @@ import os
 from barc.msg import ECU, Encoder, Z_DynBkMdl
 from sensor_msgs.msg import Imu
 from geometry_msgs.msg import Vector3
-from numpy import pi, cos, sin, eye, array, zeros, diag
+from numpy import pi, cos, sin, eye, array, zeros, diag, arctan, tan, size, sign
 from observers import kinematicLuembergerObserver, ekf
-from system_models import f_DynBkMdl, f_DynBkMdl_exact, h_DynBkMdl
+from system_models import f_KinBkMdl_predictive, h_KinBkMdl_predictive
 from tf import transformations
 from numpy import unwrap
 
@@ -102,12 +102,12 @@ def enc_callback(data):
 
         # update encoder v_x, v_y measurements
         # only valid for small slip angles, still valid for drift?
-        v_x_enc     = (v_FL + v_FR)/2.0*cos(d_f)
+        v_x_enc     = (v_FL + v_FR)/2.0#*cos(d_f)
 
         # update old data
         n_FL_prev   = n_FL
         n_FR_prev   = n_FR
-        t0          = time.time()
+        t0          = tf
 
 
 # state estimation node
@@ -120,17 +120,17 @@ def state_estimation():
     rospy.Subscriber('encoder', Encoder, enc_callback)
     rospy.Subscriber('ecu', ECU, ecu_callback)
     rospy.Subscriber('indoor_gps', Vector3, gps_callback)
-    state_pub   = rospy.Publisher('state_estimate_dynamic', Z_DynBkMdl, queue_size = 10)
+    state_pub   = rospy.Publisher('state_estimate_dynamic', Z_DynBkMdl, queue_size = 1)     # size 1 -> when there's a newer message the older one is dropped
 
     # get vehicle dimension parameters
     L_f = rospy.get_param("L_a")       # distance from CoG to front axel
     L_r = rospy.get_param("L_b")       # distance from CoG to rear axel
     m   = rospy.get_param("m")         # mass of vehicle
     I_z = rospy.get_param("I_z")       # moment of inertia about z-axis
-    vhMdl   = (L_f, L_r, m, I_z)
+    vhMdl   = (L_f, L_r)
 
     # get encoder parameters
-    dt_vx   = rospy.get_param("state_estimation/dt_v_enc")     # time interval to compute v_x
+    dt_vx   = rospy.get_param("state_estimation_dynamic/dt_v_enc")     # time interval to compute v_x
 
     # get tire model
     B   = rospy.get_param("tire_model/B")
@@ -158,13 +158,13 @@ def state_estimation():
     t0          = time.time()
 
     # estimation variables for Luemberger observer
-    z_EKF       = zeros(12)
+    z_EKF       = zeros(8)
 
     # estimation variables for EKF
-    P           = eye(12)                # initial dynamics coveriance matrix
+    P           = eye(8)                # initial dynamics coveriance matrix
     #Q           = (q_std**2)*eye(6)     # process noise coveriance matrixif est_mode==1:
-    Q           = diag([0.01,0.01,0.1,0.0001,1.0,0.001,0,0,0,0,0,0])    # values derived from inspecting P matrix during Kalman filter running
-    
+    Q           = diag([0.1,0.1,0.1,0.1,0.01,0.01,0.01,0.01])    # values derived from inspecting P matrix during Kalman filter running
+
     if est_mode==1:                                     # use gps, IMU, and encoder
         R = diag([gps_std,gps_std,psi_std,v_std])**2
     elif est_mode==2:                                   # use IMU and encoder only
@@ -172,46 +172,44 @@ def state_estimation():
     elif est_mode==3:                                   # use gps only
         R = (gps_std**2)*eye(2)
     elif est_mode==4:                                   # use gps and angular velocity
-        R = diag([gps_std,gps_std,ang_v_std,v_std,psi_std])**2
+        R = diag([gps_std,gps_std,psi_std,v_std])**2
     else:
         rospy.logerr("No estimation mode selected.")
 
-    running = False
-    #running = True
+    w_z_f = 0         # filtered w_z (= angular velocity psiDot)
     while not rospy.is_shutdown():
-
         # publish state estimate
-        (x,y,v_x,v_y,psi,psi_dot,x_pred,y_pred,v_x_pred,v_y_pred,psi_pred,psi_dot_pred) = z_EKF           # note, r = EKF estimate yaw rate
+        (x,y,psi,v,x_pred,y_pred,psi_pred,v_pred) = z_EKF           # note, r = EKF estimate yaw rate
 
-        # publish information
-        state_pub.publish( Z_DynBkMdl(x,y,v_x,v_y,psi,psi_dot) )
-        #state_pub.publish( Z_DynBkMdl(x_pred,y_pred,v_x_pred,v_y_pred,psi_pred,psi_dot_pred) )
+        # use Kalman values to predict state in 0.1s
+        dt_pred = 0.15
+
+        bta = arctan(L_f/(L_f+L_r)*tan(d_f))
+        x_pred      = x   + dt_pred*( v*cos(psi + bta) )
+        y_pred      = y   + dt_pred*( v*sin(psi + bta) ) 
+        psi_pred    = psi + dt_pred*v/L_r*sin(bta)
+        v_pred      = v   + dt_pred*(FxR - 0.63*sign(v)*v**2)
+        v_x_pred    = cos(bta)*v_pred
+        v_y_pred    = sin(bta)*v_pred
+        w_z_f       = w_z_f + 0.02*(w_z-w_z_f)
+
+        psi_dot_pred = w_z_f
+
+        #state_pub.publish( Z_DynBkMdl(x,y,v_x,v_y,psi,psi_dot) )
+        state_pub.publish( Z_DynBkMdl(x_pred,y_pred,v_x_pred,v_y_pred,psi_pred,psi_dot_pred) )
 
         # apply EKF
-        #if v_x_enc > v_x_min:
-        if FxR > 0 or running:
-            running = True
-            # get measurement
-            y = array([x_meas,y_meas,w_z,v_x_enc,yaw])
+        # get measurement
+        y = array([x_meas,y_meas,yaw,v_x_enc])
 
-            # define input
-            u       = array([ d_f, FxR ])
+        # define input
+        u       = array([ d_f, FxR ])
 
-            # build extra arguments for non-linear function
-            #F_ext   = array([ a0, Ff ]) 
-            args    = (u, vhMdl, TrMdl, dt) 
+        # build extra arguments for non-linear function
+        args    = (u, vhMdl, dt) 
 
-            # apply EKF and get each state estimate
-            (z_EKF,P) = ekf(f_DynBkMdl_exact, z_EKF, P, h_DynBkMdl, y, Q, R, args )
-            #print "New Iteration ------"
-            #print P
-            
-        else:
-            z_EKF[0] = float(x_meas)
-            z_EKF[1] = float(y_meas)
-            z_EKF[6] = float(x_meas)        # predicted values (these are published)
-            z_EKF[7] = float(y_meas)
-        
+        # apply EKF and get each state estimate
+        (z_EKF,P) = ekf(f_KinBkMdl_predictive, z_EKF, P, h_KinBkMdl_predictive, y, Q, R, args )
         # wait
         rate.sleep()
 

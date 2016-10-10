@@ -373,16 +373,17 @@ def f_KinBkMdl_predictive(z,u,vhMdl, dt):
     # compute slip angle
     bta         = arctan( L_a / (L_a + L_b) * tan(d_f) )
 
+    dt_pred = 0.0
     # compute next state
     x_next      = x + dt*( v*cos(psi + bta) )
     y_next      = y + dt*( v*sin(psi + bta) )
     psi_next    = psi + dt*v/L_b*sin(bta)
     v_next      = v + dt*(a - 0.63*sign(v)*v**2)
 
-    x_next_pred      = x_next   + 0.1*( v*cos(psi + bta) )
-    y_next_pred      = y_next   + 0.1*( v*sin(psi + bta) ) 
-    psi_next_pred    = psi_next + 0.1*v/L_b*sin(bta)
-    v_next_pred      = v_next   + 0.1*(a - 0.63*sign(v)*v**2)
+    x_next_pred      = x_next   + dt_pred*( v*cos(psi + bta) )
+    y_next_pred      = y_next   + dt_pred*( v*sin(psi + bta) ) 
+    psi_next_pred    = psi_next + dt_pred*v/L_b*sin(bta)
+    v_next_pred      = v_next   + dt_pred*(a - 0.63*sign(v)*v**2)
 
     return array([x_next, y_next, psi_next, v_next, x_next_pred, y_next_pred, psi_next_pred, v_next_pred])
 
@@ -420,5 +421,7 @@ def h_KinBkMdl_predictive(x):
     #            [0, 0, 0, 1]])
     # For GPS only:
     C = array([[1, 0, 0, 0, 0, 0, 0, 0],
-               [0, 1, 0, 0, 0, 0, 0, 0]])
+               [0, 1, 0, 0, 0, 0, 0, 0],
+               [0, 0, 1, 0, 0, 0, 0, 0],
+               [0, 0, 0, 1, 0, 0, 0, 0]])
     return dot(C, x)

@@ -85,8 +85,7 @@ def ekf(f, mx_k, P_k, h, y_kp1, Q, R, args):
                
     Notation: mx_k = E[x_k] and my_k = E[y_k], where m stands for "mean of"
     """
-
-
+    
     xDim    = mx_k.size                         # dimension of the state
     mx_kp1  = f(mx_k, *args)                    # predict next state
     A       = numerical_jac(f, mx_k, *args)     # linearize process model about current state

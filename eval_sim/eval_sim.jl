@@ -36,7 +36,6 @@ end
 function eval_sim()
     d = load(log_path)
 
-    est         = d["estimate"]
     est_dyn     = d["estimate_dyn"]
     imu_meas    = d["imu_meas"]
     gps_meas    = d["gps_meas"]
@@ -44,7 +43,7 @@ function eval_sim()
     cmd_log     = d["cmd_log"]
     slip_a      = d["slip_a"]
 
-    t0 = est.t[1]
+    t0 = est_dyn.t[1]
     track = create_track(0.3)
 
     figure()
@@ -62,19 +61,13 @@ function eval_sim()
     legend(["a_f","a_r"])
 
     figure()
-    plot(z.z[:,1],z.z[:,2],"-",gps_meas.z[:,1]/100,gps_meas.z[:,2]/100,".",est.z[:,1],est.z[:,2],"-")
+    plot(z.z[:,1],z.z[:,2],"-",gps_meas.z[:,1]/100,gps_meas.z[:,2]/100,".",est_dyn.z[:,1],est_dyn.z[:,2],"-")
     plot(track[:,1],track[:,2],"b.",track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")
     grid(1)
     title("x-y-view")
     axis("equal")
     legend(["Real state","GPS meas","estimate"])
     
-    figure()
-    plot(est_dyn.t,est_dyn.z,"-*",est.t,est.z,"--",z.t,z.z,"-")
-    title("Dyn. est. -*, est. --, real -")
-    grid()
-    legend(["x","y","v_x","v_y","psi","psi_dot","x","y","psi","v","x","y","v_x","v_y","psi","psi_dot","d_f"])
-
     figure()
     title("Comparison of psi")
     plot(imu_meas.t,imu_meas.z,"-x",z.t,z.z[:,5:6],est_dyn.t,est_dyn.z[:,5:6],"-*")
@@ -120,19 +113,39 @@ function eval_LMPC()
     sol_u       = d_lmpc["sol_u"]
     cost        = d_lmpc["cost"]
     curv        = d_lmpc["curv"]
-    mpcCoeff    = d_lmpc["mpcCoeff"]
+    c_Vx        = d_lmpc["c_Vx"]
+    c_Vy        = d_lmpc["c_Vy"]
+    c_Psi       = d_lmpc["c_Psi"]
+    cmd         = d_lmpc["cmd"]                 # this is the command how it was sent by the MPC
 
     x_est       = d_lmpc["x_est"]
     coeffX      = d_lmpc["coeffX"]
     coeffY      = d_lmpc["coeffY"]
     s_start     = d_lmpc["s_start"]
     est         = d_sim["estimate"]
+    est_dyn     = d_sim["estimate_dyn"]
     imu_meas    = d_sim["imu_meas"]
     gps_meas    = d_sim["gps_meas"]
     z           = d_sim["z"]
-    cmd_log     = d_sim["cmd_log"]
+    cmd_log     = d_sim["cmd_log"]              # this is the command how it was received by the simulator
 
     t0 = t[1]
+
+    figure()
+    ax1=subplot(311)
+    plot(z.t-t0,z.z[:,3],"--",est_dyn.t-t0,est_dyn.z[:,3],".",t-t0,state[:,1],"-o")
+    legend(["x_dot_real","x_dot_est","x_dot_MPC"])
+    grid("on")
+    xlabel("t [s]")
+    ylabel("v_x [m/s]")
+    subplot(312,sharex=ax1)
+    plot(cmd_log.t-t0,cmd_log.z,"-o",t-t0,cmd[1:length(t),:],"-*")
+    legend(["a","d_f","a","d_f"])
+    grid("on")
+    subplot(313,sharex=ax1)
+    plot(t-t0,c_Vx)
+    grid("on")
+    legend(["1","2","3"])
 
     figure()
     c = zeros(size(curv,1),1)
@@ -194,8 +207,8 @@ function eval_LMPC()
     #     plot(s_start[i]+sol_z[:,1,i],sol_z[:,2:4,i],"-*")
     # end
     figure()
-    plot(oldTraj[:,1,1,1],oldTraj[:,2:4,1,1],"-o")
-    legend(["e_y","e_psi","v"])
+    plot(oldTraj[:,6,1,2],oldTraj[:,1:5,1,2],"-o")
+    legend(["v_x","v_y","psiDot","ePsi","eY"])
     grid(1)
 
     figure()
@@ -204,8 +217,8 @@ function eval_LMPC()
 
     figure()
     ax1=subplot(211)
-    plot(t-t0,state,z.t-t0,z.z[:,1:2])
-    legend(["s","e_y","e_psi","v","x","y"])
+    plot(t-t0,state,z.t-t0,z.z[:,3:6],"--")
+    legend(["v_x","v_y","psiDot","ePsi","eY","s","real_v_x","real_v_y","real_psi","real_psiDot"])
     grid(1)
     subplot(212,sharex = ax1)
     plot(t-t0,cost)
@@ -374,12 +387,19 @@ function create_track(w)
     # add_curve(theta,50,-pi/2)
     # add_curve(theta,28,0.0)
 
-    # SIMPLE track
-    add_curve(theta,50,0)
-    add_curve(theta,100,-pi)
-    add_curve(theta,100,0)
-    add_curve(theta,100,-pi)
-    add_curve(theta,49,0)
+    # # SIMPLE track
+    # add_curve(theta,50,0)
+    # add_curve(theta,100,-pi)
+    # add_curve(theta,100,0)
+    # add_curve(theta,100,-pi)
+    # add_curve(theta,49,0)
+
+     # SHORT SIMPLE track
+    add_curve(theta,10,0)
+    add_curve(theta,80,-pi)
+    add_curve(theta,20,0)
+    add_curve(theta,80,-pi)
+    add_curve(theta,9,0)
 
     for i=1:length(theta)
             push!(x, x[end] + cos(theta[i])*ds)

@@ -125,12 +125,19 @@ class Localization:
         # theta = add_curve(theta,50,-pi/2)
         # theta = add_curve(theta,28,0)
 
-        # SIMPLE RACETRACK (smooth curves): length = 24.0m
-        theta = add_curve(theta,50,0)
-        theta = add_curve(theta,100,-pi)
-        theta = add_curve(theta,100,0)
-        theta = add_curve(theta,100,-pi)
-        theta = add_curve(theta,49,0)
+        # # SIMPLE RACETRACK (smooth curves): length = 24.0m
+        # theta = add_curve(theta,50,0)
+        # theta = add_curve(theta,100,-pi)
+        # theta = add_curve(theta,100,0)
+        # theta = add_curve(theta,100,-pi)
+        # theta = add_curve(theta,49,0)
+
+        # SHORT SIMPLE RACETRACK (smooth curves): length = 24.0m
+        theta = add_curve(theta,10,0)
+        theta = add_curve(theta,80,-pi)
+        theta = add_curve(theta,20,0)
+        theta = add_curve(theta,80,-pi)
+        theta = add_curve(theta,9,0)
 
         # SIMPLER RACETRACK (half circles as curves):
 
