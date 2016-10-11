@@ -30,24 +30,23 @@ str_ang_max = 35
 str_ang_min = -35
 
 def pwm_converter_callback(msg):
-    global motor_pwm, servo_pwm, b0
+    global motor_pwm, servo_pwm
     global str_ang_max, str_ang_min
 
     # translate from SI units in vehicle model
     # to pwm angle units (i.e. to send command signal to actuators)
 
     # convert desired steering angle to degrees, saturate based on input limits
-    str_ang     = max( min( 180.0/pi*msg.servo, str_ang_max), str_ang_min)
-    servo_pwm   = 92.0558 + 1.8194*str_ang  - 0.0104*str_ang**2
+    servo_pwm       = 91.365 + 105.6*float(msg.servo)
 
     # compute motor command
     FxR         =  float(msg.motor) 
     if FxR == 0:
         motor_pwm = 90.0
     elif FxR > 0:
-        motor_pwm   =  FxR/b0 + 95.0
-    else:
-        motor_pwm = 90.0
+        motor_pwm   = 94.14 + 2.7678*FxR
+    else:               # motor break / slow down
+        motor_pwm = 93.5 + 46.73*FxR
     update_arduino()
 
 def neutralize():
@@ -62,14 +61,13 @@ def update_arduino():
     ecu_pub.publish(ecu_cmd)
 
 def arduino_interface():
-    global ecu_pub, b0
+    global ecu_pub
 
     # launch node, subscribe to motorPWM and servoPWM, publish ecu
     init_node('arduino_interface')
-    b0  = get_param("input_gain")
 
-    Subscriber('ecu', ECU, pwm_converter_callback, queue_size = 10)
-    ecu_pub = Publisher('ecu_pwm', ECU, queue_size = 10)
+    Subscriber('ecu', ECU, pwm_converter_callback, queue_size = 1)
+    ecu_pub = Publisher('ecu_pwm', ECU, queue_size = 1)
 
     # Set motor to neutral on shutdown
     on_shutdown(neutralize)
