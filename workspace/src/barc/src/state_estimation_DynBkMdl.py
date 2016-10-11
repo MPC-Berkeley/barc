@@ -22,7 +22,7 @@ from sensor_msgs.msg import Imu
 from geometry_msgs.msg import Vector3
 from numpy import pi, cos, sin, eye, array, zeros, diag, arctan, tan, size, sign
 from observers import kinematicLuembergerObserver, ekf
-from system_models import f_KinBkMdl_predictive, h_KinBkMdl_predictive
+from system_models import f_KinBkMdl, h_KinBkMdl
 from tf import transformations
 from numpy import unwrap
 
@@ -160,12 +160,12 @@ def state_estimation():
     t0          = time.time()
 
     # estimation variables for Luemberger observer
-    z_EKF       = zeros(8)
+    z_EKF       = zeros(4)
 
     # estimation variables for EKF
-    P           = eye(8)                # initial dynamics coveriance matrix
+    P           = eye(4)                # initial dynamics coveriance matrix
     #Q           = (q_std**2)*eye(6)     # process noise coveriance matrixif est_mode==1:
-    Q           = diag([0.1,0.1,0.1,0.1,0.01,0.01,0.01,0.01])    # values derived from inspecting P matrix during Kalman filter running
+    Q           = diag([0.1,0.1,0.1,0.1])    # values derived from inspecting P matrix during Kalman filter running
 
     if est_mode==1:                                     # use gps, IMU, and encoder
         R = diag([gps_std,gps_std,psi_std,v_std])**2
@@ -174,7 +174,7 @@ def state_estimation():
     elif est_mode==3:                                   # use gps only
         R = (gps_std**2)*eye(2)
     elif est_mode==4:                                   # use gps and angular velocity
-        R = diag([gps_std,gps_std,psi_std,v_std])**2
+        R = diag([gps_std,gps_std])**2
     else:
         rospy.logerr("No estimation mode selected.")
 
@@ -187,10 +187,10 @@ def state_estimation():
     w_z_f = 0         # filtered w_z (= angular velocity psiDot)
     while not rospy.is_shutdown():
         # publish state estimate
-        (x,y,psi,v,x_pred,y_pred,psi_pred,v_pred) = z_EKF           # note, r = EKF estimate yaw rate
+        (x,y,psi,v) = z_EKF           # note, r = EKF estimate yaw rate
 
         # use Kalman values to predict state in 0.1s
-        dt_pred = 0.0
+        dt_pred = 0.1
 
         bta = arctan(L_f/(L_f+L_r)*tan(d_f))
         x_pred      = x   + dt_pred*( v*cos(psi + bta) )
@@ -199,7 +199,7 @@ def state_estimation():
         v_pred      = v   + dt_pred*(FxR - 0.63*sign(v)*v**2)
         v_x_pred    = cos(bta)*v_pred
         v_y_pred    = sin(bta)*v_pred
-        w_z_f       = w_z_f + 0.2*(w_z-w_z_f)
+        w_z_f       = w_z_f + 0.4*(w_z-w_z_f)
 
         psi_dot_pred = w_z_f
 
@@ -215,7 +215,8 @@ def state_estimation():
 
         # apply EKF
         # get measurement
-        y = array([x_meas,y_meas,yaw,v_x_enc])
+        #y = array([x_meas,y_meas,yaw,v_x_enc])
+        y = array([x_meas,y_meas])
 
         # define input
         u       = array([ d_f, FxR ])
@@ -224,7 +225,7 @@ def state_estimation():
         args    = (u, vhMdl, dt) 
 
         # apply EKF and get each state estimate
-        (z_EKF,P) = ekf(f_KinBkMdl_predictive, z_EKF, P, h_KinBkMdl_predictive, y, Q, R, args )
+        (z_EKF,P) = ekf(f_KinBkMdl, z_EKF, P, h_KinBkMdl, y, Q, R, args )
         # wait
         rate.sleep()
 

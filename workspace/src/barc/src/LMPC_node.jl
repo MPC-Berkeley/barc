@@ -47,12 +47,9 @@ function main()
     mpcParams                   = MpcParams()
     mpcParams_pF                = MpcParams()       # for 1st lap (path following)
 
-    z_Init    = [1.0, 0.0, 0.0, 0.0, 0.0, 0.0]      # xDot needs to be > 0
-    z_Init_pF = zeros(4)
-
     InitializeParameters(mpcParams,mpcParams_pF,trackCoeff,modelParams,posInfo,oldTraj,mpcCoeff,lapStatus,buffersize)
-    mdl    = MpcModel(mpcParams,mpcCoeff,modelParams,trackCoeff,z_Init)
-    mdl_pF = MpcModel_pF(mpcParams_pF,modelParams,trackCoeff,z_Init_pF)
+    mdl    = MpcModel(mpcParams,mpcCoeff,modelParams,trackCoeff)
+    mdl_pF = MpcModel_pF(mpcParams_pF,modelParams,trackCoeff)
 
     z_ID = zeros(50,6)
     u_ID = zeros(50,2)
