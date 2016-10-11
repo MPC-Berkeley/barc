@@ -27,7 +27,7 @@ using JLD
 
 include("LMPC_lib/simModel.jl")
 
-u_current = zeros(2,1)
+u_current = zeros(Float64,2,1)      # msg ECU is Float32 !
 
 t = 0
 

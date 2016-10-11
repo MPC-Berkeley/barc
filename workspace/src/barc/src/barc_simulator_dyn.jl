@@ -28,7 +28,7 @@ using JLD
 include("LMPC_lib/classes.jl")
 include("LMPC_lib/simModel.jl")
 
-u_current = zeros(2,1)
+u_current = zeros(Float64,2)      # msg ECU is Float32 !
 
 t = 0
 
@@ -63,10 +63,10 @@ cmd_log.t[1]  = time()
 
 function ECU_callback(msg::ECU)
     global u_current
-    u_current = [msg.motor, msg.servo]
+    u_current = convert(Array{Float64,1},[msg.motor, msg.servo])
     cmd_log.i += 1
     cmd_log.t[cmd_log.i] = time()
-    cmd_log.z[cmd_log.i,:] = u_current'
+    cmd_log.z[cmd_log.i,:] = u_current
 end
 
 function est_dyn_callback(msg::Z_DynBkMdl)

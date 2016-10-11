@@ -1,6 +1,6 @@
-float32 x
-float32 y
-float32 v_x
-float32 v_y
-float32 psi
-float32 psi_dot
+float64 x
+float64 y
+float64 v_x
+float64 v_y
+float64 psi
+float64 psi_dot

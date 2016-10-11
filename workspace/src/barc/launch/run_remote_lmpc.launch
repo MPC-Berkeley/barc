@@ -12,7 +12,6 @@
     <param name="tire_model/mu" type="double" value="0.234" />
 
     <!-- Control -->
-    <param name="input_gain" type="double" value="0.3" />
     <param name="air_drag_coeff" type="double" value="0.1308" />
     <param name="friction" type="double" value="0.1711" />
     
@@ -25,7 +24,7 @@
     
     <!-- START NODES -->
     <!-- Simulator -->
-    <node machine="this-pc" pkg="barc" type="barc_simulator_dyn.jl" name="barc_sim" output="screen" />
+    <!--node machine="this-pc" pkg="barc" type="barc_simulator_dyn.jl" name="barc_sim" output="screen" /-->
 
     <!-- Estimator -->
     <node machine="odroid" pkg="barc" type="state_estimation_DynBkMdl.py" name="state_estimation_dynamic" output="screen">
@@ -43,12 +42,24 @@
         <param name="dt_v_enc" type="double" value="0.4" />
     </node>
 
-    <!-- LOW LEVEL CONTROLLER -->
-    <node machine="odroid" pkg="barc" type="controller_low_level.py" name="low_level_controller" />
-
     <!-- MPC FOLLOW TRAJECTORY -->
     <node machine="this-pc" pkg="barc" type="LMPC_node.jl" name="MPC" output="screen" />
 
+    <!-- LOW LEVEL CONTROLLER -->
+    <node machine="odroid" pkg="barc" type="controller_low_level.py" name="low_level_controller" />
+
+    <!-- IMU -->
+    <node machine="odroid" pkg="myahrs_driver" type="myahrs_driver" name="myahrs_driver">
+        <param name="port" value="/dev/ttyACM0" />
+        <param name="baud_rate" value="115200" />
+    </node>
+
+    <!-- GPS -->
+    <node machine="odroid" pkg="marvelmind_indoor_gps" type="indoor_gps.py" name="indoor_gps" output="screen">
+        <param name="port" value="/dev/ttyACM1" />
+        <param name="baud" value="115200" />
+    </node>
+    
     <!-- ARDUINO -->
     <!--  * encoders and ultrasound sensors -->
     <node machine="odroid" pkg="rosserial_python" type="serial_node.py" name="arduino_node" >
