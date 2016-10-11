@@ -117,6 +117,7 @@ function eval_LMPC()
     c_Vy        = d_lmpc["c_Vy"]
     c_Psi       = d_lmpc["c_Psi"]
     cmd         = d_lmpc["cmd"]                 # this is the command how it was sent by the MPC
+    step_diff   = d_lmpc["step_diff"]                 # this is the command how it was sent by the MPC
 
     x_est       = d_lmpc["x_est"]
     coeffX      = d_lmpc["coeffX"]
@@ -131,6 +132,12 @@ function eval_LMPC()
 
     t0 = t[1]
 
+    figure()
+    plot(t-t0,step_diff)
+    grid("on")
+    title("One-step-errors")
+    legend(["xDot","yDot","psiDot","ePsi","eY"])
+    
     figure()
     ax1=subplot(311)
     plot(z.t-t0,z.z[:,3],"--",est_dyn.t-t0,est_dyn.z[:,3],".",t-t0,state[:,1],"-o")

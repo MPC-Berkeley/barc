@@ -80,6 +80,7 @@ function main()
     log_c_Vy                    = zeros(10000,4)
     log_c_Psi                   = zeros(10000,3)
     log_cmd                     = zeros(10000,2)
+    log_step_diff               = zeros(10000,5)
     log_oldTraj                 = zeros(buffersize,6,2,20)  # max. 20 laps
     
     # Initialize ROS node and topics
@@ -98,12 +99,14 @@ function main()
     zCurr                       = zeros(10000,6)    # contains state information in current lap (max. 10'000 steps)
     uCurr                       = zeros(10000,2)    # contains input information
     u_final                     = zeros(2)          # contains last input of one lap
+    step_diff                   = zeros(5)
 
     # Specific initializations:
     lapStatus.currentLap    = 1
     lapStatus.currentIt     = 1
     posInfo.s_target        = 12.0#24.0
     k                       = 0                       # overall counter for logging
+    mpcSol.z = zeros(10,4)
     
     # Precompile coeffConstraintCost:
     oldTraj.oldTraj[1:buffersize,6,1] = linspace(0,posInfo.s_target,buffersize)
@@ -129,11 +132,19 @@ function main()
 
             # ============================= Initialize iteration parameters =============================
             i                           = lapStatus.currentIt           # current iteration number, just to make notation shorter
-            log_t[k+1]                  = time()
             zCurr[i,:]                  = copy(z_est)                   # update state information (actually predicted by Kalman filter!)
             posInfo.s                   = zCurr[i,6]                    # update position info
             posInfo.s_start             = copy(s_start_update[1])       # use a copy so s_start is not updated during one iteration
             trackCoeff.coeffCurvature   = copy(coeffCurvature_update)
+
+            # ============================= Pre-Logging (before solving) ================================
+            log_t[k+1]                  = time()                        # time is measured *before* solving (more consistent that way)
+            if lapStatus.currentLap <=2                                 # find 1-step-error
+                step_diff = ([mpcSol.z[2,4], 0, 0, mpcSol.z[2,3], mpcSol.z[2,2]]-[zCurr[i,1], 0, 0, zCurr[i,4], zCurr[i,5]]).^2
+            else
+                step_diff = (mpcSol.z[2,1:5][:]-zCurr[i,1:5][:]).^2
+            end
+            log_step_diff[k+1,:]          = step_diff
 
             # ======================================= Lap trigger =======================================
             if (posInfo.s_start + posInfo.s)%posInfo.s_target <= s_lapTrigger && switchLap      # if we are switching to the next lap...
@@ -155,7 +166,7 @@ function main()
             end
 
             #  ======================================= Calculate input =======================================
-            println("======================================== NEW ITERATION # $i ========================================")
+            println("=================================== NEW ITERATION # $i ===================================")
             println("Current Lap: $(lapStatus.currentLap), It: $(lapStatus.currentIt)")
             println("State Nr. $i    = $z_est")
             println("s               = $(posInfo.s)")
@@ -224,7 +235,6 @@ function main()
             log_c_Vx[k,:]           = mpcCoeff.c_Vx
             log_c_Vy[k,:]           = mpcCoeff.c_Vy
             log_c_Psi[k,:]          = mpcCoeff.c_Psi
-            #log_mpcCoeff[k]         = copy(mpcCoeff)
             if lapStatus.currentLap <= 2
                 log_sol_z[:,1:4,k]        = mpcSol.z        # only 4 states during path following mode (first 2 laps)
             else
@@ -244,7 +254,7 @@ function main()
     save(log_path,"oldTraj",log_oldTraj,"state",log_state[1:k,:],"t",log_t[1:k],"sol_z",log_sol_z[:,:,1:k],"sol_u",log_sol_u[:,:,1:k],
                     "cost",log_cost[1:k,:],"curv",log_curv[1:k,:],"coeffCost",log_coeff_Cost,"coeffConst",log_coeff_Const,
                     "s_start",log_s_start[1:k],"x_est",log_state_x[1:k,:],"coeffX",log_coeffX[1:k,:],"coeffY",log_coeffY[1:k,:],"c_Vx",log_c_Vx[1:k,:],
-                    "c_Vy",log_c_Vy[1:k,:],"c_Psi",log_c_Psi[1:k,:],"cmd",log_cmd[1:k,:])
+                    "c_Vy",log_c_Vy[1:k,:],"c_Psi",log_c_Psi[1:k,:],"cmd",log_cmd[1:k,:],"step_diff",log_step_diff[1:k,:])
     println("Exiting LMPC node. Saved data.")
 
 end
