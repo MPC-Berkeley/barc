@@ -25,9 +25,11 @@
     <!-- START NODES -->
     <!-- Simulator -->
     <!--node machine="this-pc" pkg="barc" type="barc_simulator_dyn.jl" name="barc_sim" output="screen" /-->
+    <!-- Record -->
+    <node machine="this-pc" pkg="barc" type="barc_record.jl" name="barc_record" output="screen" />
 
     <!-- Estimator -->
-    <node machine="odroid" pkg="barc" type="state_estimation_DynBkMdl.py" name="state_estimation_dynamic" output="screen">
+    <node machine="this-pc" pkg="barc" type="state_estimation_DynBkMdl.py" name="state_estimation_dynamic" output="screen">
         <!-- v_x estimation sample time-->
         <param name="dt_v_enc" type="double" value="0.2" />
 
@@ -59,7 +61,7 @@
         <param name="port" value="/dev/ttyACM1" />
         <param name="baud" value="115200" />
     </node>
-    
+
     <!-- ARDUINO -->
     <!--  * encoders and ultrasound sensors -->
     <node machine="odroid" pkg="rosserial_python" type="serial_node.py" name="arduino_node" >
