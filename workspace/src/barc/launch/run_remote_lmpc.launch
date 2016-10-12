@@ -29,7 +29,7 @@
     <node machine="this-pc" pkg="barc" type="barc_record.jl" name="barc_record" output="screen" />
 
     <!-- Estimator -->
-    <node machine="this-pc" pkg="barc" type="state_estimation_DynBkMdl.py" name="state_estimation_dynamic" output="screen">
+    <node machine="odroid" pkg="barc" type="state_estimation_DynBkMdl.py" name="state_estimation_dynamic" output="screen">
         <!-- v_x estimation sample time-->
         <param name="dt_v_enc" type="double" value="0.2" />
 

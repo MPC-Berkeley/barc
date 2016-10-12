@@ -11,7 +11,7 @@ type Measurements{T}
 end
 
 
-const log_path          = "$(homedir())/simulations/record.jld"
+const log_path          = "$(homedir())/simulations/record-2016-10-12-09-32-21.jld"
 const log_path_LMPC     = "$(homedir())/simulations/output_LMPC.jld"
 
 
@@ -51,6 +51,12 @@ function eval_run()
     axis("equal")
     legend(["GPS meas","estimate"])
     
+    figure()
+    plot(gps_meas.t,gps_meas.z/100,"-*",est_dyn.t,est_dyn.z[:,1:2],"-o")
+    grid(1)
+    title("GPS comparison")
+    legend(["x_meas","y_meas","x_est","y_est"])
+
     figure()
     title("Comparison of psi")
     plot(imu_meas.t,imu_meas.z[:,6],imu_meas.t,imu_meas.z[:,3],"-x",est_dyn.t,est_dyn.z[:,5:6],"-*")

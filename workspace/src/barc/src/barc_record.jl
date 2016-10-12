@@ -88,7 +88,7 @@ function GPS_callback(msg::Vector3)
     global gps_meas
     gps_meas.i += 1
     gps_meas.t[gps_meas.i]      = time()
-    gps_meas.z[gps_meas.i,:]    = [msg.x, msg.y, msg.z]
+    gps_meas.z[gps_meas.i,:]    = [msg.x, msg.y]
     nothing
 end
 

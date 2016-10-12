@@ -1,4 +1,5 @@
 #!/bin/bash
+source ~/barc/scripts/startup.sh
 source /opt/ros/indigo/setup.bash
 source ~/barc/workspace/devel/setup.bash
 export PATH=$PATH:/home/odroid/julia
