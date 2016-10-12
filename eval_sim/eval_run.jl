@@ -35,16 +35,16 @@ end
 function eval_run()
     d = load(log_path)
 
-    est_dyn     = d["estimate_dyn"]
     imu_meas    = d["imu_meas"]
     gps_meas    = d["gps_meas"]
     cmd_log     = d["cmd_log"]
+    pos_info    = d["pos_info"]
 
-    t0 = est_dyn.t[1]
+    t0 = pos_info.t[1]
     track = create_track(0.3)
 
     figure()
-    plot(gps_meas.z[:,1]/100,gps_meas.z[:,2]/100,".",est_dyn.z[:,1],est_dyn.z[:,2],"-")
+    plot(gps_meas.z[:,1]/100,gps_meas.z[:,2]/100,".",pos_info.z[:,6],pos_info.z[:,7],"-")
     plot(track[:,1],track[:,2],"b.",track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")
     grid(1)
     title("x-y-view")
@@ -52,14 +52,14 @@ function eval_run()
     legend(["GPS meas","estimate"])
     
     figure()
-    plot(gps_meas.t,gps_meas.z/100,"-*",est_dyn.t,est_dyn.z[:,1:2],"-o")
+    plot(gps_meas.t,gps_meas.z/100,"-*",pos_info.t,pos_info.z[:,6:7],"-o")
     grid(1)
     title("GPS comparison")
     legend(["x_meas","y_meas","x_est","y_est"])
 
     figure()
     title("Comparison of psi")
-    plot(imu_meas.t,imu_meas.z[:,6],imu_meas.t,imu_meas.z[:,3],"-x",est_dyn.t,est_dyn.z[:,5:6],"-*")
+    plot(imu_meas.t,imu_meas.z[:,6],imu_meas.t,imu_meas.z[:,3],"-x",pos_info.t,pos_info.z[:,10:11],"-*")
     legend(["imu_psi","imu_psi_dot","est_psi","est_psi_dot"])
     grid()
 
@@ -71,25 +71,20 @@ function eval_run()
 
     figure()
     title("Comparison of v")
-    plot(est_dyn.t,est_dyn.z[:,3:4],"-*")
+    plot(pos_info.t,pos_info.z[:,8:9],"-*")
     legend(["est_xDot","est_yDot"])
     grid()
 
     figure()
-    title("Comparison of x,y")
-    plot(est_dyn.t,est_dyn.z[:,1:2],"-*")
-    legend(["est_x","est_y"])
-    grid()
-
-    #figure()
-    #plot(est.z[:,1],est.z[:,2],"x",est_dyn.z[:,1],est_dyn.z[:,2],"-*")
-    #grid(1)
-    #legend(["est","est_dyn"])
-
-    #figure()
-    #plot(imu_meas.t-t0,imu_meas.z,est.t-t0,est.z[:,3])
-    #grid(1)
-    #legend(["psi meas","estimate"])
+    subplot(211)
+    plot(pos_info.t,pos_info.z[:,6:7])
+    grid("on")
+    legend(["x","y"])
+    subplot(212)
+    plot(cmd_log.t,cmd_log.z)
+    grid("on")
+    legend(["u","d_f"])
+    
 
     figure()
     plot(cmd_log.t-t0,cmd_log.z)
@@ -118,10 +113,10 @@ function eval_LMPC()
     coeffX      = d_lmpc["coeffX"]
     coeffY      = d_lmpc["coeffY"]
     s_start     = d_lmpc["s_start"]
-    est_dyn     = d_sim["estimate_dyn"]
     imu_meas    = d_sim["imu_meas"]
     gps_meas    = d_sim["gps_meas"]
     cmd_log     = d_sim["cmd_log"]              # this is the command how it was received by the simulator
+    pos_info    = d_sim["pos_info"]
 
     t0 = t[1]
 
@@ -133,7 +128,7 @@ function eval_LMPC()
     
     figure()
     ax1=subplot(311)
-    plot(est_dyn.t-t0,est_dyn.z[:,3],".",t-t0,state[:,1],"-o")
+    plot(pos_info.t-t0,pos_info.z[:,8],".",t-t0,state[:,1],"-o")
     legend(["x_dot_est","x_dot_MPC"])
     grid("on")
     xlabel("t [s]")
@@ -216,6 +211,7 @@ function eval_LMPC()
     grid()
 
     figure()
+    title("MPC states and cost")
     ax1=subplot(211)
     plot(t-t0,state)
     legend(["v_x","v_y","psiDot","ePsi","eY","s"])
@@ -224,11 +220,16 @@ function eval_LMPC()
     plot(t-t0,cost)
     grid(1)
     legend(["costZ","costZTerm","constZTerm","derivCost","controlCost","laneCost"])
-    # figure()
-    # plot(1:size(curv,1),curv)
-    # grid()
-    # title("Polynomial coefficients")
-    # legend(["1","2","3","4","5","6","7","8","9"])
+
+    figure()
+    ax1=subplot(211)
+    plot(t-t0,state[:,1:5])
+    legend(["v_x","v_y","psiDot","ePsi","eY"])
+    grid(1)
+    subplot(212,sharex = ax1)
+    plot(cmd_log.t-t0,cmd_log.z)
+    grid(1)
+    legend(["u","d_f"])
 end
 
 function eval_oldTraj(i)

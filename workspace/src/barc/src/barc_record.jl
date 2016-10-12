@@ -14,7 +14,7 @@
 =# 
 
 using RobotOS
-@rosimport barc.msg: ECU, Z_DynBkMdl
+@rosimport barc.msg: ECU, pos_info
 @rosimport data_service.msg: TimeData
 @rosimport geometry_msgs.msg: Vector3
 @rosimport sensor_msgs.msg: Imu
@@ -24,8 +24,6 @@ using data_service.msg
 using geometry_msgs.msg
 using sensor_msgs.msg
 using JLD
-
-#include("LMPC_lib/classes.jl")
 
 # This type contains measurement data (time, values and a counter)
 type Measurements{T}
@@ -42,14 +40,14 @@ end
 
 buffersize      = 60000
 gps_meas        = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,2))
-imu_meas        = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,6))
-est_meas_dyn    = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,6))
+imu_meas        = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,9))
 cmd_log         = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,2))
+pos_info_log    = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,11))
 
 gps_meas.t[1]       = time()
 imu_meas.t[1]       = time()
-est_meas_dyn.t[1]   = time()
 cmd_log.t[1]        = time()
+pos_info_log.t[1]   = time()
 
 function Quat2Euler(q::Array{Float64})
     sol = zeros(Float64,3)
@@ -68,19 +66,13 @@ function ECU_callback(msg::ECU)
     nothing
 end
 
-function est_dyn_callback(msg::Z_DynBkMdl)
-    global est_meas_dyn
-    est_meas_dyn.i += 1
-    est_meas_dyn.t[est_meas_dyn.i]      = time()
-    est_meas_dyn.z[est_meas_dyn.i,:]    = [msg.x, msg.y, msg.v_x, msg.v_y, msg.psi, msg.psi_dot]
-    nothing
-end
-
 function IMU_callback(msg::Imu)
     global imu_meas
     imu_meas.i += 1
     imu_meas.t[imu_meas.i]      = time()
-    imu_meas.z[imu_meas.i,:]    = [msg.angular_velocity.x;msg.angular_velocity.y;msg.angular_velocity.z;Quat2Euler([msg.orientation.w;msg.orientation.x;msg.orientation.y;msg.orientation.z])]::Array{Float64}
+    imu_meas.z[imu_meas.i,:]    = [msg.angular_velocity.x;msg.angular_velocity.y;msg.angular_velocity.z;
+                                    Quat2Euler([msg.orientation.w;msg.orientation.x;msg.orientation.y;msg.orientation.z]);
+                                    msg.linear_acceleration.x;msg.linear_acceleration.y;msg.linear_acceleration.z]::Array{Float64}
     nothing
 end
 
@@ -88,7 +80,15 @@ function GPS_callback(msg::Vector3)
     global gps_meas
     gps_meas.i += 1
     gps_meas.t[gps_meas.i]      = time()
-    gps_meas.z[gps_meas.i,:]    = [msg.x, msg.y]
+    gps_meas.z[gps_meas.i,:]    = [msg.x;msg.y]
+    nothing
+end
+
+function pos_info_callback(msg::pos_info)
+    global pos_info_log
+    pos_info_log.i += 1
+    pos_info_log.t[pos_info_log.i]      = time()
+    pos_info_log.z[pos_info_log.i,:]    = [msg.s;msg.ey;msg.epsi;msg.v;msg.s_start;msg.x;msg.y;msg.v_x;msg.v_y;msg.psi;msg.psiDot]
     nothing
 end
 
@@ -97,8 +97,8 @@ function main()
     init_node("barc_record")
     s1  = Subscriber("ecu", ECU, ECU_callback, queue_size=1)
     s2  = Subscriber("imu/data", Imu, IMU_callback, queue_size=1)
-    s3  = Subscriber("state_estimate_dynamic", Z_DynBkMdl, est_dyn_callback, queue_size=1)
     s4  = Subscriber("indoor_gps", Vector3, GPS_callback, queue_size=1)
+    s5  = Subscriber("pos_info", pos_info, pos_info_callback, queue_size=1)
 
     dt = 0.1
     loop_rate = Rate(1/dt)
@@ -110,13 +110,13 @@ function main()
 
     # Clean up buffers
     clean_up(gps_meas)
-    clean_up(est_meas_dyn)
     clean_up(imu_meas)
     clean_up(cmd_log)
+    clean_up(pos_info_log)
 
     # Save simulation data to file
     log_path = "$(homedir())/simulations/record-$(Dates.format(now(),"yyyy-mm-dd-HH-MM-SS")).jld"
-    save(log_path,"gps_meas",gps_meas,"estimate_dyn",est_meas_dyn,"imu_meas",imu_meas,"cmd_log",cmd_log)
+    save(log_path,"gps_meas",gps_meas,"imu_meas",imu_meas,"cmd_log",cmd_log,"pos_info",pos_info_log)
     println("Exiting node... Saving recorded data to $log_path.")
 end
 

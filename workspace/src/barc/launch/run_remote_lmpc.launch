@@ -29,7 +29,7 @@
     <node machine="this-pc" pkg="barc" type="barc_record.jl" name="barc_record" output="screen" />
 
     <!-- Estimator -->
-    <node machine="odroid" pkg="barc" type="state_estimation_DynBkMdl.py" name="state_estimation_dynamic" output="screen">
+    <node machine="this-pc" pkg="barc" type="state_estimation_DynBkMdl.py" name="state_estimation_dynamic" output="screen">
         <!-- v_x estimation sample time-->
         <param name="dt_v_enc" type="double" value="0.2" />
 
@@ -48,7 +48,7 @@
     <node machine="this-pc" pkg="barc" type="LMPC_node.jl" name="MPC" output="screen" />
 
     <!-- LOW LEVEL CONTROLLER -->
-    <node machine="odroid" pkg="barc" type="controller_low_level.py" name="low_level_controller" />
+    <node machine="this-pc" pkg="barc" type="controller_low_level.py" name="low_level_controller" />
 
     <!-- IMU -->
     <node machine="odroid" pkg="myahrs_driver" type="myahrs_driver" name="myahrs_driver">

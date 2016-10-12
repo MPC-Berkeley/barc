@@ -121,24 +121,15 @@ def state_estimation():
     rospy.Subscriber('encoder', Encoder, enc_callback)
     rospy.Subscriber('ecu', ECU, ecu_callback)
     rospy.Subscriber('indoor_gps', Vector3, gps_callback)
-    state_pub     = rospy.Publisher('state_estimate_dynamic', Z_DynBkMdl, queue_size = 1)     # size 1 -> when there's a newer message the older one is dropped
     state_pub_pos = rospy.Publisher('pos_info', pos_info, queue_size = 1)
     
     # get vehicle dimension parameters
     L_f = rospy.get_param("L_a")       # distance from CoG to front axel
     L_r = rospy.get_param("L_b")       # distance from CoG to rear axel
-    m   = rospy.get_param("m")         # mass of vehicle
-    I_z = rospy.get_param("I_z")       # moment of inertia about z-axis
     vhMdl   = (L_f, L_r)
 
     # get encoder parameters
     dt_vx   = rospy.get_param("state_estimation_dynamic/dt_v_enc")     # time interval to compute v_x
-
-    # get tire model
-    B   = rospy.get_param("tire_model/B")
-    C   = rospy.get_param("tire_model/C")
-    mu  = rospy.get_param("tire_model/mu")
-    TrMdl = ([B,C,mu],[B,C,mu])
 
     # get external force model
     a0  = rospy.get_param("air_drag_coeff")
@@ -183,14 +174,13 @@ def state_estimation():
     l.create_track()
     l.prepare_trajectory(0.06)
 
-
     w_z_f = 0         # filtered w_z (= angular velocity psiDot)
     while not rospy.is_shutdown():
         # publish state estimate
         (x,y,psi,v) = z_EKF           # note, r = EKF estimate yaw rate
 
         # use Kalman values to predict state in 0.1s
-        dt_pred = 0.1
+        dt_pred = 0.0
 
         bta = arctan(L_f/(L_f+L_r)*tan(d_f))
         x_pred      = x   + dt_pred*( v*cos(psi + bta) )
@@ -199,12 +189,9 @@ def state_estimation():
         v_pred      = v   + dt_pred*(FxR - 0.63*sign(v)*v**2)
         v_x_pred    = cos(bta)*v_pred
         v_y_pred    = sin(bta)*v_pred
-        w_z_f       = w_z_f + 0.4*(w_z-w_z_f)
+        w_z_f       = w_z_f + 0.4*(w_z-w_z_f)               # simple low pass filter on angular velocity
 
         psi_dot_pred = w_z_f
-
-        #state_pub.publish( Z_DynBkMdl(x,y,v_x,v_y,psi,psi_dot) )
-        state_pub.publish( Z_DynBkMdl(x_pred,y_pred,v_x_pred,v_y_pred,psi_pred,psi_dot_pred) )
 
         # Update track position
         l.set_pos(x_pred,y_pred,psi_pred,v_x_pred,v_x_pred,v_y_pred,psi_dot_pred)        # v = v_x
@@ -215,7 +202,6 @@ def state_estimation():
 
         # apply EKF
         # get measurement
-        #y = array([x_meas,y_meas,yaw,v_x_enc])
         y = array([x_meas,y_meas])
 
         # define input

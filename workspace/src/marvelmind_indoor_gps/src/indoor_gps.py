@@ -28,8 +28,7 @@ def indoor_gps_init(serial_device, baudrate):
 def indoor_gps_data_acq():
     # start node
     rospy.init_node('indoor_gps', anonymous=True)
-    pub 	= rospy.Publisher('indoor_gps', Vector3, queue_size = 10)
-    rospy.loginfo("started node!")
+    pub 	= rospy.Publisher('indoor_gps', Vector3, queue_size = 1)
     
     # open port
     port        = rospy.get_param("indoor_gps/port")
