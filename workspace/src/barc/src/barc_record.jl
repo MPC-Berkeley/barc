@@ -25,7 +25,7 @@ using geometry_msgs.msg
 using sensor_msgs.msg
 using JLD
 
-include("LMPC_lib/classes.jl")
+#include("LMPC_lib/classes.jl")
 
 # This type contains measurement data (time, values and a counter)
 type Measurements{T}
@@ -42,7 +42,7 @@ end
 
 buffersize      = 60000
 gps_meas        = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,2))
-imu_meas        = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,3))
+imu_meas        = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,6))
 est_meas_dyn    = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,6))
 cmd_log         = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,2))
 
@@ -51,12 +51,21 @@ imu_meas.t[1]       = time()
 est_meas_dyn.t[1]   = time()
 cmd_log.t[1]        = time()
 
+function Quat2Euler(q::Array{Float64})
+    sol = zeros(Float64,3)
+    sol[1]   = atan2(2*(q[1]*q[2]+q[3]*q[4]),1-2*(q[2]^2+q[3]^2))
+    sol[2]   = asin(2*(q[1]*q[3]-q[4]*q[2]))
+    sol[3]   = atan2(2*(q[1]*q[4]+q[2]*q[3]),1-2*(q[3]^2+q[4]^2))
+    return sol
+end
+
 function ECU_callback(msg::ECU)
     global cmd_log
     u_current = convert(Array{Float64,1},[msg.motor, msg.servo])
     cmd_log.i += 1
     cmd_log.t[cmd_log.i] = time()
     cmd_log.z[cmd_log.i,:] = u_current
+    nothing
 end
 
 function est_dyn_callback(msg::Z_DynBkMdl)
@@ -64,13 +73,15 @@ function est_dyn_callback(msg::Z_DynBkMdl)
     est_meas_dyn.i += 1
     est_meas_dyn.t[est_meas_dyn.i]      = time()
     est_meas_dyn.z[est_meas_dyn.i,:]    = [msg.x, msg.y, msg.v_x, msg.v_y, msg.psi, msg.psi_dot]
+    nothing
 end
 
 function IMU_callback(msg::Imu)
     global imu_meas
     imu_meas.i += 1
     imu_meas.t[imu_meas.i]      = time()
-    imu_meas.z[imu_meas.i,:]    = [msg.angular_velocity.x, msg.angular_velocity.y, msg.angular_velocity.z]
+    imu_meas.z[imu_meas.i,:]    = [msg.angular_velocity.x;msg.angular_velocity.y;msg.angular_velocity.z;Quat2Euler([msg.orientation.w;msg.orientation.x;msg.orientation.y;msg.orientation.z])]::Array{Float64}
+    nothing
 end
 
 function GPS_callback(msg::Vector3)
@@ -78,6 +89,7 @@ function GPS_callback(msg::Vector3)
     gps_meas.i += 1
     gps_meas.t[gps_meas.i]      = time()
     gps_meas.z[gps_meas.i,:]    = [msg.x, msg.y, msg.z]
+    nothing
 end
 
 function main() 
