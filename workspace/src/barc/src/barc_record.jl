@@ -115,7 +115,7 @@ function main()
     clean_up(cmd_log)
 
     # Save simulation data to file
-    log_path = "$(homedir())/simulations/record.jld"
+    log_path = "$(homedir())/simulations/record-$(Dates.format(now(),"yyyy-mm-dd-HH-MM-SS")).jld"
     save(log_path,"gps_meas",gps_meas,"estimate_dyn",est_meas_dyn,"imu_meas",imu_meas,"cmd_log",cmd_log)
     println("Exiting node... Saving recorded data to $log_path.")
 end
