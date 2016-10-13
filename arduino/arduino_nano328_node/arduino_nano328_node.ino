@@ -27,6 +27,9 @@ WARNING:
 #include <Servo.h>
 #include "Maxbotix.h"
 #include <EnableInterrupt.h>
+#include <std_msgs/Int32.h>
+#include <std_msgs/Float32.h>
+
 
 /**************************************************************************
 CAR CLASS DEFINITION (would like to refactor into car.cpp and car.h but can't figure out arduino build process so far)
@@ -48,6 +51,10 @@ class Car {
     int getEncoderFR();
     int getEncoderBL();
     int getEncoderBR();
+    unsigned long getEncoder_dTime_FL();                                          //(ADDED BY TOMMI 7JULY2016)
+    unsigned long getEncoder_dTime_FR();                                          //(ADDED BY TOMMI 7JULY2016)
+    unsigned long getEncoder_dTime_BL();                                          //(ADDED BY TOMMI 7JULY2016)
+    unsigned long getEncoder_dTime_BR();                                          //(ADDED BY TOMMI 7JULY2016)
     // Interrupt service routines
     void incFR();
     void incFL();
@@ -55,6 +62,7 @@ class Car {
     void incBL();
     void calcThrottle();
     void calcSteering();
+    float getVelocityEstimate();
   private:
     // Pin assignments
     const int ENC_FL_PIN = 2;
@@ -122,6 +130,24 @@ class Car {
     int BL_count = 0;
     int BR_count = 0;
 
+    // Delta time withing two magnets                                  			    //(ADDED BY TOMMI 7JULY2016)
+    // F = front, B = back, L = left, R = right                         			//(ADDED BY TOMMI 7JULY2016)
+    volatile unsigned long FL_new_time = 0;                                         //(ADDED BY TOMMI 7JULY2016)
+    volatile unsigned long FR_new_time = 0;                                         //(ADDED BY TOMMI 7JULY2016)
+    volatile unsigned long BL_new_time = 0;                                         //(ADDED BY TOMMI 7JULY2016)
+    volatile unsigned long BR_new_time = 0;                                         //(ADDED BY TOMMI 7JULY2016)
+
+    volatile unsigned long FL_old_time = 0;                                         //(ADDED BY TOMMI 7JULY2016)
+    volatile unsigned long FR_old_time = 0;                                         //(ADDED BY TOMMI 7JULY2016)
+    volatile unsigned long BL_old_time = 0;                                         //(ADDED BY TOMMI 7JULY2016)
+    volatile unsigned long BR_old_time = 0;                                         //(ADDED BY TOMMI 7JULY2016)
+
+    unsigned long FL_DeltaTime = 0;                                         			        //(ADDED BY TOMMI 7JULY2016)
+    unsigned long FR_DeltaTime = 0;                                          			        //(ADDED BY TOMMI 7JULY2016)
+    unsigned long BL_DeltaTime = 0;                                           			    //(ADDED BY TOMMI 7JULY2016)
+    unsigned long BR_DeltaTime = 0;                                            			    //(ADDED BY TOMMI 7JULY2016)
+
+
     // Utility functions
     uint8_t microseconds2PWM(uint16_t microseconds);
     float saturateMotor(float x);
@@ -168,12 +194,24 @@ barc::ECU rc_inputs;
 barc::Encoder encoder;
 barc::Ultrasound ultrasound;
 
+std_msgs::Int32 encoder_dt_FL;                                         //(ADDED BY TOMMI 7JULY2016)
+std_msgs::Int32 encoder_dt_FR;                                         //(ADDED BY TOMMI 7JULY2016)
+std_msgs::Int32 encoder_dt_BL;                                         //(ADDED BY TOMMI 7JULY2016)
+std_msgs::Int32 encoder_dt_BR;                                         //(ADDED BY TOMMI 7JULY2016)
+std_msgs::Float32 vel_est;            // estimation of current velocity to be published
+
+
 ros::NodeHandle nh;
 
-ros::Publisher pub_encoder("encoder", &encoder);
+//ros::Publisher pub_encoder("encoder", &encoder);
 ros::Publisher pub_rc_inputs("rc_inputs", &rc_inputs);
 ros::Publisher pub_ultrasound("ultrasound", &ultrasound);
 ros::Subscriber<barc::ECU> sub_ecu("ecu_pwm", ecuCallback);
+ros::Publisher pub_encoder_dt_FL("fl", &encoder_dt_FL);                               //(ADDED BY TOMMI 7JULY2016)
+ros::Publisher pub_encoder_dt_FR("fr", &encoder_dt_FR);                               //(ADDED BY TOMMI 7JULY2016)
+ros::Publisher pub_encoder_dt_BL("bl", &encoder_dt_BL);                               //(ADDED BY TOMMI 7JULY2016)
+ros::Publisher pub_encoder_dt_BR("br", &encoder_dt_BR);                               //(ADDED BY TOMMI 7JULY2016)
+ros::Publisher pub_vel_est("vel_est", &vel_est);          // vel est publisher
 
 
 // Set up ultrasound sensors
@@ -198,9 +236,14 @@ void setup()
   nh.initNode();
 
   // Publish and subscribe to topics
-  nh.advertise(pub_encoder);
+//  nh.advertise(pub_encoder);
+  nh.advertise(pub_encoder_dt_FL);                                                    //(ADDED BY TOMMI 7JULY2016)
+  nh.advertise(pub_encoder_dt_FR);                                                    //(ADDED BY TOMMI 7JULY2016)
+  nh.advertise(pub_encoder_dt_BL);                                                    //(ADDED BY TOMMI 7JULY2016)
+  nh.advertise(pub_encoder_dt_BR);                                                    //(ADDED BY TOMMI 7JULY2016)
   nh.advertise(pub_rc_inputs);
   nh.advertise(pub_ultrasound);
+  nh.advertise(pub_vel_est);
   nh.subscribe(sub_ecu);
 
   // Arming ESC, 1 sec delay for arming and ROS
@@ -226,7 +269,25 @@ void loop() {
     encoder.FR = car.getEncoderFR();
     encoder.BL = car.getEncoderBL();
     encoder.BR = car.getEncoderBR();
-    pub_encoder.publish(&encoder);
+    //    pub_encoder.publish(&encoder);
+
+    // pubblish encoder dt
+    encoder_dt_FL.data = (int32_t) car.getEncoder_dTime_FL();                               //(ADDED BY TOMMI 7JULY2016)
+    encoder_dt_FR.data = (int32_t) car.getEncoder_dTime_FR();                               //(ADDED BY TOMMI 7JULY2016)
+    encoder_dt_BL.data = (int32_t) car.getEncoder_dTime_BL();                               //(ADDED BY TOMMI 7JULY2016)
+    encoder_dt_BR.data = (int32_t) car.getEncoder_dTime_BR();                               //(ADDED BY TOMMI 7JULY2016)
+    vel_est.data = car.getVelocityEstimate();
+    pub_encoder_dt_FL.publish(&encoder_dt_FL);                                     //(ADDED BY TOMMI 7JULY2016)
+    pub_encoder_dt_FR.publish(&encoder_dt_FR);                                     //(ADDED BY TOMMI 7JULY2016)
+    pub_encoder_dt_BL.publish(&encoder_dt_BL);                                     //(ADDED BY TOMMI 7JULY2016)
+    pub_encoder_dt_BR.publish(&encoder_dt_BR);                                     //(ADDED BY TOMMI 7JULY2016)
+
+    pub_vel_est.publish(&vel_est);               // publish estimated velocity
+    ////////////////////////////////////////////////!!!!
+
+
+
+
 
     rc_inputs.motor = car.getRCThrottle();
     rc_inputs.servo = car.getRCSteering();
@@ -279,7 +340,7 @@ void Car::initEncoders() {
   pinMode(ENC_FL_PIN, INPUT_PULLUP);
   pinMode(ENC_BR_PIN, INPUT_PULLUP);
   pinMode(ENC_BL_PIN, INPUT_PULLUP);
-  enableInterrupt(ENC_FR_PIN, incFRCallback, CHANGE);
+  enableInterrupt(ENC_FR_PIN, incFRCallback, CHANGE);   //enables interrupts from Pin ENC_FR_PIN, when signal changes (CHANGE). And it call the function 'incFRCallback'
   enableInterrupt(ENC_FL_PIN, incFLCallback, CHANGE);
   enableInterrupt(ENC_BR_PIN, incBRCallback, CHANGE);
   enableInterrupt(ENC_BL_PIN, incBLCallback, CHANGE);
@@ -339,21 +400,29 @@ void Car::calcSteering() {
 
 void Car::incFL() {
   FL_count_shared++;
+  FL_old_time = FL_new_time;                                                    //(ADDED BY TOMMI 7JULY2016)
+  FL_new_time = micros();      // new istant of passing magnet is saved         //(ADDED BY TOMMI 7JULY2016)
   updateFlagsShared |= FL_FLAG;
 }
 
 void Car::incFR() {
   FR_count_shared++;
+  FR_old_time = FR_new_time;                                                    //(ADDED BY TOMMI 7JULY2016)
+  FR_new_time = micros();      // new istant of passing magnet is saved         //(ADDED BY TOMMI 7JULY2016)
   updateFlagsShared |= FR_FLAG;
 }
 
 void Car::incBL() {
   BL_count_shared++;
+  BL_old_time = BL_new_time;                                                    //(ADDED BY TOMMI 7JULY2016)
+  BL_new_time = micros();      // new istant of passing magnet is saved         //(ADDED BY TOMMI 7JULY2016)
   updateFlagsShared |= BL_FLAG;
 }
 
 void Car::incBR() {
   BR_count_shared++;
+  BR_old_time = BR_new_time;                                                   //(ADDED BY TOMMI 7JULY2016)
+  BR_new_time = micros();      // new istant of passing magnet is saved        //(ADDED BY TOMMI 7JULY2016)
   updateFlagsShared |= BR_FLAG;
 }
 
@@ -375,15 +444,19 @@ void Car::readAndCopyInputs() {
     }
     if(updateFlags & FL_FLAG) {
       FL_count = FL_count_shared;
+      FL_DeltaTime = FL_new_time - FL_old_time;                              //(ADDED BY TOMMI 7JULY2016)
     }
     if(updateFlags & FR_FLAG) {
       FR_count = FR_count_shared;
+      FR_DeltaTime = FR_new_time - FR_old_time;                             //(ADDED BY TOMMI 7JULY2016)
     }
     if(updateFlags & BL_FLAG) {
       BL_count = BL_count_shared;
+      BL_DeltaTime = BL_new_time - BL_old_time;                              //(ADDED BY TOMMI 7JULY2016)
     }
     if(updateFlags & BR_FLAG) {
       BR_count = BR_count_shared;
+      BR_DeltaTime = BR_new_time - BR_old_time;                              //(ADDED BY TOMMI 7JULY2016)
     }
     // clear shared update flags and turn interrupts back on
     updateFlagsShared = 0;
@@ -409,4 +482,27 @@ int Car::getEncoderBL() {
 }
 int Car::getEncoderBR() {
   return BR_count;
+}
+
+
+unsigned long Car::getEncoder_dTime_FL() {                               //(ADDED BY TOMMI 7JULY2016)
+  return FL_DeltaTime;                                         //(ADDED BY TOMMI 7JULY2016)
+}                                                              //(ADDED BY TOMMI 7JULY2016)
+unsigned long Car::getEncoder_dTime_FR() {                               //(ADDED BY TOMMI 7JULY2016)
+  return FR_DeltaTime;                                         //(ADDED BY TOMMI 7JULY2016)
+}                                                              //(ADDED BY TOMMI 7JULY2016)
+unsigned long Car::getEncoder_dTime_BL() {                               //(ADDED BY TOMMI 7JULY2016)
+  return BL_DeltaTime;                                         //(ADDED BY TOMMI 7JULY2016)
+}                                                              //(ADDED BY TOMMI 7JULY2016)
+unsigned long Car::getEncoder_dTime_BR() {                               //(ADDED BY TOMMI 7JULY2016)
+  return BR_DeltaTime;                                         //(ADDED BY TOMMI 7JULY2016)
+}                                                              //(ADDED BY TOMMI 7JULY2016)
+
+float Car::getVelocityEstimate() {
+  if(FL_DeltaTime > 0 && FR_DeltaTime > 0) {
+    return 2.0*3.141593*0.036/4.0*(1.0/FL_DeltaTime + 1.0/FR_DeltaTime)*1000000.0/2.0;    // calculate current speed in m/s
+  }
+  else {
+    return 0.0;
+  }
 }

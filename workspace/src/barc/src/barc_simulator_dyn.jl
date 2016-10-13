@@ -18,11 +18,13 @@ using RobotOS
 @rosimport data_service.msg: TimeData
 @rosimport geometry_msgs.msg: Vector3
 @rosimport sensor_msgs.msg: Imu
+@rosimport std_msgs.msg: Float32
 rostypegen()
 using barc.msg
 using data_service.msg
 using geometry_msgs.msg
 using sensor_msgs.msg
+using std_msgs.msg
 using JLD
 
 include("LMPC_lib/classes.jl")
@@ -85,6 +87,7 @@ function main()
     pub_enc = Publisher("encoder", Encoder, queue_size=1)
     pub_gps = Publisher("indoor_gps", Vector3, queue_size=1)
     pub_imu = Publisher("imu/data", Imu, queue_size=1)
+    pub_vel = Publisher("vel_est", Float32Msg, queue_size=1)
 
     s1  = Subscriber("ecu", ECU, ECU_callback, queue_size=1)
     s3  = Subscriber("state_estimate_dynamic", Z_DynBkMdl, est_dyn_callback, queue_size=1)
@@ -123,6 +126,8 @@ function main()
     modelParams.I_z = 0.24
 
     println("Publishing sensor information. Simulator running.")
+    imu_data    = Imu()
+    vel_est = Float32Msg()
     while ! is_shutdown()
 
         t = time()
@@ -148,18 +153,22 @@ function main()
         end
 
         # IMU measurements
-        imu_data    = Imu()
         imu_drift   = sin(t/100*pi/2)     # drifts to 1 in 100 seconds
         yaw         = z_current[i,5] + 0*(randn()*0.05 + imu_drift)
         psiDot      = z_current[i,6] + 0.01*randn()
         imu_data.orientation = geometry_msgs.msg.Quaternion(cos(yaw/2), sin(yaw/2), 0, 0)
         imu_data.angular_velocity = Vector3(0,0,psiDot)
+
+        # Velocity measurement
+        vel_est.data = convert(Float32,norm(z_current[i,3:4]))
         if i%2 == 0
             imu_meas.i += 1
             imu_meas.t[imu_meas.i] = t
             imu_meas.z[imu_meas.i,:] = [yaw psiDot]
             publish(pub_imu, imu_data)      # Imu format is defined by ROS, you can look it up by google "rosmsg Imu"
                                             # It's sufficient to only fill the orientation part of the Imu-type (with one quaternion)
+            publish(pub_vel, vel_est)
+
         end
 
         # GPS measurements

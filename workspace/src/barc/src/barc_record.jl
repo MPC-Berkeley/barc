@@ -18,6 +18,7 @@ using RobotOS
 @rosimport data_service.msg: TimeData
 @rosimport geometry_msgs.msg: Vector3
 @rosimport sensor_msgs.msg: Imu
+@rosimport std_msgs.msg: Float32
 rostypegen()
 using barc.msg
 using data_service.msg
@@ -42,12 +43,14 @@ buffersize      = 60000
 gps_meas        = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,2))
 imu_meas        = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,9))
 cmd_log         = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,2))
+vel_est_log     = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize))
 pos_info_log    = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,11))
 
 gps_meas.t[1]       = time()
 imu_meas.t[1]       = time()
 cmd_log.t[1]        = time()
 pos_info_log.t[1]   = time()
+vel_est_log.t[1]   = time()
 
 function Quat2Euler(q::Array{Float64})
     sol = zeros(Float64,3)
@@ -92,6 +95,14 @@ function pos_info_callback(msg::pos_info)
     nothing
 end
 
+function vel_est_callback(msg::Float32Msg)
+    global vel_est_log
+    vel_est_log.i += 1
+    vel_est_log.t[vel_est_log.i]      = time()
+    vel_est_log.z[vel_est_log.i]      = msg.data
+    nothing
+end
+
 function main() 
     # initiate node, set up publisher / subscriber topics
     init_node("barc_record")
@@ -99,6 +110,7 @@ function main()
     s2  = Subscriber("imu/data", Imu, IMU_callback, queue_size=1)
     s4  = Subscriber("indoor_gps", Vector3, GPS_callback, queue_size=1)
     s5  = Subscriber("pos_info", pos_info, pos_info_callback, queue_size=1)
+    s6  = Subscriber("vel_est", Float32Msg, vel_est_callback, queue_size=1)
 
     dt = 0.1
     loop_rate = Rate(1/dt)
@@ -113,10 +125,11 @@ function main()
     clean_up(imu_meas)
     clean_up(cmd_log)
     clean_up(pos_info_log)
+    clean_up(vel_est_log)
 
     # Save simulation data to file
     log_path = "$(homedir())/simulations/record-$(Dates.format(now(),"yyyy-mm-dd-HH-MM-SS")).jld"
-    save(log_path,"gps_meas",gps_meas,"imu_meas",imu_meas,"cmd_log",cmd_log,"pos_info",pos_info_log)
+    save(log_path,"gps_meas",gps_meas,"imu_meas",imu_meas,"cmd_log",cmd_log,"pos_info",pos_info_log,"vel_est",vel_est_log)
     println("Exiting node... Saving recorded data to $log_path.")
 end
 

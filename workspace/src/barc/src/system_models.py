@@ -188,7 +188,7 @@ def f_pacejka(trMdl, alpha):
     return  d*sin(c*arctan(b*alpha))
 
 
-def f_KinBkMdl(z,u,vhMdl, dt):
+def f_KinBkMdl(z,u,vhMdl, dt, est_mode):
     """
     process model
     input: state z at time k, z[k] := [x[k], y[k], psi[k], v[k]]
@@ -219,133 +219,7 @@ def f_KinBkMdl(z,u,vhMdl, dt):
 
     return array([x_next, y_next, psi_next, v_next])
 
-def pacejka(a):
-    B = 1.0
-    C = 1.0
-    mu = 0.8
-    m = 1.98
-    g = 9.81
-    D = mu * m * g/2
-    D = D*10
-
-    C_alpha_f = D*sin(C*arctan(B*a))
-    return C_alpha_f
-
-def f_DynBkMdl_exact(z,u,vhMdl,trMdl,dt):
-    zNext = z
-    dtn = dt / 10
-    for i in range(0,10):
-        zNext = f_DynBkMdl(zNext,u,vhMdl,trMdl,dtn)
-
-    return zNext
-
-def f_DynBkMdl(z,u,vhMdl,trMdl,dt):
-    x_I             = z[0]
-    y_I             = z[1]
-    v_x             = z[2]
-    v_y             = z[3]
-    psi             = z[4]
-    psi_dot         = z[5]
-    x_I_pred        = z[6]
-    y_I_pred        = z[7]
-    v_x_pred        = z[8]
-    v_y_pred        = z[9]
-    psi_pred        = z[10]
-    psi_dot_pred    = z[11]
-
-    d_f             = u[0]
-    a               = u[1]
-
-    dt_pred         = 0.15
-
-    # extract parameters
-    (L_f,L_r,m,I_z)         = vhMdl
-    (trMdlFront, trMdlRear) = trMdl
-    (B,C,mu)                = trMdlFront
-    g                       = 9.81
-    Fn                      = m*g/2.0         # assuming a = b (i.e. distance from CoG to either axel)
-
-    # comptue the front/rear slip  [rad/s]
-    # ref: Hindiyeh Thesis, p58
-    a_F = 0
-    a_R = 0
-    if abs(v_x) > 0.1:
-        a_F     = arctan((v_y + L_f*psi_dot)/v_x) - d_f
-        a_R     = arctan((v_y - L_r*psi_dot)/v_x)
-
-    FyF = -pacejka(a_F)
-    FyR = -pacejka(a_R)
-
-    #a_F = 0         # experimental: set all forces to zero
-    #a_R = 0
-    #FyF = 0
-    #FyR = 0
-
-    if abs(a_F) > 30.0/180.0*3.1416 or abs(a_R) > 30.0/180.0*3.1416:
-        print("WARNING: Large slip angles in estimation: a_F = %f, a_R = %f"%(a_F,a_R))
-
-    # compute next state
-    x_I_next             = x_I       + dt * (cos(psi)*v_x - sin(psi)*v_y)
-    y_I_next             = y_I       + dt * (sin(psi)*v_x + cos(psi)*v_y)
-    v_x_next             = v_x       + dt * (a + v_y*psi_dot - 0.63*v_x**2*sign(v_x))
-    v_y_next             = v_y       + dt * (2/m*(FyF*cos(d_f) + FyR) - psi_dot*v_x)
-    psi_next             = psi       + dt * (psi_dot)
-    psi_dot_next         = psi_dot   + dt * (2/I_z*(L_f*FyF - L_r*FyR))
-
-    x_I_next_pred        = x_I       + dt_pred * (cos(psi)*v_x - sin(psi)*v_y)
-    y_I_next_pred        = y_I       + dt_pred * (sin(psi)*v_x + cos(psi)*v_y)
-    v_x_next_pred        = v_x       + dt_pred * (a + v_y*psi_dot - 0.63*v_x**2*sign(v_x))
-    v_y_next_pred        = v_y       + dt_pred * (2/m*(FyF*cos(d_f) + FyR) - psi_dot*v_x)
-    psi_next_pred        = psi       + dt_pred * (psi_dot)
-    psi_dot_next_pred    = psi_dot   + dt_pred * (2/I_z*(L_f*FyF - L_r*FyR))
-
-    return array([x_I_next,y_I_next,v_x_next,v_y_next,psi_next,psi_dot_next,x_I_next_pred,y_I_next_pred,v_x_next_pred,v_y_next_pred,psi_next_pred,psi_dot_next_pred])
-
-def f_DynBkMdl_Kin(z,u,vhMdl,trMdl,dt):
-    x_I             = z[0]
-    y_I             = z[1]
-    v_x             = z[2]
-    v_y             = z[3]
-    psi             = z[4]
-    psi_dot         = z[5]
-    x_I_pred        = z[6]
-    y_I_pred        = z[7]
-    v_x_pred        = z[8]
-    v_y_pred        = z[9]
-    psi_pred        = z[10]
-    psi_dot_pred    = z[11]
-
-    d_f             = u[0]
-    a               = u[1]
-
-    dt_pred         = 0.15
-
-    # extract parameters
-    (L_f,L_r,m,I_z)         = vhMdl
-    (trMdlFront, trMdlRear) = trMdl
-    (B,C,mu)                = trMdlFront
-    g                       = 9.81
-    Fn                      = m*g/2.0         # assuming a = b (i.e. distance from CoG to either axel)
-
-    # compute next state
-    x_I_next             = x_I       + dt * (cos(psi)*v_x - sin(psi)*v_y)
-    y_I_next             = y_I       + dt * (sin(psi)*v_x + cos(psi)*v_y)
-    v_x_next             = v_x       + dt * (a + v_y*psi_dot - 0.63*v_x**2*sign(v_x))
-    v_y_next             = v_y       + dt * (2/m*(FyF*cos(d_f) + FyR) - psi_dot*v_x)
-    psi_next             = psi       + dt * (psi_dot)
-    psi_dot_next         = psi_dot   + dt * (2/I_z*(L_f*FyF - L_r*FyR))
-
-    x_I_next_pred        = x_I       + dt_pred * (cos(psi)*v_x - sin(psi)*v_y)
-    y_I_next_pred        = y_I       + dt_pred * (sin(psi)*v_x + cos(psi)*v_y)
-    v_x_next_pred        = v_x       + dt_pred * (a + v_y*psi_dot - 0.63*v_x**2*sign(v_x))
-    v_y_next_pred        = v_y       + dt_pred * (2/m*(FyF*cos(d_f) + FyR) - psi_dot*v_x)
-    psi_next_pred        = psi       + dt_pred * (psi_dot)
-    psi_dot_next_pred    = psi_dot   + dt_pred * (2/I_z*(L_f*FyF - L_r*FyR))
-
-    return array([x_I_next,y_I_next,v_x_next,v_y_next,psi_next,psi_dot_next,x_I_next_pred,y_I_next_pred,v_x_next_pred,v_y_next_pred,psi_next_pred,psi_dot_next_pred])
-
-
-def f_KinBkMdl_predictive(z,u,vhMdl, dt):
+def f_KinBkMdl_predictive(z,u,vhMdl, dt, est_mode):
     """
     process model
     input: state z at time k, z[k] := [x[k], y[k], psi[k], v[k]]
@@ -396,18 +270,27 @@ def h_DynBkMdl(x):
                [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0]])
     return dot(C, x)
 
-def h_KinBkMdl(x):
+def h_KinBkMdl(x, u, vhMdl, dt, est_mode):
     """
     measurement model
     """
-    # For GPS, IMU and encoders:
-    # C = array([[1, 0, 0, 0],
-    #            [0, 1, 0, 0],
-    #            [0, 0, 1, 0],
-    #            [0, 0, 0, 1]])
-    # For GPS only:
-    C = array([[1, 0, 0, 0],
-               [0, 1, 0, 0]])
+    if est_mode==1:                     # GPS, IMU, Enc
+        C = array([[1, 0, 0, 0],
+                   [0, 1, 0, 0],
+                   [0, 0, 1, 0],
+                   [0, 0, 0, 1]])
+    elif est_mode==2:                     # IMU, Enc
+        C = array([[0, 0, 1, 0],
+                   [0, 0, 0, 1]])
+    elif est_mode==3:                     # GPS
+        C = array([[1, 0, 0, 0],
+                   [0, 1, 0, 0]])
+    elif est_mode==4:                     # GPS, Enc
+        C = array([[1, 0, 0, 0],
+                   [0, 1, 0, 0],
+                   [0, 0, 0, 1]])
+    else:
+        print("Wrong est_mode")
     return dot(C, x)
 
 def h_KinBkMdl_predictive(x):

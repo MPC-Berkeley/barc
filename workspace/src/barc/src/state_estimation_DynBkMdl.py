@@ -20,6 +20,7 @@ from Localization_helpers import Localization
 from barc.msg import ECU, Encoder, Z_DynBkMdl, pos_info
 from sensor_msgs.msg import Imu
 from geometry_msgs.msg import Vector3
+from std_msgs.msg import Float32
 from numpy import pi, cos, sin, eye, array, zeros, diag, arctan, tan, size, sign
 from observers import kinematicLuembergerObserver, ekf
 from system_models import f_KinBkMdl, h_KinBkMdl
@@ -46,6 +47,8 @@ dx_qrt      = 2.0*pi*r_tire/4.0     # distance along quarter tire edge
 
 x_meas      = 0
 y_meas      = 0
+
+vel_est     = 0
 
 # ecu command update
 def ecu_callback(data):
@@ -82,34 +85,9 @@ def imu_callback(data):
     a_y = data.linear_acceleration.y
     a_z = data.linear_acceleration.z
 
-# encoder measurement update
-def enc_callback(data):
-    global v_x_enc, d_f, t0
-    global n_FL, n_FR, n_FL_prev, n_FR_prev
-
-    n_FL = data.FL
-    n_FR = data.FR
-
-    # compute time elapsed
-    tf = time.time()
-    dt = tf - t0
-    
-    # if enough time elapse has elapsed, estimate v_x
-    dt_min = 0.20
-    if dt >= dt_min:
-        # compute speed :  speed = distance / time
-        v_FL = float(n_FL- n_FL_prev)*dx_qrt/dt
-        v_FR = float(n_FR- n_FR_prev)*dx_qrt/dt
-
-        # update encoder v_x, v_y measurements
-        # only valid for small slip angles, still valid for drift?
-        v_x_enc     = (v_FL + v_FR)/2.0#*cos(d_f)
-
-        # update old data
-        n_FL_prev   = n_FL
-        n_FR_prev   = n_FR
-        t0          = tf
-
+def vel_est_callback(data):
+    global vel_est
+    vel_est = data.data
 
 # state estimation node
 def state_estimation():
@@ -118,7 +96,7 @@ def state_estimation():
 
     # topic subscriptions / publications
     rospy.Subscriber('imu/data', Imu, imu_callback)
-    rospy.Subscriber('encoder', Encoder, enc_callback)
+    rospy.Subscriber('vel_est', Float32, vel_est_callback)
     rospy.Subscriber('ecu', ECU, ecu_callback)
     rospy.Subscriber('indoor_gps', Vector3, gps_callback)
     state_pub_pos = rospy.Publisher('pos_info', pos_info, queue_size = 1)
@@ -128,20 +106,12 @@ def state_estimation():
     L_r = rospy.get_param("L_b")       # distance from CoG to rear axel
     vhMdl   = (L_f, L_r)
 
-    # get encoder parameters
-    dt_vx   = rospy.get_param("state_estimation_dynamic/dt_v_enc")     # time interval to compute v_x
-
-    # get external force model
-    a0  = rospy.get_param("air_drag_coeff")
-    Ff  = rospy.get_param("friction")
-
     # get EKF observer properties
     q_std       = rospy.get_param("state_estimation_dynamic/q_std")     # std of process noise
     psi_std     = rospy.get_param("state_estimation_dynamic/psi_std")   # std of measurementnoise
-    v_std       = rospy.get_param("state_estimation_dynamic/v_std")
+    v_std       = rospy.get_param("state_estimation_dynamic/v_std")     # std of velocity estimation
     gps_std     = rospy.get_param("state_estimation_dynamic/gps_std")   # std of gps measurements
-    ang_v_std   = rospy.get_param("state_estimation_dynamic/ang_v_std") # std of gps measurements
-    v_x_min     = rospy.get_param("state_estimation_dynamic/v_x_min")   # minimum velociy before using EKF
+    ang_v_std   = rospy.get_param("state_estimation_dynamic/ang_v_std") # std of angular velocity measurements
     est_mode    = rospy.get_param("state_estimation_dynamic/est_mode")  # estimation mode
 
     # set node rate
@@ -164,8 +134,8 @@ def state_estimation():
         R = diag([psi_std,v_std])**2
     elif est_mode==3:                                   # use gps only
         R = (gps_std**2)*eye(2)
-    elif est_mode==4:                                   # use gps and angular velocity
-        R = diag([gps_std,gps_std])**2
+    elif est_mode==4:                                   # use gps and encoder
+        R = diag([gps_std,gps_std,v_std])**2
     else:
         rospy.logerr("No estimation mode selected.")
 
@@ -202,13 +172,23 @@ def state_estimation():
 
         # apply EKF
         # get measurement
-        y = array([x_meas,y_meas])
+        if est_mode==1:
+            y = array([x_meas,y_meas,yaw,vel_est])
+        if est_mode==2:
+            y = array([yaw,vel_est])
+        if est_mode==3:
+            y = array([x_meas,y_meas])
+        elif est_mode==4:
+            y = array([x_meas,y_meas,vel_est])
+        else:
+            print("Wrong estimation mode specified.")
+
 
         # define input
         u       = array([ d_f, FxR ])
 
         # build extra arguments for non-linear function
-        args    = (u, vhMdl, dt) 
+        args    = (u, vhMdl, dt, est_mode)
 
         # apply EKF and get each state estimate
         (z_EKF,P) = ekf(f_KinBkMdl, z_EKF, P, h_KinBkMdl, y, Q, R, args )
