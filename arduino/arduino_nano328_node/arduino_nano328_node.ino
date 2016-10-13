@@ -21,7 +21,7 @@ WARNING:
 
 // include libraries
 #include <ros.h>
-#include <barc/Ultrasound.h>
+//#include <barc/Ultrasound.h>
 #include <barc/Encoder.h>
 #include <barc/ECU.h>
 #include <Servo.h>
@@ -29,7 +29,6 @@ WARNING:
 #include <EnableInterrupt.h>
 #include <std_msgs/Int32.h>
 #include <std_msgs/Float32.h>
-
 
 /**************************************************************************
 CAR CLASS DEFINITION (would like to refactor into car.cpp and car.h but can't figure out arduino build process so far)
@@ -190,27 +189,27 @@ volatile unsigned long t0;
 // Global message variables
 // Encoder, RC Inputs, Electronic Control Unit, Ultrasound
 barc::ECU ecu;
-barc::ECU rc_inputs;
-barc::Encoder encoder;
-barc::Ultrasound ultrasound;
+//barc::ECU rc_inputs;
+//barc::Encoder encoder;
+//barc::Ultrasound ultrasound;
 
-std_msgs::Int32 encoder_dt_FL;                                         //(ADDED BY TOMMI 7JULY2016)
-std_msgs::Int32 encoder_dt_FR;                                         //(ADDED BY TOMMI 7JULY2016)
-std_msgs::Int32 encoder_dt_BL;                                         //(ADDED BY TOMMI 7JULY2016)
-std_msgs::Int32 encoder_dt_BR;                                         //(ADDED BY TOMMI 7JULY2016)
+//std_msgs::Int32 encoder_dt_FL;                                         //(ADDED BY TOMMI 7JULY2016)
+//std_msgs::Int32 encoder_dt_FR;                                         //(ADDED BY TOMMI 7JULY2016)
+//std_msgs::Int32 encoder_dt_BL;                                         //(ADDED BY TOMMI 7JULY2016)
+//std_msgs::Int32 encoder_dt_BR;                                         //(ADDED BY TOMMI 7JULY2016)
 std_msgs::Float32 vel_est;            // estimation of current velocity to be published
 
 
 ros::NodeHandle nh;
 
 //ros::Publisher pub_encoder("encoder", &encoder);
-ros::Publisher pub_rc_inputs("rc_inputs", &rc_inputs);
-ros::Publisher pub_ultrasound("ultrasound", &ultrasound);
+//ros::Publisher pub_rc_inputs("rc_inputs", &rc_inputs);
+//ros::Publisher pub_ultrasound("ultrasound", &ultrasound);
 ros::Subscriber<barc::ECU> sub_ecu("ecu_pwm", ecuCallback);
-ros::Publisher pub_encoder_dt_FL("fl", &encoder_dt_FL);                               //(ADDED BY TOMMI 7JULY2016)
-ros::Publisher pub_encoder_dt_FR("fr", &encoder_dt_FR);                               //(ADDED BY TOMMI 7JULY2016)
-ros::Publisher pub_encoder_dt_BL("bl", &encoder_dt_BL);                               //(ADDED BY TOMMI 7JULY2016)
-ros::Publisher pub_encoder_dt_BR("br", &encoder_dt_BR);                               //(ADDED BY TOMMI 7JULY2016)
+//ros::Publisher pub_encoder_dt_FL("fl", &encoder_dt_FL);                               //(ADDED BY TOMMI 7JULY2016)
+//ros::Publisher pub_encoder_dt_FR("fr", &encoder_dt_FR);                               //(ADDED BY TOMMI 7JULY2016)
+//ros::Publisher pub_encoder_dt_BL("bl", &encoder_dt_BL);                               //(ADDED BY TOMMI 7JULY2016)
+//ros::Publisher pub_encoder_dt_BR("br", &encoder_dt_BR);                               //(ADDED BY TOMMI 7JULY2016)
 ros::Publisher pub_vel_est("vel_est", &vel_est);          // vel est publisher
 
 
@@ -237,12 +236,12 @@ void setup()
 
   // Publish and subscribe to topics
 //  nh.advertise(pub_encoder);
-  nh.advertise(pub_encoder_dt_FL);                                                    //(ADDED BY TOMMI 7JULY2016)
-  nh.advertise(pub_encoder_dt_FR);                                                    //(ADDED BY TOMMI 7JULY2016)
-  nh.advertise(pub_encoder_dt_BL);                                                    //(ADDED BY TOMMI 7JULY2016)
-  nh.advertise(pub_encoder_dt_BR);                                                    //(ADDED BY TOMMI 7JULY2016)
-  nh.advertise(pub_rc_inputs);
-  nh.advertise(pub_ultrasound);
+  //nh.advertise(pub_encoder_dt_FL);                                                    //(ADDED BY TOMMI 7JULY2016)
+  //nh.advertise(pub_encoder_dt_FR);                                                    //(ADDED BY TOMMI 7JULY2016)
+  //nh.advertise(pub_encoder_dt_BL);                                                    //(ADDED BY TOMMI 7JULY2016)
+  //nh.advertise(pub_encoder_dt_BR);                                                    //(ADDED BY TOMMI 7JULY2016)
+  //nh.advertise(pub_rc_inputs);
+  //nh.advertise(pub_ultrasound);
   nh.advertise(pub_vel_est);
   nh.subscribe(sub_ecu);
 
@@ -265,22 +264,22 @@ void loop() {
 
     // TODO make encoder and rc_inputs private properties on car? Then
     // car.publishEncoder(); and car.publishRCInputs();
-    encoder.FL = car.getEncoderFL();
-    encoder.FR = car.getEncoderFR();
-    encoder.BL = car.getEncoderBL();
-    encoder.BR = car.getEncoderBR();
+    //encoder.FL = car.getEncoderFL();
+    //encoder.FR = car.getEncoderFR();
+    //encoder.BL = car.getEncoderBL();
+    //encoder.BR = car.getEncoderBR();
     //    pub_encoder.publish(&encoder);
 
     // pubblish encoder dt
-    encoder_dt_FL.data = (int32_t) car.getEncoder_dTime_FL();                               //(ADDED BY TOMMI 7JULY2016)
-    encoder_dt_FR.data = (int32_t) car.getEncoder_dTime_FR();                               //(ADDED BY TOMMI 7JULY2016)
-    encoder_dt_BL.data = (int32_t) car.getEncoder_dTime_BL();                               //(ADDED BY TOMMI 7JULY2016)
-    encoder_dt_BR.data = (int32_t) car.getEncoder_dTime_BR();                               //(ADDED BY TOMMI 7JULY2016)
+    //encoder_dt_FL.data = (int32_t) car.getEncoder_dTime_FL();                               //(ADDED BY TOMMI 7JULY2016)
+    //encoder_dt_FR.data = (int32_t) car.getEncoder_dTime_FR();                               //(ADDED BY TOMMI 7JULY2016)
+    //encoder_dt_BL.data = (int32_t) car.getEncoder_dTime_BL();                               //(ADDED BY TOMMI 7JULY2016)
+    //encoder_dt_BR.data = (int32_t) car.getEncoder_dTime_BR();                               //(ADDED BY TOMMI 7JULY2016)
     vel_est.data = car.getVelocityEstimate();
-    pub_encoder_dt_FL.publish(&encoder_dt_FL);                                     //(ADDED BY TOMMI 7JULY2016)
-    pub_encoder_dt_FR.publish(&encoder_dt_FR);                                     //(ADDED BY TOMMI 7JULY2016)
-    pub_encoder_dt_BL.publish(&encoder_dt_BL);                                     //(ADDED BY TOMMI 7JULY2016)
-    pub_encoder_dt_BR.publish(&encoder_dt_BR);                                     //(ADDED BY TOMMI 7JULY2016)
+    //pub_encoder_dt_FL.publish(&encoder_dt_FL);                                     //(ADDED BY TOMMI 7JULY2016)
+    //pub_encoder_dt_FR.publish(&encoder_dt_FR);                                     //(ADDED BY TOMMI 7JULY2016)
+    //pub_encoder_dt_BL.publish(&encoder_dt_BL);                                     //(ADDED BY TOMMI 7JULY2016)
+    //pub_encoder_dt_BR.publish(&encoder_dt_BR);                                     //(ADDED BY TOMMI 7JULY2016)
 
     pub_vel_est.publish(&vel_est);               // publish estimated velocity
     ////////////////////////////////////////////////!!!!
@@ -289,9 +288,9 @@ void loop() {
 
 
 
-    rc_inputs.motor = car.getRCThrottle();
-    rc_inputs.servo = car.getRCSteering();
-    pub_rc_inputs.publish(&rc_inputs);
+    //rc_inputs.motor = car.getRCThrottle();
+    //rc_inputs.servo = car.getRCSteering();
+    //pub_rc_inputs.publish(&rc_inputs);
 
     // publish ultra-sound measurement
     /*
@@ -340,10 +339,10 @@ void Car::initEncoders() {
   pinMode(ENC_FL_PIN, INPUT_PULLUP);
   pinMode(ENC_BR_PIN, INPUT_PULLUP);
   pinMode(ENC_BL_PIN, INPUT_PULLUP);
-  enableInterrupt(ENC_FR_PIN, incFRCallback, CHANGE);   //enables interrupts from Pin ENC_FR_PIN, when signal changes (CHANGE). And it call the function 'incFRCallback'
-  enableInterrupt(ENC_FL_PIN, incFLCallback, CHANGE);
-  enableInterrupt(ENC_BR_PIN, incBRCallback, CHANGE);
-  enableInterrupt(ENC_BL_PIN, incBLCallback, CHANGE);
+  enableInterrupt(ENC_FR_PIN, incFRCallback, FALLING);   //enables interrupts from Pin ENC_FR_PIN, when signal changes (CHANGE). And it call the function 'incFRCallback'
+  enableInterrupt(ENC_FL_PIN, incFLCallback, FALLING);
+  enableInterrupt(ENC_BR_PIN, incBRCallback, FALLING);
+  enableInterrupt(ENC_BL_PIN, incBLCallback, FALLING);
 }
 
 void Car::initRCInput() {
@@ -490,7 +489,7 @@ unsigned long Car::getEncoder_dTime_FL() {                               //(ADDE
 }                                                              //(ADDED BY TOMMI 7JULY2016)
 unsigned long Car::getEncoder_dTime_FR() {                               //(ADDED BY TOMMI 7JULY2016)
   return FR_DeltaTime;                                         //(ADDED BY TOMMI 7JULY2016)
-}                                                              //(ADDED BY TOMMI 7JULY2016)
+}                                                              //(ADDED BY TOMMI 7JULY2016)+
 unsigned long Car::getEncoder_dTime_BL() {                               //(ADDED BY TOMMI 7JULY2016)
   return BL_DeltaTime;                                         //(ADDED BY TOMMI 7JULY2016)
 }                                                              //(ADDED BY TOMMI 7JULY2016)
@@ -500,8 +499,9 @@ unsigned long Car::getEncoder_dTime_BR() {                               //(ADDE
 
 float Car::getVelocityEstimate() {
   if(FL_DeltaTime > 0 && FR_DeltaTime > 0) {
-    return 2.0*3.141593*0.036/4.0*(1.0/FL_DeltaTime + 1.0/FR_DeltaTime)*1000000.0/2.0;    // calculate current speed in m/s
-  }
+    return 2.0*3.141593*0.036/2.0*(1.0/FL_DeltaTime + 1.0/FR_DeltaTime)*1000000.0/2.0;    // calculate current speed in m/s
+    //return 1.0;  
+}
   else {
     return 0.0;
   }
