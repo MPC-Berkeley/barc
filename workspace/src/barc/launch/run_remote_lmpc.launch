@@ -22,14 +22,14 @@
         <param name="q_std" type="double" value="0.1" />
 
         <param name="psi_std" type="double" value="0.5" />
-        <param name="v_std" type="double" value="0.2" />
-        <param name="gps_std" type="double" value="0.5" />
+        <param name="v_std" type="double" value="0.5" />
+        <param name="gps_std" type="double" value="1.0" />
         <param name="ang_v_std" type="double" value="0.8" />
 
-        <param name="est_mode" type="double" value="4" />
+        <param name="est_mode" type="double" value="1" />
     </node>
 
-    <!-- MPC FOLLOW TRAJECTORY -->
+    <!-- MPC CONTROL -->
     <node machine="this-pc" pkg="barc" type="LMPC_node.jl" name="MPC" output="screen" />
 
     <!-- LOW LEVEL CONTROLLER -->
@@ -42,9 +42,8 @@
     </node>
 
     <!-- GPS -->
-    <node machine="odroid" pkg="marvelmind_indoor_gps" type="indoor_gps.py" name="indoor_gps" output="screen">
+    <node machine="odroid" pkg="marvelmind_nav" type="hedge_rcv_bin" name="indoor_gps" output="screen">
         <param name="port" value="/dev/ttyACM1" />
-        <param name="baud" value="115200" />
     </node>
 
     <!-- ARDUINO -->

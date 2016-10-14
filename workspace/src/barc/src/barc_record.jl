@@ -18,6 +18,7 @@ using RobotOS
 @rosimport data_service.msg: TimeData
 @rosimport geometry_msgs.msg: Vector3
 @rosimport sensor_msgs.msg: Imu
+@rosimport marvelmind_nav.msg: hedge_pos
 @rosimport std_msgs.msg: Float32
 rostypegen()
 using barc.msg
@@ -25,6 +26,7 @@ using data_service.msg
 using geometry_msgs.msg
 using sensor_msgs.msg
 using std_msgs.msg
+using marvelmind_nav.msg
 using JLD
 
 # This type contains measurement data (time, values and a counter)
@@ -80,11 +82,11 @@ function IMU_callback(msg::Imu)
     nothing
 end
 
-function GPS_callback(msg::Vector3)
+function GPS_callback(msg::hedge_pos)
     global gps_meas
     gps_meas.i += 1
     gps_meas.t[gps_meas.i]      = time()
-    gps_meas.z[gps_meas.i,:]    = [msg.x;msg.y]
+    gps_meas.z[gps_meas.i,:]    = [msg.x_m;msg.y_m]
     nothing
 end
 
@@ -109,7 +111,7 @@ function main()
     init_node("barc_record")
     s1  = Subscriber("ecu", ECU, ECU_callback, queue_size=1)
     s2  = Subscriber("imu/data", Imu, IMU_callback, queue_size=1)
-    s4  = Subscriber("indoor_gps", Vector3, GPS_callback, queue_size=1)
+    s4  = Subscriber("hedge_pos", hedge_pos, GPS_callback, queue_size=1)
     s5  = Subscriber("pos_info", pos_info, pos_info_callback, queue_size=1)
     s6  = Subscriber("vel_est", Float32Msg, vel_est_callback, queue_size=1)
 

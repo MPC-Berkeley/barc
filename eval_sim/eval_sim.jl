@@ -12,7 +12,7 @@ end
 
 
 const log_path          = "$(homedir())/simulations/output.jld"
-const log_path_record   = "$(homedir())/simulations/record-2016-10-13-18-28-41.jld"
+const log_path_record   = "$(homedir())/simulations/record-2016-10-14-09-22-12.jld"
 const log_path_LMPC     = "$(homedir())/simulations/output_LMPC.jld"
 const log_path_profile  = "$(homedir())/simulations/profile.jlprof"
 
@@ -64,7 +64,7 @@ function eval_sim()
     legend(["a_f","a_r"])
 
     figure()
-    plot(z.z[:,1],z.z[:,2],"-",gps_meas.z[:,1]/100,gps_meas.z[:,2]/100,".",pos_info.z[:,6],pos_info.z[:,7],"-")
+    plot(z.z[:,1],z.z[:,2],"-",gps_meas.z[:,1],gps_meas.z[:,2],".",pos_info.z[:,6],pos_info.z[:,7],"-")
     plot(track[:,1],track[:,2],"b.",track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")
     grid(1)
     title("x-y-view")
@@ -85,7 +85,7 @@ function eval_sim()
 
     figure()
     title("Comparison of x,y")
-    plot(z.t,z.z[:,1:2],pos_info.t,pos_info.z[:,6:7],"-*",gps_meas.t,gps_meas.z/100)
+    plot(z.t,z.z[:,1:2],pos_info.t,pos_info.z[:,6:7],"-*",gps_meas.t,gps_meas.z)
     legend(["real_x","real_y","est_x","est_y","meas_x","meas_x"])
     grid()
 

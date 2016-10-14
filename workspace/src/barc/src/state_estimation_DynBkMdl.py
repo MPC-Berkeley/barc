@@ -20,6 +20,7 @@ from Localization_helpers import Localization
 from barc.msg import ECU, Encoder, Z_DynBkMdl, pos_info
 from sensor_msgs.msg import Imu
 from geometry_msgs.msg import Vector3
+from marvelmind_nav.msg import hedge_pos
 from std_msgs.msg import Float32
 from numpy import pi, cos, sin, eye, array, zeros, diag, arctan, tan, size, sign
 from observers import kinematicLuembergerObserver, ekf
@@ -56,8 +57,8 @@ def ecu_callback(data):
 def gps_callback(data):
     # units: [rad] and [rad/s]
     global x_meas, y_meas
-    x_meas = data.x/100 # data is given in cm
-    y_meas = data.y/100
+    x_meas = data.x_m # data is given in cm
+    y_meas = data.y_m
 
 # imu measurement update
 def imu_callback(data):
@@ -101,7 +102,7 @@ def state_estimation():
     rospy.Subscriber('imu/data', Imu, imu_callback)
     rospy.Subscriber('vel_est', Float32, vel_est_callback)
     rospy.Subscriber('ecu', ECU, ecu_callback)
-    rospy.Subscriber('indoor_gps', Vector3, gps_callback)
+    rospy.Subscriber('hedge_pos', hedge_pos, gps_callback)
     state_pub_pos = rospy.Publisher('pos_info', pos_info, queue_size = 1)
     
     # get vehicle dimension parameters
@@ -212,7 +213,7 @@ def state_estimation():
         else:
             (z_EKF,P) = ekf(f_KinBkMdl, z_EKF, P, h_KinBkMdl, y, Q, R, args )
 
-        print("yaw = %f, psi = %f"%(yaw,psi_pred))
+        #print("yaw = %f, psi = %f"%(yaw,psi_pred))
         if abs(psi_pred-psi_prev) > 0.2:
             print("WAAAAAAAAAAAAARNING LARGE PSI DIFFERENCE!!!!!!!!!!!!!!!!!!!******************\n")
             print("*****************************************************************************\n")

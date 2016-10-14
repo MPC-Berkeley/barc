@@ -18,6 +18,7 @@ using RobotOS
 @rosimport data_service.msg: TimeData
 @rosimport geometry_msgs.msg: Vector3
 @rosimport sensor_msgs.msg: Imu
+@rosimport marvelmind_nav.msg: hedge_pos
 @rosimport std_msgs.msg: Float32
 rostypegen()
 using barc.msg
@@ -25,6 +26,7 @@ using data_service.msg
 using geometry_msgs.msg
 using sensor_msgs.msg
 using std_msgs.msg
+using marvelmind_nav.msg
 using JLD
 
 include("LMPC_lib/classes.jl")
@@ -71,7 +73,7 @@ function main()
     # initiate node, set up publisher / subscriber topics
     init_node("barc_sim")
     pub_enc = Publisher("encoder", Encoder, queue_size=1)
-    pub_gps = Publisher("indoor_gps", Vector3, queue_size=1)
+    pub_gps = Publisher("hedge_pos", hedge_pos, queue_size=1)
     pub_imu = Publisher("imu/data", Imu, queue_size=1)
     pub_vel = Publisher("vel_est", Float32Msg, queue_size=1)
 
@@ -139,7 +141,7 @@ function main()
         end
 
         # IMU measurements
-        imu_drift   = (t-t0)/100#sin(t/100*pi/2)     # drifts to 1 in 100 seconds
+        imu_drift   = 1+(t-t0)/100#sin(t/100*pi/2)     # drifts to 1 in 100 seconds (and add random start value 1)
         yaw         = z_current[i,5] + randn()*0.05 + imu_drift
         psiDot      = z_current[i,6] + 0.01*randn()
         imu_data.orientation = geometry_msgs.msg.Quaternion(cos(yaw/2), sin(yaw/2), 0, 0)
@@ -158,13 +160,13 @@ function main()
         end
 
         # GPS measurements
-        x = round(z_current[i,1]*100 + 1*randn()*2)       # Indoor gps measures in cm
-        y = round(z_current[i,2]*100 + 1*randn()*2)
-        if i % 7 == 0
+        x = round(z_current[i,1] + 0.01*randn()*2,2)       # Indoor gps measures in cm
+        y = round(z_current[i,2] + 0.01*randn()*2,2)
+        if i % 3 == 0
             gps_meas.i += 1
             gps_meas.t[gps_meas.i] = t
             gps_meas.z[gps_meas.i,:] = [x y]
-            gps_data = Vector3(x,y,0)
+            gps_data = hedge_pos(0,x,y,0,0)
             publish(pub_gps, gps_data)
         end
 

@@ -11,7 +11,7 @@ type Measurements{T}
 end
 
 
-const log_path          = "$(homedir())/simulations/record-2016-10-13-17-33-02.jld"
+const log_path          = "$(homedir())/simulations/record-2016-10-13-20-03-58.jld"
 const log_path_LMPC     = "$(homedir())/simulations/output_LMPC.jld"
 
 
@@ -38,13 +38,14 @@ function eval_run()
     imu_meas    = d["imu_meas"]
     gps_meas    = d["gps_meas"]
     cmd_log     = d["cmd_log"]
-    #pos_info    = d["pos_info"]
+    vel_est     = d["vel_est"]
+    pos_info    = d["pos_info"]
 
     t0 = pos_info.t[1]
     track = create_track(0.3)
 
     figure()
-    plot(gps_meas.z[:,1]/100,gps_meas.z[:,2]/100,".",pos_info.z[:,6],pos_info.z[:,7],"-")
+    plot(gps_meas.z[:,1],gps_meas.z[:,2],".",pos_info.z[:,6],pos_info.z[:,7],"-")
     plot(track[:,1],track[:,2],"b.",track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")
     grid(1)
     title("x-y-view")
@@ -52,7 +53,7 @@ function eval_run()
     legend(["GPS meas","estimate"])
     
     figure()
-    plot(gps_meas.t,gps_meas.z/100,"-*",pos_info.t,pos_info.z[:,6:7],"-o")
+    plot(gps_meas.t,gps_meas.z,"-*",pos_info.t,pos_info.z[:,6:7],"-o")
     grid(1)
     title("GPS comparison")
     legend(["x_meas","y_meas","x_est","y_est"])
@@ -71,8 +72,8 @@ function eval_run()
 
     figure()
     title("Comparison of v")
-    plot(pos_info.t,pos_info.z[:,8:9],"-*")
-    legend(["est_xDot","est_yDot"])
+    plot(pos_info.t,pos_info.z[:,8:9],"-*",vel_est.t,vel_est.z)
+    legend(["est_xDot","est_yDot","v_raw"])
     grid()
 
     figure()
