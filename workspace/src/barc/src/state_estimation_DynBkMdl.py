@@ -23,7 +23,7 @@ from geometry_msgs.msg import Vector3
 from std_msgs.msg import Float32
 from numpy import pi, cos, sin, eye, array, zeros, diag, arctan, tan, size, sign
 from observers import kinematicLuembergerObserver, ekf
-from system_models import f_KinBkMdl, h_KinBkMdl
+from system_models import f_KinBkMdl, h_KinBkMdl, f_KinBkMdl_psi_drift, h_KinBkMdl_psi_drift
 from tf import transformations
 from numpy import unwrap
 
@@ -33,28 +33,24 @@ FxR         = 0
 
 # raw measurement variables
 yaw_prev = 0
-(roll, pitch, yaw, a_x, a_y, a_z, w_x, w_y, w_z) = zeros(9)
-
-# from encoder
-v_x_enc     = 0
-t0          = time.time()
-n_FL        = 0                     # counts in the front left tire
-n_FR        = 0                     # counts in the front right tire
-n_FL_prev   = 0
-n_FR_prev   = 0
-r_tire      = 0.04                  # radius from tire center to perimeter along magnets [m]
-dx_qrt      = 2.0*pi*r_tire/4.0     # distance along quarter tire edge
+yaw0     = 0            # yaw at t = 0
+yaw      = 0
+(roll_meas, pitch_meas, yaw_meas, a_x, a_y, a_z, w_x, w_y, w_z) = zeros(9)
 
 x_meas      = 0
 y_meas      = 0
 
 vel_est     = 0
 
+running = False
+
 # ecu command update
 def ecu_callback(data):
-    global FxR, d_f
+    global FxR, d_f, running
     FxR         = data.motor        # input motor force [N]
     d_f         = data.servo        # input steering angle [rad]
+    if not running:                 # set 'running' to True once the first command is received -> here yaw is going to be set to zero
+        running = True
 
 # ultrasound gps data
 def gps_callback(data):
@@ -66,16 +62,23 @@ def gps_callback(data):
 # imu measurement update
 def imu_callback(data):
     # units: [rad] and [rad/s]
-    global roll, pitch, yaw, a_x, a_y, a_z, w_x, w_y, w_z
-    global yaw_prev
+    global roll_meas, pitch_meas, yaw_meas, a_x, a_y, a_z, w_x, w_y, w_z
+    global yaw_prev, yaw0, yaw
     
     # get orientation from quaternion data, and convert to roll, pitch, yaw
     # extract angular velocity and linear acceleration data
     ori  = data.orientation
     quaternion  = (ori.x, ori.y, ori.z, ori.w)
-    (roll, pitch, yaw) = transformations.euler_from_quaternion(quaternion)
-    yaw         = unwrap(array([yaw_prev, yaw]), discont = pi)[1]
-    yaw_prev    = yaw
+    (roll_meas, pitch_meas, yaw_meas) = transformations.euler_from_quaternion(quaternion)
+    # yaw_meas is element of [-pi,pi]
+    yaw = unwrap([yaw_prev,yaw_meas])[1]            # get smooth yaw (from beginning)
+    yaw_prev = yaw                                  # and always use raw measured yaw for unwrapping
+    # from this point on 'yaw' will be definitely unwrapped (smooth)!
+    if not running:
+        yaw0 = yaw              # set yaw0 to current yaw
+        yaw = 0                 # and current yaw to zero
+    else:
+        yaw = yaw - yaw0
     
     # extract angular velocity and linear acceleration data
     w_x = data.angular_velocity.x
@@ -115,26 +118,35 @@ def state_estimation():
     est_mode    = rospy.get_param("state_estimation_dynamic/est_mode")  # estimation mode
 
     # set node rate
-    loop_rate   = 50
+    loop_rate   = 25
     dt          = 1.0 / loop_rate
     rate        = rospy.Rate(loop_rate)
     t0          = time.time()
 
-    # estimation variables for Luemberger observer
-    z_EKF       = zeros(4)
+    # settings about psi estimation (use different models accordingly)
+    psi_drift_active = True
+    psi_drift = 0
 
-    # estimation variables for EKF
-    P           = eye(4)                # initial dynamics coveriance matrix
-    #Q           = (q_std**2)*eye(6)     # process noise coveriance matrixif est_mode==1:
-    Q           = diag([0.1,0.1,0.1,0.1])    # values derived from inspecting P matrix during Kalman filter running
+    if psi_drift_active:
+        z_EKF       = zeros(5)
+        P           = eye(5)                # initial dynamics coveriance matrix
+        Q           = diag([5.0,5.0,5.0,10.0,1.0])*dt
+    else:
+        z_EKF       = zeros(4)
+        P           = eye(4)                # initial dynamics coveriance matrix
+        Q           = diag([5.0,5.0,5.0,5.0])*dt
 
     if est_mode==1:                                     # use gps, IMU, and encoder
+        print("Using GPS, IMU and encoders.")
         R = diag([gps_std,gps_std,psi_std,v_std])**2
     elif est_mode==2:                                   # use IMU and encoder only
+        print("Using IMU and encoders.")
         R = diag([psi_std,v_std])**2
     elif est_mode==3:                                   # use gps only
+        print("Using GPS.")
         R = (gps_std**2)*eye(2)
     elif est_mode==4:                                   # use gps and encoder
+        print("Using GPS and encoders.")
         R = diag([gps_std,gps_std,v_std])**2
     else:
         rospy.logerr("No estimation mode selected.")
@@ -145,9 +157,14 @@ def state_estimation():
     l.prepare_trajectory(0.06)
 
     w_z_f = 0         # filtered w_z (= angular velocity psiDot)
+    psi_prev = 0        # for debugging
+
     while not rospy.is_shutdown():
         # publish state estimate
-        (x,y,psi,v) = z_EKF           # note, r = EKF estimate yaw rate
+        if psi_drift_active:
+            (x,y,psi,v,psi_drift) = z_EKF           # note, r = EKF estimate yaw rate
+        else:
+            (x,y,psi,v) = z_EKF           # note, r = EKF estimate yaw rate
 
         # use Kalman values to predict state in 0.1s
         dt_pred = 0.0
@@ -174,15 +191,14 @@ def state_estimation():
         # get measurement
         if est_mode==1:
             y = array([x_meas,y_meas,yaw,vel_est])
-        if est_mode==2:
+        elif est_mode==2:
             y = array([yaw,vel_est])
-        if est_mode==3:
+        elif est_mode==3:
             y = array([x_meas,y_meas])
         elif est_mode==4:
             y = array([x_meas,y_meas,vel_est])
         else:
             print("Wrong estimation mode specified.")
-
 
         # define input
         u       = array([ d_f, FxR ])
@@ -191,7 +207,16 @@ def state_estimation():
         args    = (u, vhMdl, dt, est_mode)
 
         # apply EKF and get each state estimate
-        (z_EKF,P) = ekf(f_KinBkMdl, z_EKF, P, h_KinBkMdl, y, Q, R, args )
+        if psi_drift_active:
+            (z_EKF,P) = ekf(f_KinBkMdl_psi_drift, z_EKF, P, h_KinBkMdl_psi_drift, y, Q, R, args )
+        else:
+            (z_EKF,P) = ekf(f_KinBkMdl, z_EKF, P, h_KinBkMdl, y, Q, R, args )
+
+        print("yaw = %f, psi = %f"%(yaw,psi_pred))
+        if abs(psi_pred-psi_prev) > 0.2:
+            print("WAAAAAAAAAAAAARNING LARGE PSI DIFFERENCE!!!!!!!!!!!!!!!!!!!******************\n")
+            print("*****************************************************************************\n")
+        psi_prev = psi_pred
         # wait
         rate.sleep()
 

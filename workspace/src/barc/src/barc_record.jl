@@ -24,6 +24,7 @@ using barc.msg
 using data_service.msg
 using geometry_msgs.msg
 using sensor_msgs.msg
+using std_msgs.msg
 using JLD
 
 # This type contains measurement data (time, values and a counter)

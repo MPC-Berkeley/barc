@@ -17,177 +17,6 @@ from numpy import sin, cos, tan, arctan, array, dot
 from numpy import sign, argmin, sqrt
 import rospy
 
-# discrete non-linear bicycle model dynamics
-def f_2s(z, u, vhMdl, trMdl, dt, v_x): 
-    """
-    process model
-    input: state z at time k, z[k] := [beta[k], r[k]], (i.e. slip angle and yaw rate)
-    output: state at next time step (k+1)
-    """
-    
-    # get states / inputs
-    beta    = z[0]
-    r       = z[1]
-    d_f     = u
-    
-    # extract parameters
-    (a,b,m,I_z) = vhMdl
-    (trMdlFront, trMdlRear) = trMdl
-
-    # comptue the front/rear slip  [rad/s]
-    # ref: Hindiyeh Thesis, p58
-    a_F     = arctan(beta + a*r/v_x) - d_f
-    a_R     = arctan(beta - b*r/v_x)
-
-    # compute tire force
-    FyF     = f_pacejka(trMdlFront, a_F)
-    FyR     = f_pacejka(trMdlRear, a_R)
-
-    # compute next state
-    beta_next   = beta  + dt*(-r + (1/(m*v_x))*(FyF*cos(d_f)+FyR))
-    r_next      = r    + dt/I_z*(a*FyF*cos(d_f) - b*FyR);
-    return array([beta_next, r_next])
-
-# discrete non-linear bicycle model dynamics
-def f_3s(z, u, vhMdl, trMdl, F_ext, dt): 
-    """
-    process model
-    input: state z at time k, z[k] := [v_x[k], v_y[k], r[k]])
-    output: state at next time step z[k+1]
-    """
-    
-    # get states / inputs
-    v_x     = z[0]
-    v_y     = z[1]
-    r       = z[2]
-    d_f     = u[0]
-    FxR     = u[1]
-
-    # extract parameters
-    (a,b,m,I_z)             = vhMdl
-    (a0, Ff)                = F_ext
-    (trMdlFront, trMdlRear) = trMdl
-    (B,C,mu)                = trMdlFront
-    g                       = 9.81
-    Fn                      = m*g/2.0         # assuming a = b (i.e. distance from CoG to either axel)
-
-    # limit force to tire friction circle
-    if FxR >= mu*Fn:
-        FxR = mu*Fn
-
-    # comptue the front/rear slip  [rad/s]
-    # ref: Hindiyeh Thesis, p58
-    a_F     = arctan((v_y + a*r)/v_x) - d_f
-    a_R     = arctan((v_y - b*r)/v_x)
-
-    # compute lateral tire force at the front
-    TM_param    = [B, C, mu*Fn]
-    FyF         = -f_pacejka(TM_param, a_F)
-
-    # compute lateral tire force at the rear
-    # ensure that magnitude of longitudinal/lateral force lie within friction circle
-    FyR_paj     = -f_pacejka(TM_param, a_R)
-    FyR_max     = sqrt((mu*Fn)**2 - FxR**2)
-    FyR         = min(FyR_max, max(-FyR_max, FyR_paj))
-
-    # compute next state
-    v_x_next    = v_x + dt*(r*v_y +1/m*(FxR - FyF*sin(d_f)) - a0*v_x**2 - Ff)
-    v_y_next    = v_y + dt*(-r*v_x +1/m*(FyF*cos(d_f) + FyR))
-    r_next      = r    + dt/I_z*(a*FyF*cos(d_f) - b*FyR)
-
-    return array([v_x_next, v_y_next, r_next])
-
-# discrete non-linear bicycle model dynamics 6-dof
-def f_6s(z, u, vhMdl, trMdl, F_ext, dt): 
-    """
-    process model
-    input: state z at time k, z[k] := [X[k], Y[k], phi[k], v_x[k], v_y[k], r[k]])
-    output: state at next time step z[k+1]
-    """
-    
-    # get states / inputs
-    X       = z[0]
-    Y       = z[1]
-    phi     = z[2]
-    v_x     = z[3]
-    v_y     = z[4]
-    r       = z[5]
-
-    d_f     = u[0]
-    FxR     = u[1]
-
-    # extract parameters
-    (a,b,m,I_z)             = vhMdl
-    (a0, Ff)                = F_ext
-    (trMdlFront, trMdlRear) = trMdl
-    (B,C,mu)                = trMdlFront
-    g                       = 9.81
-    Fn                      = m*g/2.0         # assuming a = b (i.e. distance from CoG to either axel)
-
-    # limit force to tire friction circle
-    if FxR >= mu*Fn:
-        FxR = mu*Fn
-
-    # comptue the front/rear slip  [rad/s]
-    # ref: Hindiyeh Thesis, p58
-    a_F     = arctan((v_y + a*r)/v_x) - d_f
-    a_R     = arctan((v_y - b*r)/v_x)
-
-    # compute lateral tire force at the front
-    TM_param    = [B, C, mu*Fn]
-    FyF         = -f_pacejka(TM_param, a_F)
-
-    # compute lateral tire force at the rear
-    # ensure that magnitude of longitudinal/lateral force lie within friction circle
-    FyR_paj     = -f_pacejka(TM_param, a_R)
-    FyR_max     = sqrt((mu*Fn)**2 - FxR**2)
-    Fy          = array([FyR_max, FyR_paj])
-    idx         = argmin(abs(Fy))
-    FyR         = Fy[idx]
-
-    # compute next state
-    X_next      = X + dt*(v_x*cos(phi) - v_y*sin(phi))
-    Y_next      = Y + dt*(v_x*sin(phi) + v_y*cos(phi))
-    phi_next    = phi + dt*r
-    v_x_next    = v_x + dt*(r*v_y +1/m*(FxR - FyF*sin(d_f)) - a0*v_x**2 - Ff)
-    v_y_next    = v_y + dt*(-r*v_x +1/m*(FyF*cos(d_f) + FyR))
-    r_next      = r    + dt/I_z*(a*FyF*cos(d_f) - b*FyR)
-
-    return array([X_next, Y_next, phi_next, v_x_next, v_y_next, r_next])
-
-def h_2s(x):
-    """
-    measurement model
-    state: z := [beta, r], (i.e. slip angle and yaw rate)
-    output h := r (yaw rate)
-    """
-    C = array([[0, 1]])
-    return dot(C, x)
-
-def h_3s(x):
-    """
-    measurement model
-    input   := state z at time k, z[k] := [v_x[k], v_y[k], r[k]])
-    output  := [v_x, r] (yaw rate)
-    """
-    C = array([[1, 0, 0],
-               [0, 0, 1]])
-    return dot(C, x)
-
-def f_pacejka(trMdl, alpha):
-    """
-    f_pacejka = d*sin(c*atan(b*alpha))
-    
-    inputs :
-        * trMdl := tire model, a list or tuple of parameters (b,c,d)
-        * alpha := tire slip angle [radians]
-    outputs :
-        * Fy := lateral force from tire [Newtons]
-    """
-    (b,c,d) = trMdl
-    return  d*sin(c*arctan(b*alpha))
-
-
 def f_KinBkMdl(z,u,vhMdl, dt, est_mode):
     """
     process model
@@ -218,6 +47,40 @@ def f_KinBkMdl(z,u,vhMdl, dt, est_mode):
     v_next      = v + dt*(a - 0.63*sign(v)*v**2)
 
     return array([x_next, y_next, psi_next, v_next])
+
+def f_KinBkMdl_psi_drift(z,u,vhMdl, dt, est_mode):
+    """
+    process model
+    input: state z at time k, z[k] := [x[k], y[k], psi[k], v[k]]
+    output: state at next time step z[k+1]
+    """
+    #c = array([0.5431, 1.2767, 2.1516, -2.4169])
+
+    # get states / inputs
+    x       = z[0]
+    y       = z[1]
+    psi     = z[2]
+    v       = z[3]
+    psi_drift = z[4]
+
+    d_f     = u[0]
+    a       = u[1]
+
+    # extract parameters
+    (L_a, L_b)             = vhMdl
+
+    # compute slip angle
+    bta         = arctan( L_a / (L_a + L_b) * tan(d_f) )
+
+    # compute next state
+    x_next      = x + dt*( v*cos(psi + bta) )
+    y_next      = y + dt*( v*sin(psi + bta) )
+    psi_next    = psi + dt*v/L_b*sin(bta)
+    v_next      = v + dt*(a - 0.63*sign(v)*v**2)
+    psi_drift_next = psi_drift
+
+    return array([x_next, y_next, psi_next, v_next, psi_drift_next])
+
 
 def f_KinBkMdl_predictive(z,u,vhMdl, dt, est_mode):
     """
@@ -261,15 +124,6 @@ def f_KinBkMdl_predictive(z,u,vhMdl, dt, est_mode):
 
     return array([x_next, y_next, psi_next, v_next, x_next_pred, y_next_pred, psi_next_pred, v_next_pred])
 
-def h_DynBkMdl(x):
-    # For GPS only:
-    C = array([[1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-               [0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-               [0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0],
-               [0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-               [0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0]])
-    return dot(C, x)
-
 def h_KinBkMdl(x, u, vhMdl, dt, est_mode):
     """
     measurement model
@@ -289,6 +143,29 @@ def h_KinBkMdl(x, u, vhMdl, dt, est_mode):
         C = array([[1, 0, 0, 0],
                    [0, 1, 0, 0],
                    [0, 0, 0, 1]])
+    else:
+        print("Wrong est_mode")
+    return dot(C, x)
+
+def h_KinBkMdl_psi_drift(x, u, vhMdl, dt, est_mode):
+    """
+    measurement model
+    """
+    if est_mode==1:                     # GPS, IMU, Enc
+        C = array([[1, 0, 0, 0, 0],
+                   [0, 1, 0, 0, 0],
+                   [0, 0, 1, 0, 1],
+                   [0, 0, 0, 1, 0]])
+    elif est_mode==2:                     # IMU, Enc
+        C = array([[0, 0, 1, 0, 1],
+                   [0, 0, 0, 1, 0]])
+    elif est_mode==3:                     # GPS
+        C = array([[1, 0, 0, 0, 0],
+                   [0, 1, 0, 0, 0]])
+    elif est_mode==4:                     # GPS, Enc
+        C = array([[1, 0, 0, 0, 0],
+                   [0, 1, 0, 0, 0],
+                   [0, 0, 0, 1, 0]])
     else:
         print("Wrong est_mode")
     return dot(C, x)

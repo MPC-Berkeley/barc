@@ -12,6 +12,7 @@ end
 
 
 const log_path          = "$(homedir())/simulations/output.jld"
+const log_path_record   = "$(homedir())/simulations/record-2016-10-13-18-28-41.jld"
 const log_path_LMPC     = "$(homedir())/simulations/output_LMPC.jld"
 const log_path_profile  = "$(homedir())/simulations/profile.jlprof"
 
@@ -35,15 +36,17 @@ end
 
 function eval_sim()
     d = load(log_path)
+    d2 = load(log_path_record)
 
-    est_dyn     = d["estimate_dyn"]
     imu_meas    = d["imu_meas"]
     gps_meas    = d["gps_meas"]
     z           = d["z"]
     cmd_log     = d["cmd_log"]
     slip_a      = d["slip_a"]
+    pos_info    = d2["pos_info"]
+    vel_est     = d2["vel_est"]
 
-    t0 = est_dyn.t[1]
+    t0 = pos_info.t[1]
     track = create_track(0.3)
 
     figure()
@@ -61,7 +64,7 @@ function eval_sim()
     legend(["a_f","a_r"])
 
     figure()
-    plot(z.z[:,1],z.z[:,2],"-",gps_meas.z[:,1]/100,gps_meas.z[:,2]/100,".",est_dyn.z[:,1],est_dyn.z[:,2],"-")
+    plot(z.z[:,1],z.z[:,2],"-",gps_meas.z[:,1]/100,gps_meas.z[:,2]/100,".",pos_info.z[:,6],pos_info.z[:,7],"-")
     plot(track[:,1],track[:,2],"b.",track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")
     grid(1)
     title("x-y-view")
@@ -70,20 +73,20 @@ function eval_sim()
     
     figure()
     title("Comparison of psi")
-    plot(imu_meas.t,imu_meas.z,"-x",z.t,z.z[:,5:6],est_dyn.t,est_dyn.z[:,5:6],"-*")
+    plot(imu_meas.t,imu_meas.z,"-x",z.t,z.z[:,5:6],pos_info.t,pos_info.z[:,10:11],"-*")
     legend(["imu_psi","imu_psi_dot","real_psi","real_psi_dot","est_psi","est_psi_dot"])
     grid()
 
     figure()
     title("Comparison of v")
-    plot(z.t,z.z[:,3:4],est_dyn.t,est_dyn.z[:,3:4],"-*")
-    legend(["real_xDot","real_yDot","est_xDot","est_yDot"])
+    plot(z.t,z.z[:,3:4],pos_info.t,pos_info.z[:,8:9],"-*",vel_est.t,vel_est.z)
+    legend(["real_xDot","real_yDot","est_xDot","est_yDot","v_x_meas"])
     grid()
 
     figure()
     title("Comparison of x,y")
-    plot(z.t,z.z[:,1:2],est_dyn.t,est_dyn.z[:,1:2],"-*")
-    legend(["real_x","real_y","est_x","est_y"])
+    plot(z.t,z.z[:,1:2],pos_info.t,pos_info.z[:,6:7],"-*",gps_meas.t,gps_meas.z/100)
+    legend(["real_x","real_y","est_x","est_y","meas_x","meas_x"])
     grid()
 
     #figure()

@@ -11,7 +11,7 @@ type Measurements{T}
 end
 
 
-const log_path          = "$(homedir())/simulations/record-2016-10-12-09-32-21.jld"
+const log_path          = "$(homedir())/simulations/record-2016-10-13-17-33-02.jld"
 const log_path_LMPC     = "$(homedir())/simulations/output_LMPC.jld"
 
 
@@ -38,7 +38,7 @@ function eval_run()
     imu_meas    = d["imu_meas"]
     gps_meas    = d["gps_meas"]
     cmd_log     = d["cmd_log"]
-    pos_info    = d["pos_info"]
+    #pos_info    = d["pos_info"]
 
     t0 = pos_info.t[1]
     track = create_track(0.3)

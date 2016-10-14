@@ -16,11 +16,11 @@
         <param name="q_std" type="double" value="0.1" />
 
         <param name="psi_std" type="double" value="0.5" />
-        <param name="v_std" type="double" value="0.2" />
+        <param name="v_std" type="double" value="0.5" />
         <param name="gps_std" type="double" value="0.8" />
         <param name="ang_v_std" type="double" value="0.8" />
 
-        <param name="est_mode" type="double" value="4" />
+        <param name="est_mode" type="double" value="1" />
     </node>
 
     <!-- LOW LEVEL CONTROLLER -->
@@ -29,5 +29,7 @@
     <!-- MPC FOLLOW TRAJECTORY -->
     <node pkg="barc" type="LMPC_node.jl" name="MPC" output="screen" />
 
+    <!-- Record -->
+    <node pkg="barc" type="barc_record.jl" name="barc_record" output="screen" />
 
 </launch>
