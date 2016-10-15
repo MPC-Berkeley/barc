@@ -32,10 +32,6 @@ using JLD
 include("LMPC_lib/classes.jl")
 include("LMPC_lib/simModel.jl")
 
-u_current = zeros(Float64,2)      # msg ECU is Float32 !
-
-t = 0
-
 # This type contains measurement data (time, values and a counter)
 type Measurements{T}
     i::Int64          # measurement counter
@@ -49,35 +45,36 @@ function clean_up(m::Measurements)
     m.z = m.z[1:m.i-1,:]
 end
 
-buffersize = 60000
-gps_meas = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,2))
-imu_meas = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,2))
-cmd_log  = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,2))
-z_real   = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,8))
-slip_a   = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,2))
-
-z_real.t[1]   = time()
-slip_a.t[1]   = time()
-imu_meas.t[1] = time()
-cmd_log.t[1]  = time()
-
-function ECU_callback(msg::ECU)
-    global u_current
-    u_current = convert(Array{Float64,1},[msg.motor, msg.servo])
+function ECU_callback(msg::ECU,u_current::Array{Float64},cmd_log::Measurements)
+    u_current[:] = convert(Array{Float64,1},[msg.motor, msg.servo])
     cmd_log.i += 1
     cmd_log.t[cmd_log.i] = time()
     cmd_log.z[cmd_log.i,:] = u_current
 end
 
 function main() 
+    u_current = zeros(Float64,2)      # msg ECU is Float32 !
+
+    buffersize = 60000
+    gps_meas = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,2))
+    imu_meas = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,2))
+    cmd_log  = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,2))
+    z_real   = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,8))
+    slip_a   = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,2))
+
+    z_real.t[1]   = time()
+    slip_a.t[1]   = time()
+    imu_meas.t[1] = time()
+    cmd_log.t[1]  = time()
+
     # initiate node, set up publisher / subscriber topics
     init_node("barc_sim")
-    pub_enc = Publisher("encoder", Encoder, queue_size=1)
-    pub_gps = Publisher("hedge_pos", hedge_pos, queue_size=1)
-    pub_imu = Publisher("imu/data", Imu, queue_size=1)
-    pub_vel = Publisher("vel_est", Float32Msg, queue_size=1)
+    #pub_enc = Publisher("encoder", Encoder, queue_size=1)::RobotOS.Publisher{barc.msg.Encoder}
+    pub_gps = Publisher("hedge_pos", hedge_pos, queue_size=1)::RobotOS.Publisher{marvelmind_nav.msg.hedge_pos}
+    pub_imu = Publisher("imu/data", Imu, queue_size=1)::RobotOS.Publisher{sensor_msgs.msg.Imu}
+    pub_vel = Publisher("vel_est", Float32Msg, queue_size=1)::RobotOS.Publisher{std_msgs.msg.Float32Msg}
 
-    s1  = Subscriber("ecu", ECU, ECU_callback, queue_size=1)
+    s1  = Subscriber("ecu", ECU, ECU_callback, (u_current,cmd_log,), queue_size=1)::RobotOS.Subscriber{barc.msg.ECU}
 
     z_current = zeros(60000,8)
     z_current[1,:] = [0.1 0.0 0.0 0.0 0.0 0.0 0.0 0.0]
@@ -88,8 +85,8 @@ function main()
 
     i = 2
 
-    dist_traveled = 0
-    last_updated  = 0
+    dist_traveled = 0.0
+    last_updated  = 0.0
 
     r_tire      = 0.036                  # radius from tire center to perimeter along magnets [m]
     quarterCirc = 0.5 * pi * r_tire      # length of a quarter of a tire, distance from one to the next encoder
@@ -114,8 +111,9 @@ function main()
 
     println("Publishing sensor information. Simulator running.")
     imu_data    = Imu()
-    vel_est = Float32Msg()
-    t0 = time()
+    vel_est     = Float32Msg()
+    t0          = time()
+    t           = 0.0
     while ! is_shutdown()
 
         t = time()
@@ -129,16 +127,16 @@ function main()
         slip_a.t[i]     = t
 
         # Encoder measurements calculation
-        dist_traveled += z_current[i,3]*dt #count the total traveled distance since the beginning of the simulation
-        if dist_traveled - last_updated >= quarterCirc
-            last_updated = dist_traveled
-            FL += 1
-            FR += 1
-            BL += 1
-            BR += 0 #no encoder on back right wheel
-            enc_data = Encoder(FL, FR, BL, BR)
-            publish(pub_enc, enc_data) #publish a message everytime the encoder counts up
-        end
+        # dist_traveled += z_current[i,3]*dt #count the total traveled distance since the beginning of the simulation
+        # if dist_traveled - last_updated >= quarterCirc
+        #     last_updated = dist_traveled
+        #     FL += 1
+        #     FR += 1
+        #     BL += 1
+        #     BR += 0 #no encoder on back right wheel
+        #     enc_data = Encoder(FL, FR, BL, BR)
+        #     publish(pub_enc, enc_data) #publish a message everytime the encoder counts up
+        # end
 
         # IMU measurements
         imu_drift   = 1+(t-t0)/100#sin(t/100*pi/2)     # drifts to 1 in 100 seconds (and add random start value 1)

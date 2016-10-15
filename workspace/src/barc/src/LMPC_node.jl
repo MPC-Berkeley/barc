@@ -86,9 +86,9 @@ function main()
     # Initialize ROS node and topics
     init_node("mpc_traj")
     loop_rate = Rate(10)
-    pub                         = Publisher("ecu", ECU, queue_size=1)
+    pub                         = Publisher("ecu", ECU, queue_size=1)::RobotOS.Publisher{barc.msg.ECU}
     # The subscriber passes arguments (s_start, coeffCurvature and z_est) which are updated by the callback function:
-    s1                          = Subscriber("pos_info", pos_info, SE_callback, (s_start_update,coeffCurvature_update,z_est,x_est,coeffX,coeffY,),queue_size=1)
+    s1                          = Subscriber("pos_info", pos_info, SE_callback, (s_start_update,coeffCurvature_update,z_est,x_est,coeffX,coeffY,),queue_size=1)::RobotOS.Subscriber{barc.msg.pos_info}
 
     println("Finished initialization.")
     # Lap parameters
@@ -126,8 +126,8 @@ function main()
             # ============================= PUBLISH COMMANDS =============================
             # this is done at the beginning of the lap because this makes sure that the command is published 0.1s after the state has been received
             # the state is predicted by 0.1s
-            cmd.motor = mpcSol.a_x
-            cmd.servo = mpcSol.d_f
+            cmd.motor = convert(Float32,mpcSol.a_x)
+            cmd.servo = convert(Float32,mpcSol.d_f)
             publish(pub, cmd)        
 
             # ============================= Initialize iteration parameters =============================

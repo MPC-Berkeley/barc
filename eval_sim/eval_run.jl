@@ -1,6 +1,17 @@
 using JLD
 using PyPlot
 using HDF5, JLD, ProfileView
+# pos_info[1]  = s
+# pos_info[2]  = eY
+# pos_info[3]  = ePsi
+# pos_info[4]  = v
+# pos_info[5]  = s_start
+# pos_info[6]  = x
+# pos_info[7]  = y
+# pos_info[8]  = v_x
+# pos_info[9]  = v_y
+# pos_info[10] = psi
+# pos_info[11] = psiDot
 
 include("../workspace/src/barc/src/LMPC_lib/classes.jl")
 
@@ -11,7 +22,7 @@ type Measurements{T}
 end
 
 
-const log_path          = "$(homedir())/simulations/record-2016-10-13-20-03-58.jld"
+#const log_path          = "$(homedir())/simulations/record-2016-10-13-20-03-58.jld"
 const log_path_LMPC     = "$(homedir())/simulations/output_LMPC.jld"
 
 
@@ -32,7 +43,7 @@ function simModel(z,u,dt,l_A,l_B)
     return zNext
 end
 
-function eval_run()
+function eval_run(log_path)
     d = load(log_path)
 
     imu_meas    = d["imu_meas"]
@@ -45,7 +56,7 @@ function eval_run()
     track = create_track(0.3)
 
     figure()
-    plot(gps_meas.z[:,1],gps_meas.z[:,2],".",pos_info.z[:,6],pos_info.z[:,7],"-")
+    plot(gps_meas.z[:,1],gps_meas.z[:,2],"-.",pos_info.z[:,6],pos_info.z[:,7],"-*")
     plot(track[:,1],track[:,2],"b.",track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")
     grid(1)
     title("x-y-view")
@@ -53,44 +64,41 @@ function eval_run()
     legend(["GPS meas","estimate"])
     
     figure()
-    plot(gps_meas.t,gps_meas.z,"-*",pos_info.t,pos_info.z[:,6:7],"-o")
+    title("x/y measurements and estimate")
+    plot(gps_meas.t-t0,gps_meas.z,"-*",pos_info.t-t0,pos_info.z[:,6:7],"-x")
     grid(1)
     title("GPS comparison")
     legend(["x_meas","y_meas","x_est","y_est"])
 
     figure()
     title("Comparison of psi")
-    plot(imu_meas.t,imu_meas.z[:,6],imu_meas.t,imu_meas.z[:,3],"-x",pos_info.t,pos_info.z[:,10:11],"-*")
+    plot(imu_meas.t-t0,imu_meas.z[:,6],imu_meas.t-t0,imu_meas.z[:,3],"-x",pos_info.t-t0,pos_info.z[:,10:11],"-*")
     legend(["imu_psi","imu_psi_dot","est_psi","est_psi_dot"])
     grid()
 
     figure()
     title("Raw IMU orientation data")
-    plot(imu_meas.t,imu_meas.z[:,1:3],"--",imu_meas.t,imu_meas.z[:,4:6])
+    plot(imu_meas.t-t0,imu_meas.z[:,1:3],"--",imu_meas.t-t0,imu_meas.z[:,4:6])
     grid("on")
     legend(["w_x","w_y","w_z","roll","pitch","yaw"])
 
     figure()
-    title("Comparison of v")
-    plot(pos_info.t,pos_info.z[:,8:9],"-*",vel_est.t,vel_est.z)
+    title("v measurements and estimate")
+    plot(pos_info.t-t0,pos_info.z[:,8:9],"-*",vel_est.t-t0,vel_est.z)
     legend(["est_xDot","est_yDot","v_raw"])
     grid()
 
     figure()
-    subplot(211)
-    plot(pos_info.t,pos_info.z[:,6:7])
+    title("s, eY and inputs")
+    ax1=subplot(211)
+    plot(pos_info.t-t0,pos_info.z[:,2:3],"-*")
     grid("on")
-    legend(["x","y"])
-    subplot(212)
-    plot(cmd_log.t,cmd_log.z)
+    legend(["eY","ePsi"])
+    subplot(212,sharex=ax1)
+    plot(cmd_log.t-t0,cmd_log.z,"-*")
     grid("on")
     legend(["u","d_f"])
-    
-
-    figure()
-    plot(cmd_log.t-t0,cmd_log.z)
-    legend(["a","d_f"])
-    grid()
+    nothing
 end
 
 function eval_LMPC()
