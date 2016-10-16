@@ -29,9 +29,7 @@
     </node>
 
     <!-- GPS -->
-    <nodepkg="marvelmind_nav" type="hedge_rcv_bin" name="indoor_gps" output="screen">
-        <param name="port" value="/dev/ttyACM1" />
-    </node>
+    <nodepkg="marvelmind_nav" type="hedge_rcv_bin" name="indoor_gps" args="/dev/ttyACM1" output="screen"/>
 
     <!-- ARDUINO -->
     <!--  * encoders and ultrasound sensors -->

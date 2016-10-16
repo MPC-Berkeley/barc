@@ -34,10 +34,8 @@
     </node>
 
     <!-- GPS -->
-    <node machine="odroid" pkg="marvelmind_nav" type="hedge_rcv_bin" name="indoor_gps" output="screen">
-        <param name="port" value="/dev/ttyACM1" />
-    </node>
-
+    <node machine="odroid" pkg="marvelmind_nav" type="hedge_rcv_bin" name="indoor_gps" args="/dev/ttyACM1"/>
+    
     <!-- ARDUINO -->
     <!--  * encoders and ultrasound sensors -->
     <node machine="odroid" pkg="rosserial_python" type="serial_node.py" name="arduino_node" >

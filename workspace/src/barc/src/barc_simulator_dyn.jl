@@ -114,60 +114,61 @@ function main()
     vel_est     = Float32Msg()
     t0          = time()
     t           = 0.0
+
+    sim_gps_interrupt   = 0                 # counter if gps interruption is simulated
+    vel_pos             = zeros(2)          # position when velocity was updated last time
+    vel_dist_update     = 2*pi*0.036/2      # distance to travel until velocity is updated (half wheel rotation)
     while ! is_shutdown()
 
         t = time()
         # update current state with a new row vector
         z_current[i,:],slip_ang[i,:]  = simDynModel_exact_xy(z_current[i-1,:],u_current', dt, modelParams)
-        #println("z_current:")
-        #println(z_current[i,:])
-        #println(slip_ang[i,:])
-
         z_real.t[i]     = t
         slip_a.t[i]     = t
 
-        # Encoder measurements calculation
-        # dist_traveled += z_current[i,3]*dt #count the total traveled distance since the beginning of the simulation
-        # if dist_traveled - last_updated >= quarterCirc
-        #     last_updated = dist_traveled
-        #     FL += 1
-        #     FR += 1
-        #     BL += 1
-        #     BR += 0 #no encoder on back right wheel
-        #     enc_data = Encoder(FL, FR, BL, BR)
-        #     publish(pub_enc, enc_data) #publish a message everytime the encoder counts up
-        # end
-
         # IMU measurements
-        imu_drift   = 1+(t-t0)/100#sin(t/100*pi/2)     # drifts to 1 in 100 seconds (and add random start value 1)
-        yaw         = z_current[i,5] + randn()*0.05 + imu_drift
-        psiDot      = z_current[i,6] + 0.01*randn()
-        imu_data.orientation = geometry_msgs.msg.Quaternion(cos(yaw/2), sin(yaw/2), 0, 0)
-        imu_data.angular_velocity = Vector3(0,0,psiDot)
-
-        # Velocity measurement
-        vel_est.data = convert(Float32,norm(z_current[i,3:4])+0.01*randn())
-        if i%2 == 0
+        if i%2 == 0                 # 50 Hz
+            imu_drift   = 1+(t-t0)/100#sin(t/100*pi/2)     # drifts to 1 in 100 seconds (and add random start value 1)
+            yaw         = z_current[i,5] + randn()*0.02 + imu_drift
+            psiDot      = z_current[i,6] + 0.01*randn()
             imu_meas.i += 1
             imu_meas.t[imu_meas.i] = t
             imu_meas.z[imu_meas.i,:] = [yaw psiDot]
+            imu_data.orientation = geometry_msgs.msg.Quaternion(cos(yaw/2), sin(yaw/2), 0, 0)
+            imu_data.angular_velocity = Vector3(0,0,psiDot)
             publish(pub_imu, imu_data)      # Imu format is defined by ROS, you can look it up by google "rosmsg Imu"
                                             # It's sufficient to only fill the orientation part of the Imu-type (with one quaternion)
-            publish(pub_vel, vel_est)
+        end
 
+        # Velocity measurements
+        if i%5 == 0                 # 20 Hz
+            if norm(z_current[i,1:2][:]-vel_pos) > vel_dist_update     # only update if a magnet has passed the sensor
+                vel_est.data = convert(Float32,norm(z_current[i,3:4])+0.01*randn())
+                vel_pos = z_current[i,1:2][:]
+            end
+            publish(pub_vel, vel_est)
         end
 
         # GPS measurements
-        x = round(z_current[i,1] + 0.01*randn()*2,2)       # Indoor gps measures in cm
-        y = round(z_current[i,2] + 0.01*randn()*2,2)
-        if i % 3 == 0
-            gps_meas.i += 1
-            gps_meas.t[gps_meas.i] = t
-            gps_meas.z[gps_meas.i,:] = [x y]
-            gps_data = hedge_pos(0,x,y,0,0)
-            publish(pub_gps, gps_data)
+        if i % 4 == 0               # 25 Hz
+            x = round(z_current[i,1] + 0.02*randn(),2)       # Indoor gps measures, rounded on cm
+            y = round(z_current[i,2] + 0.02*randn(),2)
+            if randn()>3            # simulate gps-outlier (probability about 0.13% for randn()>3, )
+                x += randn()        # add random value to x and y
+                y += randn()
+                sim_gps_interrupt = 4       # also do a little interruption
+            elseif randn()>3 && sim_gps_interrupt < 0
+                sim_gps_interrupt = 10      # simulate gps-interrupt (10 steps at 25 Hz is 0.4 seconds)
+            end
+            if sim_gps_interrupt < 0
+                gps_meas.i += 1
+                gps_meas.t[gps_meas.i] = t
+                gps_meas.z[gps_meas.i,:] = [x y]
+                gps_data = hedge_pos(0,x,y,0,0)
+                publish(pub_gps, gps_data)
+            end
+            sim_gps_interrupt -= 1
         end
-
         i += 1
         rossleep(loop_rate)
     end

@@ -262,44 +262,10 @@ void loop() {
   if (dt > 50) {
     car.readAndCopyInputs();
 
-    // TODO make encoder and rc_inputs private properties on car? Then
-    // car.publishEncoder(); and car.publishRCInputs();
-    //encoder.FL = car.getEncoderFL();
-    //encoder.FR = car.getEncoderFR();
-    //encoder.BL = car.getEncoderBL();
-    //encoder.BR = car.getEncoderBR();
-    //    pub_encoder.publish(&encoder);
-
-    // pubblish encoder dt
-    //encoder_dt_FL.data = (int32_t) car.getEncoder_dTime_FL();                               //(ADDED BY TOMMI 7JULY2016)
-    //encoder_dt_FR.data = (int32_t) car.getEncoder_dTime_FR();                               //(ADDED BY TOMMI 7JULY2016)
-    //encoder_dt_BL.data = (int32_t) car.getEncoder_dTime_BL();                               //(ADDED BY TOMMI 7JULY2016)
-    //encoder_dt_BR.data = (int32_t) car.getEncoder_dTime_BR();                               //(ADDED BY TOMMI 7JULY2016)
-    vel_est.data = car.getVelocityEstimate();
-    //pub_encoder_dt_FL.publish(&encoder_dt_FL);                                     //(ADDED BY TOMMI 7JULY2016)
-    //pub_encoder_dt_FR.publish(&encoder_dt_FR);                                     //(ADDED BY TOMMI 7JULY2016)
-    //pub_encoder_dt_BL.publish(&encoder_dt_BL);                                     //(ADDED BY TOMMI 7JULY2016)
-    //pub_encoder_dt_BR.publish(&encoder_dt_BR);                                     //(ADDED BY TOMMI 7JULY2016)
-
+    vel_est.data = car.getVelocityEstimate()
     pub_vel_est.publish(&vel_est);               // publish estimated velocity
     ////////////////////////////////////////////////!!!!
 
-
-
-
-
-    //rc_inputs.motor = car.getRCThrottle();
-    //rc_inputs.servo = car.getRCSteering();
-    //pub_rc_inputs.publish(&rc_inputs);
-
-    // publish ultra-sound measurement
-    /*
-    ultrasound.front = us_fr.getRange();
-    ultrasound.back = us_bk.getRange();
-    ultrasound.right = us_rt.getRange();
-    ultrasound.left = us_lt.getRange();
-    pub_ultrasound.publish(&ultrasound);
-    */
     t0 = millis();
   }
 

@@ -26,6 +26,23 @@ end
 const log_path_LMPC     = "$(homedir())/simulations/output_LMPC.jld"
 
 
+function initPlot()
+    linewidth = 0.4
+    rc("axes", linewidth=linewidth)
+    rc("lines", linewidth=linewidth, markersize=2)
+    #rc("font", family="")
+    rc("axes", titlesize="small", labelsize="small")        # can be set in Latex
+    rc("xtick", labelsize="x-small")
+    rc("xtick.major", width=linewidth/2)
+    rc("ytick", labelsize="x-small")
+    rc("ytick.major", width=linewidth/2)
+    rc("legend", fontsize="small")
+    rc("font",family="serif")
+    rc("font",size=8)
+    rc("figure",figsize=[4.5,3])
+    #rc("pgf", texsystem="pdflatex",preamble=L"""\usepackage[utf8x]{inputenc}\usepackage[T1]{fontenc}\usepackage{lmodern}""")
+end
+
 function simModel(z,u,dt,l_A,l_B)
 
    # kinematic bicycle model
@@ -68,6 +85,8 @@ function eval_run(log_path)
     plot(gps_meas.t-t0,gps_meas.z,"-*",pos_info.t-t0,pos_info.z[:,6:7],"-x")
     grid(1)
     title("GPS comparison")
+    xlabel("t [s]")
+    ylabel("Position [m]")
     legend(["x_meas","y_meas","x_est","y_est"])
 
     figure()
@@ -84,7 +103,7 @@ function eval_run(log_path)
 
     figure()
     title("v measurements and estimate")
-    plot(pos_info.t-t0,pos_info.z[:,8:9],"-*",vel_est.t-t0,vel_est.z)
+    plot(pos_info.t-t0,pos_info.z[:,8:9],"-*",vel_est.t-t0,vel_est.z,"-x")
     legend(["est_xDot","est_yDot","v_raw"])
     grid()
 
