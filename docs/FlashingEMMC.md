@@ -35,6 +35,7 @@ If everything goes smoothly, you should a desktop background similar to the one 
 
 
 
+
 # Expanding/Resizing the eMMC
 
 After the image is flashed, the usable space of the eMMC will be about the size of the image file (~14GB), so we want to expand the size of the eMMC to its full capacity (~58GB).
