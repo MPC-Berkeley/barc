@@ -1,0 +1,23 @@
+<launch>
+
+    <!-- SYSTEM MODEL -->
+    <!-- vehicle parameters -->
+    <param name="L_a" type="double" value="0.125" />
+    <param name="L_b" type="double" value="0.125" />
+
+    <!-- Start simulator -->
+    <node pkg="barc" type="barc_simulator_dyn.jl" name="barc_sim" output="screen" />
+
+    <!--KINEMATIC OBSERVER-->
+    <node pkg="barc" type="state_estimation_KinBkMdl.py" name="state_estimation" output="screen">
+        <!-- ekf properties -->
+        <param name="q_std" type="double" value="0.1" />
+        <param name="r_std" type="double" value="0.1" />
+    </node>
+
+    <!-- LOW LEVEL CONTROLLER -->
+    <node pkg="barc" type="controller_low_level.py" name="low_level_controller" />
+
+    <!-- YOUR CONTROLLER -->
+    <!-- node pkg="barc" type="your-controller.jl/py" name="your-controller" /-->
+</launch>

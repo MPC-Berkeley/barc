@@ -17,7 +17,7 @@ import rospy
 import time
 import os
 from sensor_msgs.msg import Imu
-from barc.msg import ECU, Encoder, Z_KinBkMdl
+from barc.msg import ECU, Vel_est, Z_KinBkMdl
 from numpy import pi, cos, sin, eye, array, zeros, unwrap
 from ekf import ekf
 from system_models import f_KinBkMdl, h_KinBkMdl
@@ -92,52 +92,19 @@ def imu_callback(data):
 
 # encoder measurement update
 def enc_callback(data):
-    global v, t0, dt_v_enc, v_meas
-    global n_FL, n_FR, n_FL_prev, n_FR_prev
-    global n_BL, n_BR, n_BL_prev, n_BR_prev
-
-    n_FL = data.FL
-    n_FR = data.FR
-    n_BL = data.BL
-    n_BR = data.BR
-
-    # compute time elapsed
-    tf = time.time()
-    dt = tf - t0
-
-    # if enough time elapse has elapsed, estimate v_x
-    if dt >= dt_v_enc:
-        # compute speed :  speed = distance / time
-        v_FL = float(n_FL - n_FL_prev)*dx_qrt/dt
-        v_FR = float(n_FR - n_FR_prev)*dx_qrt/dt
-        v_BL = float(n_BL - n_BL_prev)*dx_qrt/dt
-        v_BR = float(n_BR - n_BR_prev)*dx_qrt/dt
-
-        # Uncomment/modify according to your encoder setup
-        # v_meas    = (v_FL + v_FR)/2.0
-        # Modification for 3 working encoders
-        v_meas = (v_FL + v_BL + v_BR)/3.0
-        # Modification for bench testing (driven wheels only)
-        # v = (v_BL + v_BR)/2.0
-
-        # update old data
-        n_FL_prev   = n_FL
-        n_FR_prev   = n_FR
-        n_BL_prev   = n_BL
-        n_BR_prev   = n_BR
-        t0          = time.time()
+    global v_meas
+    v_meas = data.vel_est
 
 
 # state estimation node
 def state_estimation():
-    global dt_v_enc
     global v_meas, psi_meas
     # initialize node
     rospy.init_node('state_estimation', anonymous=True)
 
     # topic subscriptions / publications
     rospy.Subscriber('imu/data', Imu, imu_callback)
-    rospy.Subscriber('encoder', Encoder, enc_callback)
+    rospy.Subscriber('vel_est', Vel_est, enc_callback)
     rospy.Subscriber('ecu', ECU, ecu_callback)
     state_pub   = rospy.Publisher('state_estimate', Z_KinBkMdl, queue_size = 10)
 
@@ -145,9 +112,6 @@ def state_estimation():
     L_a = rospy.get_param("L_a")       # distance from CoG to front axel
     L_b = rospy.get_param("L_b")       # distance from CoG to rear axel
     vhMdl   = (L_a, L_b)
-
-    # get encoder parameters
-    dt_v_enc = rospy.get_param("state_estimation/dt_v_enc") # time interval to compute v_x from encoders
 
     # get EKF observer properties
     q_std   = rospy.get_param("state_estimation/q_std")             # std of process noise

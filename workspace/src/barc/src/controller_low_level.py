@@ -66,8 +66,8 @@ def arduino_interface():
 
     # launch node, subscribe to motorPWM and servoPWM, publish ecu
     init_node('arduino_interface')
-    b0  = get_param("input_gain")
-
+    b0 = 1
+    
     Subscriber('ecu', ECU, pwm_converter_callback, queue_size = 10)
     ecu_pub = Publisher('ecu_pwm', ECU, queue_size = 10)
 
