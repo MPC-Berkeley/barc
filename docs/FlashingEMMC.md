@@ -34,6 +34,7 @@ If everything goes smoothly, you should a desktop background similar to the one 
 <img src="http://www.cnx-software.com/wp-content/uploads/2014/12/ODROID-XU3_Lite_Ubuntu_Desktop.png"/>
 
 
+
 # Expanding/Resizing the eMMC
 
 After the image is flashed, the usable space of the eMMC will be about the size of the image file (~14GB), so we want to expand the size of the eMMC to its full capacity (~58GB).
@@ -51,7 +52,7 @@ you will need to a labtop with Linux or Unbuntu, Gparted (Linux partition manage
 6. Move the bar all the way to the right so that the new size matches with the maximum size and click the resize button. And click the apply button to apply operations to the device. (Refer to images below).
 
 ### Selecting USB 
-<img src="https://github.com/BARCproject/barc/raw/master/docs/imgs/selectUSBDrive.PNG" alt="Drawing" style="width: 400px;"/>
+<img src="https://github.com/MPC-Berkeley/barc/blob/master/docs/imgs/selectUSBDrive.png" alt="Drawing" style="width: 400px;"/>
 
 ### Selecting a drive in Gparted
 <img src="https://github.com/BARCproject/barc/raw/master/docs/imgs/selectDriveInGparted.PNG" alt="Drawing" style="width: 400px;"/>
