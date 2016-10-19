@@ -25,7 +25,7 @@ using geometry_msgs.msg
 using sensor_msgs.msg
 using JLD
 
-include("LMPC_lib/simModel.jl")
+include("barc_lib/simModel.jl")
 
 u_current = zeros(Float64,2,1)      # msg ECU is Float32 !
 

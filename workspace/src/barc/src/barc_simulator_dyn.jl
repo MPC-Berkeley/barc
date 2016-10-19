@@ -14,12 +14,11 @@
 =# 
 
 using RobotOS
-@rosimport barc.msg: ECU, pos_info, Encoder, Ultrasound, Z_KinBkMdl, Logging, Z_DynBkMdl, Vel_est
+@rosimport barc.msg: ECU, Vel_est
 @rosimport data_service.msg: TimeData
 @rosimport geometry_msgs.msg: Vector3
 @rosimport sensor_msgs.msg: Imu
 @rosimport marvelmind_nav.msg: hedge_pos
-@rosimport std_msgs.msg: Float32
 rostypegen()
 using barc.msg
 using data_service.msg
@@ -29,8 +28,8 @@ using std_msgs.msg
 using marvelmind_nav.msg
 using JLD
 
-include("LMPC_lib/classes.jl")
-include("LMPC_lib/simModel.jl")
+include("barc_lib/classes.jl")
+include("barc_lib/simModel.jl")
 
 # This type contains measurement data (time, values and a counter)
 type Measurements{T}
@@ -69,7 +68,6 @@ function main()
 
     # initiate node, set up publisher / subscriber topics
     init_node("barc_sim")
-    #pub_enc = Publisher("encoder", Encoder, queue_size=1)::RobotOS.Publisher{barc.msg.Encoder}
     pub_gps = Publisher("hedge_pos", hedge_pos, queue_size=1)::RobotOS.Publisher{marvelmind_nav.msg.hedge_pos}
     pub_imu = Publisher("imu/data", Imu, queue_size=1)::RobotOS.Publisher{sensor_msgs.msg.Imu}
     pub_vel = Publisher("vel_est", Vel_est, queue_size=1)::RobotOS.Publisher{barc.msg.Vel_est}
@@ -89,16 +87,11 @@ function main()
     last_updated  = 0.0
 
     r_tire      = 0.036                  # radius from tire center to perimeter along magnets [m]
-    quarterCirc = 0.5 * pi * r_tire      # length of a quarter of a tire, distance from one to the next encoder
     
-    FL = 0 #front left wheel encoder counter
-    FR = 0 #front right wheel encoder counter
-    BL = 0 #back left wheel encoder counter
-    BR = 0 #back right wheel encoder counter
-
     imu_drift = 0.0       # simulates yaw-sensor drift over time (slow sine)
 
     modelParams     = ModelParams()
+    run_id          = get_param("run_id")
     # modelParams.l_A = copy(get_param("L_a"))      # always throws segmentation faults *after* execution!!! ??
     # modelParams.l_B = copy(get_param("L_a"))
     # modelParams.m   = copy(get_param("m"))
@@ -145,7 +138,6 @@ function main()
         # Velocity measurements
         if i%5 == 0                 # 20 Hz
             if norm(z_current[i,1:2][:]-vel_pos) > vel_dist_update     # only update if a magnet has passed the sensor
-                #vel_est.data = convert(Float32,norm(z_current[i,3:4])+0.01*randn())
                 vel_est.vel_est = convert(Float32,norm(z_current[i,3:4])+0.01*randn())
                 vel_pos = z_current[i,1:2][:]
             end
@@ -154,10 +146,10 @@ function main()
         end
 
         # GPS measurements
-        if i % 4 == 0               # 25 Hz
+        if i%4 == 0               # 25 Hz
             x = round(z_current[i,1] + 0.02*randn(),2)       # Indoor gps measures, rounded on cm
             y = round(z_current[i,2] + 0.02*randn(),2)
-            if randn()>2.5            # simulate gps-outlier (probability about 0.13% for randn()>3, 0.62% for randn()>2.5, 2.3% for randn()>2.0 )
+            if randn()>3            # simulate gps-outlier (probability about 0.13% for randn()>3, 0.62% for randn()>2.5, 2.3% for randn()>2.0 )
                 x += 1#randn()        # add random value to x and y
                 y -= 1#randn()
                 #sim_gps_interrupt = 6       # also do a little interruption
@@ -178,7 +170,6 @@ function main()
     end
 
     # Clean up buffers
-
     clean_up(gps_meas)
     clean_up(imu_meas)
     clean_up(cmd_log)
@@ -190,7 +181,7 @@ function main()
     clean_up(slip_a)
 
     # Save simulation data to file
-    log_path = "$(homedir())/simulations/output.jld"
+    log_path = "$(homedir())/simulations/output-SIM-$(run_id[1:4]).jld"
     save(log_path,"gps_meas",gps_meas,"z",z_real,"imu_meas",imu_meas,"cmd_log",cmd_log,"slip_a",slip_a)
     println("Exiting node... Saving data to $log_path. Simulated $((i-1)*dt) seconds.")
     #writedlm(log_path,z_current[1:i-1,:])

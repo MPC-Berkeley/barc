@@ -1,7 +1,13 @@
-from numpy import *#sin, cos, tan, arctan, array, dot, linspace, pi, ones, zeros, sum, amin, argmin
+"""This module includes all functions that are necessary to convert the current absolute position
+(x, y, psi) and the given racetrack to the current relative position (s, eY, ePsi)"""
+#from numpy import sin, cos, tan, array, dot, linspace, pi, ones, zeros, amin, argmin, arange
+#from numpy import hstack, vstack, sign, size, diff, cumsum, mod, floor, interp, linalg
+#from numpy import polyval, polyder, arctan2
+from numpy import *
 import scipy.optimize
 
-def create_circle(rad,n,c):
+def create_circle(rad, n, c):
+    """This function creates a simple circular racetrack"""
     ang = linspace(0,2*pi,n)
     x = rad*cos(ang)+c[0]
     y = rad*sin(ang)+c[1]
@@ -24,6 +30,7 @@ def create_bezier(p0,p1,p2,dt):
     return p
 
 class Localization:
+    """ This is the main class which includes all variables and functions to calculate the current relative position."""
     n                   = 0                     # number of nodes
     c                   = 0                     # center of circle (in case of circular trajectory)
     pos                 = 0                     # current position

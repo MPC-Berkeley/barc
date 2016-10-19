@@ -12,11 +12,11 @@ using JuMP
 using Ipopt
 using JLD
 
-include("LMPC_lib/classes.jl")
-include("LMPC_lib/MPC_models.jl")
-include("LMPC_lib/coeffConstraintCost.jl")
-include("LMPC_lib/solveMpcProblem.jl")
-include("LMPC_lib/functions.jl")
+include("barc_lib/classes.jl")
+include("barc_lib/LMPC/MPC_models.jl")
+include("barc_lib/LMPC/coeffConstraintCost.jl")
+include("barc_lib/LMPC/solveMpcProblem.jl")
+include("barc_lib/LMPC/functions.jl")
 
 function SE_callback(msg::pos_info,s_start_update::Array{Float64},coeffCurvature_update::Array{Float64,1},z_est::Array{Float64,1},x_est::Array{Float64,1},
                         coeffX::Array{Float64,1},coeffY::Array{Float64,1})         # update current position and track data
@@ -90,6 +90,7 @@ function main()
     # The subscriber passes arguments (s_start, coeffCurvature and z_est) which are updated by the callback function:
     s1                          = Subscriber("pos_info", pos_info, SE_callback, (s_start_update,coeffCurvature_update,z_est,x_est,coeffX,coeffY,),queue_size=1)::RobotOS.Subscriber{barc.msg.pos_info}
 
+    run_id          = get_param("run_id")
     println("Finished initialization.")
     # Lap parameters
     switchLap                   = false     # initialize lap lap trigger
@@ -250,12 +251,12 @@ function main()
     end
     # Save simulation data to file
 
-    log_path = "$(homedir())/simulations/output_LMPC.jld"
+    log_path = "$(homedir())/simulations/output-LMPC-$(run_id[1:4]).jld"
     save(log_path,"oldTraj",log_oldTraj,"state",log_state[1:k,:],"t",log_t[1:k],"sol_z",log_sol_z[:,:,1:k],"sol_u",log_sol_u[:,:,1:k],
                     "cost",log_cost[1:k,:],"curv",log_curv[1:k,:],"coeffCost",log_coeff_Cost,"coeffConst",log_coeff_Const,
                     "s_start",log_s_start[1:k],"x_est",log_state_x[1:k,:],"coeffX",log_coeffX[1:k,:],"coeffY",log_coeffY[1:k,:],"c_Vx",log_c_Vx[1:k,:],
                     "c_Vy",log_c_Vy[1:k,:],"c_Psi",log_c_Psi[1:k,:],"cmd",log_cmd[1:k,:],"step_diff",log_step_diff[1:k,:])
-    println("Exiting LMPC node. Saved data.")
+    println("Exiting LMPC node. Saved data to $log_path.")
 
 end
 

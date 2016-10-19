@@ -15,7 +15,6 @@ using RobotOS
 @rosimport geometry_msgs.msg: Vector3
 @rosimport sensor_msgs.msg: Imu
 @rosimport marvelmind_nav.msg: hedge_pos
-@rosimport std_msgs.msg: Float32
 rostypegen()
 using barc.msg
 using data_service.msg
@@ -105,8 +104,7 @@ function main()
     s5  = Subscriber("pos_info", pos_info, pos_info_callback, (pos_info_log,), queue_size=1)::RobotOS.Subscriber{barc.msg.pos_info}
     s6  = Subscriber("vel_est", Vel_est, vel_est_callback, (vel_est_log,), queue_size=1)::RobotOS.Subscriber{barc.msg.Vel_est}
 
-    dt = 0.1
-    loop_rate = Rate(1/dt)
+    run_id          = get_param("run_id")
 
     println("Recorder running.")
     spin()                              # wait for callbacks until shutdown
@@ -119,7 +117,8 @@ function main()
     clean_up(vel_est_log)
 
     # Save simulation data to file
-    log_path = "$(homedir())/simulations/record-$(Dates.format(now(),"yyyy-mm-dd-HH-MM-SS")).jld"
+    #log_path = "$(homedir())/simulations/record-$(Dates.format(now(),"yyyy-mm-dd-HH-MM-SS")).jld"
+    log_path = "$(homedir())/simulations/output-record-$(run_id[1:4]).jld"
     save(log_path,"gps_meas",gps_meas,"imu_meas",imu_meas,"cmd_log",cmd_log,"pos_info",pos_info_log,"vel_est",vel_est_log)
     println("Exiting node... Saving recorded data to $log_path.")
 end

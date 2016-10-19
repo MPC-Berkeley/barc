@@ -13,7 +13,7 @@ using HDF5, JLD, ProfileView
 # pos_info[10] = psi
 # pos_info[11] = psiDot
 
-include("../workspace/src/barc/src/LMPC_lib/classes.jl")
+include("../workspace/src/barc/src/barc_lib/classes.jl")
 
 type Measurements{T}
     i::Int64          # measurement counter
@@ -24,12 +24,13 @@ end
 const log_path_LMPC     = "$(homedir())/simulations/output_LMPC.jld"                        # data from MPC
 const log_path_sim      = "$(homedir())/simulations/output.jld"                             # data from barc_simulation
 const log_path_record   = "$(homedir())/simulations/record-2016-10-18-16-53-56.jld"         # data from barc_record
-#const log_path_profile  = "$(homedir())/simulations/profile.jlprof"
 
 # THIS FUNCTION EVALUATES DATA THAT WAS LOGGED BY THE SIMULATOR (INCLUDES "REAL" SIMULATION DATA)
 # ***********************************************************************************************
 
-function eval_sim()
+function eval_sim(code::AbstractString)
+    log_path_sim = "$(homedir())/simulations/output-SIM-$(code).jld"
+    log_path_record = "$(homedir())/simulations/output-record-$(code).jld"
     d_sim = load(log_path_sim)
     d_rec = load(log_path_record)
 
@@ -90,7 +91,8 @@ end
 
 # THIS FUNCTION EVALUATES DATA THAT WAS RECORDED BY BARC_RECORD.JL
 # ****************************************************************
-function eval_run(log_path_record::AbstractString)
+function eval_run(code::AbstractString)
+    log_path_record = "$(homedir())/simulations/output-record-$(code).jld"
     d_rec = load(log_path_record)
 
     imu_meas    = d_rec["imu_meas"]
@@ -152,7 +154,9 @@ end
 
 # THIS FUNCTION EVALUATES MPC-SPECIFIC DATA
 # *****************************************
-function eval_LMPC()
+function eval_LMPC(code::AbstractString)
+    log_path_LMPC   = "$(homedir())/simulations/output-LMPC-$(code).jld"
+    log_path_record = "$(homedir())/simulations/output-record-$(code).jld"
     d_rec       = load(log_path_record)
     d_lmpc      = load(log_path_LMPC)
 
@@ -301,10 +305,14 @@ function eval_LMPC()
     legend(["u","d_f"])
 end
 
-function eval_oldTraj(i)
+function eval_oldTraj(code::AbstractString,i::Int64)
+    log_path_LMPC   = "$(homedir())/simulations/output-LMPC-$(code).jld"
     d = load(log_path_LMPC)
     oldTraj = d["oldTraj"]
-    plot(oldTraj[:,1,1,i],oldTraj[:,2:4,1,i],"-o",oldTraj[:,1,2,i],oldTraj[:,2:4,2,i],"-*")
+    t       = d["t"]
+    plot(t,oldTraj[:,:,1,i],"-*")
+    grid("on")
+    legend(["v_x","v_x","psiDot","ePsi","eY","s"])
 end
 
 function eval_LMPC_coeff(k)
