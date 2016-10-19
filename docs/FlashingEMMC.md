@@ -55,16 +55,16 @@ you will need to a labtop with Linux or Unbuntu, Gparted (Linux partition manage
 <img src="https://github.com/MPC-Berkeley/barc/blob/master/docs/imgs/selectUSBDrive.png" alt="Drawing" style="width: 400px;"/>
 
 ### Selecting a drive in Gparted
-<img src="https://github.com/BARCproject/barc/raw/master/docs/imgs/selectDriveInGparted.PNG" alt="Drawing" style="width: 400px;"/>
+<img src="https://raw.githubusercontent.com/MPC-Berkeley/barc/master/docs/imgs/selectDriveInGparted.png" alt="Drawing" style="width: 400px;"/>
 
 ### Clicking resize arrow
 <img src="https://github.com/BARCproject/barc/raw/master/docs/imgs/resizeArrow.PNG" alt="Drawing" style="width: 400px;"/>
 
 ### Moving the bar to resize the partition
-<img src="https://github.com/BARCproject/barc/raw/master/docs/imgs/barBeforeResizing.PNG" alt="Drawing" style="width: 400px;"/>
+<img src="https://raw.githubusercontent.com/MPC-Berkeley/barc/master/docs/imgs/barBeforeResizing.png" alt="Drawing" style="width: 400px;"/>
 
-<img src="https://github.com/BARCproject/barc/raw/master/docs/imgs/barAfterResizing.PNG" alt="Drawing" style="width: 400px;"/>
+<img src="https://raw.githubusercontent.com/MPC-Berkeley/barc/master/docs/imgs/barAfterResizing.png" alt="Drawing" style="width: 400px;"/>
 
-<img src="https://github.com/BARCproject/barc/raw/master/docs/imgs/applyResize.PNG" alt="Drawing" style="width: 400px;"/>
+<img src="https://raw.githubusercontent.com/MPC-Berkeley/barc/master/docs/imgs/resizeConfirmation.png" alt="Drawing" style="width: 400px;"/>
 
 
