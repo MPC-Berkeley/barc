@@ -47,14 +47,14 @@ you will need to a labtop with Linux or Unbuntu, Gparted (Linux partition manage
 
 2. Remove eMMC from ordroid, connect eMMC to microSD-to-eMMC adapter, and attach eMMC adapter (with eMMC) to laptop. (See first three steps in the previous section of "Flasing the odroid").
 3. Select a USB drive to read by going to Devices(top left taps)> USB> "your USB name". (See the image of selecting USB below). 
-4. Open Gparted and be sure to select the correct drive to resize at the top right corner. (See image of selecting a drive in Gparted below).
+4. Open Gparted and be sure to select the correct drive to resize at the top right corner (the one with 58GB). (See image of selecting a drive in Gparted below).
 5. Select the correct partition with a file system of "ext4" and a size of about 14.55GB and click the orange arrow to resize. (See image below).
-6. Move the bar all the way to the right so that the new size matches with the maximum size and click the resize button. And click the apply button to apply operations to the device. (Refer to images below).
+6. Move the bar all the way to the right so that the new size matches the maximum size and click the resize button. And click the apply button to apply operations to the device. (Refer to images below).
 
 ### Selecting USB 
 <img src="https://github.com/MPC-Berkeley/barc/blob/master/docs/imgs/selectUSBDrive.png" alt="Drawing" style="width: 400px;"/>
 
-### Selecting a drive in Gparted
+### Selecting the correct drive in Gparted
 <img src="https://raw.githubusercontent.com/MPC-Berkeley/barc/master/docs/imgs/selectDriveInGparted.png" alt="Drawing" style="width: 400px;"/>
 
 ### Clicking resize arrow
@@ -63,7 +63,9 @@ you will need to a labtop with Linux or Unbuntu, Gparted (Linux partition manage
 ### Moving the bar to resize the partition
 <img src="https://raw.githubusercontent.com/MPC-Berkeley/barc/master/docs/imgs/barBeforeResizing.png" alt="Drawing" style="width: 400px;"/>
 
+
 <img src="https://raw.githubusercontent.com/MPC-Berkeley/barc/master/docs/imgs/barAfterResizing.png" alt="Drawing" style="width: 400px;"/>
+
 
 <img src="https://raw.githubusercontent.com/MPC-Berkeley/barc/master/docs/imgs/resizeConfirmation.png" alt="Drawing" style="width: 400px;"/>
 
