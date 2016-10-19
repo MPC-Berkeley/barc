@@ -17,7 +17,7 @@ import rospy
 import time
 import os
 from Localization_helpers import Localization
-from barc.msg import ECU, Encoder, Z_DynBkMdl, pos_info
+from barc.msg import ECU, Encoder, Z_DynBkMdl, pos_info, Vel_est
 from sensor_msgs.msg import Imu
 from geometry_msgs.msg import Vector3
 from marvelmind_nav.msg import hedge_pos
@@ -27,8 +27,11 @@ from observers import kinematicLuembergerObserver, ekf
 from system_models import f_KinBkMdl, h_KinBkMdl, f_KinBkMdl_psi_drift, h_KinBkMdl_psi_drift
 from tf import transformations
 from numpy import unwrap
+from numpy import *
 
 # input variables
+cmd_servo   = 0
+cmd_motor   = 0
 d_f         = 0
 FxR         = 0
 
@@ -37,35 +40,62 @@ yaw_prev = 0
 yaw0     = 0            # yaw at t = 0
 yaw      = 0
 (roll_meas, pitch_meas, yaw_meas, a_x, a_y, a_z, w_x, w_y, w_z) = zeros(9)
+imu_times = [0]*25
+psiDot_hist = [0]*25
 
+# Velocity
+vel_est         = 0
+vel_est_hist    = [0]*2
+vel_times       = [0]*2
+
+# GPS
 x_meas      = 0
 y_meas      = 0
 
-vel_est     = 0
+x_hist      = [0]*30
+y_hist      = [0]*30
+gps_times   = [0]*30
 
-running = False
+poly_x      = [0]*3              # polynomial coefficients for x and y position measurement (2nd order)
+poly_y      = [0]*3
+
+t0          = 0
+running     = False
 
 # ecu command update
 def ecu_callback(data):
-    global FxR, d_f, running
-    FxR         = data.motor        # input motor force [N]
-    d_f         = data.servo        # input steering angle [rad]
+    global FxR, cmd_motor, cmd_servo, running
+    cmd_motor         = data.motor        # input motor force [N]
+    cmd_servo         = data.servo        # input steering angle [rad]
+    FxR               = cmd_motor
     if not running:                 # set 'running' to True once the first command is received -> here yaw is going to be set to zero
         running = True
 
 # ultrasound gps data
 def gps_callback(data):
     # units: [rad] and [rad/s]
-    global x_meas, y_meas
-    x_meas = data.x_m # data is given in cm
-    y_meas = data.y_m
+    global x_meas, y_meas, t0
+    x_meas_pred = polyval(poly_x,data.timestamp_ros-t0)    # predict new position
+    y_meas_pred = polyval(poly_y,data.timestamp_ros-t0)
+
+    if abs(x_meas_pred-data.x_m) < 0.5 and abs(y_meas_pred-data.y_m) < 0.5 or not running:  # check for outlier
+        x_meas = data.x_m # data is given in cm
+        y_meas = data.y_m
+
+        x_hist.append(x_meas)
+        y_hist.append(y_meas)
+        gps_times.append(data.timestamp_ros-t0)
+        x_hist.pop(0)
+        y_hist.pop(0)
+        gps_times.pop(0)
 
 # imu measurement update
 def imu_callback(data):
     # units: [rad] and [rad/s]
     global roll_meas, pitch_meas, yaw_meas, a_x, a_y, a_z, w_x, w_y, w_z
     global yaw_prev, yaw0, yaw
-    
+    global imu_times, psiDot_hist
+
     # get orientation from quaternion data, and convert to roll, pitch, yaw
     # extract angular velocity and linear acceleration data
     ori  = data.orientation
@@ -80,6 +110,9 @@ def imu_callback(data):
         yaw = 0                 # and current yaw to zero
     else:
         yaw = yaw - yaw0
+
+    imu_times.append(data.header.stamp.to_sec()-t0)
+    imu_times.pop(0)
     
     # extract angular velocity and linear acceleration data
     w_x = data.angular_velocity.x
@@ -89,18 +122,27 @@ def imu_callback(data):
     a_y = data.linear_acceleration.y
     a_z = data.linear_acceleration.z
 
+    psiDot_hist.append(w_z)
+    psiDot_hist.pop(0)
+
 def vel_est_callback(data):
-    global vel_est
-    vel_est = data.data
+    global vel_est, t0, vel_est_hist, vel_times
+    if not data.vel_est == vel_est or not running:        # if we're receiving a new measurement
+        vel_est = data.vel_est
+        vel_est_hist.append(vel_est)
+        vel_est_hist.pop(0)
+        vel_times.append(data.stamp.to_sec()-t0)
+        vel_times.pop(0)
 
 # state estimation node
 def state_estimation():
+    global t0, poly_x, poly_y
     # initialize node
     rospy.init_node('state_estimation', anonymous=True)
 
     # topic subscriptions / publications
     rospy.Subscriber('imu/data', Imu, imu_callback)
-    rospy.Subscriber('vel_est', Float32, vel_est_callback)
+    rospy.Subscriber('vel_est', Vel_est, vel_est_callback)
     rospy.Subscriber('ecu', ECU, ecu_callback)
     rospy.Subscriber('hedge_pos', hedge_pos, gps_callback)
     state_pub_pos = rospy.Publisher('pos_info', pos_info, queue_size = 1)
@@ -122,7 +164,7 @@ def state_estimation():
     loop_rate   = 25
     dt          = 1.0 / loop_rate
     rate        = rospy.Rate(loop_rate)
-    t0          = time.time()
+    t0          = rospy.get_rostime().to_sec()
 
     # settings about psi estimation (use different models accordingly)
     psi_drift_active = True
@@ -157,11 +199,53 @@ def state_estimation():
     l.create_track()
     l.prepare_trajectory(0.06)
 
-    w_z_f = 0         # filtered w_z (= angular velocity psiDot)
     psi_prev = 0        # for debugging
 
+    d_f = 0
+
     while not rospy.is_shutdown():
-        # publish state estimate
+        t = rospy.get_rostime().to_sec()-t0           # current time
+
+        # calculate new steering angle (low pass filter on steering input)
+        d_f = d_f + (cmd_servo-d_f)*0.25
+
+        # update x and y polynomial:
+        t_matrix            = vstack((gps_times,gps_times,ones(size(gps_times))))
+        t_matrix[0]         = t_matrix[0]**2
+        poly_x              = linalg.lstsq(t_matrix.T,x_hist)[0]
+        poly_y              = linalg.lstsq(t_matrix.T,y_hist)[0]
+        # calculate current position from interpolated measurements
+        x_meas_pred         = polyval(poly_x,t)
+        y_meas_pred         = polyval(poly_y,t)
+
+        # print "Times:"
+        # print gps_times
+        # print "x-values:"
+        # print x_hist
+        # print "ROS time: %f"%t
+        # print "Polynomial coefficients:"
+        # print poly_x
+        # print "tdif = %f"%(t-gps_times[-1])
+        # print "Pred. x_meas: %f, real x_meas: %f"%(x_meas_pred,x_meas)
+
+        # update velocity estimation polynomial:
+        t_matrix_vel        = vstack((vel_times,ones(size(vel_times))))
+        poly_vel            = linalg.lstsq(t_matrix_vel.T,vel_est_hist)[0]
+        vel_est_pred        = polyval(poly_vel,t)
+        # print "Times:"
+        # print vel_times
+        # print "Meas:"
+        # print vel_est_hist
+        # print "ROS time: %f"%t
+        # print "tdif = %f"%(t-vel_times[-1])
+        # print "Pred. vel: %f, real vel_est: %f"%(vel_est_pred,vel_est)
+
+        # update IMU polynomial:
+        t_matrix_imu        = vstack((imu_times,imu_times,ones(size(imu_times))))
+        t_matrix_imu[0]     = t_matrix_imu[0]**2
+        poly_psiDot         = linalg.lstsq(t_matrix_imu.T,psiDot_hist)[0]
+        psiDot_meas_pred    = polyval(poly_psiDot,t)
+
         if psi_drift_active:
             (x,y,psi,v,psi_drift) = z_EKF           # note, r = EKF estimate yaw rate
         else:
@@ -177,9 +261,8 @@ def state_estimation():
         v_pred      = v   + dt_pred*(FxR - 0.63*sign(v)*v**2)
         v_x_pred    = cos(bta)*v_pred
         v_y_pred    = sin(bta)*v_pred
-        w_z_f       = w_z_f + 0.4*(w_z-w_z_f)               # simple low pass filter on angular velocity
 
-        psi_dot_pred = w_z_f
+        psi_dot_pred = psiDot_meas_pred
 
         # Update track position
         l.set_pos(x_pred,y_pred,psi_pred,v_x_pred,v_x_pred,v_y_pred,psi_dot_pred)        # v = v_x
@@ -191,7 +274,7 @@ def state_estimation():
         # apply EKF
         # get measurement
         if est_mode==1:
-            y = array([x_meas,y_meas,yaw,vel_est])
+            y = array([x_meas_pred,y_meas_pred,yaw,vel_est])
         elif est_mode==2:
             y = array([yaw,vel_est])
         elif est_mode==3:

@@ -191,7 +191,7 @@ function main()
             # Solve the MPC problem
             tic()
             if lapStatus.currentLap <= 2
-                z_pf = [zCurr[i,6],zCurr[i,5],zCurr[i,4],zCurr[i,1]]        # use kinematic model and its states
+                z_pf = [zCurr[i,6],zCurr[i,5],zCurr[i,4],norm(zCurr[i,1:2])]        # use kinematic model and its states
                 solveMpcProblem_pathFollow(mdl_pF,mpcSol,mpcParams_pF,trackCoeff,posInfo,modelParams,z_pf,last_u')
             else                        # otherwise: use system-ID-model
                 solveMpcProblem(mdl,mpcSol,mpcCoeff,mpcParams,trackCoeff,lapStatus,posInfo,modelParams,zCurr[i,:]',last_u')

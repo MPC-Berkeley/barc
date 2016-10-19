@@ -1,6 +1,17 @@
 using JLD
 using PyPlot
 using HDF5, JLD, ProfileView
+# pos_info[1]  = s
+# pos_info[2]  = eY
+# pos_info[3]  = ePsi
+# pos_info[4]  = v
+# pos_info[5]  = s_start
+# pos_info[6]  = x
+# pos_info[7]  = y
+# pos_info[8]  = v_x
+# pos_info[9]  = v_y
+# pos_info[10] = psi
+# pos_info[11] = psiDot
 
 include("../workspace/src/barc/src/LMPC_lib/classes.jl")
 
@@ -10,56 +21,43 @@ type Measurements{T}
     z::Array{T}       # measurement values
 end
 
+const log_path_LMPC     = "$(homedir())/simulations/output_LMPC.jld"                        # data from MPC
+const log_path_sim      = "$(homedir())/simulations/output.jld"                             # data from barc_simulation
+const log_path_record   = "$(homedir())/simulations/record-2016-10-18-16-53-56.jld"         # data from barc_record
+#const log_path_profile  = "$(homedir())/simulations/profile.jlprof"
 
-const log_path          = "$(homedir())/simulations/output.jld"
-const log_path_record   = "$(homedir())/simulations/record-2016-10-14-09-22-12.jld"
-const log_path_LMPC     = "$(homedir())/simulations/output_LMPC.jld"
-const log_path_profile  = "$(homedir())/simulations/profile.jlprof"
-
-
-function simModel(z,u,dt,l_A,l_B)
-
-   # kinematic bicycle model
-   # u[1] = acceleration
-   # u[2] = steering angle
-
-    bta = atan(l_A/(l_A+l_B)*tan(u[2]))
-
-    zNext = z
-    zNext[1] = z[1] + dt*(z[4]*cos(z[3] + bta))       # x
-    zNext[2] = z[2] + dt*(z[4]*sin(z[3] + bta))     # y
-    zNext[3] = z[3] + dt*(z[4]/l_B*sin(bta))        # psi
-    zNext[4] = z[4] + dt*(u[1] - 0.63 * z[4]^2 * sign(z[4]))                     # v
-
-    return zNext
-end
+# THIS FUNCTION EVALUATES DATA THAT WAS LOGGED BY THE SIMULATOR (INCLUDES "REAL" SIMULATION DATA)
+# ***********************************************************************************************
 
 function eval_sim()
-    d = load(log_path)
-    d2 = load(log_path_record)
+    d_sim = load(log_path_sim)
+    d_rec = load(log_path_record)
 
-    imu_meas    = d["imu_meas"]
-    gps_meas    = d["gps_meas"]
-    z           = d["z"]
-    cmd_log     = d["cmd_log"]
-    slip_a      = d["slip_a"]
-    pos_info    = d2["pos_info"]
-    vel_est     = d2["vel_est"]
+    imu_meas    = d_sim["imu_meas"]
+    gps_meas    = d_sim["gps_meas"]
+    z           = d_sim["z"]
+    cmd_log     = d_sim["cmd_log"]
+    slip_a      = d_sim["slip_a"]
+    pos_info    = d_rec["pos_info"]
+    vel_est     = d_rec["vel_est"]
 
     t0 = pos_info.t[1]
     track = create_track(0.3)
 
     figure()
     ax1=subplot(311)
-    plot(z.t-t0,z.z,"-o")
+    plot(z.t-t0,z.z,"-*")
+    title("Real states")
     grid()
     legend(["x","y","v_x","v_y","psi","psi_dot","a","d_f"])
     subplot(312,sharex=ax1)
-    plot(cmd_log.t-t0,cmd_log.z,"-o")
+    plot(cmd_log.t-t0,cmd_log.z,"-*")
+    title("Inputs")
     grid()
     legend(["u","d_f"])
     subplot(313,sharex=ax1)
-    plot(slip_a.t-t0,slip_a.z,"-o")
+    plot(slip_a.t-t0,slip_a.z,"-*")
+    title("Slip angles")
     grid()
     legend(["a_f","a_r"])
 
@@ -69,7 +67,7 @@ function eval_sim()
     grid(1)
     title("x-y-view")
     axis("equal")
-    legend(["Real state","GPS meas","estimate"])
+    legend(["Real state","GPS meas","Estimate"])
     
     figure()
     title("Comparison of psi")
@@ -88,25 +86,74 @@ function eval_sim()
     plot(z.t,z.z[:,1:2],pos_info.t,pos_info.z[:,6:7],"-*",gps_meas.t,gps_meas.z)
     legend(["real_x","real_y","est_x","est_y","meas_x","meas_x"])
     grid()
-
-    #figure()
-    #plot(est.z[:,1],est.z[:,2],"x",est_dyn.z[:,1],est_dyn.z[:,2],"-*",z.z[:,1],z.z[:,2],"-")
-    #grid(1)
-    #legend(["est","est_dyn","true"])
-
-    #figure()
-    #plot(z.t-t0,z.z[:,5],imu_meas.t-t0,imu_meas.z,est.t-t0,est.z[:,3])
-    #grid(1)
-    #legend(["Real psi","psi meas","estimate"])
-
-    figure()
-    plot(cmd_log.t-t0,cmd_log.z)
-    legend(["a","d_f"])
-    grid()
 end
 
+# THIS FUNCTION EVALUATES DATA THAT WAS RECORDED BY BARC_RECORD.JL
+# ****************************************************************
+function eval_run(log_path_record::AbstractString)
+    d_rec = load(log_path_record)
+
+    imu_meas    = d_rec["imu_meas"]
+    gps_meas    = d_rec["gps_meas"]
+    cmd_log     = d_rec["cmd_log"]
+    vel_est     = d_rec["vel_est"]
+    pos_info    = d_rec["pos_info"]
+
+    t0      = pos_info.t[1]
+    track   = create_track(0.3)
+
+    figure()
+    plot(gps_meas.z[:,1],gps_meas.z[:,2],"-.",pos_info.z[:,6],pos_info.z[:,7],"-*")
+    plot(track[:,1],track[:,2],"b.",track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")
+    grid(1)
+    title("x-y-view")
+    axis("equal")
+    legend(["GPS meas","estimate"])
+    
+    figure()
+    title("x/y measurements and estimate")
+    plot(gps_meas.t-t0,gps_meas.z,"-*",pos_info.t-t0,pos_info.z[:,6:7],"-x")
+    grid(1)
+    title("GPS comparison")
+    xlabel("t [s]")
+    ylabel("Position [m]")
+    legend(["x_meas","y_meas","x_est","y_est"])
+
+    figure()
+    title("Comparison of psi")
+    plot(imu_meas.t-t0,imu_meas.z[:,6],imu_meas.t-t0,imu_meas.z[:,3],"-x",pos_info.t-t0,pos_info.z[:,10:11],"-*")
+    legend(["imu_psi","imu_psi_dot","est_psi","est_psi_dot"])
+    grid()
+
+    figure()
+    title("Raw IMU orientation data")
+    plot(imu_meas.t-t0,imu_meas.z[:,1:3],"--",imu_meas.t-t0,imu_meas.z[:,4:6])
+    grid("on")
+    legend(["w_x","w_y","w_z","roll","pitch","yaw"])
+
+    figure()
+    title("v measurements and estimate")
+    plot(pos_info.t-t0,pos_info.z[:,8:9],"-*",vel_est.t-t0,vel_est.z,"-x")
+    legend(["est_xDot","est_yDot","v_raw"])
+    grid()
+
+    figure()
+    title("s, eY and inputs")
+    ax1=subplot(211)
+    plot(pos_info.t-t0,pos_info.z[:,2:3],"-*")
+    grid("on")
+    legend(["eY","ePsi"])
+    subplot(212,sharex=ax1)
+    plot(cmd_log.t-t0,cmd_log.z,"-*")
+    grid("on")
+    legend(["u","d_f"])
+    nothing
+end
+
+# THIS FUNCTION EVALUATES MPC-SPECIFIC DATA
+# *****************************************
 function eval_LMPC()
-    d_sim       = load(log_path)
+    d_rec       = load(log_path_record)
     d_lmpc      = load(log_path_LMPC)
 
     oldTraj     = d_lmpc["oldTraj"]
@@ -120,18 +167,16 @@ function eval_LMPC()
     c_Vy        = d_lmpc["c_Vy"]
     c_Psi       = d_lmpc["c_Psi"]
     cmd         = d_lmpc["cmd"]                 # this is the command how it was sent by the MPC
-    step_diff   = d_lmpc["step_diff"]                 # this is the command how it was sent by the MPC
+    step_diff   = d_lmpc["step_diff"]           # this is the command how it was sent by the MPC
 
     x_est       = d_lmpc["x_est"]
     coeffX      = d_lmpc["coeffX"]
     coeffY      = d_lmpc["coeffY"]
     s_start     = d_lmpc["s_start"]
-    est         = d_sim["estimate"]
-    est_dyn     = d_sim["estimate_dyn"]
-    imu_meas    = d_sim["imu_meas"]
-    gps_meas    = d_sim["gps_meas"]
-    z           = d_sim["z"]
-    cmd_log     = d_sim["cmd_log"]              # this is the command how it was received by the simulator
+    imu_meas    = d_rec["imu_meas"]
+    gps_meas    = d_rec["gps_meas"]
+    cmd_log     = d_rec["cmd_log"]              # this is the command how it was received by the simulator
+    pos_info    = d_rec["pos_info"]
 
     t0 = t[1]
 
@@ -143,17 +188,19 @@ function eval_LMPC()
     
     figure()
     ax1=subplot(311)
-    plot(z.t-t0,z.z[:,3],"--",est_dyn.t-t0,est_dyn.z[:,3],".",t-t0,state[:,1],"-o")
-    legend(["x_dot_real","x_dot_est","x_dot_MPC"])
+    plot(pos_info.t-t0,pos_info.z[:,8],".",t-t0,state[:,1],"-*")
+    title("Comparison of publishing and receiving time")
+    legend(["x_dot_estimate","x_dot_MPC"])
     grid("on")
     xlabel("t [s]")
     ylabel("v_x [m/s]")
     subplot(312,sharex=ax1)
     plot(cmd_log.t-t0,cmd_log.z,"-o",t-t0,cmd[1:length(t),:],"-*")
-    legend(["a","d_f","a","d_f"])
+    legend(["a_rec","d_f_rec","a_MPC","d_f_MPC"])
     grid("on")
     subplot(313,sharex=ax1)
     plot(t-t0,c_Vx)
+    title("System ID xDot coefficients")
     grid("on")
     legend(["1","2","3"])
 
@@ -178,11 +225,13 @@ function eval_LMPC()
     track = create_track(0.3)
     figure()
     hold(1)
-    plot(x_est[:,1],x_est[:,2],"-o")
-    legend(["Estimated position"])
+    plot(x_est[:,1],x_est[:,2],"-*")
+    title(["Estimated position"])
     plot(track[:,1],track[:,2],"b.",track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")
     axis("equal")
     grid(1)
+    # HERE YOU CAN CHOOSE TO PLOT DIFFERENT DATA:
+    # CURRENT HEADING (PLOTTED BY A LINE)
     # for i=1:size(x_est,1)
     #     #dir = [cos(x_est[i,3]) sin(x_est[i,3])]
     #     #dir2 = [cos(x_est[i,3] - state[i,3]) sin(x_est[i,3] - state[i,3])]
@@ -190,6 +239,8 @@ function eval_LMPC()
     #     #lin2 = [x_est[i,1:2];x_est[i,1:2] + 0.05*dir2]
     #     #plot(lin[:,1],lin[:,2],"-o",lin2[:,1],lin2[:,2],"-*")
     # end
+
+    # PREDICTED PATH
     for i=1:4:size(x_est,1)
             z_pred = zeros(11,4)
             z_pred[1,:] = x_est[i,:]
@@ -199,6 +250,7 @@ function eval_LMPC()
             plot(z_pred[:,1],z_pred[:,2],"-*")
     end
 
+    # PREDICTED REFERENCE PATH (DEFINED BY POLYNOM)
     # for i=1:size(x_est,1)
     #     s = 0.4:.1:2.5
     #     ss = [s.^6 s.^5 s.^4 s.^3 s.^2 s.^1 s.^0]
@@ -216,6 +268,7 @@ function eval_LMPC()
     # for i=100:5:500
     #     plot(s_start[i]+sol_z[:,1,i],sol_z[:,2:4,i],"-*")
     # end
+
     figure()
     plot(oldTraj[:,6,1,2],oldTraj[:,1:5,1,2],"-o")
     legend(["v_x","v_y","psiDot","ePsi","eY"])
@@ -226,19 +279,26 @@ function eval_LMPC()
     grid()
 
     figure()
+    title("MPC states and cost")
     ax1=subplot(211)
-    plot(t-t0,state,z.t-t0,z.z[:,3:6],"--")
-    legend(["v_x","v_y","psiDot","ePsi","eY","s","real_v_x","real_v_y","real_psi","real_psiDot"])
+    plot(t-t0,state)
+    legend(["v_x","v_y","psiDot","ePsi","eY","s"])
     grid(1)
     subplot(212,sharex = ax1)
     plot(t-t0,cost)
     grid(1)
     legend(["costZ","costZTerm","constZTerm","derivCost","controlCost","laneCost"])
-    # figure()
-    # plot(1:size(curv,1),curv)
-    # grid()
-    # title("Polynomial coefficients")
-    # legend(["1","2","3","4","5","6","7","8","9"])
+
+    figure()
+    ax1=subplot(211)
+    title("States and inputs")
+    plot(t-t0,state[:,1:5])
+    legend(["v_x","v_y","psiDot","ePsi","eY"])
+    grid(1)
+    subplot(212,sharex = ax1)
+    plot(cmd_log.t-t0,cmd_log.z)
+    grid(1)
+    legend(["u","d_f"])
 end
 
 function eval_oldTraj(i)
@@ -334,6 +394,11 @@ function anim_LMPC(k1,k2)
         sleep(0.1)
     end
 end
+
+
+# *****************************************************************
+# ****** HELPER FUNCTIONS *****************************************
+# *****************************************************************
 
 function anim_MPC(z)
     figure()
@@ -435,4 +500,38 @@ function add_curve(theta::Array{Float64}, length::Int64, angle)
         end
         push!(theta, theta[end] + d_theta)
     end
+end
+
+function initPlot()
+    linewidth = 0.4
+    rc("axes", linewidth=linewidth)
+    rc("lines", linewidth=linewidth, markersize=2)
+    #rc("font", family="")
+    rc("axes", titlesize="small", labelsize="small")        # can be set in Latex
+    rc("xtick", labelsize="x-small")
+    rc("xtick.major", width=linewidth/2)
+    rc("ytick", labelsize="x-small")
+    rc("ytick.major", width=linewidth/2)
+    rc("legend", fontsize="small")
+    rc("font",family="serif")
+    rc("font",size=8)
+    rc("figure",figsize=[4.5,3])
+    #rc("pgf", texsystem="pdflatex",preamble=L"""\usepackage[utf8x]{inputenc}\usepackage[T1]{fontenc}\usepackage{lmodern}""")
+end
+
+function simModel(z,u,dt,l_A,l_B)
+
+   # kinematic bicycle model
+   # u[1] = acceleration
+   # u[2] = steering angle
+
+    bta = atan(l_A/(l_A+l_B)*tan(u[2]))
+
+    zNext = copy(z)
+    zNext[1] = z[1] + dt*(z[4]*cos(z[3] + bta))       # x
+    zNext[2] = z[2] + dt*(z[4]*sin(z[3] + bta))     # y
+    zNext[3] = z[3] + dt*(z[4]/l_B*sin(bta))        # psi
+    zNext[4] = z[4] + dt*(u[1] - 0.63 * z[4]^2 * sign(z[4]))                     # v
+
+    return zNext
 end

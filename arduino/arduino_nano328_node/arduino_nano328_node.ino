@@ -22,6 +22,7 @@ WARNING:
 // include libraries
 #include <ros.h>
 //#include <barc/Ultrasound.h>
+#include <barc/Vel_est.h>
 #include <barc/Encoder.h>
 #include <barc/ECU.h>
 #include <Servo.h>
@@ -197,7 +198,8 @@ barc::ECU ecu;
 //std_msgs::Int32 encoder_dt_FR;                                         //(ADDED BY TOMMI 7JULY2016)
 //std_msgs::Int32 encoder_dt_BL;                                         //(ADDED BY TOMMI 7JULY2016)
 //std_msgs::Int32 encoder_dt_BR;                                         //(ADDED BY TOMMI 7JULY2016)
-std_msgs::Float32 vel_est;            // estimation of current velocity to be published
+//std_msgs::Float32 vel_est;            // estimation of current velocity to be published
+barc::Vel_est vel_est;
 
 
 ros::NodeHandle nh;
@@ -262,7 +264,8 @@ void loop() {
   if (dt > 50) {
     car.readAndCopyInputs();
 
-    vel_est.data = car.getVelocityEstimate()
+    vel_est.vel_est = car.getVelocityEstimate();
+    vel_est.stamp   = ros::Time::now();
     pub_vel_est.publish(&vel_est);               // publish estimated velocity
     ////////////////////////////////////////////////!!!!
 

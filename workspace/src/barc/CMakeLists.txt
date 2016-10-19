@@ -54,6 +54,7 @@ add_message_files(
    ECU.msg
    Z_KinBkMdl.msg
    Z_DynBkMdl.msg
+   Vel_est.msg
 )
 
 ## Generate services in the 'srv' folder

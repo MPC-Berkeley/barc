@@ -10,7 +10,7 @@ Position info (/pos_info)
 =#
 
 using RobotOS
-@rosimport barc.msg: ECU, pos_info
+@rosimport barc.msg: ECU, pos_info, Vel_est
 @rosimport data_service.msg: TimeData
 @rosimport geometry_msgs.msg: Vector3
 @rosimport sensor_msgs.msg: Imu
@@ -76,10 +76,10 @@ function pos_info_callback(msg::pos_info,pos_info_log::Measurements)
     nothing
 end
 
-function vel_est_callback(msg::Float32Msg,vel_est_log::Measurements)
+function vel_est_callback(msg::Vel_est,vel_est_log::Measurements)
     vel_est_log.i += 1
     vel_est_log.t[vel_est_log.i]      = time()
-    vel_est_log.z[vel_est_log.i]      = convert(Float64,msg.data)
+    vel_est_log.z[vel_est_log.i]      = convert(Float64,msg.vel_est)
     nothing
 end
 
@@ -103,7 +103,7 @@ function main()
     s2  = Subscriber("imu/data", Imu, IMU_callback, (imu_meas,), queue_size=1)::RobotOS.Subscriber{sensor_msgs.msg.Imu}
     s4  = Subscriber("hedge_pos", hedge_pos, GPS_callback, (gps_meas,), queue_size=1)::RobotOS.Subscriber{marvelmind_nav.msg.hedge_pos}
     s5  = Subscriber("pos_info", pos_info, pos_info_callback, (pos_info_log,), queue_size=1)::RobotOS.Subscriber{barc.msg.pos_info}
-    s6  = Subscriber("vel_est", Float32Msg, vel_est_callback, (vel_est_log,), queue_size=1)::RobotOS.Subscriber{std_msgs.msg.Float32Msg}
+    s6  = Subscriber("vel_est", Vel_est, vel_est_callback, (vel_est_log,), queue_size=1)::RobotOS.Subscriber{barc.msg.Vel_est}
 
     dt = 0.1
     loop_rate = Rate(1/dt)

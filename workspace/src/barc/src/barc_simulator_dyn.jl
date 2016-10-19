@@ -14,7 +14,7 @@
 =# 
 
 using RobotOS
-@rosimport barc.msg: ECU, pos_info, Encoder, Ultrasound, Z_KinBkMdl, Logging, Z_DynBkMdl
+@rosimport barc.msg: ECU, pos_info, Encoder, Ultrasound, Z_KinBkMdl, Logging, Z_DynBkMdl, Vel_est
 @rosimport data_service.msg: TimeData
 @rosimport geometry_msgs.msg: Vector3
 @rosimport sensor_msgs.msg: Imu
@@ -72,7 +72,7 @@ function main()
     #pub_enc = Publisher("encoder", Encoder, queue_size=1)::RobotOS.Publisher{barc.msg.Encoder}
     pub_gps = Publisher("hedge_pos", hedge_pos, queue_size=1)::RobotOS.Publisher{marvelmind_nav.msg.hedge_pos}
     pub_imu = Publisher("imu/data", Imu, queue_size=1)::RobotOS.Publisher{sensor_msgs.msg.Imu}
-    pub_vel = Publisher("vel_est", Float32Msg, queue_size=1)::RobotOS.Publisher{std_msgs.msg.Float32Msg}
+    pub_vel = Publisher("vel_est", Vel_est, queue_size=1)::RobotOS.Publisher{barc.msg.Vel_est}
 
     s1  = Subscriber("ecu", ECU, ECU_callback, (u_current,cmd_log,), queue_size=1)::RobotOS.Subscriber{barc.msg.ECU}
 
@@ -111,7 +111,7 @@ function main()
 
     println("Publishing sensor information. Simulator running.")
     imu_data    = Imu()
-    vel_est     = Float32Msg()
+    vel_est     = Vel_est()
     t0          = time()
     t           = 0.0
 
@@ -121,6 +121,7 @@ function main()
     while ! is_shutdown()
 
         t = time()
+        t_ros = get_rostime()
         # update current state with a new row vector
         z_current[i,:],slip_ang[i,:]  = simDynModel_exact_xy(z_current[i-1,:],u_current', dt, modelParams)
         z_real.t[i]     = t
@@ -136,6 +137,7 @@ function main()
             imu_meas.z[imu_meas.i,:] = [yaw psiDot]
             imu_data.orientation = geometry_msgs.msg.Quaternion(cos(yaw/2), sin(yaw/2), 0, 0)
             imu_data.angular_velocity = Vector3(0,0,psiDot)
+            imu_data.header.stamp = t_ros
             publish(pub_imu, imu_data)      # Imu format is defined by ROS, you can look it up by google "rosmsg Imu"
                                             # It's sufficient to only fill the orientation part of the Imu-type (with one quaternion)
         end
@@ -143,9 +145,11 @@ function main()
         # Velocity measurements
         if i%5 == 0                 # 20 Hz
             if norm(z_current[i,1:2][:]-vel_pos) > vel_dist_update     # only update if a magnet has passed the sensor
-                vel_est.data = convert(Float32,norm(z_current[i,3:4])+0.01*randn())
+                #vel_est.data = convert(Float32,norm(z_current[i,3:4])+0.01*randn())
+                vel_est.vel_est = convert(Float32,norm(z_current[i,3:4])+0.01*randn())
                 vel_pos = z_current[i,1:2][:]
             end
+            vel_est.stamp = t_ros
             publish(pub_vel, vel_est)
         end
 
@@ -153,10 +157,10 @@ function main()
         if i % 4 == 0               # 25 Hz
             x = round(z_current[i,1] + 0.02*randn(),2)       # Indoor gps measures, rounded on cm
             y = round(z_current[i,2] + 0.02*randn(),2)
-            if randn()>3            # simulate gps-outlier (probability about 0.13% for randn()>3, )
-                x += randn()        # add random value to x and y
-                y += randn()
-                sim_gps_interrupt = 4       # also do a little interruption
+            if randn()>2.5            # simulate gps-outlier (probability about 0.13% for randn()>3, 0.62% for randn()>2.5, 2.3% for randn()>2.0 )
+                x += 1#randn()        # add random value to x and y
+                y -= 1#randn()
+                #sim_gps_interrupt = 6       # also do a little interruption
             elseif randn()>3 && sim_gps_interrupt < 0
                 sim_gps_interrupt = 10      # simulate gps-interrupt (10 steps at 25 Hz is 0.4 seconds)
             end
@@ -164,7 +168,7 @@ function main()
                 gps_meas.i += 1
                 gps_meas.t[gps_meas.i] = t
                 gps_meas.z[gps_meas.i,:] = [x y]
-                gps_data = hedge_pos(0,x,y,0,0)
+                gps_data = hedge_pos(0,convert(Float64,get_rostime()),x,y,0,0)
                 publish(pub_gps, gps_data)
             end
             sim_gps_interrupt -= 1
