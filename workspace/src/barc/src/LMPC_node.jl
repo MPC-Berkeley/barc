@@ -12,6 +12,7 @@ using JuMP
 using Ipopt
 using JLD
 
+# log msg
 include("barc_lib/classes.jl")
 include("barc_lib/LMPC/MPC_models.jl")
 include("barc_lib/LMPC/coeffConstraintCost.jl")

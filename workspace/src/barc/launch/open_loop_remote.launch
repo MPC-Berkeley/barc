@@ -13,9 +13,7 @@
     <!-- START NODES -->
     <!-- Simulator -->
     <!--node machine="this-pc" pkg="barc" type="barc_simulator_dyn.jl" name="barc_sim" output="screen" /-->
-    <!-- Record -->
-    <node machine="this-pc" pkg="barc" type="barc_record.jl" name="barc_record" output="screen" />
-
+    
     <!-- Estimator -->
     <node machine="this-pc" pkg="barc" type="state_estimation_DynBkMdl.py" name="state_estimation_dynamic" output="screen">
         <!-- ekf properties -->
