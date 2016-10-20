@@ -1,5 +1,5 @@
+Header header
 int64 timestamp_ms
-float64 timestamp_ros
 float64 x_m
 float64 y_m
 float64 z_m

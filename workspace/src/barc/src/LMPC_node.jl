@@ -60,7 +60,7 @@ function main()
     coeffX                      = zeros(9)          # buffer for coeffX (only logging)
     coeffY                      = zeros(9)          # buffer for coeffY (only logging)
     s_start_update              = [0.0]             # buffer for s_start
-    cmd                         = ECU(0.0,0.0)      # command type
+    cmd                         = ECU()      # command type
     coeffCurvature_update       = zeros(trackCoeff.nPolyCurvature+1)
 
     # Logging variables
@@ -127,6 +127,7 @@ function main()
             # ============================= PUBLISH COMMANDS =============================
             # this is done at the beginning of the lap because this makes sure that the command is published 0.1s after the state has been received
             # the state is predicted by 0.1s
+            cmd.header.stamp = get_rostime()
             cmd.motor = convert(Float32,mpcSol.a_x)
             cmd.servo = convert(Float32,mpcSol.d_f)
             publish(pub, cmd)        

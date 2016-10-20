@@ -18,6 +18,7 @@ from Localization_helpers import Localization
 from barc.msg import ECU, pos_info, Vel_est
 from sensor_msgs.msg import Imu
 from marvelmind_nav.msg import hedge_pos
+from std_msgs.msg import Header
 from numpy import cos, sin, eye, array, zeros, diag, arctan, tan, size, sign
 from numpy import unwrap, vstack, ones, linalg, polyval
 from observers import ekf
@@ -69,8 +70,8 @@ def ecu_callback(data):
 def gps_callback(data):
     # units: [rad] and [rad/s]
     global x_meas, y_meas, t0
-    x_meas_pred = polyval(poly_x, data.timestamp_ros-t0)    # predict new position
-    y_meas_pred = polyval(poly_y, data.timestamp_ros-t0)
+    x_meas_pred = polyval(poly_x, data.header.stamp.to_sec()-t0)    # predict new position
+    y_meas_pred = polyval(poly_y, data.header.stamp.to_sec()-t0)
 
     if abs(x_meas_pred-data.x_m) < 0.5 and abs(y_meas_pred-data.y_m) < 0.5 or not running:  # check for outlier
         x_meas = data.x_m # data is given in cm
@@ -78,7 +79,7 @@ def gps_callback(data):
 
         x_hist.append(x_meas)
         y_hist.append(y_meas)
-        gps_times.append(data.timestamp_ros-t0)
+        gps_times.append(data.header.stamp.to_sec()-t0)
         x_hist.pop(0)
         y_hist.pop(0)
         gps_times.pop(0)
@@ -125,7 +126,7 @@ def vel_est_callback(data):
         vel_est = data.vel_est
         vel_est_hist.append(vel_est)
         vel_est_hist.pop(0)
-        vel_times.append(data.stamp.to_sec()-t0)
+        vel_times.append(data.header.stamp.to_sec()-t0)
         vel_times.pop(0)
 
 # state estimation node
@@ -194,7 +195,8 @@ def state_estimation():
     d_f = 0
 
     while not rospy.is_shutdown():
-        t = rospy.get_rostime().to_sec()-t0           # current time
+        ros_t = rospy.get_rostime()
+        t = ros_t.to_sec()-t0           # current time
 
         # calculate new steering angle (low pass filter on steering input to make v_y and v_x smoother)
         d_f = d_f + (cmd_servo-d_f)*0.25
@@ -243,7 +245,7 @@ def state_estimation():
         l.find_s()
 
         # and then publish position info
-        state_pub_pos.publish(pos_info(l.s, l.ey, l.epsi, l.v, l.s_start, l.x, l.y, l.v_x, l.v_y,
+        state_pub_pos.publish(pos_info(Header(stamp=ros_t), l.s, l.ey, l.epsi, l.v, l.s_start, l.x, l.y, l.v_x, l.v_y,
                                        l.psi, l.psiDot, l.coeffX.tolist(), l.coeffY.tolist(),
                                        l.coeffTheta.tolist(), l.coeffCurvature.tolist()))
 

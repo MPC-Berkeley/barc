@@ -18,59 +18,55 @@
 # Subscribes: steering and motor commands on 'ecu'
 # Publishes: combined ecu commands as 'ecu_pwm'
 
-from rospy import init_node, Subscriber, Publisher, get_param
+from rospy import init_node, Subscriber, Publisher, get_param, get_rostime
 from rospy import Rate, is_shutdown, ROSInterruptException, spin, on_shutdown
 from barc.msg import ECU
 from numpy import pi
 import rospy
 
-motor_pwm = 90
-servo_pwm = 90
-str_ang_max = 35
-str_ang_min = -35
-
-def pwm_converter_callback(msg):
-    global motor_pwm, servo_pwm
-    global str_ang_max, str_ang_min
-
-    # translate from SI units in vehicle model
-    # to pwm angle units (i.e. to send command signal to actuators)
-
-    # convert desired steering angle to degrees, saturate based on input limits
-    servo_pwm       = 91.365 + 105.6*float(msg.servo)
-
-    # compute motor command
-    FxR         =  float(msg.motor) 
-    if FxR == 0:
-        motor_pwm = 90.0
-    elif FxR > 0:
-        motor_pwm   = 94.14 + 2.7678*FxR
-    else:               # motor break / slow down
-        motor_pwm = 93.5 + 46.73*FxR
-    update_arduino()
-
-def neutralize():
-    global motor_pwm
+class low_level_control(object):
     motor_pwm = 90
     servo_pwm = 90
-    update_arduino()
-
-def update_arduino():
-    global motor_pwm, servo_pwm, ecu_pub
-    ecu_cmd = ECU(motor_pwm, servo_pwm)
-    ecu_pub.publish(ecu_cmd)
+    str_ang_max = 35
+    str_ang_min = -35
+    ecu_pub = 0
+    FxR = 0
+    ecu_cmd = ECU()
+    def pwm_converter_callback(self, msg):
+        # translate from SI units in vehicle model
+        # to pwm angle units (i.e. to send command signal to actuators)
+        # convert desired steering angle to degrees, saturate based on input limits
+        self.servo_pwm = 91.365 + 105.6*float(msg.servo)
+        # compute motor command
+        self.FxR         =  float(msg.motor)
+        if self.FxR == 0:
+            self.motor_pwm = 90.0
+        elif self.FxR > 0:
+            self.motor_pwm = 94.14 + 2.7678*self.FxR
+        else:               # motor break / slow down
+            self.motor_pwm = 93.5 + 46.73*self.FxR
+        self.update_arduino()
+    def neutralize(self):
+        self.motor_pwm = 90
+        self.servo_pwm = 90
+        self.update_arduino()
+    def update_arduino(self):
+        self.ecu_cmd.header.stamp = get_rostime()
+        self.ecu_cmd.motor = self.motor_pwm
+        self.ecu_cmd.servo = self.servo_pwm
+        self.ecu_pub.publish(self.ecu_cmd)
 
 def arduino_interface():
-    global ecu_pub
 
     # launch node, subscribe to motorPWM and servoPWM, publish ecu
     init_node('arduino_interface')
+    llc = low_level_control()
 
-    Subscriber('ecu', ECU, pwm_converter_callback, queue_size = 1)
-    ecu_pub = Publisher('ecu_pwm', ECU, queue_size = 1)
+    Subscriber('ecu', ECU, llc.pwm_converter_callback, queue_size = 1)
+    llc.ecu_pub = Publisher('ecu_pwm', ECU, queue_size = 1)
 
     # Set motor to neutral on shutdown
-    on_shutdown(neutralize)
+    on_shutdown(llc.neutralize)
 
     # process callbacks and keep alive
     spin()

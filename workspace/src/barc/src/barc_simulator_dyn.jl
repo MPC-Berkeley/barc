@@ -19,6 +19,7 @@ using RobotOS
 @rosimport geometry_msgs.msg: Vector3
 @rosimport sensor_msgs.msg: Imu
 @rosimport marvelmind_nav.msg: hedge_pos
+@rosimport std_msgs.msg: Header
 rostypegen()
 using barc.msg
 using data_service.msg
@@ -106,11 +107,15 @@ function main()
     imu_data    = Imu()
     vel_est     = Vel_est()
     t0          = time()
+    gps_data    = hedge_pos()
+    
     t           = 0.0
 
     sim_gps_interrupt   = 0                 # counter if gps interruption is simulated
     vel_pos             = zeros(2)          # position when velocity was updated last time
     vel_dist_update     = 2*pi*0.036/2      # distance to travel until velocity is updated (half wheel rotation)
+
+    gps_header = Header()
     while ! is_shutdown()
 
         t = time()
@@ -141,7 +146,7 @@ function main()
                 vel_est.vel_est = convert(Float32,norm(z_current[i,3:4])+0.01*randn())
                 vel_pos = z_current[i,1:2][:]
             end
-            vel_est.stamp = t_ros
+            vel_est.header.stamp = t_ros
             publish(pub_vel, vel_est)
         end
 
@@ -160,7 +165,9 @@ function main()
                 gps_meas.i += 1
                 gps_meas.t[gps_meas.i] = t
                 gps_meas.z[gps_meas.i,:] = [x y]
-                gps_data = hedge_pos(0,convert(Float64,get_rostime()),x,y,0,0)
+                gps_data.header.stamp = get_rostime()
+                gps_data.x_m = x
+                gps_data.y_m = y
                 publish(pub_gps, gps_data)
             end
             sim_gps_interrupt -= 1
