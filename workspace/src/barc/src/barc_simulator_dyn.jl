@@ -76,7 +76,6 @@ function main()
     z_current = zeros(60000,8)
     z_current[1,:] = [0.1 0.0 0.0 0.0 0.0 0.0 0.0 0.0]
     slip_ang = zeros(60000,2)
-    
 
     dt = 0.01
     loop_rate = Rate(1/dt)
@@ -199,7 +198,7 @@ function main()
     log_path = "$(homedir())/simulations/output-SIM-$(run_id[1:4]).jld"
     save(log_path,"gps_meas",gps_meas,"z",z_real,"imu_meas",imu_meas,"cmd_log",cmd_log,"slip_a",slip_a)
     println("Exiting node... Saving data to $log_path. Simulated $((i-1)*dt) seconds.")
-    
+
 end
 
 if ! isinteractive()

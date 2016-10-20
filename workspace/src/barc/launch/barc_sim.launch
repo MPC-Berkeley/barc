@@ -7,7 +7,14 @@
     <param name="m" type="double" value="1.98" />
     <param name="I_z" type="double" value="0.24" />
 
-    <!-- Start simulator -->
+    <!-- RECORD -->
+    <node pkg="barc" type="barc_record.jl" name="barc_record" output="screen" />
+
+    <!-- CONTROL -->
+    <node pkg="barc" type="LMPC_node.jl" name="control" output="screen" />
+    <!--node pkg="barc" type="open_loop.jl" name="control" output="screen" /-->
+
+    <!-- SIMULATOR -->
     <node pkg="barc" type="barc_simulator_dyn.jl" name="barc_sim" output="screen" />
 
     <!--DYNAMIC OBSERVER-->
@@ -25,11 +32,5 @@
 
     <!-- LOW LEVEL CONTROLLER -->
     <node pkg="barc" type="controller_low_level.py" name="low_level_controller" />
-
-    <!-- MPC FOLLOW TRAJECTORY -->
-    <node pkg="barc" type="LMPC_node.jl" name="MPC" output="screen" />
-
-    <!-- Record -->
-    <node pkg="barc" type="barc_record.jl" name="barc_record" output="screen" />
 
 </launch>

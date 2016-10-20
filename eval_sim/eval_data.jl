@@ -22,10 +22,6 @@ type Measurements{T}
     z::Array{T}             # measurement values
 end
 
-const log_path_LMPC     = "$(homedir())/simulations/output_LMPC.jld"                        # data from MPC
-const log_path_sim      = "$(homedir())/simulations/output.jld"                             # data from barc_simulation
-const log_path_record   = "$(homedir())/simulations/record-2016-10-18-16-53-56.jld"         # data from barc_record
-
 # THIS FUNCTION EVALUATES DATA THAT WAS LOGGED BY THE SIMULATOR (INCLUDES "REAL" SIMULATION DATA)
 # ***********************************************************************************************
 
@@ -99,6 +95,7 @@ function eval_run(code::AbstractString)
     imu_meas    = d_rec["imu_meas"]
     gps_meas    = d_rec["gps_meas"]
     cmd_log     = d_rec["cmd_log"]
+    cmd_pwm_log = d_rec["cmd_pwm_log"]
     vel_est     = d_rec["vel_est"]
     pos_info    = d_rec["pos_info"]
 
@@ -121,6 +118,16 @@ function eval_run(code::AbstractString)
     xlabel("t [s]")
     ylabel("Position [m]")
     legend(["x_meas","y_meas","x_est","y_est"])
+
+    figure()
+    ax2=subplot(211)
+    plot(cmd_log.t,cmd_log.z,"-*",cmd_log.t_msg,cmd_log.z,"-x")
+    grid("on")
+    xlabel("t [s]")
+    subplot(212,sharex=ax2)
+    plot(cmd_pwm_log.t,cmd_pwm_log.z,"-*")
+    grid("on")
+    xlabel("t [s]")
 
     figure()
     title("Comparison of psi")
