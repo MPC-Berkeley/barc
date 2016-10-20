@@ -16,9 +16,10 @@ using HDF5, JLD, ProfileView
 include("../workspace/src/barc/src/barc_lib/classes.jl")
 
 type Measurements{T}
-    i::Int64          # measurement counter
-    t::Array{Float64}       # time data
-    z::Array{T}       # measurement values
+    i::Int64                # measurement counter
+    t::Array{Float64}       # time data (when it was received by this recorder)
+    t_msg::Array{Float64}   # time that the message was sent
+    z::Array{T}             # measurement values
 end
 
 const log_path_LMPC     = "$(homedir())/simulations/output_LMPC.jld"                        # data from MPC
@@ -78,8 +79,8 @@ function eval_sim(code::AbstractString)
 
     figure()
     title("Comparison of v")
-    plot(z.t,z.z[:,3:4],pos_info.t,pos_info.z[:,8:9],"-*",vel_est.t,vel_est.z)
-    legend(["real_xDot","real_yDot","est_xDot","est_yDot","v_x_meas"])
+    plot(z.t,z.z[:,3:4],z.t,sqrt(z.z[:,3].^2+z.z[:,4].^2),pos_info.t,pos_info.z[:,8:9],"-*",pos_info.t,sqrt(pos_info.z[:,8].^2+pos_info.z[:,9].^2),"-*",vel_est.t,vel_est.z)
+    legend(["real_xDot","real_yDot","real_v","est_xDot","est_yDot","est_v","v_x_meas"])
     grid()
 
     figure()

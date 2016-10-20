@@ -26,15 +26,17 @@ using JLD
 
 # This type contains measurement data (time, values and a counter)
 type Measurements{T}
-    i::Int64          # measurement counter
-    t::Array{Float64}       # time data
-    z::Array{T}       # measurement values
+    i::Int64                # measurement counter
+    t::Array{Float64}       # time data (when it was received by this recorder)
+    t_msg::Array{Float64}   # time that the message was sent
+    z::Array{T}             # measurement values
 end
 
 # This function cleans the zeros from the type above once the simulation is finished
 function clean_up(m::Measurements)
-    m.t = m.t[1:m.i-1]
-    m.z = m.z[1:m.i-1,:]
+    m.t     = m.t[1:m.i-1]
+    m.t_msg = m.t_msg[1:m.i-1]
+    m.z     = m.z[1:m.i-1,:]
 end
 
 function Quat2Euler(q::Array{Float64})
@@ -46,56 +48,56 @@ function Quat2Euler(q::Array{Float64})
 end
 
 function ECU_callback(msg::ECU,cmd_log::Measurements)
-    cmd_log.i += 1
-    cmd_log.t[cmd_log.i] = time()
+    cmd_log.t[cmd_log.i] = to_sec(get_rostime())
+    cmd_log.t_msg[cmd_log.i] = to_sec(msg.header.stamp)
     cmd_log.z[cmd_log.i,:] = convert(Array{Float64,1},[msg.motor;msg.servo])
+    cmd_log.i += 1
     nothing
 end
 
 function IMU_callback(msg::Imu,imu_meas::Measurements)
-    imu_meas.i += 1
-    imu_meas.t[imu_meas.i]      = time()
+    imu_meas.t[imu_meas.i]      = to_sec(get_rostime())
+    imu_meas.t_msg[imu_meas.i]  = to_sec(msg.header.stamp)
     imu_meas.z[imu_meas.i,:]    = [msg.angular_velocity.x;msg.angular_velocity.y;msg.angular_velocity.z;
                                     Quat2Euler([msg.orientation.w;msg.orientation.x;msg.orientation.y;msg.orientation.z]);
                                     msg.linear_acceleration.x;msg.linear_acceleration.y;msg.linear_acceleration.z]::Array{Float64}
+    imu_meas.i += 1
     nothing
 end
 
 function GPS_callback(msg::hedge_pos,gps_meas::Measurements)
-    gps_meas.i += 1
-    gps_meas.t[gps_meas.i]      = time()
+    gps_meas.t[gps_meas.i]      = to_sec(get_rostime())
+    gps_meas.t_msg[gps_meas.i]  = to_sec(msg.header.stamp)
     gps_meas.z[gps_meas.i,:]    = [msg.x_m;msg.y_m]
+    gps_meas.i += 1
     nothing
 end
 
 function pos_info_callback(msg::pos_info,pos_info_log::Measurements)
-    pos_info_log.i += 1
-    pos_info_log.t[pos_info_log.i]      = time()
+    pos_info_log.t[pos_info_log.i]      = to_sec(get_rostime())
+    pos_info_log.t_msg[pos_info_log.i]  = to_sec(msg.header.stamp)
     pos_info_log.z[pos_info_log.i,:]    = [msg.s;msg.ey;msg.epsi;msg.v;msg.s_start;msg.x;msg.y;msg.v_x;msg.v_y;msg.psi;msg.psiDot]
+    pos_info_log.i += 1
     nothing
 end
 
 function vel_est_callback(msg::Vel_est,vel_est_log::Measurements)
-    vel_est_log.i += 1
-    vel_est_log.t[vel_est_log.i]      = time()
+    vel_est_log.t[vel_est_log.i]      = to_sec(get_rostime())
+    vel_est_log.t_msg[vel_est_log.i]  = to_sec(msg.header.stamp)
     vel_est_log.z[vel_est_log.i]      = convert(Float64,msg.vel_est)
+    vel_est_log.i += 1
     nothing
 end
 
 function main() 
 
     buffersize      = 60000
-    gps_meas        = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,2))
-    imu_meas        = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,9))
-    cmd_log         = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,2))
-    vel_est_log     = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize))
-    pos_info_log    = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,11))
+    gps_meas        = Measurements{Float64}(1,zeros(buffersize),zeros(buffersize),zeros(buffersize,2))
+    imu_meas        = Measurements{Float64}(1,zeros(buffersize),zeros(buffersize),zeros(buffersize,9))
+    cmd_log         = Measurements{Float64}(1,zeros(buffersize),zeros(buffersize),zeros(buffersize,2))
+    vel_est_log     = Measurements{Float64}(1,zeros(buffersize),zeros(buffersize),zeros(buffersize))
+    pos_info_log    = Measurements{Float64}(1,zeros(buffersize),zeros(buffersize),zeros(buffersize,11))
 
-    gps_meas.t[1]       = time()
-    imu_meas.t[1]       = time()
-    cmd_log.t[1]        = time()
-    pos_info_log.t[1]   = time()
-    vel_est_log.t[1]    = time()
     # initiate node, set up publisher / subscriber topics
     init_node("barc_record")
     s1  = Subscriber("ecu", ECU, ECU_callback, (cmd_log,), queue_size=1)::RobotOS.Subscriber{barc.msg.ECU}

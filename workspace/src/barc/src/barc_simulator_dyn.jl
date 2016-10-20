@@ -36,36 +36,34 @@ include("barc_lib/simModel.jl")
 type Measurements{T}
     i::Int64          # measurement counter
     t::Array{Float64}       # time data
+    t_msg::Array{Float64}
     z::Array{T}       # measurement values
 end
 
 # This function cleans the zeros from the type above once the simulation is finished
 function clean_up(m::Measurements)
-    m.t = m.t[1:m.i-1]
-    m.z = m.z[1:m.i-1,:]
+    m.t     = m.t[1:m.i-1]
+    m.t_msg = m.t_msg[1:m.i-1]
+    m.z     = m.z[1:m.i-1,:]
 end
 
 function ECU_callback(msg::ECU,u_current::Array{Float64},cmd_log::Measurements)
     u_current[:] = convert(Array{Float64,1},[msg.motor, msg.servo])
+    cmd_log.t_msg[cmd_log.i]    = to_sec(get_rostime())
+    cmd_log.t[cmd_log.i]        = to_sec(get_rostime())
+    cmd_log.z[cmd_log.i,:]      = u_current
     cmd_log.i += 1
-    cmd_log.t[cmd_log.i] = time()
-    cmd_log.z[cmd_log.i,:] = u_current
 end
 
 function main() 
     u_current = zeros(Float64,2)      # msg ECU is Float32 !
 
     buffersize = 60000
-    gps_meas = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,2))
-    imu_meas = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,2))
-    cmd_log  = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,2))
-    z_real   = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,8))
-    slip_a   = Measurements{Float64}(0,zeros(buffersize),zeros(buffersize,2))
-
-    z_real.t[1]   = time()
-    slip_a.t[1]   = time()
-    imu_meas.t[1] = time()
-    cmd_log.t[1]  = time()
+    gps_meas = Measurements{Float64}(1,zeros(buffersize),zeros(buffersize),zeros(buffersize,2))
+    imu_meas = Measurements{Float64}(1,zeros(buffersize),zeros(buffersize),zeros(buffersize,2))
+    cmd_log  = Measurements{Float64}(1,zeros(buffersize),zeros(buffersize),zeros(buffersize,2))
+    z_real   = Measurements{Float64}(1,zeros(buffersize),zeros(buffersize),zeros(buffersize,8))
+    slip_a   = Measurements{Float64}(1,zeros(buffersize),zeros(buffersize),zeros(buffersize,2))
 
     # initiate node, set up publisher / subscriber topics
     init_node("barc_sim")
@@ -78,6 +76,7 @@ function main()
     z_current = zeros(60000,8)
     z_current[1,:] = [0.1 0.0 0.0 0.0 0.0 0.0 0.0 0.0]
     slip_ang = zeros(60000,2)
+    
 
     dt = 0.01
     loop_rate = Rate(1/dt)
@@ -100,29 +99,35 @@ function main()
 
     modelParams.l_A = 0.125
     modelParams.l_B = 0.125
-    modelParams.m = 1.98
+    modelParams.m   = 1.98
     modelParams.I_z = 0.24
 
     println("Publishing sensor information. Simulator running.")
     imu_data    = Imu()
     vel_est     = Vel_est()
-    t0          = time()
+    t0          = to_sec(get_rostime())
     gps_data    = hedge_pos()
     
-    t           = 0.0
+
+    z_real.t_msg[1] = t0
+    slip_a.t_msg[1] = t0
+    z_real.t[1]     = t0
+    slip_a.t[1]     = t0
+    t               = 0.0
 
     sim_gps_interrupt   = 0                 # counter if gps interruption is simulated
-    vel_pos             = zeros(2)          # position when velocity was updated last time
     vel_dist_update     = 2*pi*0.036/2      # distance to travel until velocity is updated (half wheel rotation)
 
     gps_header = Header()
     while ! is_shutdown()
-
-        t = time()
-        t_ros = get_rostime()
         # update current state with a new row vector
         z_current[i,:],slip_ang[i,:]  = simDynModel_exact_xy(z_current[i-1,:],u_current', dt, modelParams)
+        t_ros   = get_rostime()
+        t       = to_sec(t_ros)
+
+        z_real.t_msg[i] = t
         z_real.t[i]     = t
+        slip_a.t_msg[i] = t
         slip_a.t[i]     = t
 
         # IMU measurements
@@ -130,9 +135,10 @@ function main()
             imu_drift   = 1+(t-t0)/100#sin(t/100*pi/2)     # drifts to 1 in 100 seconds (and add random start value 1)
             yaw         = z_current[i,5] + randn()*0.02 + imu_drift
             psiDot      = z_current[i,6] + 0.01*randn()
-            imu_meas.i += 1
+            imu_meas.t_msg[imu_meas.i] = t
             imu_meas.t[imu_meas.i] = t
             imu_meas.z[imu_meas.i,:] = [yaw psiDot]
+            imu_meas.i += 1
             imu_data.orientation = geometry_msgs.msg.Quaternion(cos(yaw/2), sin(yaw/2), 0, 0)
             imu_data.angular_velocity = Vector3(0,0,psiDot)
             imu_data.header.stamp = t_ros
@@ -141,10 +147,11 @@ function main()
         end
 
         # Velocity measurements
+        dist_traveled += norm(diff(z_current[i-1:i,1:2]))
         if i%5 == 0                 # 20 Hz
-            if norm(z_current[i,1:2][:]-vel_pos) > vel_dist_update     # only update if a magnet has passed the sensor
-                vel_est.vel_est = convert(Float32,norm(z_current[i,3:4])+0.01*randn())
-                vel_pos = z_current[i,1:2][:]
+            if dist_traveled >= vel_dist_update     # only update if a magnet has passed the sensor
+                dist_traveled = 0
+                vel_est.vel_est = convert(Float32,norm(z_current[i,3:4]))#+0.00*randn())
             end
             vel_est.header.stamp = t_ros
             publish(pub_vel, vel_est)
@@ -162,9 +169,10 @@ function main()
                 sim_gps_interrupt = 10      # simulate gps-interrupt (10 steps at 25 Hz is 0.4 seconds)
             end
             if sim_gps_interrupt < 0
-                gps_meas.i += 1
+                gps_meas.t_msg[gps_meas.i] = t
                 gps_meas.t[gps_meas.i] = t
                 gps_meas.z[gps_meas.i,:] = [x y]
+                gps_meas.i += 1
                 gps_data.header.stamp = get_rostime()
                 gps_data.x_m = x
                 gps_data.y_m = y
@@ -191,7 +199,7 @@ function main()
     log_path = "$(homedir())/simulations/output-SIM-$(run_id[1:4]).jld"
     save(log_path,"gps_meas",gps_meas,"z",z_real,"imu_meas",imu_meas,"cmd_log",cmd_log,"slip_a",slip_a)
     println("Exiting node... Saving data to $log_path. Simulated $((i-1)*dt) seconds.")
-    #writedlm(log_path,z_current[1:i-1,:])
+    
 end
 
 if ! isinteractive()
