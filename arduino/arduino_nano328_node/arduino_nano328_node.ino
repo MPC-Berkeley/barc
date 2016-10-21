@@ -23,10 +23,8 @@ WARNING:
 #include <ros.h>
 //#include <barc/Ultrasound.h>
 #include <barc/Vel_est.h>
-#include <barc/Encoder.h>
 #include <barc/ECU.h>
 #include <Servo.h>
-#include "Maxbotix.h"
 #include <EnableInterrupt.h>
 #include <std_msgs/Int32.h>
 #include <std_msgs/Float32.h>
@@ -190,38 +188,13 @@ volatile unsigned long t0;
 // Global message variables
 // Encoder, RC Inputs, Electronic Control Unit, Ultrasound
 barc::ECU ecu;
-//barc::ECU rc_inputs;
-//barc::Encoder encoder;
-//barc::Ultrasound ultrasound;
-
-//std_msgs::Int32 encoder_dt_FL;                                         //(ADDED BY TOMMI 7JULY2016)
-//std_msgs::Int32 encoder_dt_FR;                                         //(ADDED BY TOMMI 7JULY2016)
-//std_msgs::Int32 encoder_dt_BL;                                         //(ADDED BY TOMMI 7JULY2016)
-//std_msgs::Int32 encoder_dt_BR;                                         //(ADDED BY TOMMI 7JULY2016)
-//std_msgs::Float32 vel_est;            // estimation of current velocity to be published
 barc::Vel_est vel_est;
 
 
 ros::NodeHandle nh;
 
-//ros::Publisher pub_encoder("encoder", &encoder);
-//ros::Publisher pub_rc_inputs("rc_inputs", &rc_inputs);
-//ros::Publisher pub_ultrasound("ultrasound", &ultrasound);
 ros::Subscriber<barc::ECU> sub_ecu("ecu_pwm", ecuCallback);
-//ros::Publisher pub_encoder_dt_FL("fl", &encoder_dt_FL);                               //(ADDED BY TOMMI 7JULY2016)
-//ros::Publisher pub_encoder_dt_FR("fr", &encoder_dt_FR);                               //(ADDED BY TOMMI 7JULY2016)
-//ros::Publisher pub_encoder_dt_BL("bl", &encoder_dt_BL);                               //(ADDED BY TOMMI 7JULY2016)
-//ros::Publisher pub_encoder_dt_BR("br", &encoder_dt_BR);                               //(ADDED BY TOMMI 7JULY2016)
 ros::Publisher pub_vel_est("vel_est", &vel_est);          // vel est publisher
-
-
-// Set up ultrasound sensors
-/*
-Maxbotix us_fr(14, Maxbotix::PW, Maxbotix::LV); // front
-Maxbotix us_bk(15, Maxbotix::PW, Maxbotix::LV); // back
-Maxbotix us_rt(16, Maxbotix::PW, Maxbotix::LV); // right
-Maxbotix us_lt(17, Maxbotix::PW, Maxbotix::LV); // left
-*/
 
 /**************************************************************************
 ARDUINO INITIALIZATION
@@ -265,7 +238,7 @@ void loop() {
     car.readAndCopyInputs();
 
     vel_est.vel_est = car.getVelocityEstimate();
-    vel_est.stamp   = ros::Time::now();
+    vel_est.header.stamp = nh.now();
     pub_vel_est.publish(&vel_est);               // publish estimated velocity
     ////////////////////////////////////////////////!!!!
 
