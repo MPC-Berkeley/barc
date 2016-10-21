@@ -48,12 +48,7 @@ find_package(catkin REQUIRED COMPONENTS
 add_message_files(
    FILES
    pos_info.msg
-   Logging.msg
-   Ultrasound.msg
-   Encoder.msg
    ECU.msg
-   Z_KinBkMdl.msg
-   Z_DynBkMdl.msg
    Vel_est.msg
 )
 
