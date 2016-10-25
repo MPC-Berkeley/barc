@@ -12,6 +12,11 @@ using HDF5, JLD, ProfileView
 # pos_info[9]  = v_y
 # pos_info[10] = psi
 # pos_info[11] = psiDot
+# pos_info[12] = x_raw
+# pos_info[13] = y_raw
+# pos_info[14] = psi_raw
+# pos_info[15] = v_raw
+# pos_info[16] = psi_drift
 
 include("../workspace/src/barc/src/barc_lib/classes.jl")
 
@@ -90,6 +95,7 @@ end
 # ****************************************************************
 function eval_run(code::AbstractString)
     log_path_record = "$(homedir())/simulations/output-record-$(code).jld"
+    log_path_record = "$(homedir())/open_loop/output-record-0ed5.jld"
     d_rec = load(log_path_record)
 
     imu_meas    = d_rec["imu_meas"]
@@ -131,20 +137,26 @@ function eval_run(code::AbstractString)
 
     figure()
     title("Comparison of psi")
-    plot(imu_meas.t-t0,imu_meas.z[:,6],imu_meas.t-t0,imu_meas.z[:,3],"-x",pos_info.t-t0,pos_info.z[:,10:11],"-*")
-    legend(["imu_psi","imu_psi_dot","est_psi","est_psi_dot"])
+    plot(imu_meas.t-t0,imu_meas.z[:,6],imu_meas.t-t0,imu_meas.z[:,3],"-x",pos_info.t-t0,pos_info.z[:,10:11],"-*",pos_info.t-t0,pos_info.z[:,16],"-*")
+    legend(["imu_psi","imu_psi_dot","est_psi","est_psi_dot","psi_drift"])
     grid()
 
     figure()
     title("Raw IMU orientation data")
-    plot(imu_meas.t-t0,imu_meas.z[:,1:3],"--",imu_meas.t-t0,imu_meas.z[:,4:6])
+    plot(imu_meas.t-t0,imu_meas.z[:,1:3],"--",imu_meas.t-t0,imu_meas.z[:,4:6],imu_meas.t_msg-t0,imu_meas.z[:,4:6])
     grid("on")
     legend(["w_x","w_y","w_z","roll","pitch","yaw"])
 
     figure()
     title("v measurements and estimate")
-    plot(pos_info.t-t0,pos_info.z[:,8:9],"-*",vel_est.t-t0,vel_est.z,"-x")
+    plot(pos_info.t-t0,pos_info.z[:,8:9],"-*",vel_est.t-t0,vel_est.z,"-x",vel_est.t_msg-t0,vel_est.z,"-+")
     legend(["est_xDot","est_yDot","v_raw"])
+    grid()
+
+    figure()
+    title("Acceleration data")
+    plot(imu_meas.t-t0,imu_meas.z[:,7:9],"-x",imu_meas.t_msg-t0,imu_meas.z[:,7:9],"-*")
+    legend(["a_x","a_y","a_z"])
     grid()
 
     figure()
@@ -159,6 +171,52 @@ function eval_run(code::AbstractString)
     legend(["u","d_f"])
     nothing
 end
+
+function eval_open_loop(code::AbstractString)
+    log_path_record = "$(homedir())/open_loop/output-record-$(code).jld"
+    d_rec = load(log_path_record)
+
+    imu_meas    = d_rec["imu_meas"]
+    gps_meas    = d_rec["gps_meas"]
+    cmd_log     = d_rec["cmd_log"]
+    cmd_pwm_log = d_rec["cmd_pwm_log"]
+    vel_est     = d_rec["vel_est"]
+    pos_info    = d_rec["pos_info"]
+
+    t0      = pos_info.t[1]
+
+    figure()
+    title("Comparison speed and input")
+    ax3=subplot(211)
+    plot(vel_est.t-t0,vel_est.z,vel_est.t_msg-t0,vel_est.z)
+    grid("on")
+    subplot(212,sharex=ax3)
+    plot(cmd_pwm_log.t-t0,cmd_pwm_log.z[:,1],cmd_pwm_log.t_msg-t0,cmd_pwm_log.z[:,1])
+    grid("on")
+
+    gps_speed_raw = diff(gps_meas.z)./diff(gps_meas.t)
+    gps_speed = [0;sqrt(gps_speed_raw[:,1].^2+gps_speed_raw[:,2].^2)]
+    figure()
+    title("Comparison GPS and encoder speed")
+    plot(vel_est.t-t0,vel_est.z,"-*",gps_meas.t-t0,gps_speed,"-x",pos_info.t_msg-t0,pos_info.z[:,4],"-+")
+    grid("on")
+    legend(["encoder","gps","estimator"])
+
+    figure()
+    title("Acceleration data")
+    plot(imu_meas.t-t0,imu_meas.z[:,7:9],"-x",imu_meas.t_msg-t0,imu_meas.z[:,7:9],"-*")
+    legend(["a_x","a_y","a_z"])
+    grid()
+
+    figure()
+    title("Acceleration data")
+    plot(imu_meas.t-t0,imu_meas.z[:,7:9],"-x",imu_meas.t_msg-t0,imu_meas.z[:,7:9],"-*")
+    legend(["a_x","a_y","a_z"])
+    grid()
+
+end
+
+
 
 # THIS FUNCTION EVALUATES MPC-SPECIFIC DATA
 # *****************************************

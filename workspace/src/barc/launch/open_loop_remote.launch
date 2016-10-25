@@ -11,8 +11,6 @@
     <machine name="this-pc" address="192.168.100.101" timeout="20.0" env-loader="/home/max/barc/env_loader_pc.sh"/>
     
     <!-- START NODES -->
-    <!-- Simulator -->
-    <!--node machine="this-pc" pkg="barc" type="barc_simulator_dyn.jl" name="barc_sim" output="screen" /-->
     
     <!-- Estimator -->
     <node machine="this-pc" pkg="barc" type="state_estimation_DynBkMdl.py" name="state_estimation_dynamic" output="screen">
@@ -27,7 +25,7 @@
         <param name="est_mode" type="double" value="1" />
     </node>
 
-    <!-- MPC CONTROL -->
+    <!-- CONTROL -->
     <node machine="this-pc" pkg="barc" type="open_loop.jl" name="control" output="screen" />
 
     <!-- LOW LEVEL CONTROLLER -->

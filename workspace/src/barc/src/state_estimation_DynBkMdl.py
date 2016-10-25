@@ -246,7 +246,8 @@ def state_estimation():
 
         # and then publish position info
         state_pub_pos.publish(pos_info(Header(stamp=ros_t), l.s, l.ey, l.epsi, l.v, l.s_start, l.x, l.y, l.v_x, l.v_y,
-                                       l.psi, l.psiDot, l.coeffX.tolist(), l.coeffY.tolist(),
+                                       l.psi, l.psiDot, x_meas_pred, y_meas_pred, yaw, vel_est, psi_drift,
+                                       l.coeffX.tolist(), l.coeffY.tolist(),
                                        l.coeffTheta.tolist(), l.coeffCurvature.tolist()))
 
         # apply EKF

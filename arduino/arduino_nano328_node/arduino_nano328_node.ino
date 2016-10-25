@@ -441,7 +441,7 @@ unsigned long Car::getEncoder_dTime_BR() {                               //(ADDE
 
 float Car::getVelocityEstimate() {
   if(FL_DeltaTime > 0 && FR_DeltaTime > 0) {
-    return 2.0*3.141593*0.036/2.0*(1.0/FL_DeltaTime + 1.0/FR_DeltaTime)*1000000.0/2.0;    // calculate current speed in m/s
+    return 2.0*3.141593*0.036/2.0*(1.0/FL_DeltaTime + 1.0/FR_DeltaTime + 1.0/BR_DeltaTime)*1000000.0/3.0;    // calculate current speed in m/s
     //return 1.0;  
 }
   else {

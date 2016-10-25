@@ -25,7 +25,7 @@ function main()
     cmd_log         = Measurements{Float64}(1,zeros(buffersize),zeros(buffersize),zeros(buffersize,2))
     cmd_pwm_log     = Measurements{Float64}(1,zeros(buffersize),zeros(buffersize),zeros(buffersize,2))
     vel_est_log     = Measurements{Float64}(1,zeros(buffersize),zeros(buffersize),zeros(buffersize))
-    pos_info_log    = Measurements{Float64}(1,zeros(buffersize),zeros(buffersize),zeros(buffersize,11))
+    pos_info_log    = Measurements{Float64}(1,zeros(buffersize),zeros(buffersize),zeros(buffersize,16))
 
     # Initialize ROS node and topics
     init_node("mpc_traj")
@@ -64,9 +64,12 @@ function main()
         if t <= 3
             cmd.motor = 0
             cmd.servo = 0
-        elseif t <= 5
-            cmd.motor = 1
-            cmd.servo = 0
+        elseif t <= 4                   # CHECK TIME AND ACCELERATION !!!
+            cmd.motor = 1             # CHECK TIME AND ACCELERATION !!!
+            cmd.servo = 0.3
+        elseif t <= 6
+            cmd.motor = 1.5
+            cmd.servo = -0.3
         else
             cmd.motor = 0
             cmd.servo = 0

@@ -82,10 +82,10 @@ function main()
 
     i = 2
 
-    dist_traveled = 0.0
+    dist_traveled = randn(3)        # encoder positions of three wheels
     last_updated  = 0.0
 
-    r_tire      = 0.036                  # radius from tire center to perimeter along magnets [m]
+    r_tire      = 0.036             # radius from tire center to perimeter along magnets [m]
     
     imu_drift = 0.0       # simulates yaw-sensor drift over time (slow sine)
 
@@ -141,6 +141,8 @@ function main()
             imu_data.orientation = geometry_msgs.msg.Quaternion(cos(yaw/2), sin(yaw/2), 0, 0)
             imu_data.angular_velocity = Vector3(0,0,psiDot)
             imu_data.header.stamp = t_ros
+            imu_data.linear_acceleration.x = diff(z_current[i-1:i,3])[1]/dt
+            imu_data.linear_acceleration.y = diff(z_current[i-1:i,4])[1]/dt
             publish(pub_imu, imu_data)      # Imu format is defined by ROS, you can look it up by google "rosmsg Imu"
                                             # It's sufficient to only fill the orientation part of the Imu-type (with one quaternion)
         end
@@ -148,8 +150,8 @@ function main()
         # Velocity measurements
         dist_traveled += norm(diff(z_current[i-1:i,1:2]))
         if i%5 == 0                 # 20 Hz
-            if dist_traveled >= vel_dist_update     # only update if a magnet has passed the sensor
-                dist_traveled = 0
+            if sum(dist_traveled .>= vel_dist_update)>=1     # only update if at least one of the magnets has passed the sensor
+                dist_traveled[dist_traveled.>=vel_dist_update] = 0
                 vel_est.vel_est = convert(Float32,norm(z_current[i,3:4]))#+0.00*randn())
             end
             vel_est.header.stamp = t_ros
