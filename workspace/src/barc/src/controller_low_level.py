@@ -15,63 +15,71 @@
 # ---------------------------------------------------------------------------
 
 # README: This node serves as an outgoing messaging bus from odroid to arduino
-# Subscribes: steering and motor commands on 'servo_pwm' and 'motor_pwm' and
-# Publishes: combined ecu commands as 'ecu'
+# Subscribes: steering and motor commands on 'ecu'
+# Publishes: combined ecu commands as 'ecu_pwm'
 
-# Eventually, there should be another node, or this node could be extended, as a
-# central translator between steering angle and desired acceleration to servo
-# and motor pwm. Making the translator a separate node would be nice because
-# this node would be reusable with different translators (in case someone has a
-# controller that outputs something other than desired acceleration, for
-# example). Eg, my cruise controller operates directly on motor cmd
-
-import rospy
+from rospy import init_node, Subscriber, Publisher, get_param
+from rospy import Rate, is_shutdown, ROSInterruptException, spin, on_shutdown
 from barc.msg import ECU
-from input_map import angle_2_servo
+from numpy import pi
+import rospy
 
-def motor_callback(msg):
-    global motor_pwm
-    motor_pwm = msg.motor_pwm
-    update_arduino()
+motor_pwm = 90
+servo_pwm = 90
+str_ang_max = 35
+str_ang_min = -35
 
-def servo_callback(msg):
-    global servo_pwm
-    servo_pwm = msg.servo_pwm
+def pwm_converter_callback(msg):
+    global motor_pwm, servo_pwm, b0
+    global str_ang_max, str_ang_min
+
+    # translate from SI units in vehicle model
+    # to pwm angle units (i.e. to send command signal to actuators)
+
+    # convert desired steering angle to degrees, saturate based on input limits
+    str_ang     = max( min( 180.0/pi*msg.servo, str_ang_max), str_ang_min)
+    servo_pwm   = 92.0558 + 1.8194*str_ang  - 0.0104*str_ang**2
+
+    # compute motor command
+    FxR         =  float(msg.motor) 
+    if FxR == 0:
+        motor_pwm = 90.0
+    elif FxR > 0:
+        motor_pwm   =  FxR/b0 + 95.0
+    else:
+        motor_pwm = 90.0
     update_arduino()
 
 def neutralize():
     global motor_pwm
     motor_pwm = 90
+    servo_pwm = 90
     update_arduino()
 
 def update_arduino():
-    global motor_pwm, servo_cmd, ecu_pub
+    global motor_pwm, servo_pwm, ecu_pub
     ecu_cmd = ECU(motor_pwm, servo_pwm)
     ecu_pub.publish(ecu_cmd)
 
 def arduino_interface():
-    global motor_pwm, servo_pwm, ecu_pub
-    # launch node, subscribe to motorPWM and servoPWM, publish ecu
-    rospy.init_node('arduino_interface')
-    rospy.Subscriber('motor_pwm', ECU, motor_callback, queue_size = 10)
-    rospy.Subscriber('servo_pwm', ECU, servo_callback, queue_size = 10)
-    ecu_pub = rospy.Publisher('ecu', ECU, queue_size = 10)
+    global ecu_pub, b0
 
-    # initialize motor and servo at neutral
-    motor_pwm = 90
-    steering_angle = 0
-    steering_offset = 2
-    servo_pwm = angle_2_servo(steering_angle - steering_offset)
+    # launch node, subscribe to motorPWM and servoPWM, publish ecu
+    init_node('arduino_interface')
+    b0  = get_param("input_gain")
+
+    Subscriber('ecu', ECU, pwm_converter_callback, queue_size = 10)
+    ecu_pub = Publisher('ecu_pwm', ECU, queue_size = 10)
 
     # Set motor to neutral on shutdown
-    rospy.on_shutdown(neutralize)
+    on_shutdown(neutralize)
 
     # process callbacks and keep alive
-    rospy.spin()
+    spin()
 
 #############################################################
 if __name__ == '__main__':
     try:
         arduino_interface()
-    except rospy.ROSInterruptException:
+    except ROSInterruptException:
         pass

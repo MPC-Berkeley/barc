@@ -17,22 +17,20 @@ import rospy
 import time
 import os
 from barc.msg import ECU, Encoder
-from data_service.msg import TimeData
+from sensor_msgs.msg import Imu
 from geometry_msgs.msg import Vector3
 from numpy import pi, cos, sin, eye, array, zeros
-from input_map import angle_2_servo, servo_2_angle
-from observers import kinematicLuembergerObserver, ekf
+from ekf import ekf
 from system_models import f_3s, h_3s
-from filtering import filteredSignal
-from rospy_tutorials.msg import Floats
-from rospy.numpy_msg import numpy_msg
+from tf import transformations
+from numpy import unwrap
 
 # input variables
 d_f 	    = 0
-servo_pwm   = 90
-motor_pwm   = 90
+FxR         = 0
 
 # raw measurement variables
+yaw_prev = 0
 (roll, pitch, yaw, a_x, a_y, a_z, w_x, w_y, w_z) = zeros(9)
 
 # from encoder
@@ -47,16 +45,31 @@ dx_qrt 	    = 2.0*pi*r_tire/4.0     # distance along quarter tire edge
 
 # ecu command update
 def ecu_callback(data):
-    global motor_pwm, servo_pwm, d_f
-    motor_pwm	    = data.motor_pwm
-    servo_pwm       = data.servo_pwm
-    d_f             = servo_2_angle(servo_pwm)
+    global FxR, d_f
+    FxR         = data.motor        # input motor force [N]
+    d_f         = data.servo        # input steering angle [rad]
 
 # imu measurement update
 def imu_callback(data):
     # units: [rad] and [rad/s]
-	global roll, pitch, yaw, a_x, a_y, a_z, w_x, w_y, w_z
-	(roll, pitch, yaw, a_x, a_y, a_z, w_x, w_y, w_z) = data.value
+    global roll, pitch, yaw, a_x, a_y, a_z, w_x, w_y, w_z
+    global yaw_prev
+    
+    # get orientation from quaternion data, and convert to roll, pitch, yaw
+    # extract angular velocity and linear acceleration data
+    ori  = data.orientation
+    quaternion  = (ori.x, ori.y, ori.z, ori.w)
+    (roll, pitch, yaw) = transformations.euler_from_quaternion(quaternion)
+    yaw         = unwrap(array([yaw_prev, yaw]), discont = pi)[1]
+    yaw_prev    = yaw
+    
+    # extract angular velocity and linear acceleration data
+    w_x = data.angular_velocity.x
+    w_y = data.angular_velocity.y
+    w_z = data.angular_velocity.z
+    a_x = data.linear_acceleration.x
+    a_y = data.linear_acceleration.y
+    a_z = data.linear_acceleration.z
 
 # encoder measurement update
 def enc_callback(data):
@@ -89,34 +102,34 @@ def enc_callback(data):
 
 # state estimation node
 def state_estimation():
-	  # initialize node
+	# initialize node
     rospy.init_node('state_estimation', anonymous=True)
 
     # topic subscriptions / publications
-    rospy.Subscriber('imu', TimeData, imu_callback)
+    rospy.Subscriber('imu/data', Imu, imu_callback)
     rospy.Subscriber('encoder', Encoder, enc_callback)
     rospy.Subscriber('ecu', ECU, ecu_callback)
     state_pub 	= rospy.Publisher('state_estimate', Vector3, queue_size = 10)
 
 	# get vehicle dimension parameters
-    L_a = rospy.get_param("state_estimation/L_a")       # distance from CoG to front axel
-    L_b = rospy.get_param("state_estimation/L_b")       # distance from CoG to rear axel
-    m   = rospy.get_param("state_estimation/m")         # mass of vehicle
-    I_z = rospy.get_param("state_estimation/I_z")       # moment of inertia about z-axis
+    L_a = rospy.get_param("L_a")       # distance from CoG to front axel
+    L_b = rospy.get_param("L_b")       # distance from CoG to rear axel
+    m   = rospy.get_param("m")         # mass of vehicle
+    I_z = rospy.get_param("I_z")       # moment of inertia about z-axis
     vhMdl   = (L_a, L_b, m, I_z)
 
     # get encoder parameters
-    dt_vx   = rospy.get_param("state_estimation/dt_vx")     # time interval to compute v_x
+    dt_vx   = rospy.get_param("state_estimation/dt_v_enc")     # time interval to compute v_x
 
     # get tire model
-    B   = rospy.get_param("state_estimation/B")
-    C   = rospy.get_param("state_estimation/C")
-    mu  = rospy.get_param("state_estimation/mu")
+    B   = rospy.get_param("tire_model/B")
+    C   = rospy.get_param("tire_model/C")
+    mu  = rospy.get_param("tire_model/mu")
     TrMdl = ([B,C,mu],[B,C,mu])
 
     # get external force model
-    a0  = rospy.get_param("state_estimation/air_drag_coeff")
-    Ff  = rospy.get_param("state_estimation/Ff")
+    a0  = rospy.get_param("air_drag_coeff")
+    Ff  = rospy.get_param("friction")
 
     # get EKF observer properties
     q_std   = rospy.get_param("state_estimation/q_std")             # std of process noise
@@ -127,7 +140,7 @@ def state_estimation():
     loop_rate 	= 50
     dt 		    = 1.0 / loop_rate
     rate 		= rospy.Rate(loop_rate)
-    t0 				= time.time()
+    t0 			= time.time()
 
     # estimation variables for Luemberger observer
     z_EKF       = array([1.0, 0.0, 0.0])
@@ -137,10 +150,6 @@ def state_estimation():
     Q           = (q_std**2)*eye(3)     # process noise coveriance matrix
     R           = (r_std**2)*eye(2)     # measurement noise coveriance matrix
 
-    # filtered signal for longitudinal velocity
-    p_filter    = rospy.get_param("state_estimation/p_filter")
-    v_x_filt    = filteredSignal(a = p_filter, method='lp')   # low pass filter
-
     while not rospy.is_shutdown():
 
 		# publish state estimate
@@ -149,20 +158,10 @@ def state_estimation():
         # publish information
         state_pub.publish( Vector3(v_x, v_y, r) )
 
-        # update filtered signal
-        v_x_filt.update(v_x_enc)
-        v_x_est = v_x_filt.getFilteredSignal() 
-
         # apply EKF
-        if v_x_est > v_x_min:
+        if v_x_enc > v_x_min:
             # get measurement
-            y = array([v_x_est, w_z])
-
-            # compute input motor signal 
-            if motor_pwm >= 95:
-                FxR     = (motor_pwm - 95)*0.3*m        # mapping from motor pwm to input force FxR
-            else:
-                FxR     = 0.0
+            y = array([v_x_enc, w_z])
 
             # define input
             u       = array([ d_f, FxR ])

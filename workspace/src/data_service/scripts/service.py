@@ -1,15 +1,15 @@
 #!/usr/bin/env python
 
 # ---------------------------------------------------------------------------
-# Licensing Information: You are free to use or extend these projects for 
+# Licensing Information: You are free to use or extend these projects for
 # education or reserach purposes provided that (1) you retain this notice
-# and (2) you provide clear attribution to UC Berkeley, including a link 
+# and (2) you provide clear attribution to UC Berkeley, including a link
 # to http://barc-project.com
 #
 # Attibution Information: The barc project ROS code-base was developed
 # at UC Berkeley in the Model Predictive Control (MPC) lab by Jon Gonzales
 # (jon.gonzales@berkeley.edu). The cloud services integation with ROS was developed
-# by Kiet Lam  (kiet.lam@berkeley.edu). The web-server app Dator was 
+# by Kiet Lam  (kiet.lam@berkeley.edu). The web-server app Dator was
 # based on an open source project by Bruce Wootton
 # ---------------------------------------------------------------------------#!/usr/bin/env python
 
@@ -109,13 +109,9 @@ def send_custom_signal(custom_signal, experiment_id):
 def handle_send_data(req):
     response = response_ok
 
-    date = time.strftime("%Y.%m.%d")
-
-    experiment_name = req.experiment_name + '_' + date + '_' + time.strftime("%H.%M")
-
     if req.time_signal != None and req.time_signal.name != '':
         try:
-            send_time_signal(req.time_signal, experiment_name)
+            send_time_signal(req.time_signal, req.experiment_name)
         except Exception as e:
             response = str(e)
             print e
@@ -180,11 +176,28 @@ def handle_register_setting(req):
     return RegisterSettingResponse(response)
 
 
+def register_video(experiment, video_path):
+    try:
+        setting = data_connection.get_or_create_setting('video', experiment)
+        data_connection.write_setting(video_path, setting['id'])
+        return response_ok
+    except Exception as e:
+        return str(e)
+
+
+def handle_register_video(req):
+    experiment = get_experiment(req.experiment)
+    response = register_video(experiment, req.path)
+    print response
+    return RegisterVideoResponse(response)
+
+
 def send_data_service():
     rospy.init_node('data_service', anonymous=True)
     s1 = rospy.Service('send_data', DataForward, handle_send_data)
     s2 = rospy.Service('retrieve_data', DataRetrieve, handle_retrieve_data)
     e1 = rospy.Service('register_experiment', RegisterExperiment, handle_register_experiment)
+    v1 = rospy.Service('register_video', RegisterVideo, handle_register_video)
 
     settings_service = rospy.Service('register_setting', RegisterSetting, handle_register_setting)
 

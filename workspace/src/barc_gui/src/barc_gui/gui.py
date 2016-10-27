@@ -40,19 +40,20 @@ from data_service.msg import *
 from threading import *
 
 
-rosbag_dir = '.'
-video_dir = '.'
+rosbag_dir = os.path.expanduser("~") + '/rosbag'
+video_dir = os.path.expanduser("~") + '/video'
 
 
 class UploadThread(Thread):
 
-    def __init__(self, plugin_ob):
+    def __init__(self, plugin_ob, experiment):
         Thread.__init__(self)
         self.plugin_ob = plugin_ob
+        self.experiment = experiment
 
 
     def run(self):
-        self.plugin_ob.record_data_thread()
+        self.plugin_ob.record_data_thread(self.experiment)
 
 
 class MyGUI(Plugin):
@@ -94,12 +95,20 @@ class MyGUI(Plugin):
         context.add_widget(self._widget)
 
         self._widget.pushbutton_record.clicked[bool].connect(self._handle_record)
-        self._widget.pushbutton_record_video.clicked[bool].connect(self._handle_record_video)
         self.record_started = False
-        self.record_video_started = False
 
         self.setup_topics_list()
         self.p = None
+
+        self.initialize()
+
+
+    def initialize(self):
+        if not os.path.isdir(video_dir):
+            os.makedirs(video_dir)
+
+        if not os.path.isdir(rosbag_dir):
+            os.makedirs(rosbag_dir)
 
 
     def get_experiment_name(self):
@@ -107,7 +116,7 @@ class MyGUI(Plugin):
 
 
     def setup_topics_list(self):
-        topics = ['imu', 'encoder', 'ecu', 'ultrasound']
+        topics = ['imu', 'encoder', 'ecu', 'ultrasound', 'video']
 
         for t in topics:
             item = QListWidgetItem(t)
@@ -116,35 +125,15 @@ class MyGUI(Plugin):
             self._widget.listview_topics.addItem(item)
 
 
-    def _handle_record_video(self, checked):
-        if not self.get_experiment_name():
-            msg = QMessageBox()
-            msg.setText('Need an experiment name!')
-            msg.exec_()
-            return
-
-        if self.record_video_started:
-            self.record_video_started = False
-            self.stop_record_video()
-            # self._widget.label_experiment.setText('Experiment name')
-            # self._widget.pushbutton_record.setText('Start Recording')
-        else:
-            self.record_video_started = True
-            self._widget.pushbutton_record_video.setText('Stop Recording Video')
-            # self._widget.label_experiment.setText('Recording...')
-            self.start_record_video()
-
-
     def start_record_video(self):
 
         print 'Recording video...'
 
         command = 'rosrun image_view video_recorder image:=/image_raw _max_depth_range:=0'
-
         self.p_video = subprocess.Popen(command, stdin=subprocess.PIPE, shell=True, cwd=video_dir)
 
 
-    def stop_record_video(self):
+    def stop_record_video(self, experiment):
         print 'Stopping record video'
 
         if not self.p_video:
@@ -159,10 +148,18 @@ class MyGUI(Plugin):
                 ps = subprocess.Popen(command_kill, stdin=subprocess.PIPE, shell=True)
                 ps.communicate()
 
-        command = 'mv output.avi %s.avi' % self.get_experiment_name()
+        command = 'mv output.avi %s.avi' % experiment
         subprocess.Popen(command, stdin=subprocess.PIPE, shell=True, cwd=video_dir)
 
-        self._widget.pushbutton_record_video.setText('Start Recording Video')
+        self.p_video = None
+
+        rospy.wait_for_service('register_video')
+        self.register_video = rospy.ServiceProxy('register_video', RegisterVideo)
+
+        try:
+            self.register_video(experiment, video_dir + '/%s.avi' % experiment)
+        except Exception as e:
+            pass
 
 
     def _handle_record(self, checked):
@@ -172,48 +169,56 @@ class MyGUI(Plugin):
             msg.exec_()
             return
 
-        if self.record_started:
-            self.record_started = False
-            self.stop_record_data()
-            # self._widget.label_experiment.setText('Experiment name')
-            # self._widget.pushbutton_record.setText('Start Recording')
-        else:
-            self.record_started = True
-            self._widget.pushbutton_record.setText('Stop Recording')
-            self._widget.label_experiment.setText('Recording...')
-            self.time = time.time()
-            self.start_record_data()
-
-
-    def start_record_data(self):
         record_topics = []
         for index in range(self._widget.listview_topics.count()):
             item = self._widget.listview_topics.item(index)
             if item.checkState():
                 record_topics.append(item.text())
 
+        if self.record_started:
+            self.stop_record_data(self.current_experiment)
+            self.stop_record_video(self.current_experiment)
+
+            self.record_started = False
+
+            self._widget.label_experiment.setText('Experiment name')
+            self._widget.pushbutton_record.setText('Start Recording')
+
+        else:
+            self.record_started = True
+            self.current_experiment = self.get_experiment_name()
+            date = time.strftime("%Y.%m.%d")
+            self.current_experiment += '_' + date + '_' + time.strftime('%H.%M')
+
+            self._widget.pushbutton_record.setText('Stop Recording')
+            self._widget.label_experiment.setText('Recording...')
+            self.time = time.time()
+            self.start_record_data(record_topics, self.current_experiment)
+
+            if 'video' in record_topics:
+                self.start_record_video()
+
+
+    def start_record_data(self, topics, experiment):
         command = 'rosbag record '
 
-        for topic in record_topics:
+        for topic in topics:
             command += topic + ' '
 
-        command += ' -O %s' % self.get_experiment_name()
+        command += ' -O %s' % experiment
 
         self.p = subprocess.Popen(command, stdin=subprocess.PIPE, shell=True, cwd=rosbag_dir)
 
 
-    def stop_record_data(self):
+    def stop_record_data(self, experiment):
         if not self.p:
             return
 
-        uploader = UploadThread(self)
+        uploader = UploadThread(self, experiment)
         uploader.start()
 
 
-    def record_data_thread(self):
-
-        rospy.wait_for_service('send_data')
-        self.send_data = rospy.ServiceProxy('send_data', DataForward, persistent=True)
+    def record_data_thread(self, experiment):
         command = 'rosnode list'
         out = subprocess.check_output(command, shell=True)
 
@@ -223,24 +228,22 @@ class MyGUI(Plugin):
                 ps = subprocess.Popen(command_kill, stdin=subprocess.PIPE, shell=True)
                 ps.communicate()
 
+        rospy.wait_for_service('send_data')
+        self.send_data = rospy.ServiceProxy('send_data', DataForward, persistent=True)
+
         self._widget.label_experiment.setText('Uploading data...')
-        self.upload_data()
+        self.upload_data(experiment)
         self._widget.label_experiment.setText('Experiment name')
         self._widget.pushbutton_record.setText('Start Recording')
 
 
-    def upload_data(self):
-        print 'Uploading data!!!!'
-        rosbag_file = os.path.abspath(rosbag_dir + '/' + self.get_experiment_name() + '.bag')
-
-        date = time.strftime("%Y.%m.%d")
-        experiment = self.get_experiment_name()
-
-        experiment += '_' + date + '_' + time.strftime('%H.%M')
+    def upload_data(self, experiment):
+        rosbag_file = os.path.abspath(rosbag_dir + '/' + experiment + '.bag')
 
         for i in range(100):
             if os.path.isfile(rosbag_file):
                 break
+            #TODO: Can we get rid of this sleep?
             time.sleep(1.0)
 
         if not os.path.isfile(rosbag_file):
@@ -290,7 +293,7 @@ class MyGUI(Plugin):
                       'roll_rate', 'pitch_rate', 'yaw_rate',
                      'acc_x', 'acc_y', 'acc_z',
                      'encoder_FL', 'encoder_FR','encoder_BL','encoder_BR',
-                     'motor_pwm', 'servo_pwm',
+                     'motor', 'servo',
                      'ultrasound_front','ultrasound_back','ultrasound_left','ultrasound_right']
 
         signal_dict = dict()
@@ -318,8 +321,8 @@ class MyGUI(Plugin):
 
             # Electronic control unit
             if topic == 'ecu':
-                motor_pwm = msg.motor_pwm
-                servo_pwm = msg.servo_pwm
+                motor = msg.motor
+                servo = msg.servo
 
             # Python introspection from list 'vars_list'
             for v in vars_list:

@@ -21,6 +21,31 @@ def noop_view(request):
     c.update(csrf(request))
     return render_to_response('noop.html', c)
 
+
+@csrf_exempt
+def setting_data(request, setting_id):
+    try:
+        setting = Setting.objects.get(id=setting_id)
+    except Setting.DoesNotExist as e:
+        return HttpResponse({'status: failed - Setting requested does not exist.'}, status=404)
+
+    if request.method=='POST':
+        try:
+            json_dict = json.loads(request.body)
+            setting.value = json_dict['value']
+            setting.save()
+            response_dict={'status': 'succeeded'}
+            return HttpResponse(json.dumps(response_dict), status=200, content_type='application/json')
+        except BaseException as e:
+            return HttpResponse({'status': 'failed {}'.format(e)}, status=500)
+    elif request.method == 'GET':
+        try:
+            body = setting.value
+            return HttpResponse(body, status=200, content_type="application/json")
+        except BaseException as e:
+            return HttpResponse({'status': 'failed {}'.format(e)}, status=500)
+
+
 @csrf_exempt
 def blob_data(request, blob_id):
     """

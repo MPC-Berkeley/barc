@@ -13,59 +13,66 @@
 # based on an open source project by Bruce Wootton
 # ---------------------------------------------------------------------------
 
-import rospy
-from data_service.msg import TimeData
+from rospy import init_node, Subscriber, Publisher, get_param
+from rospy import Rate, is_shutdown, ROSInterruptException
 from barc.msg import ECU
-from math import pi,sin
-import time
-import serial
-from numpy import zeros, hstack, cos, array, dot, arctan
-from input_map import angle_2_servo, servo_2_angle
-from manuevers import TestSettings, CircularTest, Straight, SineSweep, DoubleLaneChange, CoastDown
+from numpy import pi
+import rospy
+
+#############################################################
+def circular(t_i, t_0, t_f, d_f_target, FxR_target):
+    # rest
+    if t_i < t_0:
+        d_f     = 0
+        FxR     = 0
+
+    # start moving
+    elif (t_i < t_f):
+        d_f     = d_f_target
+        FxR     = FxR_target
+
+    # stop experiment
+    else:
+        d_f     = 0
+        FxR     = 0
+
+    return (FxR, d_f)
+
 
 #############################################################
 def main_auto():
     # initialize ROS node
-    rospy.init_node('auto_mode', anonymous=True)
-    nh = rospy.Publisher('ecu', ECU, queue_size = 10)
+    init_node('auto_mode', anonymous=True)
+    nh = Publisher('ecu', ECU, queue_size = 10)
 
 	# set node rate
-    rateHz  = 50
-    rate 	= rospy.Rate(rateHz)
+    rateHz  = get_param("controller/rate")
+    rate 	= Rate(rateHz)
+    dt   	= 1.0 / rateHz
     t_i     = 0
 
-    # specify test and test options
-    experiment_opt    = { 0 : CircularTest,
-                          1 : Straight,
-		    		      2 : SineSweep,   
-                          3 : DoubleLaneChange,
-					      4 : CoastDown }
-    experiment_sel 	= rospy.get_param("controller/experiment_sel")
-    v_x_pwm 	= rospy.get_param("controller/v_x_pwm")
-    t_0         = rospy.get_param("controller/t_0")
-    t_exp 		= rospy.get_param("controller/t_exp")
-    str_ang 	= rospy.get_param("controller/steering_angle")
-    test_mode   = experiment_opt.get(experiment_sel)
-    opt 	    = TestSettings(SPD = v_x_pwm, turn = str_ang, dt=t_exp)
-    opt.t_0    = t_0
-	
-
+    # get experiment parameters 
+    t_0             = get_param("controller/t_0")     # time to start test
+    t_f             = get_param("controller/t_f")     # time to end test
+    FxR_target      = get_param("controller/FxR_target")
+    d_f_target      = pi/180*get_param("controller/d_f_target")
+ 
     # main loop
-    while not rospy.is_shutdown():
+    while not is_shutdown():
         # get command signal
-        (motorCMD, servoCMD) = test_mode(opt, rateHz, t_i)
+        (FxR, d_f) = circular(t_i, t_0, t_f, d_f_target, FxR_target)
 			
         # send command signal 
-        ecu_cmd = ECU(motorCMD, servoCMD)
+        ecu_cmd = ECU(FxR, d_f)
         nh.publish(ecu_cmd)
 	
         # wait
-        t_i += 1
+        t_i += dt
         rate.sleep()
 
 #############################################################
 if __name__ == '__main__':
 	try:
 		main_auto()
-	except rospy.ROSInterruptException:
+	except ROSInterruptException:
 		pass

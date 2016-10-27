@@ -1,6 +1,8 @@
 <launch>
     <!-- SYSTEM MODEL -->
     <!-- vehicle parameters -->
+    <param name="m" type="double" value="1.98" />
+    <param name="I_z" type="double" value="0.24" />
     <param name="L_a" type="double" value="0.125" />
     <param name="L_b" type="double" value="0.125" />
     <!-- control parameters -->
@@ -19,30 +21,18 @@
     </node>
 
     <!-- OBSERVER-->
-    <node pkg="barc" type="state_estimation_KinBkMdl.py" name="state_estimation">
+    <node pkg="barc" type="state_estimation_KinBkMdl.py" name="state_estimation" output="screen">
         <!-- v_x estimation sample time-->
         <param name="dt_v_enc" type="double" value="0.2" />
 
         <!-- ekf properties -->
         <param name="q_std" type="double" value="0.1" />
         <param name="r_std" type="double" value="0.1" />
-        <param name="v_x_min" type="double" value="0.3" />
     </node>
 
+    <!-- HIGH LEVEL CONTROLLER -->
+    <node pkg="barc" type="controller_mpc.jl" name="MPC" output="screen" />
+
     <!-- LOW LEVEL CONTROLLER -->
-    <node pkg="barc" type="controller_low_level.py" name="low_level_controller" output="screen" />
-
-	<!-- HIGH LEVEL CONTROLLER -->
-	<node pkg="barc" type="controller_circular.py" name="controller" output="screen">
-         <!-- PROPERTIES -->
-        <param name="FxR_target" type="double" value="0.7" />
-        <param name="d_f_target" type="double" value="6" />
-        <param name="t_0" type="int" value="2" />
-		<param name="t_f" type="int" value="6" />
-
-		<param name="rate" type="int" value="50" />
-   </node>
-
-    <!-- Record the experiment data -->
-    <node pkg="rosbag" type="record" name="rosbag_record" args=" --all" />
+    <node pkg="barc" type="controller_low_level.py" name="low_level_controller" />
 </launch>

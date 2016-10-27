@@ -4,8 +4,8 @@ The Berkeley Autonomous Race Car is a development platform for autonomous drivin
 
 This site is home to the repository. The main site for the project is [here](http://www.barc-project.com/).
 
+## Organization
 The primary folders in this repository include
-
 * docs
   * Overview about the mechanical, electrical, and software deign of the vehicle. Descriptions of the vehicle models used for some control algorithms
 * CAD
@@ -23,64 +23,15 @@ The primary folders in this repository include
 
 All software to control the vehicle resides in the *Arduino* and *Workspace* folders.
 
+
 ## Getting started
-### Rebuild ROS and reflash arduino
-After git cloning or pulling, rebuild the ROS workspace by opening a terminal and executing the following (alias) command
-(Make sure your arduino is plugged in, and on port /dev/ttyUSB0)
+1. Get the parts, [list](https://github.com/BARCproject/barc/blob/master/docs/BillofMaterials.md)
+2. Flash the odroid, [instructions](https://github.com/BARCproject/barc/blob/master/docs/FlashingEMMC.md) 
+3. Assemble the car, [instructions](https://docs.google.com/document/d/1T8O4JhUlw09ALUGPSX7DlSO7Hc7vcKl_ahBeHncMguE/edit?usp=sharing)
+4. Charge the battery, [instructions](https://github.com/BARCproject/barc/blob/master/docs/ChargingBattery.md)
+5. Connect to the RC remotely, [instructions](https://github.com/BARCproject/barc/blob/master/docs/ConnectingToOdroid.md)
 
-`rebuild_system`
-
-To reflash your arudino, you can run the following command
-
-`nanorst`
-
-### Register with the cloud
-In your home directory, edit a file named `team_name.sh` to define a user name, then in four separate terminals, execute the following
-```
-source ~/barc/scripts/reset_database.sh
-roscore
-rosrun data_service service.py
-source ~/barc/scripts/register_cloud.sh
-```
-To run an experiment, enter the following three commands in three separate terminals. This should launch a single gui window with four different pluggins. (Note, experiments launched via the command line using `roslaunch barc <file_name>.launch` may save data to bagfiles, but the data will not be pushed to the cloud)
-```
-roscore
-rosrun data service service.py
-rqt -p barc/perspectives/experiment.perspective
-```
-When the odroid connects to the Internet through a wifi network, all data collected
-will be automatically pushed to the cloud, where the data will be publicly accessible. To view the data, go to [this site](http://dator.forge9.com/) and search for your user name.
-
-## Useful commands
-### linux commands / tools
-Note that for typing commands, like the following, linux supports [tab completion](http://www.howtogeek.com/195207/use-tab-completion-to-type-commands-faster-on-any-operating-system/), which can dramatically help speed up typing commands.
-
-+ Change the resolution of the screen. (useful when using NoMachine to connect remotely)
- + `xrandr --fb <width>x<height>`
-+ Print the hostname settings (useful for displaying information on operating system, kernel, and architecture)
- + `hostnamectl`
-+ Print detailed information about the connected usb device
- + `lsusb` (less info) or `usb-devices` (more info)
-+ Switch easily between several programs within one terminal. Watch [this video](https://www.youtube.com/watch?v=BHhA_ZKjyxo) for a tutorial on how to use tmux
- + `tmux`
-+ Search code base for a text string, read [here](http://conqueringthecommandline.com/book/ack_ag) for in-depth examples
- + `ag <text_string>`
-
-### ROS commands
-Below is a list of some commonly used commands. Check [this link](http://wiki.ros.org/ROS/CommandLineTools) for a comprehensive list
-+ Change to a ROS package directory
- + `roscd <package_name>`, for example `roscd barc`
-+ Run a single ROS node
- + `roscore` (in one terminal)
- + `rosrun <package> <file_name>` (in another terminal)
-+ Run a launch file
- + `roslaunch <package> <file_name>.launch`
-+ Display the active topics
- + `rostopic list`
-+ Print the messages coming from a topic
- + `rostopic echo <topic>`
-+ Print the publishing rate of a topic
- + `rostopic hz <topic>`
+You can also scroll through the material under our docs section to find other useful information
 
 ## Useful resources
 
@@ -89,7 +40,11 @@ Recommended reading and resources
 + [Julia JuMP](https://jump.readthedocs.io/en/latest/), Mathematical Programming using the Julia programming language
 + [Git - the simple guide](http://rogerdudler.github.io/git-guide/), or for a more in-depth reading, consider [this](https://www.atlassian.com/git/tutorials/ ) tutorial by Atlassian
 + [Electronic Speed Control (ESC) manual](http://propeleris.lt/failai/wp-s10c-rtr_manual.pdf), which details how to calibrate and program the ESC
-
++ [Open source ESC](http://vedder.se/2015/01/vesc-open-source-esc/), for building your own ESC
++ [Pulse Wide Modulation (PWM)](http://www.egr.msu.edu/classes/ece480/capstone/fall14/group07/PDFs/PWM_Application_Note.pdf), notes from Michigan State ECE480 class, explaining the concept of PWM and its usage in an arduino.
++ [Arduino Servo Library](http://makezine.com/2014/04/23/arduinos-servo-library-angles-microseconds-and-optional-command-parameters/), article by Make magazine, clarifying the usage of some functions within the library
++ [Mass moment of inertia calculation](http://www.mathworks.com/company/newsletters/articles/improving-mass-moment-of-inertia-measurements.html), a MATLAB newsletter explaining how to estimate the mass moment of inertia
++ [Computer Vision lecture series](https://www.youtube.com/watch?v=N_a6IP6KUSE), from Professor Peter Corke aat Queensland University of Technology
 
 ## Student projects
 + [Lane Keeping and Obstacle Avoidance](https://github.com/ych09041/me131lane), with [ demo](https://www.youtube.com/watch?v=5HKu7AaSsoM), by Tony Abdo, Hohyun Song, Cheng Hao Yuan, UC Berkeley ME 131, Spring 2016

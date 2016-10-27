@@ -28,6 +28,7 @@ using Ipopt
 L_a     = 0.125         # distance from CoG to front axel
 L_b     = 0.125         # distance from CoG to rear axel
 dt      = 0.1           # time step of system
+a_max   = 1             # maximum acceleration
 
 # preview horizon
 N       = 5
@@ -65,6 +66,7 @@ for i in 1:N
     @addNLConstraint(mdl, y[i+1]    == y[i]      + dt*(v[i]*sin( psi[i] + bta[i] ))  )
     @addNLConstraint(mdl, psi[i+1]  == psi[i]    + dt*(v[i]/L_b * sin(bta[i]))  )
     @addNLConstraint(mdl, v[i+1]    == v[i]      + dt*(a[i])  )
+    @addConstraint(mdl, 0 <=  a[i] <= a_max  )
 end
 
 # status update
@@ -84,7 +86,7 @@ function main()
     # initiate node, set up publisher / subscriber topics
     init_node("mpc")
     pub = Publisher("ecu", ECU, queue_size=10)
-    s1  = Subscriber("state_estimate", Z_KinBkMdl, SE_callback, queue_size=10)
+    sub  = Subscriber("state_estimate", Z_KinBkMdl, SE_callback, queue_size=10)
     loop_rate = Rate(10)
 
     while ! is_shutdown()
@@ -94,7 +96,6 @@ function main()
         # get optimal solutions
         a_opt   = getValue(a[1])
         d_f_opt = getValue(d_f[1])
-        # TO DO: transform to PWM signals
         cmd = ECU(a_opt, d_f_opt)
 
         # publish commands

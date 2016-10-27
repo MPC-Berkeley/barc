@@ -41,8 +41,11 @@ function LocalComputer($scope, $routeParams, $interval, Restangular, $location, 
     $scope.setExperimentChoices=function() {
         $scope.experimentChoices = [ALL_EXPERIMENTS];
         _.each($scope.experiments, function(experiment){
+            console.log(experiment);
+
             $scope.experimentChoices.push({'id':experiment.id, 'name':experiment.name,
                                           'media_link': experiment.media_link});
+
         });
     };
 
@@ -146,6 +149,7 @@ function LocalComputer($scope, $routeParams, $interval, Restangular, $location, 
         });
     };
 
+
     $scope.filterExperiment = function() {
 
         var experiment_id = $scope.uiState.experiment.id;
@@ -163,7 +167,21 @@ function LocalComputer($scope, $routeParams, $interval, Restangular, $location, 
             });
 
         $scope.uiState.signalsCount = $scope.signals.length;
+
+        $scope.settings = Restangular.all("setting").getList(arguments).
+            then(function (data){
+                $scope.settings = data;
+                $scope.uiState.settingsCount = data.length;
+
+                for (var i = 0; i < data.length; ++i) {
+
+                    if (data[i].key == "video") {
+                        $scope.uiState.experiment.media_link = data[i].value;
+                    }
+                }
+            });
     }
+
 
     $scope.deleteExperiment = function() {
         if ($scope.uiState.experiment.id == 0) {
