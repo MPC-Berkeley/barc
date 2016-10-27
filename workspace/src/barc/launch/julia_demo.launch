@@ -8,15 +8,9 @@
     </node>
 
 	<!-- IMU NODE -->
-	<node pkg="barc" type="imu_data_acquisition.py" name="imu_node" >
+	<node pkg="myahrs_driver" type="myahrs_driver" name="imu_node" >
 		<param name="port" value="/dev/ttyACM0" />
-	</node>
-
-	<!-- ARDUINO NODE -->
-    <!--  * encoders and ultrasound sensors -->
-	<node pkg="rosserial_python" type="serial_node.py" name="arduino_node" >
-		<param name="port" value="/dev/ttyUSB0" />
-		<param name="baud" value="115200" />
+		<param name="baud_rate" value="115200" />
 	</node>
 
 </launch>

@@ -15,30 +15,16 @@
 
 import rospy
 from data_service.msg import TimeData
-from barc.msg import Encoder, Ultrasound, ECU, Z_KinBkMdl
+from barc.msg import Encoder, Ultrasound, ECU
 from math import pi,sin
 import time
 import serial
-from numpy import zeros, hstack, cos, array, dot, arctan, eye
-from system_models import f_KinBkMdl, h_KinBkMdl
-from observers import kinematicLuembergerObserver, ekf
-from system_models import f_KinBkMdl, h_KinBkMdl
+from numpy import zeros, hstack, cos, array, dot, arctan
 from input_map import angle_2_servo, servo_2_angle
 from pid import PID
 
 ###########################################################
 # Set up measure callbacks
-# from encoder
-v 	        = 0
-t0 	        = time.time()
-n_FL	    = 0                     # counts in the front left tire
-n_FR 	    = 0                     # counts in the front right tire
-n_FL_prev 	= 0
-n_FR_prev 	= 0
-r_tire 		= 0.04                  # radius from tire center to perimeter along magnets [m]
-dx_qrt 	    = 2.0*pi*r_tire/4.0     # distance along quarter tire edge [m]
-
-
 # imu measurement update
 (roll, pitch, yaw, a_x, a_y, a_z, w_x, w_y, w_z) = zeros(9)
 def imu_callback(data):
@@ -47,29 +33,12 @@ def imu_callback(data):
 
 # encoder measurement update
 enc_FL, enc_FR, enc_BL, enc_BR = zeros(4)
-def enc_callback(data):
-	global v, d_f, t0
-	global n_FL, n_FR, n_FL_prev, n_FR_prev
-
-	n_FL = data.FL
-	n_FR = data.FR
-
-	# compute time elapsed
-	tf = time.time()
-	dt = tf - t0
-	
-	# if enough time elapse has elapsed, estimate v_x
-	dt_min = 0.20
-	if dt >= dt_min:
-		# compute speed :  speed = distance / time
-		v_FL = float(n_FL- n_FL_prev)*dx_qrt/dt
-		v_FR = float(n_FR- n_FR_prev)*dx_qrt/dt
-		v 	 = (v_FL + v_FR)/2.0
-
-		# update old data
-		n_FL_prev   = n_FL
-		n_FR_prev   = n_FR
-		t0 	        = time.time()
+def encoder_callback(data):
+	global enc_FL, enc_FR, enc_BL, enc_BR
+	enc_FL = data.FL
+	enc_FR = data.FR
+	enc_BL = data.BL
+	enc_BR = data.BR
 
 # ultrasound measurement update
 (us_F, us_B, us_R, us_L) = zeros(4)
@@ -77,8 +46,8 @@ def ultrasound_callback(data):
     global us_F, us_B, us_R, us_L
     us_F = data.front
     us_B = data.back
-    us_R = data.right
-    us_L = data.left
+    us_R = data.left
+    us_L = data.right
 
 #############################################################
 # main code
@@ -86,43 +55,16 @@ def main_auto():
     # initialize ROS node
     rospy.init_node('auto_mode', anonymous=True)
     rospy.Subscriber('imu', TimeData, imu_callback)
-    rospy.Subscriber('encoder', Encoder, enc_callback)
+    rospy.Subscriber('encoder', Encoder, encoder_callback)
     rospy.Subscriber('ultrasound', Ultrasound, ultrasound_callback)
     nh = rospy.Publisher('ecu', ECU, queue_size = 10)
-    state_pub 	= rospy.Publisher('state_estimate', Z_KinBkMdl, queue_size = 10)
-
 
 	# set node rate
     rateHz  = 50
     rate 	= rospy.Rate(rateHz)
     dt      = 1.0 / rateHz
-    pid     = PID(P=0.01193, I=1.193, D=0)
-    
-    #L = rospy.get_param('controller/L')
-    #R = rospy.get_param('controller/R')
-    #vx_des = rospy.get_param('controller/vx_des')
-    L = 0.26
-    Rdes = 1
-    vxprev = 0
-    vyprev = 0
-    count = 0
-
-    # get EKF observer properties
-    q_std = 0.1             # std of process noise
-    r_std = 0.1             # std of measurementnoise
-    lf = 0.136525
-    lr = 0.123475
-    vhMdl = (lf,lr)
-    yawprev = 0
-    
-    # estimation variables for Luemberger observer
-    z_EKF       = zeros(4)
-
-    # estimation variables for EKF
-    P           = eye(4)                # initial dynamics coveriance matrix
-    Q           = (q_std**2)*eye(4)     # process noise coveriance matrix
-    R           = (r_std**2)*eye(2)     # measurement noise coveriance matrix
-
+    pid     = PID(P=1, I=1, D=0)
+    t_i = 0
 
     # main loop
     while not rospy.is_shutdown():
@@ -166,7 +108,7 @@ def main_auto():
         # convert desired steering angle [deg] into a PWM signal
         err             = enc_FL - enc_FR
         steering_angle  = pid.update(err, dt)     # [deg]
-        servo_PWM       = angle_2_servo(steering_angle)
+        servo_PWM       = angle_2_servo(steering_PWM)
 
         # set desired longitudinal input force
         # NOTE: the last expression depends on your vehicle model, this is just an example
@@ -177,26 +119,21 @@ def main_auto():
         ---------------------------------------------------------------------------
         """
 
-        # estimate actual and desired yaw rate
-        psidot = w_z*(180/pi)
-        psidotdes = (v/Rdes)*(180/pi)
-        yawdes = yawprev + (v/Rdes)*dt
-
-        # pid control steering angle
-        e1 = psidot - psidotdes
-        d_f = pid.update(e1, dt)
-        if d_f > 30:
-          d_f = 30
-        elif d_f < -30:
-          d_f = -30
-        servo_PWM = angle_2_servo(d_f)
-
-        motor_PWM = 97
-        ecu_cmd = ECU(motor_PWM, servo_PWM)
-        nh.publish(ecu_cmd)
+        # publish command signal
+        #motor_PWM   = 90
+        #servo_PWM   = 90
+        #ecu_cmd = ECU(motor_PWM, servo_PWM)
+        #nh.publish(ecu_cmd)
         
-        count += dt
-        yawprev = yawdes
+        if us_F <= 50:
+          motor_PWM = 90
+        else:
+          motor_PWM = 97
+          
+        servo_PWM = 90
+        ecu_cmd = ECU(motor_PWM,servo_PWM)
+        nh.publish(ecu_cmd)
+	
         # wait
         rate.sleep()
 
