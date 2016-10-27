@@ -23,7 +23,7 @@
         <param name="q_std" type="double" value="0.1" />
 
         <param name="psi_std" type="double" value="0.5" />
-        <param name="v_std" type="double" value="2.0" />
+        <param name="v_std" type="double" value="0.5" />
         <param name="gps_std" type="double" value="0.8" />
         <param name="ang_v_std" type="double" value="0.8" />
 

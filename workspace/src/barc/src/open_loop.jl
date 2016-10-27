@@ -65,16 +65,15 @@ function main()
             cmd.motor = 0
             cmd.servo = 0
         elseif t <= 4                   # CHECK TIME AND ACCELERATION !!!
-            cmd.motor = 1             # CHECK TIME AND ACCELERATION !!!
-            cmd.servo = 0.3
-        elseif t <= 6
-            cmd.motor = 1.5
-            cmd.servo = -0.3
+            cmd.motor = 2.0             # CHECK TIME AND ACCELERATION !!!
+            cmd.servo = 0
+        elseif t <= 7
+            cmd.motor = 0
+            cmd.servo = 0
         else
             cmd.motor = 0
             cmd.servo = 0
         end
-
         cmd.header.stamp = get_rostime()
         publish(pub, cmd)  
 

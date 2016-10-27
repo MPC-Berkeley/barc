@@ -186,9 +186,10 @@ function eval_open_loop(code::AbstractString)
     t0      = pos_info.t[1]
 
     figure()
-    title("Comparison speed and input")
     ax3=subplot(211)
-    plot(vel_est.t-t0,vel_est.z,vel_est.t_msg-t0,vel_est.z)
+    title("Comparison speed and input")
+    plot(vel_est.t-t0,vel_est.z,"-*",vel_est.t_msg-t0,vel_est.z,"-x")
+    legend(["vel_est"])
     grid("on")
     subplot(212,sharex=ax3)
     plot(cmd_pwm_log.t-t0,cmd_pwm_log.z[:,1],cmd_pwm_log.t_msg-t0,cmd_pwm_log.z[:,1])
@@ -209,11 +210,16 @@ function eval_open_loop(code::AbstractString)
     grid()
 
     figure()
-    title("Acceleration data")
-    plot(imu_meas.t-t0,imu_meas.z[:,7:9],"-x",imu_meas.t_msg-t0,imu_meas.z[:,7:9],"-*")
-    legend(["a_x","a_y","a_z"])
-    grid()
+    plot(gps_meas.t-t0,gps_meas.z,"-*",pos_info.t-t0,pos_info.z[:,12:13],"-x",pos_info.t-t0,pos_info.z[:,6:7])
+    legend(["x_gps","y_gps","x_filtered","y_filtered","x_est","y_est"])
+    grid("on")
 
+    figure()
+    plot(gps_meas.t-t0,gps_meas.z,"-*")
+    legend(["x_gps","y_gps"])
+    xlabel("t [s]")
+    ylabel("Position [m]")
+    grid("on")
 end
 
 

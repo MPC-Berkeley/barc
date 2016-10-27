@@ -29,7 +29,7 @@
     <node machine="this-pc" pkg="barc" type="open_loop.jl" name="control" output="screen" />
 
     <!-- LOW LEVEL CONTROLLER -->
-    <node machine="this-pc" pkg="barc" type="controller_low_level.py" name="low_level_controller" />
+    <!--node machine="this-pc" pkg="barc" type="controller_low_level.py" name="low_level_controller" /-->
 
     <!-- IMU -->
     <node machine="odroid" pkg="myahrs_driver" type="myahrs_driver" name="myahrs_driver">

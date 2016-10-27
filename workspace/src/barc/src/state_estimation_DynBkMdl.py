@@ -47,12 +47,12 @@ vel_times       = [0]*2
 x_meas      = 0
 y_meas      = 0
 
-x_hist      = [0]*25
-y_hist      = [0]*25
-gps_times   = [0]*25
+#x_hist      = [0]*25
+#y_hist      = [0]*25
+#gps_times   = [0]*25
 
-poly_x      = [0]*3              # polynomial coefficients for x and y position measurement (2nd order)
-poly_y      = [0]*3
+#poly_x      = [0]*3              # polynomial coefficients for x and y position measurement (2nd order)
+#poly_y      = [0]*3
 
 t0          = 0
 running     = False
@@ -70,19 +70,24 @@ def ecu_callback(data):
 def gps_callback(data):
     # units: [rad] and [rad/s]
     global x_meas, y_meas, t0
-    x_meas_pred = polyval(poly_x, data.header.stamp.to_sec()-t0)    # predict new position
-    y_meas_pred = polyval(poly_y, data.header.stamp.to_sec()-t0)
+    #current_t = rospy.get_rostime().to_sec()
+    x_meas = data.x_m
+    y_meas = data.y_m
+    #x_meas_pred = polyval(poly_x, data.header.stamp.to_sec()-t0)    # predict new position
+    #y_meas_pred = polyval(poly_y, data.header.stamp.to_sec()-t0)
+    #x_meas_pred = polyval(poly_x, current_t-t0)
+    #y_meas_pred = polyval(poly_y, current_t-t0)
+    # if abs(x_meas_pred-data.x_m) < 0.5 and abs(y_meas_pred-data.y_m) < 0.5 or not running:  # check for outlier
+    #     x_meas = data.x_m # data is given in cm
+    #     y_meas = data.y_m
 
-    if abs(x_meas_pred-data.x_m) < 0.5 and abs(y_meas_pred-data.y_m) < 0.5 or not running:  # check for outlier
-        x_meas = data.x_m # data is given in cm
-        y_meas = data.y_m
-
-        x_hist.append(x_meas)
-        y_hist.append(y_meas)
-        gps_times.append(data.header.stamp.to_sec()-t0)
-        x_hist.pop(0)
-        y_hist.pop(0)
-        gps_times.pop(0)
+    #     x_hist.append(x_meas)
+    #     y_hist.append(y_meas)
+    #     #gps_times.append(data.header.stamp.to_sec()-t0)
+    #     gps_times.append(current_t-t0)
+    #     x_hist.pop(0)
+    #     y_hist.pop(0)
+    #     gps_times.pop(0)
 
 # imu measurement update
 def imu_callback(data):
@@ -90,6 +95,7 @@ def imu_callback(data):
     global roll_meas, pitch_meas, yaw_meas, a_x, a_y, a_z, w_x, w_y, w_z
     global yaw_prev, yaw0, yaw
     global imu_times, psiDot_hist
+    current_t = rospy.get_rostime().to_sec()
 
     # get orientation from quaternion data, and convert to roll, pitch, yaw
     # extract angular velocity and linear acceleration data
@@ -106,7 +112,8 @@ def imu_callback(data):
     else:
         yaw = yaw - yaw0
 
-    imu_times.append(data.header.stamp.to_sec()-t0)
+    #imu_times.append(data.header.stamp.to_sec()-t0)
+    imu_times.append(current_t-t0)
     imu_times.pop(0)
 
     # extract angular velocity and linear acceleration data
@@ -126,7 +133,8 @@ def vel_est_callback(data):
         vel_est = data.vel_est
         vel_est_hist.append(vel_est)
         vel_est_hist.pop(0)
-        vel_times.append(data.header.stamp.to_sec()-t0)
+        #vel_times.append(data.header.stamp.to_sec()-t0)
+        vel_times.append(rospy.get_rostime().to_sec()-t0)
         vel_times.pop(0)
 
 # state estimation node
@@ -166,11 +174,11 @@ def state_estimation():
     if psi_drift_active:
         z_EKF = zeros(5)              # x, y, psi, v, psi_drift
         P = eye(5)                # initial dynamics coveriance matrix
-        Q = diag([5.0, 5.0, 5.0, 10.0, 1.0])*dt
+        Q = diag([2.5, 2.5, 2.5, 2.5, 0.00025])*dt
     else:
         z_EKF = zeros(4)
         P = eye(4)                # initial dynamics coveriance matrix
-        Q = diag([5.0, 5.0, 5.0, 5.0])*dt
+        Q = diag([2.5, 2.5, 2.5, 2.5])*dt
 
     if est_mode == 1:                                     # use gps, IMU, and encoder
         print "Using GPS, IMU and encoders."
@@ -194,6 +202,9 @@ def state_estimation():
 
     d_f = 0
 
+    x_pred = 0
+    y_pred = 0
+
     while not rospy.is_shutdown():
         ros_t = rospy.get_rostime()
         t = ros_t.to_sec()-t0           # current time
@@ -203,18 +214,25 @@ def state_estimation():
 
         # ***** EXTRAPOLATE MEASUREMENTS TO CURRENT TIME **************************
         # update x and y polynomial:
-        t_matrix = vstack((gps_times, gps_times, ones(size(gps_times))))
-        t_matrix[0] = t_matrix[0]**2
-        poly_x = linalg.lstsq(t_matrix.T, x_hist)[0]
-        poly_y = linalg.lstsq(t_matrix.T, y_hist)[0]
+        #t_matrix = vstack((gps_times, gps_times, ones(size(gps_times))))
+        #t_matrix[0] = t_matrix[0]**2
+        #poly_x = linalg.lstsq(t_matrix.T, x_hist)[0]
+        #poly_y = linalg.lstsq(t_matrix.T, y_hist)[0]
         # calculate current position from interpolated measurements
-        x_meas_pred = polyval(poly_x, t)
-        y_meas_pred = polyval(poly_y, t)
+        #x_meas_pred = polyval(poly_x, t)
+        #y_meas_pred = polyval(poly_y, t)
+        x_meas_pred = x_meas
+        y_meas_pred = y_meas
+        sq_gps_dist = (x_meas-x_pred)**2 + (y_meas-y_pred)**2
+        # make R values dependent on current measurement
+        R[0,0] = 1+10*sq_gps_dist
+        R[1,1] = 1+10*sq_gps_dist
+
 
         # update velocity estimation polynomial:
-        t_matrix_vel = vstack((vel_times, ones(size(vel_times))))
-        poly_vel = linalg.lstsq(t_matrix_vel.T, vel_est_hist)[0]
-        vel_est_pred = polyval(poly_vel, t)
+        #t_matrix_vel = vstack((vel_times, ones(size(vel_times))))
+        #poly_vel = linalg.lstsq(t_matrix_vel.T, vel_est_hist)[0]
+        #vel_est_pred = polyval(poly_vel, t)
 
         # update IMU polynomial:
         t_matrix_imu = vstack((imu_times,imu_times,ones(size(imu_times))))
