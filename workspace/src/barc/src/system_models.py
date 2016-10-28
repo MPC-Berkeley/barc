@@ -72,10 +72,13 @@ def f_KinBkMdl_psi_drift(z,u,vhMdl, dt, est_mode):
     # compute slip angle
     bta         = arctan( L_a / (L_a + L_b) * tan(d_f) )
 
+    #print "psi_drift_model:"
+    #print psi
+    #print bta
     # compute next state
     x_next      = x + dt*( v*cos(psi + bta) )
     y_next      = y + dt*( v*sin(psi + bta) )
-    psi_next    = psi + dt*(v/L_b*sin(bta) + psi_drift)
+    psi_next    = psi + dt*(v/L_b*sin(bta))# + 0*psi_drift)
     v_next      = v + dt*(a - 0.63*sign(v)*v**2)
     psi_drift_next = psi_drift
 

@@ -40,8 +40,6 @@ psiDot_hist = [0]*25
 
 # Velocity
 vel_est         = 0
-vel_est_hist    = [0]*2
-vel_times       = [0]*2
 
 # GPS
 x_meas      = 0
@@ -131,11 +129,6 @@ def vel_est_callback(data):
     global vel_est, t0, vel_est_hist, vel_times
     if not data.vel_est == vel_est or not running:        # if we're receiving a new measurement
         vel_est = data.vel_est
-        vel_est_hist.append(vel_est)
-        vel_est_hist.pop(0)
-        #vel_times.append(data.header.stamp.to_sec()-t0)
-        vel_times.append(rospy.get_rostime().to_sec()-t0)
-        vel_times.pop(0)
 
 # state estimation node
 def state_estimation():
@@ -211,16 +204,9 @@ def state_estimation():
 
         # calculate new steering angle (low pass filter on steering input to make v_y and v_x smoother)
         d_f = d_f + (cmd_servo-d_f)*0.25
+        #print d_f
 
-        # ***** EXTRAPOLATE MEASUREMENTS TO CURRENT TIME **************************
-        # update x and y polynomial:
-        #t_matrix = vstack((gps_times, gps_times, ones(size(gps_times))))
-        #t_matrix[0] = t_matrix[0]**2
-        #poly_x = linalg.lstsq(t_matrix.T, x_hist)[0]
-        #poly_y = linalg.lstsq(t_matrix.T, y_hist)[0]
-        # calculate current position from interpolated measurements
-        #x_meas_pred = polyval(poly_x, t)
-        #y_meas_pred = polyval(poly_y, t)
+        # GPS measurement update
         x_meas_pred = x_meas
         y_meas_pred = y_meas
         sq_gps_dist = (x_meas-x_pred)**2 + (y_meas-y_pred)**2
@@ -228,17 +214,12 @@ def state_estimation():
         R[0,0] = 1+10*sq_gps_dist
         R[1,1] = 1+10*sq_gps_dist
 
-
-        # update velocity estimation polynomial:
-        #t_matrix_vel = vstack((vel_times, ones(size(vel_times))))
-        #poly_vel = linalg.lstsq(t_matrix_vel.T, vel_est_hist)[0]
-        #vel_est_pred = polyval(poly_vel, t)
-
         # update IMU polynomial:
-        t_matrix_imu = vstack((imu_times,imu_times,ones(size(imu_times))))
-        t_matrix_imu[0] = t_matrix_imu[0]**2
-        poly_psiDot = linalg.lstsq(t_matrix_imu.T, psiDot_hist)[0]
-        psiDot_meas_pred = polyval(poly_psiDot, t)
+        #t_matrix_imu = vstack((imu_times,imu_times,ones(size(imu_times))))
+        #t_matrix_imu[0] = t_matrix_imu[0]**2
+        #poly_psiDot = linalg.lstsq(t_matrix_imu.T, psiDot_hist)[0]
+        #psiDot_meas_pred = polyval(poly_psiDot, t)
+        psiDot_meas_pred = psiDot_hist[-1]
 
         if psi_drift_active:
             (x, y, psi, v, psi_drift) = z_EKF           # note, r = EKF estimate yaw rate
@@ -249,10 +230,10 @@ def state_estimation():
         dt_pred = 0.0
 
         bta = arctan(L_f/(L_f+L_r)*tan(d_f))
-        x_pred = x + dt_pred*(v*cos(psi + bta))
-        y_pred = y + dt_pred*(v*sin(psi + bta))
-        psi_pred = psi + dt_pred*v/L_r*sin(bta)
-        v_pred = v + dt_pred*(FxR - 0.63*sign(v)*v**2)
+        x_pred = x# + dt_pred*(v*cos(psi + bta))
+        y_pred = y# + dt_pred*(v*sin(psi + bta))
+        psi_pred = psi# + dt_pred*v/L_r*sin(bta)
+        v_pred = v# + dt_pred*(FxR - 0.63*sign(v)*v**2)
         v_x_pred = cos(bta)*v_pred
         v_y_pred = sin(bta)*v_pred
 
@@ -260,7 +241,10 @@ def state_estimation():
 
         # Update track position
         l.set_pos(x_pred, y_pred, psi_pred, v_x_pred, v_x_pred, v_y_pred, psi_dot_pred)   # v = v_x
-        l.find_s()
+        #l.find_s()
+        l.s = 0
+        l.epsi = 0
+        l.s_start = 0
 
         # and then publish position info
         state_pub_pos.publish(pos_info(Header(stamp=ros_t), l.s, l.ey, l.epsi, l.v, l.s_start, l.x, l.y, l.v_x, l.v_y,

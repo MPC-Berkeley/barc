@@ -4,8 +4,8 @@
 using PyPlot
 using JLD
 
-Q = diagm([0.1,0.1,0.1,0.1,0.00001])
-R = diagm([0.1,0.1,0.5,0.5])
+Q = diagm([0.1,0.1,0.1,0.1,0.1])
+R = diagm([0.1,0.1,0.1,10.0])
 
 function main(code::AbstractString)
     global Q, R
@@ -29,7 +29,7 @@ function main(code::AbstractString)
     t = t0:dt:t_end
     sz = length(t)
     y = zeros(sz,4)
-    u = zeros(sz,4)
+    u = zeros(sz,2)
 
     P = zeros(5,5)
     x_est = zeros(length(t),5)
@@ -37,31 +37,37 @@ function main(code::AbstractString)
     yaw0 = imu_meas.z[1,6]
     gps_dist = zeros(length(t))
 
+    yaw_prev = yaw0
+
     for i=2:length(t)
         # Collect measurements and inputs for this iteration
         y_gps = gps_meas.z[gps_meas.t.>t[i],:][1,:]
         y_yaw = imu_meas.z[imu_meas.t.>t[i],6][1]-yaw0
+        #a_x   = imu_meas.z[imu_meas.t.>t[i],7][1]
         y_vel_est = vel_est.z[vel_est.t.>t[i]][1]
         y[i,:] = [y_gps y_yaw y_vel_est]
-        #u[i,:] = cmd_pwm_log.z[cmd_pwm_log.t.>t[i],:][1,:]
-        u[i,1] = (cmd_pwm_log.z[cmd_pwm_log.t.>t[i],1][1]-94.14)/2.7678
-        u[i,2] = (cmd_pwm_log.z[cmd_pwm_log.t.>t[i],2][1]-91.365)/105.6
-        if cmd_pwm_log.z[cmd_pwm_log.t.>t[i],1][1] == 90
-            u[i,1] = 0
-        end
-        if cmd_pwm_log.z[cmd_pwm_log.t.>t[i],2][1] == 90
-            u[i,2] = 0
-        end
+        y[:,3] = unwrap!(y[:,3])
+        u[i,:] = cmd_log.z[cmd_log.t.>t[i],:][1,:]
+        #u[i,1] = (cmd_pwm_log.z[cmd_pwm_log.t.>t[i],1][1]-94.14)/2.7678
+        #u[i,2] = (cmd_pwm_log.z[cmd_pwm_log.t.>t[i],2][1]-91.365)/105.6
+        # if cmd_pwm_log.z[cmd_pwm_log.t.>t[i],1][1] == 90
+        #     u[i,1] = 0
+        # end
+        # if cmd_pwm_log.z[cmd_pwm_log.t.>t[i],2][1] == 90
+        #     u[i,2] = 0
+        # end
 
         # Adapt R-value of GPS according to distance to last point:
         gps_dist[i] = norm(y[i,1:2]-x_est[i-1,1:2])
-        R[1,1] = 1+10*gps_dist[i]^2
-        R[2,2] = 1+10*gps_dist[i]^2
-        if y[i,4]==y[i-1,4]
-            R[4,4] = 0.1
+        if gps_dist[i] > 0.3
+            R[1,1] = 1+100*gps_dist[i]^2
+            R[2,2] = 1+100*gps_dist[i]^2
         else
-            R[4,4] = 0.1
+            R[1,1] = 1
+            R[2,2] = 1
         end
+
+        
         args = (u[i,:],dt,l_A,l_B)
 
         # Calculate new estimate
@@ -75,7 +81,7 @@ function main(code::AbstractString)
     # plot(t,u)
     # grid("on")
     # legend(["a_x","d_f"])
-    figure()
+    figure(1)
     ax=subplot(5,1,1)
     for i=1:4
         subplot(5,1,i,sharex=ax)
@@ -87,7 +93,7 @@ function main(code::AbstractString)
     grid("on")
 
 
-    figure()
+    figure(2)
     subplot(2,1,1)
     title("Comparison raw GPS data and estimate")
     plot(t-t0,y[:,1],t-t0,x_est[:,1],"-*")
@@ -102,7 +108,7 @@ function main(code::AbstractString)
     legend(["y_m","y_est"])
     grid("on")
 
-    figure()
+    figure(3)
     plot(t,gps_dist)
     title("GPS distances")
     grid("on")
@@ -110,16 +116,35 @@ function main(code::AbstractString)
     # plot(gps_meas.z[:,1],gps_meas.z[:,2],"-x",x_est[:,1],x_est[:,2],"-*")
     # grid("on")
     # title("x-y-view")
-    figure()
-    plot(t-t0,x_est,pos_info.t-t0,pos_info.z[:,[6,7,4,10,16]],"-*")
+    figure(4)
+    plot(t-t0,x_est,"-x",pos_info.t-t0,pos_info.z[:,[6,7,4,10,16]],"-*")
+    title("Comparison simulation (-x) onboard-estimate (-*)")
     grid("on")
     legend(["x","y","psi","v","psi_drift"])
+
+    unwrapped_yaw_meas = unwrap!(imu_meas.z[:,6])
+    figure(5)
+    plot(t-t0,x_est[:,3],"-*",imu_meas.t-t0,unwrapped_yaw_meas-unwrapped_yaw_meas[1])
+    title("Comparison yaw")
+    grid("on")
+
+    figure(6)
+    plot(t-t0,x_est[:,4],"-*",vel_est.t-t0,vel_est.z)
+    grid("on")
+    title("Comparison of velocity measurement and estimate")
+    legend(["estimate","measurement"])
+
+    #figure(7)
+    #plt[:hist](gps_dist,300)
+    #grid("on")
     nothing
 end
 
 function h(x,args)
     C = [eye(4) zeros(4,1)]
-    #C[4,4] = 0
+    C[4,4] = 0
+    #C[3,3] = 0
+    C[3,5] = 1
     return C*x
 end
 function ekf(f, mx_k, P_k, h, y_kp1, Q, R, args)
@@ -146,9 +171,10 @@ function simModel(z,args)
     zNext = copy(z)
     zNext[1] = z[1] + dt*(z[4]*cos(z[3] + bta))                     # x
     zNext[2] = z[2] + dt*(z[4]*sin(z[3] + bta))                     # y
-    zNext[3] = z[3] + dt*(z[4]/l_B*sin(bta) + z[5])                 # psi
-    zNext[4] = z[4] + dt*(u[1] - 0.63 * z[4]^2 * sign(z[4]))        # v
-    #zNext[4] = z[4] + dt*(sqrt(z[6]^2+z[7]^2))                      # v
+    zNext[3] = z[3] + dt*(z[4]/l_B*sin(bta))                        # psi
+    zNext[4] = z[4] + dt*(u[1] - 0.63 * z[4]^2 * sign(z[4]))       # v
+    #zNext[4] = z[4] + dt*(z[6])                                     # v
+    #zNext[4] = z[4] + dt*(sqrt(z[6]^2+z[7]^2))                     # v
     zNext[5] = z[5]                                                 # psi_drift
     return zNext
 end
@@ -184,4 +210,15 @@ function initPlot()             # Initialize Plots for export
     rc("font",size=8)
     rc("figure",figsize=[4.5,3])
     #rc("pgf", texsystem="pdflatex",preamble=L"""\usepackage[utf8x]{inputenc}\usepackage[T1]{fontenc}\usepackage{lmodern}""")
+end
+
+function unwrap!(p)
+    length(p) < 2 && return p
+    for i = 2:length(p)
+        d = p[i] - p[i-1]
+        if abs(d) > pi
+            p[i] -= floor((d+pi) / (2*pi)) * 2pi
+        end
+    end
+    return p
 end

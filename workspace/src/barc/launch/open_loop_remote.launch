@@ -18,10 +18,10 @@
         <param name="q_std" type="double" value="0.1" />
 
         <param name="psi_std" type="double" value="0.5" />
-        <param name="v_std" type="double" value="1.0" />
-        <param name="gps_std" type="double" value="2.0" />
+        <param name="v_std" type="double" value="0.5" />
+        <param name="gps_std" type="double" value="0.8" />
         <param name="ang_v_std" type="double" value="0.8" />
-
+        
         <param name="est_mode" type="double" value="1" />
     </node>
 
@@ -29,7 +29,7 @@
     <node machine="this-pc" pkg="barc" type="open_loop.jl" name="control" output="screen" />
 
     <!-- LOW LEVEL CONTROLLER -->
-    <!--node machine="this-pc" pkg="barc" type="controller_low_level.py" name="low_level_controller" /-->
+    <node machine="this-pc" pkg="barc" type="controller_low_level.py" name="low_level_controller" />
 
     <!-- IMU -->
     <node machine="odroid" pkg="myahrs_driver" type="myahrs_driver" name="myahrs_driver">

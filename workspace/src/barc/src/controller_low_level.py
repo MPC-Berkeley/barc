@@ -47,8 +47,10 @@ class low_level_control(object):
             self.motor_pwm = 93.5 + 46.73*self.FxR
         self.update_arduino()
     def neutralize(self):
-        self.motor_pwm = 90
+        self.motor_pwm = 60             # slow down first
         self.servo_pwm = 90
+        self.update_arduino()
+        self.motor_pwm = 90
         self.update_arduino()
     def update_arduino(self):
         self.ecu_cmd.header.stamp = get_rostime()

@@ -59,16 +59,37 @@ function main()
     pos_info_log.i  = 1
     
     # Start node
-    while t < 7.0              # run exactly 7 seconds
+    while t < 44.0              # run exactly 7 seconds
         t = to_sec(get_rostime())-t0
         if t <= 3
             cmd.motor = 0
             cmd.servo = 0
-        elseif t <= 4                   # CHECK TIME AND ACCELERATION !!!
-            cmd.motor = 2.0             # CHECK TIME AND ACCELERATION !!!
-            cmd.servo = 0
-        elseif t <= 7
-            cmd.motor = 0
+        elseif t <= 8                   # CHECK TIME AND ACCELERATION !!!
+            cmd.motor = 1.0             # CHECK TIME AND ACCELERATION !!!
+            cmd.servo = -0.15
+        elseif t <= 13                   # CHECK TIME AND ACCELERATION !!!
+            cmd.motor = 1.0             # CHECK TIME AND ACCELERATION !!!
+            cmd.servo = -0.2
+        elseif t <= 18                   # CHECK TIME AND ACCELERATION !!!
+            cmd.motor = 1.0             # CHECK TIME AND ACCELERATION !!!
+            cmd.servo = -0.25
+        elseif t <= 23                   # CHECK TIME AND ACCELERATION !!!
+            cmd.motor = 1.0             # CHECK TIME AND ACCELERATION !!!
+            cmd.servo = -0.3
+        elseif t <= 28                   # CHECK TIME AND ACCELERATION !!!
+            cmd.motor = 1.0             # CHECK TIME AND ACCELERATION !!!
+            cmd.servo = -0.35
+        elseif t <= 33                   # CHECK TIME AND ACCELERATION !!!
+            cmd.motor = 1.0             # CHECK TIME AND ACCELERATION !!!
+            cmd.servo = -0.4
+        elseif t <= 38                   # CHECK TIME AND ACCELERATION !!!
+            cmd.motor = 1.0             # CHECK TIME AND ACCELERATION !!!
+            cmd.servo = -0.45
+        elseif t <= 43                   # CHECK TIME AND ACCELERATION !!!
+            cmd.motor = 1.0             # CHECK TIME AND ACCELERATION !!!
+            cmd.servo = -0.5
+        elseif t <= 44
+            cmd.motor = -2.0
             cmd.servo = 0
         else
             cmd.motor = 0
