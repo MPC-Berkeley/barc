@@ -95,7 +95,7 @@ end
 # ****************************************************************
 function eval_run(code::AbstractString)
     log_path_record = "$(homedir())/simulations/output-record-$(code).jld"
-    log_path_record = "$(homedir())/open_loop/output-record-0ed5.jld"
+    #log_path_record = "$(homedir())/open_loop/output-record-0ed5.jld"
     d_rec = load(log_path_record)
 
     imu_meas    = d_rec["imu_meas"]
@@ -116,6 +116,11 @@ function eval_run(code::AbstractString)
     axis("equal")
     legend(["GPS meas","estimate"])
     
+    figure()
+    plot(imu_meas.t-t0,imu_meas.z[:,7:9])
+    grid("on")
+    title("Measured accelerations")
+
     figure()
     title("x/y measurements and estimate")
     plot(gps_meas.t-t0,gps_meas.z,"-*",pos_info.t-t0,pos_info.z[:,6:7],"-x")

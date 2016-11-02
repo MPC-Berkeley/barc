@@ -21,7 +21,6 @@
 from rospy import init_node, Subscriber, Publisher, get_param, get_rostime
 from rospy import Rate, is_shutdown, ROSInterruptException, spin, on_shutdown
 from barc.msg import ECU
-from numpy import pi
 import rospy
 
 class low_level_control(object):
@@ -50,6 +49,7 @@ class low_level_control(object):
         self.motor_pwm = 60             # slow down first
         self.servo_pwm = 90
         self.update_arduino()
+        rospy.sleep(1)                  # slow down for 1 sec
         self.motor_pwm = 90
         self.update_arduino()
     def update_arduino(self):
@@ -59,7 +59,6 @@ class low_level_control(object):
         self.ecu_pub.publish(self.ecu_cmd)
 
 def arduino_interface():
-
     # launch node, subscribe to motorPWM and servoPWM, publish ecu
     init_node('arduino_interface')
     llc = low_level_control()

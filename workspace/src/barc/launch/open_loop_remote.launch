@@ -13,7 +13,7 @@
     <!-- START NODES -->
     
     <!-- Estimator -->
-    <node machine="this-pc" pkg="barc" type="state_estimation_DynBkMdl.py" name="state_estimation_dynamic" output="screen">
+    <node machine="this-pc" pkg="barc" type="state_estimation_DynBkMdl_mixed_nodrift.py" name="state_estimation_dynamic" output="screen">
         <!-- ekf properties -->
         <param name="q_std" type="double" value="0.1" />
 

@@ -44,7 +44,7 @@ function main()
     cmd.motor   = 0
     cmd.servo   = 0
     cmd.header.stamp = get_rostime()
-    println("Starting open loop control. Wating.")
+    println("Starting open loop control. Waiting.")
     rossleep(3.0)
 
     t0_ros      = get_rostime()
@@ -59,40 +59,72 @@ function main()
     pos_info_log.i  = 1
     
     # Start node
-    while t < 44.0              # run exactly 7 seconds
+    while t < 64.0              # run exactly x seconds
         t = to_sec(get_rostime())-t0
         if t <= 3
             cmd.motor = 0
             cmd.servo = 0
-        elseif t <= 8                   # CHECK TIME AND ACCELERATION !!!
-            cmd.motor = 1.0             # CHECK TIME AND ACCELERATION !!!
-            cmd.servo = -0.15
-        elseif t <= 13                   # CHECK TIME AND ACCELERATION !!!
-            cmd.motor = 1.0             # CHECK TIME AND ACCELERATION !!!
-            cmd.servo = -0.2
-        elseif t <= 18                   # CHECK TIME AND ACCELERATION !!!
-            cmd.motor = 1.0             # CHECK TIME AND ACCELERATION !!!
-            cmd.servo = -0.25
-        elseif t <= 23                   # CHECK TIME AND ACCELERATION !!!
-            cmd.motor = 1.0             # CHECK TIME AND ACCELERATION !!!
-            cmd.servo = -0.3
-        elseif t <= 28                   # CHECK TIME AND ACCELERATION !!!
-            cmd.motor = 1.0             # CHECK TIME AND ACCELERATION !!!
-            cmd.servo = -0.35
-        elseif t <= 33                   # CHECK TIME AND ACCELERATION !!!
-            cmd.motor = 1.0             # CHECK TIME AND ACCELERATION !!!
-            cmd.servo = -0.4
-        elseif t <= 38                   # CHECK TIME AND ACCELERATION !!!
-            cmd.motor = 1.0             # CHECK TIME AND ACCELERATION !!!
-            cmd.servo = -0.45
-        elseif t <= 43                   # CHECK TIME AND ACCELERATION !!!
-            cmd.motor = 1.0             # CHECK TIME AND ACCELERATION !!!
-            cmd.servo = -0.5
-        elseif t <= 44
-            cmd.motor = -2.0
-            cmd.servo = 0
+        # SHIKANE:
+        # elseif t <= 3.5
+        #     cmd.motor = 2
+        #     cmd.servo = -0.3
+        # elseif t <= 4
+        #     cmd.motor = 2
+        #     cmd.servo = 0.3
+        # elseif t <= 4.5
+        #     cmd.motor = 2
+        #     cmd.servo = -0.3
+        # elseif t <= 5
+        #     cmd.motor = 2
+        #     cmd.servo = 0.3
+        # elseif t <= 5.5
+        #     cmd.motor = 2
+        #     cmd.servo = -0.3
+        # elseif t <= 6
+        #     cmd.motor = 2
+        #     cmd.servo = 0.3
+        # elseif t <= 6.5
+        #     cmd.motor = 2
+        #     cmd.servo = -0.3
+        # elseif t <= 7
+        #     cmd.motor = 2
+        #     cmd.servo = 0.3
+        # elseif t <= 7.5
+        #     cmd.motor = 2
+        #     cmd.servo = -0.3
+        # CONTINUOUS ACCELERATION:
+        elseif t <= 63
+            cmd.motor = 1.0#0.5+(t-3)/20
+            cmd.servo = -(t-3.0)/300-0.1
+        # elseif t <= 8                   # CHECK TIME AND ACCELERATION !!!
+        #     cmd.motor = 1.0             # CHECK TIME AND ACCELERATION !!!
+        #     cmd.servo = -0.15
+        # elseif t <= 13                   # CHECK TIME AND ACCELERATION !!!
+        #     cmd.motor = 1.0             # CHECK TIME AND ACCELERATION !!!
+        #     cmd.servo = -0.2
+        # elseif t <= 18                   # CHECK TIME AND ACCELERATION !!!
+        #     cmd.motor = 1.0             # CHECK TIME AND ACCELERATION !!!
+        #     cmd.servo = -0.25
+        # elseif t <= 23                   # CHECK TIME AND ACCELERATION !!!
+        #     cmd.motor = 1.0             # CHECK TIME AND ACCELERATION !!!
+        #     cmd.servo = -0.3
+        # elseif t <= 28                   # CHECK TIME AND ACCELERATION !!!
+        #     cmd.motor = 1.0             # CHECK TIME AND ACCELERATION !!!
+        #     cmd.servo = -0.35
+        # elseif t <= 33                   # CHECK TIME AND ACCELERATION !!!
+        #     cmd.motor = 1.0             # CHECK TIME AND ACCELERATION !!!
+        #     cmd.servo = -0.4
+        # elseif t <= 38                   # CHECK TIME AND ACCELERATION !!!
+        #     cmd.motor = 1.0             # CHECK TIME AND ACCELERATION !!!
+        #     cmd.servo = -0.45
+        # elseif t <= 43                   # CHECK TIME AND ACCELERATION !!!
+        #     cmd.motor = 1.0             # CHECK TIME AND ACCELERATION !!!
+        #     cmd.servo = -0.5
+        # elseif t <= 44
+        #     cmd.motor = -2.0
+        #     cmd.servo = 0
         else
-            cmd.motor = 0
+            cmd.motor = -2.0
             cmd.servo = 0
         end
         cmd.header.stamp = get_rostime()

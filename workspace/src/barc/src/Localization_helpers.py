@@ -3,7 +3,10 @@
 #from numpy import sin, cos, tan, array, dot, linspace, pi, ones, zeros, amin, argmin, arange
 #from numpy import hstack, vstack, sign, size, diff, cumsum, mod, floor, interp, linalg
 #from numpy import polyval, polyder, arctan2
-from numpy import *
+from numpy import hstack, arange, array, zeros, vstack, transpose, pi, linspace, sin, cos, inf
+from numpy import size, tan, diff, cumsum, mod, argmin, interp, floor, arctan2, polyval, polyder
+from numpy import amin, dot, ones, sqrt, linalg, sign, sum
+#from numpy import *
 import scipy.optimize
 
 def create_circle(rad, n, c):
@@ -29,8 +32,8 @@ def create_bezier(p0,p1,p2,dt):
     p = (1-t)**2*p0 + 2*(1-t)*t*p1+t**2*p2
     return p
 
-class Localization:
-    """ This is the main class which includes all variables and functions to calculate the current relative position."""
+class Localization(object):
+    """This is the main class which includes all variables and functions to calculate the current relative position."""
     n                   = 0                     # number of nodes
     c                   = 0                     # center of circle (in case of circular trajectory)
     pos                 = 0                     # current position
@@ -232,10 +235,10 @@ class Localization:
         #print(self.nodes)
 
 
-    def set_pos(self,x,y,psi,v,v_x,v_y,psiDot):
+    def set_pos(self,x,y,psi,v_x,v_y,psiDot):
         self.pos = array([x,y])
         self.psi = psi
-        self.v = v
+        self.v = sqrt(v_x**2+v_y**2)
         self.x = x
         self.y = y
         self.v_x = v_x
@@ -245,7 +248,7 @@ class Localization:
     def find_s(self):
         dist        = sum((self.pos*ones([self.n,2])-self.nodes.transpose())**2,1)**0.5 # distance of current position to all nodes
         idx_min     = argmin(dist)              # index of minimum distance
-        #print("closest point: %f"%idx_min)
+        # print "closest point: %f"%idx_min
         n           = self.n                    # number of nodes
         nPoints     = self.nPoints              # number of points for polynomial approximation (around current position)
         
@@ -331,7 +334,7 @@ class Localization:
         # Calculate s
         discretization = 0.0001                           # discretization to calculate s
         
-        j           = arange((self.N_nodes_poly_back-1)*self.ds,(self.N_nodes_poly_back+1)*self.ds,discretization)
+        j = arange((self.N_nodes_poly_back-1)*self.ds,(self.N_nodes_poly_back+1)*self.ds,discretization)
         #print "idx_min     = %f"%idx_min
         #print "s_idx_start = %f"%s_idx_start
         #print "idx_start   = %f"%idx_start

@@ -1,7 +1,7 @@
 #!/usr/bin/env julia
 
 using RobotOS
-@rosimport barc.msg: ECU, pos_info, Encoder, Ultrasound, Logging
+@rosimport barc.msg: ECU, pos_info
 @rosimport data_service.msg: TimeData
 @rosimport geometry_msgs.msg: Vector3
 rostypegen()
@@ -87,11 +87,11 @@ function main()
     # Initialize ROS node and topics
     init_node("mpc_traj")
     loop_rate = Rate(10)
-    pub                         = Publisher("ecu", ECU, queue_size=1)::RobotOS.Publisher{barc.msg.ECU}
+    pub = Publisher("ecu", ECU, queue_size=1)::RobotOS.Publisher{barc.msg.ECU}
     # The subscriber passes arguments (s_start, coeffCurvature and z_est) which are updated by the callback function:
-    s1                          = Subscriber("pos_info", pos_info, SE_callback, (s_start_update,coeffCurvature_update,z_est,x_est,coeffX,coeffY,),queue_size=1)::RobotOS.Subscriber{barc.msg.pos_info}
+    s1 = Subscriber("pos_info", pos_info, SE_callback, (s_start_update,coeffCurvature_update,z_est,x_est,coeffX,coeffY,),queue_size=1)::RobotOS.Subscriber{barc.msg.pos_info}
 
-    run_id          = get_param("run_id")
+    run_id = get_param("run_id")
     println("Finished initialization.")
     # Lap parameters
     switchLap                   = false     # initialize lap lap trigger
@@ -108,7 +108,11 @@ function main()
     lapStatus.currentIt     = 1
     posInfo.s_target        = 12.0#24.0
     k                       = 0                       # overall counter for logging
-    mpcSol.z = zeros(10,4)
+    
+    mpcSol.z = zeros(11,4)
+    mpcSol.u = zeros(10,2)
+    mpcSol.a_x = 0
+    mpcSol.d_f = 0
     
     # Precompile coeffConstraintCost:
     oldTraj.oldTraj[1:buffersize,6,1] = linspace(0,posInfo.s_target,buffersize)
@@ -128,11 +132,12 @@ function main()
             # ============================= PUBLISH COMMANDS =============================
             # this is done at the beginning of the lap because this makes sure that the command is published 0.1s after the state has been received
             # the state is predicted by 0.1s
+            println("Publishing command...")
             cmd.header.stamp = get_rostime()
             cmd.motor = convert(Float32,mpcSol.a_x)
             cmd.servo = convert(Float32,mpcSol.d_f)
             publish(pub, cmd)        
-
+            println("Finished publishing.")
             # ============================= Initialize iteration parameters =============================
             i                           = lapStatus.currentIt           # current iteration number, just to make notation shorter
             zCurr[i,:]                  = copy(z_est)                   # update state information (actually predicted by Kalman filter!)
@@ -190,7 +195,7 @@ function main()
             else
                 last_u = u_final
             end
-
+            println("Starting solving.")
             # Solve the MPC problem
             tic()
             if lapStatus.currentLap <= 2

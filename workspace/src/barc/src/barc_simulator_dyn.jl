@@ -141,8 +141,8 @@ function main()
             imu_data.orientation = geometry_msgs.msg.Quaternion(cos(yaw/2), sin(yaw/2), 0, 0)
             imu_data.angular_velocity = Vector3(0,0,psiDot)
             imu_data.header.stamp = t_ros
-            imu_data.linear_acceleration.x = diff(z_current[i-1:i,3])[1]/dt
-            imu_data.linear_acceleration.y = diff(z_current[i-1:i,4])[1]/dt
+            imu_data.linear_acceleration.x = diff(z_current[i-1:i,3])[1]/dt - z_current[i,6]*z_current[i,4] + randn()*0.5
+            imu_data.linear_acceleration.y = diff(z_current[i-1:i,4])[1]/dt + z_current[i,6]*z_current[i,3] + randn()*0.5
             publish(pub_imu, imu_data)      # Imu format is defined by ROS, you can look it up by google "rosmsg Imu"
                                             # It's sufficient to only fill the orientation part of the Imu-type (with one quaternion)
         end
@@ -150,7 +150,7 @@ function main()
         # Velocity measurements
         dist_traveled += norm(diff(z_current[i-1:i,1:2]))
         if i%5 == 0                 # 20 Hz
-            if sum(dist_traveled .>= vel_dist_update)>=1     # only update if at least one of the magnets has passed the sensor
+            if sum(dist_traveled .>= vel_dist_update)>=1 && z_current[i,3] > 0.1     # only update if at least one of the magnets has passed the sensor
                 dist_traveled[dist_traveled.>=vel_dist_update] = 0
                 vel_est.vel_est = convert(Float32,norm(z_current[i,3:4]))#+0.00*randn())
             end

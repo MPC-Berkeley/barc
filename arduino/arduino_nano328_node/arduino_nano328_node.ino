@@ -128,6 +128,11 @@ class Car {
     int BL_count = 0;
     int BR_count = 0;
 
+    float vel_FL = 0;
+    float vel_FR = 0;
+    float vel_BL = 0;
+    float vel_BR = 0;
+
     // Delta time withing two magnets                                  			    //(ADDED BY TOMMI 7JULY2016)
     // F = front, B = back, L = left, R = right                         			//(ADDED BY TOMMI 7JULY2016)
     volatile unsigned long FL_new_time = 0;                                         //(ADDED BY TOMMI 7JULY2016)
@@ -238,6 +243,10 @@ void loop() {
     car.readAndCopyInputs();
 
     vel_est.vel_est = car.getVelocityEstimate();
+    vel_est.vel_fl = car.vel_FL;
+    vel_est.vel_fr = car.vel_FR;
+    vel_est.vel_bl = car.vel_BL;
+    vel_est.vel_br = car.vel_BR;
     vel_est.header.stamp = nh.now();
     pub_vel_est.publish(&vel_est);               // publish estimated velocity
     ////////////////////////////////////////////////!!!!
@@ -440,7 +449,19 @@ unsigned long Car::getEncoder_dTime_BR() {                               //(ADDE
 }                                                              //(ADDED BY TOMMI 7JULY2016)
 
 float Car::getVelocityEstimate() {
-  if(FL_DeltaTime > 0 && FR_DeltaTime > 0) {
+  if(FL_DeltaTime > 0){
+    vel_FL = 2.0*3.141593*0.036/2.0*1.0/FL_DeltaTime;
+  }
+  if(FR_DeltaTime > 0){
+    vel_FR = 2.0*3.141593*0.036/2.0*1.0/FR_DeltaTime;
+  }
+  if(BL_DeltaTime > 0){
+    vel_BL = 2.0*3.141593*0.036/2.0*1.0/BL_DeltaTime;
+  }
+  if(BR_DeltaTime > 0){
+    vel_BR = 2.0*3.141593*0.036/2.0*1.0/BR_DeltaTime;
+  }
+  if(FL_DeltaTime > 0 && FR_DeltaTime > 0 && BR_DeltaTime) {
     return 2.0*3.141593*0.036/2.0*(1.0/FL_DeltaTime + 1.0/FR_DeltaTime + 1.0/BR_DeltaTime)*1000000.0/3.0;    // calculate current speed in m/s
     //return 1.0;  
 }

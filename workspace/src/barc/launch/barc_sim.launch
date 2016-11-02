@@ -8,17 +8,17 @@
     <param name="I_z" type="double" value="0.24" />
 
     <!-- RECORD -->
-    <!--node pkg="barc" type="barc_record.jl" name="barc_record" output="screen" /-->
+    <node pkg="barc" type="barc_record.jl" name="barc_record" output="screen" />
 
     <!-- CONTROL -->
-    <!--node pkg="barc" type="LMPC_node.jl" name="control" output="screen" /-->
-    <node pkg="barc" type="open_loop.jl" name="control" output="screen" />
+    <node pkg="barc" type="LMPC_node.jl" name="control" output="screen" />
+    <!--node pkg="barc" type="open_loop.jl" name="control" output="screen" /-->
 
     <!-- SIMULATOR -->
     <node pkg="barc" type="barc_simulator_dyn.jl" name="barc_sim" output="screen" />
 
     <!--DYNAMIC OBSERVER-->
-    <node pkg="barc" type="state_estimation_DynBkMdl.py" name="state_estimation_dynamic" output="screen">
+    <node pkg="barc" type="state_estimation_DynBkMdl_mixed_nodrift.py" name="state_estimation_dynamic" output="screen">
         <!-- ekf properties -->
         <param name="q_std" type="double" value="0.1" />
 
