@@ -61,6 +61,11 @@ class Car {
     void calcThrottle();
     void calcSteering();
     float getVelocityEstimate();
+    float vel_FL = 0;
+    float vel_FR = 0;
+    float vel_BL = 0;
+    float vel_BR = 0;
+
   private:
     // Pin assignments
     const int ENC_FL_PIN = 2;
@@ -127,11 +132,6 @@ class Car {
     int FR_count = 0;
     int BL_count = 0;
     int BR_count = 0;
-
-    float vel_FL = 0;
-    float vel_FR = 0;
-    float vel_BL = 0;
-    float vel_BR = 0;
 
     // Delta time withing two magnets                                  			    //(ADDED BY TOMMI 7JULY2016)
     // F = front, B = back, L = left, R = right                         			//(ADDED BY TOMMI 7JULY2016)

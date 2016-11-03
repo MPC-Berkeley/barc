@@ -166,6 +166,32 @@ def f_KinBkMdl_mixed_nodrift(z, u, vhMdl, dt, est_mode):
     zNext[8] = z[8]                                                 # drift_psi
     return array(zNext)
 
+def f_KinBkMdl_2(z, u, vhMdl, dt, est_mode):
+    (l_A,l_B) = vhMdl
+    #bta = atan(l_A/(l_A+l_B)*tan(u[2]))
+    bta = math.atan2(l_A*tan(u[1]),l_A+l_B)
+    #print "========================"
+    #print "bta = %f"%bta
+    #print "psi = %f"%z[6]
+    zNext = [0]*4
+    zNext[0] = z[0] + dt*(z[3]*cos(z[2] + bta))    # x
+    zNext[1] = z[1] + dt*(z[3]*sin(z[2] + bta))    # y
+    zNext[2] = z[2] + dt*(z[3]/l_B*sin(bta))       # psi
+    zNext[3] = z[3] + dt*(u[0] - 1.0*z[3])         # v
+    zNext[4] = z[4]                                # psiDot
+    zNext[5] = z[5]                                # drift_psi
+    return array(zNext)
+
+def h_KinBkMdl_2(x, u, vhMdl, dt, est_mode):
+    """This Measurement model uses gps, imu and encoders"""
+    y = [0]*7
+    y[0] = x[0]                     # x
+    y[1] = x[1]                     # y
+    y[2] = x[2]+x[5]                # psi
+    y[3] = x[3]                     # v
+    y[4] = x[4]                     # psiDot
+    return array(y)
+
 def h_KinBkMdl_mixed(x, u, vhMdl, dt, est_mode):
     """This Measurement model uses gps, imu and encoders"""
     y = [0]*7

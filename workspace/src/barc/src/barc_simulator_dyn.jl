@@ -153,6 +153,10 @@ function main()
             if sum(dist_traveled .>= vel_dist_update)>=1 && z_current[i,3] > 0.1     # only update if at least one of the magnets has passed the sensor
                 dist_traveled[dist_traveled.>=vel_dist_update] = 0
                 vel_est.vel_est = convert(Float32,norm(z_current[i,3:4]))#+0.00*randn())
+                vel_est.vel_fl = 0
+                vel_est.vel_fr = 0
+                vel_est.vel_bl = 0
+                vel_est.vel_br = 0
             end
             vel_est.header.stamp = t_ros
             publish(pub_vel, vel_est)
