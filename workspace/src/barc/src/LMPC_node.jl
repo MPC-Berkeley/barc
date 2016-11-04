@@ -125,6 +125,8 @@ function main()
     posInfo.s = 0
     posInfo.s_start = 0
 
+    uPrev = zeros(10,2)     # saves the last 10 inputs (1 being the most recent one)
+
     # Start node
     while ! is_shutdown()
         if z_est[6] > 0         # check if data has been received (s > 0)
@@ -200,7 +202,7 @@ function main()
             tic()
             if lapStatus.currentLap <= 2
                 z_pf = [zCurr[i,6],zCurr[i,5],zCurr[i,4],norm(zCurr[i,1:2])]        # use kinematic model and its states
-                solveMpcProblem_pathFollow(mdl_pF,mpcSol,mpcParams_pF,trackCoeff,posInfo,modelParams,z_pf,last_u')
+                solveMpcProblem_pathFollow(mdl_pF,mpcSol,mpcParams_pF,trackCoeff,posInfo,modelParams,z_pf,last_u',uPrev)
             else                        # otherwise: use system-ID-model
                 solveMpcProblem(mdl,mpcSol,mpcCoeff,mpcParams,trackCoeff,lapStatus,posInfo,modelParams,zCurr[i,:]',last_u')
             end
@@ -210,6 +212,8 @@ function main()
             uCurr[i,:]  = [mpcSol.a_x mpcSol.d_f]
             zCurr[i,6] = (posInfo.s_start + posInfo.s)%posInfo.s_target   # save absolute position in s (for oldTrajectory)
 
+            uPrev = circshift(uPrev,1)
+            uPrev[1,:] = uCurr[i,:]
             println("Finished solving, status: $(mpcSol.solverStatus), u = $(uCurr[i,:]), t = $tt s")
 
             # append new states and inputs to old trajectory

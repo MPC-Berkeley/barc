@@ -22,22 +22,25 @@ function main(code::AbstractString)
     psiDot = zeros(length(t))
 
     for i=1:length(t)
-        v[i] = vel_est.z[t[i].>vel_est.t][end]
+        v[i] = vel_est.z[t[i].>vel_est.t,1][end]
         psiDot[i] = imu_meas.z[t[i].>imu_meas.t,3][end]
 
     end
     v_x = real(sqrt(complex(v.^2-psiDot.^2*L_b^2)))
     v_y = L_b*psiDot
     delta = atan2(psiDot*0.25,v_x)
+    figure(1)
     plot(t-t0,delta,cmd_log.t-t0,cmd_log.z[:,2])
     grid("on")
     xlabel("t [s]")
     legend(["delta_true","delta_input"])
 
+    figure(2)
     ax1=subplot(211)
-    plot(cmd_pwm_log.t-t0,floor(cmd_pwm_log.z[:,1]))
+    plot(cmd_pwm_log.t-t0,floor(cmd_pwm_log.z[:,2]))
     grid("on")
     subplot(212,sharex=ax1)
-    plot(vel_est.t-t0,vel_est.z)
+    plot(vel_est.t-t0,vel_est.z,vel_est.t-t0,mean(vel_est.z[:,2:3],2,),"--")
     grid("on")
+    legend(["v","v_fl","v_fr","v_bl","v_br","v_mean"])
 end

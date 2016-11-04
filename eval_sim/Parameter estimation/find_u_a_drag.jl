@@ -20,14 +20,30 @@ function main(code::AbstractString)
     t = t0+0.1:.02:t_end-0.1
     v = zeros(length(t))
     cmd = zeros(length(t))
+    cmd_raw = zeros(length(t))
 
     for i=1:length(t)
-        if cmd_log.z[t[i].>cmd_log.t,1][end] > 0 && vel_est.z[t[i].>vel_est.t][end] > 0.2
-            v[i] = vel_est.z[t[i].>vel_est.t][end]
+        if cmd_log.z[t[i].>cmd_log.t,1][end] > 0 && vel_est.z[t[i].>vel_est.t,1][end] > 0.2
+            v[i] = vel_est.z[t[i].>vel_est.t,1][end]
             cmd[i] = cmd_log.z[t[i].>cmd_log.t,1][end]
+            cmd_raw[i] = cmd_pwm_log.z[t[i].>cmd_pwm_log.t,1][end]
         end
     end
     #plot(cmd,v)
-    plot(cmd./v,"*")
+    figure(1)
+    ax1=subplot(211)
+    plot(vel_est.t,vel_est.z)
+    grid("on")
+    legend(["v","v_fl","v_fr","v_bl","v_br"])
+    subplot(212,sharex=ax1)
+    plot(cmd_pwm_log.t,cmd_pwm_log.z[:,1])
+    grid("on")
+
+    figure(2)
+    plot(cmd,cmd./v,"*")
+    grid("on")
+
+    figure(3)
+    plot(cmd_raw,v,"*")
     grid("on")
 end

@@ -29,21 +29,30 @@ class low_level_control(object):
     str_ang_max = 35
     str_ang_min = -35
     ecu_pub = 0
-    FxR = 0
     ecu_cmd = ECU()
     def pwm_converter_callback(self, msg):
         # translate from SI units in vehicle model
         # to pwm angle units (i.e. to send command signal to actuators)
         # convert desired steering angle to degrees, saturate based on input limits
-        self.servo_pwm = 91.365 + 105.6*float(msg.servo)
+        
+        # Old servo control:
+        # self.servo_pwm = 91.365 + 105.6*float(msg.servo)
+        # New servo control
+        if msg.servo < 0.0:
+            self.servo_pwm = 83.6*float(msg.servo) + 92.0
+        elif msg.servo > 0.0:
+            self.servo_pwm = 120.0*float(msg.servo) + 97.6
+        else:
+            self.servo_pwm = 90
+
         # compute motor command
-        self.FxR         =  float(msg.motor)
-        if self.FxR == 0:
+        FxR = float(msg.motor)
+        if FxR == 0:
             self.motor_pwm = 90.0
-        elif self.FxR > 0:
-            self.motor_pwm = 94.14 + 2.7678*self.FxR
+        elif FxR > 0:
+            self.motor_pwm = 94.14 + 2.7678*FxR
         else:               # motor break / slow down
-            self.motor_pwm = 93.5 + 46.73*self.FxR
+            self.motor_pwm = 93.5 + 46.73*FxR
         self.update_arduino()
     def neutralize(self):
         self.motor_pwm = 60             # slow down first

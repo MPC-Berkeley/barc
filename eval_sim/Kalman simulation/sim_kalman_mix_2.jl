@@ -68,6 +68,8 @@ function main(code::AbstractString)
     gps_gate = zeros(length(t))
 
     gps_prev = gps_meas.z[1,:]
+    vel_est_prev = vel_est.z[1,1]
+    imu_prev = imu_meas.z[1,6]
     # measured: IMU_a
     # calibrated: Z_a
     # need matrix Z_IMU_A
@@ -78,7 +80,7 @@ function main(code::AbstractString)
         y_yawdot = imu_meas.z[t[i].>imu_meas.t,3][end]
         a_x = imu_meas.z[t[i].>imu_meas.t,7][end]
         a_y = imu_meas.z[t[i].>imu_meas.t,8][end]
-        y_vel_est = vel_est.z[t[i].>vel_est.t][end]
+        y_vel_est = vel_est.z[t[i].>vel_est.t,1][end]
 
         y_gps_imu[i,:] = [y_gps y_yaw y_vel_est y_yawdot]
         y_gps_imu[:,3] = unwrap!(y_gps_imu[:,3])
@@ -100,11 +102,25 @@ function main(code::AbstractString)
         #     R_gps_imu[2,2] = 0.1
         # end
         if gps_prev == y_gps
-            R_gps_imu[1:2,1:2] = 10.0*eye(2)
+            R_gps_imu[1:2,1:2] = 100.0*eye(2)
         else
-            R_gps_imu[1:2,1:2] = 1.0*eye(2)
+            R_gps_imu[1:2,1:2] = 10.0*eye(2)
+        end
+        if vel_est_prev == y_vel_est
+            R_gps_imu[4,4] = 10.0
+        else
+            R_gps_imu[4,4] = 0.1
+        end
+        if imu_prev == y_yaw
+            R_gps_imu[3,3] = 100000.0
+            R_gps_imu[5,5] = 10.0
+        else
+            R_gps_imu[3,3] = 0.1
+            R_gps_imu[5,5] = 5.0
         end
         gps_prev = y_gps
+        vel_est_prev = y_vel_est
+        imu_prev = y_yaw
         args = (u[i,:],dt,l_A,l_B)
 
         # Calculate new estimate
@@ -370,4 +386,16 @@ end
 
 function eulerTrans(deg::Array{Float64})    # Transformation matrix inertial -> body
     return rotMatrix('x',deg[1])*rotMatrix('y',deg[2])*rotMatrix('z',deg[3])
+end
+
+function getIndex(t_raw::Array{Float64},t::Float64)
+    i = 1
+    while i<=length(t_raw)
+        if t > t_raw[i]
+            i += 1
+        else
+            break
+        end
+    end
+    return i
 end

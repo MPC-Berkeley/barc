@@ -43,13 +43,16 @@ class StateEst(object):
     psiDot_meas = 0
     a_x_meas = 0
     a_y_meas = 0
+    imu_updated = False
 
     # Velocity
     vel_meas = 0
+    vel_updated = False
 
     # GPS
     x_meas = 0
     y_meas = 0
+    gps_updated = False
 
     # General variables
     t0 = 0                  # Time when the estimator was started
@@ -71,6 +74,7 @@ class StateEst(object):
         #current_t = rospy.get_rostime().to_sec()
         self.x_meas = data.x_m
         self.y_meas = data.y_m
+        self.gps_updated = True
 
     # imu measurement update
     def imu_callback(self, data):
@@ -103,10 +107,12 @@ class StateEst(object):
         self.psiDot_meas = w_z
         self.a_x_meas = a_x
         self.a_y_meas = a_y
+        self.imu_updated = True
 
     def vel_est_callback(self, data):
-        if not data.vel_est == self.vel_meas or not self.running:        # if we're receiving a new measurement
-            self.vel_meas = data.vel_est
+        self.vel_meas = (data.vel_fl+data.vel_fr)/2.0#data.vel_est
+        self.vel_meas = data.vel_est
+        self.vel_updated = True
 
 # state estimation node
 def state_estimation():
@@ -157,13 +163,32 @@ def state_estimation():
     while not rospy.is_shutdown():
         # make R values dependent on current measurement (robust against outliers)
         sq_gps_dist = (se.x_meas-x_est)**2 + (se.y_meas-y_est)**2
-        if sq_gps_dist > 0.5:
-            R[0,0] = 1+10*sq_gps_dist**2
-            R[1,1] = 1+10*sq_gps_dist**2
+        # if sq_gps_dist > 0.5:
+        #     R[0,0] = 1+10*sq_gps_dist**2
+        #     R[1,1] = 1+10*sq_gps_dist**2
+        # else:
+        #     R[0,0] = 0.1
+        #     R[1,1] = 0.1
+        if se.gps_updated:
+            R[0,0] = 1.0
+            R[1,1] = 1.0
         else:
-            R[0,0] = 0.1
-            R[1,1] = 0.1
+            R[0,0] = 10.0
+            R[1,1] = 10.0
+        if se.imu_updated:
+            R[3,3] = 0.1
+            R[4,4] = 5.0
+        else:
+            R[3,3] = 10.0
+            R[4,4] = 50.0
+        if se.vel_updated:
+            R[2,2] = 0.1
+        else:
+            R[2,2] = 1.0
 
+        se.gps_updated = False
+        se.imu_updated = False
+        se.vel_updated = False
         # get measurement
         y = array([se.x_meas, se.y_meas, se.yaw_meas, se.vel_meas, se.psiDot_meas])
 
@@ -179,16 +204,16 @@ def state_estimation():
 
         # Read values
         (x_est, y_est, psi_est, v_est, psi_dot_est, psi_drift_est) = z_EKF           # note, r = EKF estimate yaw rate
-        bta = math.atan2(L_f*tan(u[1]),L_f+L_r)
+        bta = math.atan2(L_f*tan(u[1]), L_f+L_r)
         v_y_est = L_r*psi_dot_est
         v_x_est = cos(bta)*v_est
 
         # Update track position
         l.set_pos(x_est, y_est, psi_est, v_x_est, v_y_est, psi_dot_est)
-        #l.find_s()
-        l.s = 0
-        l.epsi = 0
-        l.s_start = 0
+        l.find_s()
+        #l.s = 0
+        #l.epsi = 0
+        #l.s_start = 0
 
         # and then publish position info
         ros_t = rospy.get_rostime()

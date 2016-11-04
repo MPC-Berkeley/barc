@@ -79,13 +79,13 @@ class Car {
 
     // Car properties
     // unclear what this is for
-    const int noAction = 0;
+    const float noAction = 0.0;
 
     // Motor limits
     // TODO are these the real limits?
-    const int MOTOR_MAX = 120;
-    const int MOTOR_MIN = 40;
-    const int MOTOR_NEUTRAL = 90;
+    const float MOTOR_MAX = 120.0;
+    const float MOTOR_MIN = 40.0;
+    const float MOTOR_NEUTRAL = 90.0;
     // Optional: smaller values for testing safety
     /* const int MOTOR_MAX = 100; */
     /* const int MOTOR_MIN = 75; */
@@ -95,10 +95,10 @@ class Car {
     // 120] judging from the sound of the servo pushing beyond a mechanical limit
     // outside that range. The offset may be 2 or 3 deg and the d_theta_max is then
     // ~31.
-    const int D_THETA_MAX = 30;
-    const int THETA_CENTER = 90;
-    const int THETA_MAX = THETA_CENTER + D_THETA_MAX;
-    const int THETA_MIN = THETA_CENTER - D_THETA_MAX;
+    const float D_THETA_MAX = 30.0;
+    const float THETA_CENTER = 90.0;
+    const float THETA_MAX = THETA_CENTER + D_THETA_MAX;
+    const float THETA_MIN = THETA_CENTER - D_THETA_MAX;
 
     // Interfaces to motor and steering actuators
     Servo motor;
@@ -208,7 +208,7 @@ void setup()
 {
   // Set up encoders, rc input, and actuators
   car.initEncoders();
-  car.initRCInput();
+  //car.initRCInput();
   car.initActuators();
 
   // Start ROS node
@@ -317,7 +317,7 @@ void Car::armActuators() {
 void Car::writeToActuators(const barc::ECU& ecu) {
   float motorCMD = saturateMotor(ecu.motor);
   float servoCMD = saturateServo(ecu.servo);
-  motor.write(motorCMD);
+  motor.writeMicroseconds( (uint16_t) (1500 + (motorCMD-90.0)*1000.0/180.0))
   steering.write(servoCMD);
 }
 
@@ -351,28 +351,28 @@ void Car::calcSteering() {
 void Car::incFL() {
   FL_count_shared++;
   FL_old_time = FL_new_time;                                                    //(ADDED BY TOMMI 7JULY2016)
-  FL_new_time = micros();      // new istant of passing magnet is saved         //(ADDED BY TOMMI 7JULY2016)
+  FL_new_time = micros();      // new instant of passing magnet is saved         //(ADDED BY TOMMI 7JULY2016)
   updateFlagsShared |= FL_FLAG;
 }
 
 void Car::incFR() {
   FR_count_shared++;
   FR_old_time = FR_new_time;                                                    //(ADDED BY TOMMI 7JULY2016)
-  FR_new_time = micros();      // new istant of passing magnet is saved         //(ADDED BY TOMMI 7JULY2016)
+  FR_new_time = micros();      // new instant of passing magnet is saved         //(ADDED BY TOMMI 7JULY2016)
   updateFlagsShared |= FR_FLAG;
 }
 
 void Car::incBL() {
   BL_count_shared++;
   BL_old_time = BL_new_time;                                                    //(ADDED BY TOMMI 7JULY2016)
-  BL_new_time = micros();      // new istant of passing magnet is saved         //(ADDED BY TOMMI 7JULY2016)
+  BL_new_time = micros();      // new instant of passing magnet is saved         //(ADDED BY TOMMI 7JULY2016)
   updateFlagsShared |= BL_FLAG;
 }
 
 void Car::incBR() {
   BR_count_shared++;
   BR_old_time = BR_new_time;                                                   //(ADDED BY TOMMI 7JULY2016)
-  BR_new_time = micros();      // new istant of passing magnet is saved        //(ADDED BY TOMMI 7JULY2016)
+  BR_new_time = micros();      // new instant of passing magnet is saved        //(ADDED BY TOMMI 7JULY2016)
   updateFlagsShared |= BR_FLAG;
 }
 
@@ -434,7 +434,6 @@ int Car::getEncoderBR() {
   return BR_count;
 }
 
-
 unsigned long Car::getEncoder_dTime_FL() {                               //(ADDED BY TOMMI 7JULY2016)
   return FL_DeltaTime;                                         //(ADDED BY TOMMI 7JULY2016)
 }                                                              //(ADDED BY TOMMI 7JULY2016)
@@ -449,23 +448,22 @@ unsigned long Car::getEncoder_dTime_BR() {                               //(ADDE
 }                                                              //(ADDED BY TOMMI 7JULY2016)
 
 float Car::getVelocityEstimate() {
-  if(FL_DeltaTime > 0){
-    vel_FL = 2.0*3.141593*0.036/2.0*1.0/FL_DeltaTime;
+  float t_min = 2.0   // minimum time (in s) when v is set to zero, this correlates to a minimum velocity of 0.05 m/s
+  vel_FL = 0.0
+  vel_FR = 0.0
+  vel_BL = 0.0
+  vel_BR = 0.0
+  if(FL_DeltaTime < t_min){
+    vel_FL = 2.0*3.141593*0.036/2.0*1.0/FL_DeltaTime*1000000.0;
   }
-  if(FR_DeltaTime > 0){
-    vel_FR = 2.0*3.141593*0.036/2.0*1.0/FR_DeltaTime;
+  if(FR_DeltaTime < t_min){
+    vel_FR = 2.0*3.141593*0.036/2.0*1.0/FR_DeltaTime*1000000.0;
   }
-  if(BL_DeltaTime > 0){
-    vel_BL = 2.0*3.141593*0.036/2.0*1.0/BL_DeltaTime;
+  if(BL_DeltaTime < t_min){
+    vel_BL = 2.0*3.141593*0.036/2.0*1.0/BL_DeltaTime*1000000.0;
   }
-  if(BR_DeltaTime > 0){
-    vel_BR = 2.0*3.141593*0.036/2.0*1.0/BR_DeltaTime;
+  if(BR_DeltaTime < t_min){
+    vel_BR = 2.0*3.141593*0.036/2.0*1.0/BR_DeltaTime*1000000.0;
   }
-  if(FL_DeltaTime > 0 && FR_DeltaTime > 0 && BR_DeltaTime) {
-    return 2.0*3.141593*0.036/2.0*(1.0/FL_DeltaTime + 1.0/FR_DeltaTime + 1.0/BR_DeltaTime)*1000000.0/3.0;    // calculate current speed in m/s
-    //return 1.0;  
-}
-  else {
-    return 0.0;
-  }
+  return ( vel_FL + vel_FR ) / 2.0
 }
