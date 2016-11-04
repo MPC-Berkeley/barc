@@ -448,22 +448,21 @@ unsigned long Car::getEncoder_dTime_BR() {                               //(ADDE
 }                                                              //(ADDED BY TOMMI 7JULY2016)
 
 float Car::getVelocityEstimate() {
-  float t_min = 2.0   // minimum time (in s) when v is set to zero, this correlates to a minimum velocity of 0.05 m/s
-  vel_FL = 0.0
-  vel_FR = 0.0
-  vel_BL = 0.0
-  vel_BR = 0.0
-  if(FL_DeltaTime < t_min){
+  vel_FL = 0.0;
+  vel_FR = 0.0;
+  vel_BL = 0.0;
+  vel_BR = 0.0;
+  if(FL_DeltaTime > 0){
     vel_FL = 2.0*3.141593*0.036/2.0*1.0/FL_DeltaTime*1000000.0;
   }
-  if(FR_DeltaTime < t_min){
+  if(FR_DeltaTime > 0){
     vel_FR = 2.0*3.141593*0.036/2.0*1.0/FR_DeltaTime*1000000.0;
   }
-  if(BL_DeltaTime < t_min){
+  if(BL_DeltaTime > 0){
     vel_BL = 2.0*3.141593*0.036/2.0*1.0/BL_DeltaTime*1000000.0;
   }
-  if(BR_DeltaTime < t_min){
+  if(BR_DeltaTime > 0){
     vel_BR = 2.0*3.141593*0.036/2.0*1.0/BR_DeltaTime*1000000.0;
   }
-  return ( vel_FL + vel_FR ) / 2.0
+  return ( vel_FL + vel_FR ) / 2.0;
 }

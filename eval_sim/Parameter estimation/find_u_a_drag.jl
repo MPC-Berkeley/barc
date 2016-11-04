@@ -40,10 +40,14 @@ function main(code::AbstractString)
     grid("on")
 
     figure(2)
-    plot(cmd,cmd./v,"*")
+    plot(cmd[cmd.>0],cmd[cmd.>0]./v[cmd.>0],"*")
+    xlabel("u_a")
+    ylabel("u_a/v")
     grid("on")
 
     figure(3)
-    plot(cmd_raw,v,"*")
+    plot(cmd_raw[cmd_raw.>80],v[cmd_raw.>80],"*")
     grid("on")
+    xlabel("PWM signal")
+    ylabel("v [m/s]")
 end

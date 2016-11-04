@@ -61,15 +61,15 @@ function main()
     chicane_speed = 1.0
     chicane_turn  = -0.3
     # Start node
-    while t < 34.0              # run exactly x seconds
+    while t < 35.0              # run exactly x seconds
         t = to_sec(get_rostime())-t0
         if t <= 3
             cmd.motor = 0.0
             cmd.servo = 0.0
         # CHICANE:
-        elseif t <= 3
-            cmd.motor = chicane_speed
-            cmd.servo = -chicane_turn
+        # elseif t <= 3
+        #     cmd.motor = chicane_speed
+        #     cmd.servo = -chicane_turn
         # elseif t <= 4
         #     cmd.motor = chicane_speed
         #     cmd.servo = chicane_turn
@@ -96,7 +96,7 @@ function main()
         #     cmd.servo = -chicane_turn
         # CONTINUOUS ACCELERATION:
         elseif t <= 33
-            cmd.motor = 0.2+(t-3)/20
+            cmd.motor = 0.0+(t-3)/10
             cmd.servo = 0#-(t-3.0)/300-0.15
         # elseif t <= 8                   # CHECK TIME AND ACCELERATION !!!
         #     cmd.motor = 1.0             # CHECK TIME AND ACCELERATION !!!
@@ -126,7 +126,7 @@ function main()
         #     cmd.motor = -2.0
         #     cmd.servo = 0
         else
-            cmd.motor = -2.0
+            cmd.motor = -0.5
             cmd.servo = 0
         end
         cmd.header.stamp = get_rostime()
