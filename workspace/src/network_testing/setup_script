@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/bash -x
 
 MASTER="$(hostname).local"
 
@@ -21,10 +21,14 @@ read_file(){
 interactive(){
     echo -n "Type a car number to connect to (type 'done' to finish): "
     read cars
-    until [ $cars="done" ]; do
-	    slave=odroid_${i}.local
-	    script="ROS_MASTER_URI=http://${MASTER}:11311; ROS_IP=${slave}; exit"
-	    ssh StrictHostKeyChecking=no ${slave} ${script} || echo "Could not connect to car $cars" >&2
+    if [ $cars = "done" ]; then
+        echo "exit loop"
+    fi
+    until [ $cars = "done" ]; do
+	    slave=odroid_${cars}.local
+	    script='export ROS_MASTER_URI=http://odroid_2:11311; export ROS_IP=odroid_10.local; echo $ROS_MASTER_URI'
+	    ssh ${slave} ${script} || echo "Could not connect to car $cars" >&2
+        ssh $slave 'echo $ROS_MASTER_URI'
 	    echo -n "Type a car number to connect to (type 'done' to finish): "
 	    read cars
     done 
@@ -53,12 +57,12 @@ case "$1" in
   "
 	echo -n "Would you like to continue? (y/n): "
 	read answer
-	until [ $answer="y" || $answer="n" ]; do
-	    echo -n "That's not a valid answer. Would you like to continue? (y/n)"
+    until [ ${answer} = "y" -o ${answer} = "n" ]; do
+	    echo -n "That's not a valid answer. Would you like to continue? (y/n): "
 	    read answer
 	done
 	
-	if [ $answer="y" ]; then
+	if [ $answer = "y" ]; then
 	    interactive
 	else
 	    exit 0
@@ -78,6 +82,7 @@ case "$1" in
 	done
 	;;
 esac
+
 
 
 #roscore
