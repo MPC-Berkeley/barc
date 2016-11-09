@@ -27,7 +27,8 @@ R = diagm([0.1,0.1,0.1,1.0,10.0,10.0])
 
 function main(code::AbstractString)
     global Q, R, R_gps_imu
-    log_path_record = "$(homedir())/open_loop/output-record-$(code).jld"
+    #log_path_record = "$(homedir())/open_loop/output-record-$(code).jld"
+    log_path_record = "$(homedir())/simulations/output-record-$(code).jld"
     d_rec = load(log_path_record)
 
     imu_meas    = d_rec["imu_meas"]
@@ -37,8 +38,8 @@ function main(code::AbstractString)
     vel_est     = d_rec["vel_est"]
     pos_info    = d_rec["pos_info"]
 
-    t0      = max(imu_meas.t[1],vel_est.t[1],gps_meas.t[1])+0.3
-    t_end   = min(imu_meas.t[end],vel_est.t[end],gps_meas.t[end],cmd_pwm_log.t[end])-0.3
+    t0      = max(imu_meas.t[1],vel_est.t[1],gps_meas.t[1],cmd_pwm_log.t[1])+0.0
+    t_end   = min(imu_meas.t[end],vel_est.t[end],gps_meas.t[end],cmd_pwm_log.t[end])-0.0
 
     l_A = 0.125
     l_B = 0.125
@@ -62,8 +63,8 @@ function main(code::AbstractString)
 
     yaw_prev = yaw0
 
-    Q_gps_imu = diagm([1.0,1.0,1.0,0.1,0.1,0.01])
-    R_gps_imu = diagm([1.0,1.0,0.1,0.1,5.0])
+    Q_gps_imu = diagm([0.1,0.1,1.0,0.1,0.1,0.01])
+    R_gps_imu = diagm([1.0,1.0,10000.0,0.1,5.0])
 
     gps_gate = zeros(length(t))
 
@@ -86,7 +87,7 @@ function main(code::AbstractString)
         y_gps_imu[:,3] = unwrap!(y_gps_imu[:,3])
 
         u[i,1] = cmd_log.z[t[i].>cmd_log.t,1][end]
-        u[i,2] = cmd_log.z[t[i].>cmd_log.t-0.2,2][end]
+        u[i,2] = cmd_log.z[t[i].>cmd_log.t-0.0,2][end]
 
         gps_dist[i] = norm(y[i,1:2]-x_est[i-1,1:2])
         #gps_gate[i] = 
@@ -150,26 +151,36 @@ function main(code::AbstractString)
     title("Velocity estimate and measurement")
 
     figure(4)
-    plot(t-t0,x_est_gps_imu[:,3],"-*",t-t0,y_gps_imu[:,3])
+    plot(t-t0,y_gps_imu[:,3],t-t0,x_est_gps_imu[:,3],"-*",pos_info.t-t0,pos_info.z[:,10])
     grid("on")
     title("Comparison yaw")
-    legend(["psi_est","psi_meas"])
+    legend(["psi_meas","psi_est","psi_onboard"])
 
-    figure(5)
-    plot(imu_meas.t-t0,imu_meas.z[:,3],t-t0,x_est_gps_imu[:,5])
-    title("w_z")
-    legend(["w_z_meas","w_z_est"])
-    grid("on")
+    # figure(5)
+    # plot(imu_meas.t-t0,imu_meas.z[:,3],t-t0,x_est_gps_imu[:,5])
+    # title("w_z")
+    # legend(["w_z_meas","w_z_est"])
+    # grid("on")
 
-    figure(6)
-    plot(t-t0,x_est_gps_imu[:,7:8])
-    grid("on")
-    legend(["v_x_est","v_y_est"])
+    # figure(6)
+    # plot(t-t0,x_est_gps_imu[:,7:8])
+    # grid("on")
+    # legend(["v_x_est","v_y_est"])
 
-    figure(7)
-    plot(t-t0,gps_gate,t-t0,gps_dist,gps_meas.t-t0,gps_meas.z)
+    # figure(7)
+    # plot(t-t0,gps_gate,t-t0,gps_dist,gps_meas.t-t0,gps_meas.z)
+    # grid("on")
+    # legend(["gate","dist"])
+
+    figure(8)
+    plot(x_est_gps_imu[:,1],x_est_gps_imu[:,2])
+    for i=1:5:size(x_est_gps_imu,1)
+        ar = [x_est_gps_imu[i,1] x_est_gps_imu[i,2];
+              x_est_gps_imu[i,1]+0.2*cos(x_est_gps_imu[i,3]) x_est_gps_imu[i,2]+0.2*sin(x_est_gps_imu[i,3])]
+        plot(ar[:,1],ar[:,2])
+    end
+    axis("equal")
     grid("on")
-    legend(["gate","dist"])
 
     # # CORRELATIONS:
     # figure(8)

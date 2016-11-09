@@ -61,6 +61,10 @@ function main()
     # Save simulation data to file
     #log_path = "$(homedir())/simulations/record-$(Dates.format(now(),"yyyy-mm-dd-HH-MM-SS")).jld"
     log_path = "$(homedir())/simulations/output-record-$(run_id[1:4]).jld"
+    if isfile(log_path)
+        log_path = "$(homedir())/simulations/output-record-$(run_id[1:4])-2.jld"
+        warn("Warning: File already exists.")
+    end
     save(log_path,"gps_meas",gps_meas,"imu_meas",imu_meas,"cmd_log",cmd_log,"cmd_pwm_log",cmd_pwm_log,"pos_info",pos_info_log,"vel_est",vel_est_log)
     println("Exiting node... Saving recorded data to $log_path.")
 end

@@ -29,6 +29,17 @@ function main(code::AbstractString)
             cmd_raw[i] = cmd_pwm_log.z[t[i].>cmd_pwm_log.t,1][end]
         end
     end
+
+    idx = (v.>1) & (cmd_raw .> 95)
+
+    sz = size(v[idx],1)
+    A = [cmd_raw[idx] ones(sz,1)]
+    b = v[idx]
+    coeff = A\b
+
+    x = [90,110]
+    y = [90 1;110 1]*coeff
+
     #plot(cmd,v)
     figure(1)
     ax1=subplot(211)
@@ -46,8 +57,11 @@ function main(code::AbstractString)
     grid("on")
 
     figure(3)
-    plot(cmd_raw[cmd_raw.>80],v[cmd_raw.>80],"*")
+    plot(cmd_raw[cmd_raw.>80],v[cmd_raw.>80],"*",x,y)
     grid("on")
     xlabel("PWM signal")
     ylabel("v [m/s]")
+
+    println("c1 = $(1/coeff[1])")
+    println("c2 = $(coeff[2]/coeff[1])")
 end

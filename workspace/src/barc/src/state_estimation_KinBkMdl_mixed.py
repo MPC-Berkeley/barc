@@ -19,7 +19,7 @@ from barc.msg import ECU, pos_info, Vel_est
 from sensor_msgs.msg import Imu
 from marvelmind_nav.msg import hedge_pos
 from std_msgs.msg import Header
-from numpy import eye, array, zeros, diag, unwrap, tan, cos
+from numpy import eye, array, zeros, diag, unwrap, tan, cos, sin
 from observers import ekf
 from system_models import f_KinBkMdl_2, h_KinBkMdl_2
 from tf import transformations
@@ -48,6 +48,8 @@ class StateEst(object):
     # Velocity
     vel_meas = 0
     vel_updated = False
+    vel_prev = 0
+    vel_count = 0               # this counts how often the same vel measurement has been received
 
     # GPS
     x_meas = 0
@@ -110,9 +112,17 @@ class StateEst(object):
         self.imu_updated = True
 
     def vel_est_callback(self, data):
-        self.vel_meas = (data.vel_fl+data.vel_fr)/2.0#data.vel_est
-        self.vel_meas = data.vel_est
-        self.vel_updated = True
+        #self.vel_meas = (data.vel_fl+data.vel_fr)/2.0#data.vel_est
+        if data.vel_est != self.vel_prev:
+            self.vel_meas = data.vel_est
+            self.vel_updated = True
+            self.vel_prev = data.vel_est
+            self.vel_count = 0
+        else:
+            self.vel_count = self.vel_count + 1
+            if self.vel_count > 10:     # if 10 times in a row the same measurement
+                self.vel_meas = 0       # set velocity measurement to zero
+                self.vel_updated = True
 
 # state estimation node
 def state_estimation():
@@ -147,7 +157,7 @@ def state_estimation():
     z_EKF = zeros(6)                                      # x, y, psi, v, psi_drift
     P = eye(6)                                            # initial dynamics coveriance matrix
 
-    Q = diag([1.0,1.0,1.0,0.1,0.1,0.01])
+    Q = diag([0.1,0.1,1.0,0.1,0.1,0.01])
     R = diag([1.0,1.0,0.1,0.1,5.0])
 
     # Set up track parameters
@@ -159,24 +169,24 @@ def state_estimation():
 
     # Estimation variables
     (x_est, y_est) = [0]*2
+    bta = 0
+    v_est = 0
+    psi_est = 0
 
     while not rospy.is_shutdown():
         # make R values dependent on current measurement (robust against outliers)
         sq_gps_dist = (se.x_meas-x_est)**2 + (se.y_meas-y_est)**2
-        # if sq_gps_dist > 0.5:
-        #     R[0,0] = 1+10*sq_gps_dist**2
-        #     R[1,1] = 1+10*sq_gps_dist**2
-        # else:
-        #     R[0,0] = 0.1
-        #     R[1,1] = 0.1
-        if se.gps_updated:
-            R[0,0] = 1.0
-            R[1,1] = 1.0
-        else:
+        if se.gps_updated and sq_gps_dist < 0.5:      # if there's a new gps value:
             R[0,0] = 10.0
             R[1,1] = 10.0
+        else:
+            # otherwise just extrapolate measurements:
+            se.x_meas = x_est + dt*(v_est*cos(psi_est+bta))
+            se.y_meas = y_est + dt*(v_est*sin(psi_est+bta))
+            R[0,0] = 100.0
+            R[1,1] = 100.0
         if se.imu_updated:
-            R[3,3] = 0.1
+            R[3,3] = 1.0
             R[4,4] = 5.0
         else:
             R[3,3] = 10.0
@@ -193,7 +203,7 @@ def state_estimation():
         y = array([se.x_meas, se.y_meas, se.yaw_meas, se.vel_meas, se.psiDot_meas])
 
         # define input
-        d_f_hist.append(se.cmd_servo)           # this is for a 0.2 seconds delay of the steering
+        d_f_hist.append(se.cmd_servo)           # this is for a 0.2 seconds delay of steering
         u = [se.cmd_motor, d_f_hist.pop(0)]
 
         # build extra arguments for non-linear function
@@ -205,7 +215,8 @@ def state_estimation():
         # Read values
         (x_est, y_est, psi_est, v_est, psi_dot_est, psi_drift_est) = z_EKF           # note, r = EKF estimate yaw rate
         bta = math.atan2(L_f*tan(u[1]), L_f+L_r)
-        v_y_est = L_r*psi_dot_est
+        v_y_est = L_r*psi_dot_est       # problem: results in linear dependency in system ID
+        v_y_est = sin(bta)*v_est
         v_x_est = cos(bta)*v_est
 
         # Update track position

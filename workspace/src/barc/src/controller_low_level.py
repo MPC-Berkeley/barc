@@ -34,14 +34,14 @@ class low_level_control(object):
         # translate from SI units in vehicle model
         # to pwm angle units (i.e. to send command signal to actuators)
         # convert desired steering angle to degrees, saturate based on input limits
-        
+
         # Old servo control:
         # self.servo_pwm = 91.365 + 105.6*float(msg.servo)
-        # New servo control
-        if msg.servo < 0.0:
-            self.servo_pwm = 83.6*float(msg.servo) + 92.0
-        elif msg.servo > 0.0:
-            self.servo_pwm = 120.0*float(msg.servo) + 97.6
+        # New servo Control
+        if msg.servo < 0.0:         # right curve
+            self.servo_pwm = 95.5 + 118.8*float(msg.servo)
+        elif msg.servo > 0.0:       # left curve
+            self.servo_pwm = 90.8 + 78.9*float(msg.servo)
         else:
             self.servo_pwm = 90
 
@@ -50,8 +50,9 @@ class low_level_control(object):
         if FxR == 0:
             self.motor_pwm = 90.0
         elif FxR > 0:
-            #self.motor_pwm = 94.14 + 2.7678*FxR
-            self.motor_pwm = 90.0 + 2.8*FxR
+            #self.motor_pwm = 94.14 + 2.7678*FxR            # using write() in Arduino
+            self.motor_pwm = 87.6 + 4.83*FxR                # using writeMicroseconds() in Arduino
+            #self.motor_pwm = 90.0 + 2.8*FxR
         else:               # motor break / slow down
             self.motor_pwm = 93.5 + 46.73*FxR
         self.update_arduino()

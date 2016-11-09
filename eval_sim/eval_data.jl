@@ -116,13 +116,12 @@ function eval_run(code::AbstractString)
     axis("equal")
     legend(["GPS meas","estimate"])
     
-    figure()
-    plot(imu_meas.t-t0,imu_meas.z[:,7:9])
-    grid("on")
-    title("Measured accelerations")
+    # figure()
+    # plot(imu_meas.t-t0,imu_meas.z[:,7:9])
+    # grid("on")
+    # title("Measured accelerations")
 
     figure()
-    title("x/y measurements and estimate")
     plot(gps_meas.t-t0,gps_meas.z,"-*",pos_info.t-t0,pos_info.z[:,6:7],"-x")
     grid(1)
     title("GPS comparison")
@@ -132,6 +131,7 @@ function eval_run(code::AbstractString)
 
     figure()
     ax2=subplot(211)
+    title("Commands")
     plot(cmd_log.t,cmd_log.z,"-*",cmd_log.t_msg,cmd_log.z,"-x")
     grid("on")
     xlabel("t [s]")
@@ -146,34 +146,28 @@ function eval_run(code::AbstractString)
     legend(["imu_psi","imu_psi_dot","est_psi","est_psi_dot","psi_drift"])
     grid()
 
-    figure()
-    title("Raw IMU orientation data")
-    plot(imu_meas.t-t0,imu_meas.z[:,1:3],"--",imu_meas.t-t0,imu_meas.z[:,4:6],imu_meas.t_msg-t0,imu_meas.z[:,4:6])
-    grid("on")
-    legend(["w_x","w_y","w_z","roll","pitch","yaw"])
+    # figure()
+    # title("Raw IMU orientation data")
+    # plot(imu_meas.t-t0,imu_meas.z[:,1:3],"--",imu_meas.t-t0,imu_meas.z[:,4:6],imu_meas.t_msg-t0,imu_meas.z[:,4:6])
+    # grid("on")
+    # legend(["w_x","w_y","w_z","roll","pitch","yaw"])
 
     figure()
     title("v measurements and estimate")
-    plot(pos_info.t-t0,pos_info.z[:,8:9],"-*",vel_est.t-t0,vel_est.z,"-x",vel_est.t_msg-t0,vel_est.z,"-+")
+    plot(pos_info.t-t0,pos_info.z[:,8:9],"-*",vel_est.t-t0,vel_est.z,"-x")
     legend(["est_xDot","est_yDot","v_raw"])
     grid()
 
-    figure()
-    title("Acceleration data")
-    plot(imu_meas.t-t0,imu_meas.z[:,7:9],"-x",imu_meas.t_msg-t0,imu_meas.z[:,7:9],"-*")
-    legend(["a_x","a_y","a_z"])
-    grid()
-
-    figure()
-    title("s, eY and inputs")
-    ax1=subplot(211)
-    plot(pos_info.t-t0,pos_info.z[:,2:3],"-*")
-    grid("on")
-    legend(["eY","ePsi"])
-    subplot(212,sharex=ax1)
-    plot(cmd_log.t-t0,cmd_log.z,"-*")
-    grid("on")
-    legend(["u","d_f"])
+    # figure()
+    # title("s, eY and inputs")
+    # ax1=subplot(211)
+    # plot(pos_info.t-t0,pos_info.z[:,2:3],"-*")
+    # grid("on")
+    # legend(["eY","ePsi"])
+    # subplot(212,sharex=ax1)
+    # plot(cmd_log.t-t0,cmd_log.z,"-*")
+    # grid("on")
+    # legend(["u","d_f"])
     nothing
 end
 
@@ -261,13 +255,13 @@ function eval_LMPC(code::AbstractString)
 
     t0 = t[1]
 
-    figure()
+    figure(1)
     plot(t-t0,step_diff)
     grid("on")
     title("One-step-errors")
     legend(["xDot","yDot","psiDot","ePsi","eY"])
     
-    figure()
+    figure(2)
     ax1=subplot(311)
     plot(pos_info.t-t0,pos_info.z[:,8],".",t-t0,state[:,1],"-*")
     title("Comparison of publishing and receiving time")
@@ -285,32 +279,71 @@ function eval_LMPC(code::AbstractString)
     grid("on")
     legend(["1","2","3"])
 
-    figure()
-    c = zeros(size(curv,1),1)
-    for i=1:size(curv,1)
-        s = state[i,1]
-        c[i] = ([s.^8 s.^7 s.^6 s.^5 s.^4 s.^3 s.^2 s.^1 s.^0] * curv[i,:]')[1]
-    end
-    plot(s_start+state[:,1],c,"-o")
-    for i=1:2:size(curv,1)
-        s = sol_z[:,1,i]
-        c = zeros(size(curv,1),1)
-        c = [s.^8 s.^7 s.^6 s.^5 s.^4 s.^3 s.^2 s.^1 s.^0] * curv[i,:]'
-        plot(s_start[i]+s,c,"-*")
-    end
-    title("Curvature over path")
-    xlabel("Curvilinear abscissa [m]")
-    ylabel("Curvature")
-    grid()
+    figure(3)
+    plot(t,state)
+    grid("on")
+    legend(["v_x","v_y","psiDot","ePsi","eY","s"])
 
-    track = create_track(0.3)
+    figure(4)
+    title("Open loop predictions")
+    #plot(t,state[:,[1,4,5]])
+    for i=1:4:size(t,1)-10
+        if sol_z[1,5,i]==0
+            plot(t[i:i+10]-t0,sol_z[:,2:4,i])
+        else
+            plot(t[i:i+10]-t0,sol_z[:,1:5,i])
+        end
+    end
+    grid("on")
+
     figure()
-    hold(1)
-    plot(x_est[:,1],x_est[:,2],"-*")
-    title(["Estimated position"])
-    plot(track[:,1],track[:,2],"b.",track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")
-    axis("equal")
-    grid(1)
+    title("Open loop inputs")
+    for i=1:4:size(t,1)-10
+        plot(t[i:i+7]-t0,sol_u[1:8,2,i],t[i:i+9]-t0,sol_u[:,1,i])
+    end
+    grid("on")
+
+    figure()
+    subplot(311)
+    title("c_Vx")
+    plot(t-t0,c_Vx)
+    grid("on")
+    subplot(312)
+    title("c_Vy")
+    plot(t-t0,c_Vy)
+    grid("on")
+    subplot(313)
+    title("c_Psi")
+    plot(t-t0,c_Psi)
+    grid("on")
+
+    # *********** CURVATURE *********************
+    # figure()
+    # c = zeros(size(curv,1),1)
+    # for i=1:size(curv,1)
+    #     s = state[i,6]-s_start[i]
+    #     c[i] = ([s.^8 s.^7 s.^6 s.^5 s.^4 s.^3 s.^2 s.^1 s.^0] * curv[i,:]')[1]
+    # end
+    # plot(s_start+state[:,1],c,"-o")
+    # for i=1:2:size(curv,1)
+    #     s = sol_z[:,1,i]
+    #     c = zeros(size(curv,1),1)
+    #     c = [s.^8 s.^7 s.^6 s.^5 s.^4 s.^3 s.^2 s.^1 s.^0] * curv[i,:]'
+    #     plot(s_start[i]+s,c,"-*")
+    # end
+    # title("Curvature over path")
+    # xlabel("Curvilinear abscissa [m]")
+    # ylabel("Curvature")
+    # grid()
+
+    # track = create_track(0.3)
+    # figure()
+    # hold(1)
+    # plot(x_est[:,1],x_est[:,2],"-*")
+    # title("Estimated position")
+    # plot(track[:,1],track[:,2],"b.",track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")
+    # axis("equal")
+    # grid(1)
     # HERE YOU CAN CHOOSE TO PLOT DIFFERENT DATA:
     # CURRENT HEADING (PLOTTED BY A LINE)
     # for i=1:size(x_est,1)
@@ -322,14 +355,14 @@ function eval_LMPC(code::AbstractString)
     # end
 
     # PREDICTED PATH
-    for i=1:4:size(x_est,1)
-            z_pred = zeros(11,4)
-            z_pred[1,:] = x_est[i,:]
-            for j=2:11
-                z_pred[j,:] = simModel(z_pred[j-1,:],sol_u[j-1,:,i],0.1,0.125,0.125)
-            end
-            plot(z_pred[:,1],z_pred[:,2],"-*")
-    end
+    # for i=1:4:size(x_est,1)
+    #         z_pred = zeros(11,4)
+    #         z_pred[1,:] = x_est[i,:]
+    #         for j=2:11
+    #             z_pred[j,:] = simModel(z_pred[j-1,:],sol_u[j-1,:,i],0.1,0.125,0.125)
+    #         end
+    #         plot(z_pred[:,1],z_pred[:,2],"-*")
+    # end
 
     # PREDICTED REFERENCE PATH (DEFINED BY POLYNOM)
     # for i=1:size(x_est,1)
@@ -351,17 +384,15 @@ function eval_LMPC(code::AbstractString)
     # end
 
     figure()
-    plot(oldTraj[:,6,1,2],oldTraj[:,1:5,1,2],"-o")
+    plot(oldTraj[:,6,1,2],oldTraj[:,1:5,1,2],"-x")
+    title("Old Trajectory")
     legend(["v_x","v_y","psiDot","ePsi","eY"])
+    xlabel("s")
     grid(1)
 
     figure()
-    plot(s_start+state[:,1],state[:,[2,4]],"*")
-    grid()
-
-    figure()
-    title("MPC states and cost")
     ax1=subplot(211)
+    title("MPC states and cost")
     plot(t-t0,state)
     legend(["v_x","v_y","psiDot","ePsi","eY","s"])
     grid(1)
@@ -392,7 +423,8 @@ function eval_oldTraj(code::AbstractString,i::Int64)
     legend(["v_x","v_x","psiDot","ePsi","eY","s"])
 end
 
-function eval_LMPC_coeff(k)
+function eval_LMPC_coeff(code::AbstractString,k::Int64)
+    log_path_LMPC   = "$(homedir())/simulations/output-LMPC-$(code).jld"
     d           = load(log_path_LMPC)
     oldTraj     = d["oldTraj"]
     sol_z       = d["sol_z"]
@@ -512,13 +544,11 @@ function anim_curv(curv)
     end
 end
 
-
-
-function eval_prof()
-    Profile.clear()
-    @load "$(homedir())/simulations/profile.jlprof"
-    ProfileView.view(li, lidict=lidict)
-end
+# function eval_prof()
+#     Profile.clear()
+#     @load "$(homedir())/simulations/profile.jlprof"
+#     ProfileView.view(li, lidict=lidict)
+# end
 
 function create_track(w)
     x = [0.0]           # starting point
@@ -554,12 +584,24 @@ function create_track(w)
     # add_curve(theta,100,-pi)
     # add_curve(theta,49,0)
 
-     # SHORT SIMPLE track
-    add_curve(theta,10,0)
-    add_curve(theta,80,-pi)
-    add_curve(theta,20,0)
-    add_curve(theta,80,-pi)
-    add_curve(theta,9,0)
+    # GOGGLE TRACK
+    add_curve(theta,30,0)
+    add_curve(theta,40,-pi/2)
+    #add_curve(theta,10,0)
+    add_curve(theta,40,-pi/2)
+    add_curve(theta,20,-pi/6)
+    add_curve(theta,30,pi/3)
+    add_curve(theta,20,-pi/6)
+    add_curve(theta,40,-pi/2)
+    #add_curve(theta,10,0)
+    add_curve(theta,40,-pi/2)
+    add_curve(theta,35,0)
+    #  # SHORT SIMPLE track
+    # add_curve(theta,10,0)
+    # add_curve(theta,80,-pi)
+    # add_curve(theta,20,0)
+    # add_curve(theta,80,-pi)
+    # add_curve(theta,9,0)
 
     for i=1:length(theta)
             push!(x, x[end] + cos(theta[i])*ds)
@@ -570,6 +612,7 @@ function create_track(w)
             push!(y_r, y[end-1] + sin(theta[i]-pi/2)*w)
     end
     track = cat(2, x, y, x_l, y_l, x_r, y_r)
+    #plot(track[:,1],track[:,2])
     return track
     #plot(x,y,x_l,y_l,x_r,y_r)
 end

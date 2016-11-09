@@ -83,3 +83,51 @@ function main()
     grid("on")
     legend(["vel_avg","v_fl","v_fr","v_bl","v_br"])
 end
+
+function main_pwm(code::AbstractString)
+    log_path_record = "$(homedir())/open_loop/output-record-$(code).jld"
+
+    L_b = 0.125
+    d_rec = load(log_path_record)
+
+    imu_meas    = d_rec["imu_meas"]
+    cmd_pwm_log = d_rec["cmd_pwm_log"]
+    vel_est     = d_rec["vel_est"]
+
+    t0 = max(cmd_pwm_log.t[1],vel_est.t[1],imu_meas.t[1])+1.0
+    t_end = min(cmd_pwm_log.t[end],vel_est.t[end],imu_meas.t[end])-1.0
+
+    t = t0+0.1:.02:t_end-0.1
+    v = zeros(length(t))
+    psiDot = zeros(length(t))
+    cmd = zeros(length(t))
+
+    for i=1:length(t)
+        if cmd_pwm_log.z[t[i].>cmd_pwm_log.t,2][end] < 90 || cmd_pwm_log.z[t[i].>cmd_pwm_log.t,2][end] > 95
+            if cmd_pwm_log.z[t[i].>cmd_pwm_log.t,2][end] == cmd_pwm_log.z[t[i]-1.0.>cmd_pwm_log.t,2][end]
+            v[i] = vel_est.z[t[i].>vel_est.t,1][end]
+            psiDot[i] = imu_meas.z[t[i].>imu_meas.t,3][end]
+            cmd[i] = cmd_pwm_log.z[t[i].>cmd_pwm_log.t,2][end]
+        end
+        end
+    end
+
+    v_x = real(sqrt(complex(v.^2-psiDot.^2*L_b^2)))
+    delta = atan2(psiDot*0.25,v_x)
+
+    idx = copy( (delta.<1.0) & (delta.> -1.0) & (cmd .< 90) & (cmd .> 50) )
+    delta = delta[idx]
+    cmd = cmd[idx]
+
+    sz = size(cmd,1)
+    coeff = [cmd ones(sz,1)]\delta
+    x = [1,200]
+    y = [1 1;200 1]*coeff
+
+    plot(cmd,delta,"*",x,y)
+    grid("on")
+
+    println("c1 = $(1/coeff[1])")
+    println("c2 = $(coeff[2]/coeff[1])")
+
+end

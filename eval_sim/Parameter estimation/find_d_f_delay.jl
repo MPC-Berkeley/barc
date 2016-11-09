@@ -3,7 +3,8 @@ using PyPlot
 using JLD
 
 function main(code::AbstractString)
-    log_path_record = "$(homedir())/open_loop/output-record-$(code).jld"
+    #log_path_record = "$(homedir())/open_loop/output-record-$(code).jld"
+    log_path_record = "$(homedir())/simulations/output-record-$(code).jld"
     d_rec = load(log_path_record)
     L_b = 0.125
 
