@@ -19,11 +19,10 @@ include("barc_lib/LMPC/coeffConstraintCost.jl")
 include("barc_lib/LMPC/solveMpcProblem.jl")
 include("barc_lib/LMPC/functions.jl")
 
-function SE_callback(msg::pos_info,lapStatus::LapStatus,oldTraj::OldTrajectory,s_start_update::Array{Float64},coeffCurvature_update::Array{Float64,1},z_est::Array{Float64,1},x_est::Array{Float64,1},
+function SE_callback(msg::pos_info,lapStatus::LapStatus,oldTraj::OldTrajectory,coeffCurvature_update::Array{Float64,1},z_est::Array{Float64,1},x_est::Array{Float64,1},
                         coeffX::Array{Float64,1},coeffY::Array{Float64,1})         # update current position and track data
     # update mpc initial condition
     z_est[:]                  = [msg.v_x,msg.v_y,msg.psiDot,msg.epsi,msg.ey,msg.s]             # use z_est as pointer
-    s_start_update[1]         = msg.s_start
     coeffCurvature_update[:]  = msg.coeffCurvature
     x_est[:]                  = [msg.x,msg.y,msg.psi,msg.v]
     coeffX[:]                 = msg.coeffX
@@ -64,7 +63,6 @@ function main()
     x_est                       = zeros(4)          # this is a buffer that saves further state information (x, y, psi, v)
     coeffX                      = zeros(9)          # buffer for coeffX (only logging)
     coeffY                      = zeros(9)          # buffer for coeffY (only logging)
-    s_start_update              = [0.0]             # buffer for s_start
     cmd                         = ECU()      # command type
     coeffCurvature_update       = zeros(trackCoeff.nPolyCurvature+1)
 
@@ -74,7 +72,6 @@ function main()
     log_sol_z                   = zeros(mpcParams.N+1,6,10000)
     log_sol_u                   = zeros(mpcParams.N,2,10000)
     log_curv                    = zeros(10000,trackCoeff.nPolyCurvature+1)
-    log_s_start                 = zeros(10000)
     log_state_x                 = zeros(10000,4)
     log_coeffX                  = zeros(10000,9)
     log_coeffY                  = zeros(10000,9)
@@ -92,14 +89,14 @@ function main()
     init_node("mpc_traj")
     loop_rate = Rate(10)
     pub = Publisher("ecu", ECU, queue_size=1)::RobotOS.Publisher{barc.msg.ECU}
-    # The subscriber passes arguments (s_start, coeffCurvature and z_est) which are updated by the callback function:
-    s1 = Subscriber("pos_info", pos_info, SE_callback, (lapStatus,oldTraj,s_start_update,lapStatus,coeffCurvature_update,z_est,x_est,coeffX,coeffY,),queue_size=1)::RobotOS.Subscriber{barc.msg.pos_info}
+    # The subscriber passes arguments (coeffCurvature and z_est) which are updated by the callback function:
+    s1 = Subscriber("pos_info", pos_info, SE_callback, (lapStatus,oldTraj,lapStatus,coeffCurvature_update,z_est,x_est,coeffX,coeffY,),queue_size=1)::RobotOS.Subscriber{barc.msg.pos_info}
 
     run_id = get_param("run_id")
     println("Finished initialization.")
     # Lap parameters
     switchLap                   = false     # initialize lap lap trigger
-    s_lapTrigger                = 0.3       # next lap is triggered in the interval s_start in [0,s_lapTrigger]
+    s_lapTrigger                = 0.3       # next lap is triggered in the interval s in [0,s_lapTrigger]
     
     # buffer in current lap
     zCurr                       = zeros(10000,6)    # contains state information in current lap (max. 10'000 steps)
@@ -122,12 +119,10 @@ function main()
     oldTraj.oldTraj[1:buffersize,6,1] = linspace(0,posInfo.s_target,buffersize)
     oldTraj.oldTraj[1:buffersize,6,2] = linspace(0,posInfo.s_target,buffersize)
     posInfo.s = posInfo.s_target/2
-    posInfo.s_start = 0
     coeffConstraintCost(oldTraj,mpcCoeff,posInfo,mpcParams,z_ID,u_ID,lapStatus)
     oldTraj.oldTraj[1:buffersize,6,1] = zeros(buffersize,1)
     oldTraj.oldTraj[1:buffersize,6,2] = zeros(buffersize,1)
     posInfo.s = 0
-    posInfo.s_start = 0
 
     uPrev = zeros(10,2)     # saves the last 10 inputs (1 being the most recent one)
 
@@ -148,7 +143,6 @@ function main()
             i                           = lapStatus.currentIt           # current iteration number, just to make notation shorter
             zCurr[i,:]                  = copy(z_est)                   # update state information
             posInfo.s                   = zCurr[i,6]                    # update position info
-            posInfo.s_start             = copy(s_start_update[1])       # use a copy so s_start is not updated during one iteration
             trackCoeff.coeffCurvature   = copy(coeffCurvature_update)
 
             # ============================= Pre-Logging (before solving) ================================
@@ -161,7 +155,7 @@ function main()
             log_step_diff[k+1,:]          = step_diff
 
             # ======================================= Lap trigger =======================================
-            if (posInfo.s_start + posInfo.s)%posInfo.s_target <= s_lapTrigger && switchLap      # if we are switching to the next lap...
+            if posInfo.s%posInfo.s_target <= s_lapTrigger && switchLap      # if we are switching to the next lap...
                 println("Finishing one lap at iteration $i")
                 println("current state:  $(zCurr[i,:])")
                 println("previous state: $(zCurr[i-1,:])")
@@ -175,7 +169,7 @@ function main()
                 lapStatus.currentIt   = 1       # reset current iteration
                 lapStatus.currentLap += 1       # start next lap
                 switchLap = false
-            elseif (posInfo.s_start+posInfo.s)%posInfo.s_target > s_lapTrigger
+            elseif posInfo.s%posInfo.s_target > s_lapTrigger
                 switchLap = true
             end
 
@@ -184,8 +178,7 @@ function main()
             println("Current Lap: $(lapStatus.currentLap), It: $(lapStatus.currentIt)")
             println("State Nr. $i    = $z_est")
             println("s               = $(posInfo.s)")
-            println("s_start         = $(posInfo.s_start)")
-            println("s_total         = $((posInfo.s+posInfo.s_start)%posInfo.s_target)")
+            println("s_total         = $(posInfo.s%posInfo.s_target)")
 
             # Find coefficients for cost and constraints
             if lapStatus.currentLap > n_pf
@@ -215,7 +208,7 @@ function main()
 
             # Write current input information
             uCurr[i,:] = [mpcSol.a_x mpcSol.d_f]
-            zCurr[i,6] = (posInfo.s_start + posInfo.s)%posInfo.s_target   # save absolute position in s (for oldTrajectory)
+            zCurr[i,6] = posInfo.s%posInfo.s_target   # save absolute position in s (for oldTrajectory)
 
             uPrev = circshift(uPrev,1)
             uPrev[1,:] = uCurr[i,:]
@@ -247,7 +240,6 @@ function main()
             log_coeff_Const[:,:,:,k] = mpcCoeff.coeffConst
             log_cost[k,:]           = mpcSol.cost
             log_curv[k,:]           = trackCoeff.coeffCurvature
-            log_s_start[k]          = posInfo.s_start
             log_state_x[k,:]        = x_est
             log_c_Vx[k,:]           = mpcCoeff.c_Vx
             log_c_Vy[k,:]           = mpcCoeff.c_Vy
@@ -274,7 +266,7 @@ function main()
     end
     save(log_path,"oldTraj",log_oldTraj,"state",log_state[1:k,:],"t",log_t[1:k],"sol_z",log_sol_z[:,:,1:k],"sol_u",log_sol_u[:,:,1:k],
                     "cost",log_cost[1:k,:],"curv",log_curv[1:k,:],"coeffCost",log_coeff_Cost,"coeffConst",log_coeff_Const,
-                    "s_start",log_s_start[1:k],"x_est",log_state_x[1:k,:],"coeffX",log_coeffX[1:k,:],"coeffY",log_coeffY[1:k,:],"c_Vx",log_c_Vx[1:k,:],
+                    "x_est",log_state_x[1:k,:],"coeffX",log_coeffX[1:k,:],"coeffY",log_coeffY[1:k,:],"c_Vx",log_c_Vx[1:k,:],
                     "c_Vy",log_c_Vy[1:k,:],"c_Psi",log_c_Psi[1:k,:],"cmd",log_cmd[1:k,:],"step_diff",log_step_diff[1:k,:])
     println("Exiting LMPC node. Saved data to $log_path.")
 

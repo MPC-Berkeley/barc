@@ -268,6 +268,8 @@ class Localization(object):
         # Use closest node to determine start and end of polynomial approximation
         idx_start = idx_min - self.N_nodes_poly_back
         idx_end   = idx_min + self.N_nodes_poly_front
+
+        s_start = idx_start * self.ds
         if self.closed == True:                 # if the track is modeled as closed (start = end)
             if idx_start<0:                     # and if the start for polynomial approx. is before the start line
                 nodes_X = hstack((self.nodes[0,n+idx_start:n],self.nodes[0,0:idx_end+1]))       # then stack the end and beginning of a lap together
@@ -299,14 +301,14 @@ class Localization(object):
         Matrix = zeros([self.nPoints,self.OrderXY+1])
         for i in range(0,self.nPoints):
             for k in range(0,self.OrderXY+1):
-                Matrix[i,self.OrderXY-k] = (i*self.ds)**k
+                Matrix[i,self.OrderXY-k] = (s_start + i*self.ds)**k
 
         # curvature matrix
         Matrix3rd = zeros([self.nPoints,self.OrderThetaCurv+1])
         for i in range(0,self.nPoints):
             for k in range(0,self.OrderThetaCurv+1):
-                Matrix3rd[i,self.OrderThetaCurv-k] = (i*self.ds)**k
-                
+                Matrix3rd[i,self.OrderThetaCurv-k] = (s_start + i*self.ds)**k
+
         # Solve system of equations to find polynomial coefficients (for x-y)
         self.coeffX = linalg.lstsq(Matrix,nodes_X)[0]
         self.coeffY = linalg.lstsq(Matrix,nodes_Y)[0]
@@ -316,7 +318,7 @@ class Localization(object):
         b_curvature_vector  = zeros(self.nPoints)
 
         for j in range(0,self.nPoints):
-            s       = j*self.ds
+            s       = s_start + j*self.ds
             dX      = polyval(polyder(self.coeffX,1),s)
             dY      = polyval(polyder(self.coeffY,1),s)
             ddX     = polyval(polyder(self.coeffX,2),s)
@@ -345,9 +347,9 @@ class Localization(object):
 
 
         # Calculate s
-        discretization = 0.0001                           # discretization to calculate s
+        discretization = 0.001                           # discretization to calculate s
         
-        j = arange((self.N_nodes_poly_back-1)*self.ds,(self.N_nodes_poly_back+1)*self.ds,discretization)
+        j = s_start + arange((self.N_nodes_poly_back-1)*self.ds,(self.N_nodes_poly_back+1)*self.ds,discretization)
         #print "idx_min     = %f"%idx_min
         #print "s_idx_start = %f"%s_idx_start
         #print "idx_start   = %f"%idx_start
@@ -393,7 +395,7 @@ class Localization(object):
         self.s              = s
         self.coeffTheta     = coeffTheta
         self.coeffCurvature = coeffCurvature
-        self.s_start        = idx_start*self.ds
+        self.s_start        = s_start
 
 
     def __init__(self):
