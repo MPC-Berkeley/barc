@@ -19,7 +19,7 @@ include("barc_lib/LMPC/coeffConstraintCost.jl")
 include("barc_lib/LMPC/solveMpcProblem.jl")
 include("barc_lib/LMPC/functions.jl")
 
-function SE_callback(msg::pos_info,s_start_update::Array{Float64},coeffCurvature_update::Array{Float64,1},z_est::Array{Float64,1},x_est::Array{Float64,1},
+function SE_callback(msg::pos_info,lapStatus::LapStatus,oldTraj::OldTrajectory,s_start_update::Array{Float64},coeffCurvature_update::Array{Float64,1},z_est::Array{Float64,1},x_est::Array{Float64,1},
                         coeffX::Array{Float64,1},coeffY::Array{Float64,1})         # update current position and track data
     # update mpc initial condition
     z_est[:]                  = [msg.v_x,msg.v_y,msg.psiDot,msg.epsi,msg.ey,msg.s]             # use z_est as pointer
@@ -28,6 +28,10 @@ function SE_callback(msg::pos_info,s_start_update::Array{Float64},coeffCurvature
     x_est[:]                  = [msg.x,msg.y,msg.psi,msg.v]
     coeffX[:]                 = msg.coeffX
     coeffY[:]                 = msg.coeffY
+    
+    # save current state in oldTraj
+    oldTraj[oldTraj.count,:,lapStatus.currentLap] = z_est
+    oldTraj.count += 1
 end
 
 function main()
@@ -89,7 +93,7 @@ function main()
     loop_rate = Rate(10)
     pub = Publisher("ecu", ECU, queue_size=1)::RobotOS.Publisher{barc.msg.ECU}
     # The subscriber passes arguments (s_start, coeffCurvature and z_est) which are updated by the callback function:
-    s1 = Subscriber("pos_info", pos_info, SE_callback, (s_start_update,coeffCurvature_update,z_est,x_est,coeffX,coeffY,),queue_size=1)::RobotOS.Subscriber{barc.msg.pos_info}
+    s1 = Subscriber("pos_info", pos_info, SE_callback, (lapStatus,oldTraj,s_start_update,lapStatus,coeffCurvature_update,z_est,x_est,coeffX,coeffY,),queue_size=1)::RobotOS.Subscriber{barc.msg.pos_info}
 
     run_id = get_param("run_id")
     println("Finished initialization.")
