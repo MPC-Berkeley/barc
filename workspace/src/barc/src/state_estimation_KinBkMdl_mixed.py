@@ -158,7 +158,7 @@ def state_estimation():
     P = eye(6)                                            # initial dynamics coveriance matrix
 
     Q = diag([0.1,0.1,1.0,0.1,0.1,0.01])
-    R = diag([1.0,1.0,0.1,0.1,5.0])
+    R = diag([1.0,1.0,1.0,1.0,5.0])
 
     # Set up track parameters
     l = Localization()
@@ -166,6 +166,8 @@ def state_estimation():
     l.prepare_trajectory(0.06)
 
     d_f_hist = [0]*10       # assuming that we are running at 50Hz, array of 10 means 0.2s lag
+    d_f_lp = 0
+    a_lp = 0
 
     # Estimation variables
     (x_est, y_est) = [0]*2
@@ -185,16 +187,16 @@ def state_estimation():
             se.y_meas = y_est + dt*(v_est*sin(psi_est+bta))
             R[0,0] = 100.0
             R[1,1] = 100.0
-        if se.imu_updated:
-            R[3,3] = 1.0
-            R[4,4] = 5.0
-        else:
-            R[3,3] = 10.0
-            R[4,4] = 50.0
-        if se.vel_updated:
-            R[2,2] = 0.1
-        else:
-            R[2,2] = 1.0
+        # if se.imu_updated:
+        #     R[3,3] = 1.0
+        #     R[4,4] = 5.0
+        # else:
+        #     R[3,3] = 10.0
+        #     R[4,4] = 50.0
+        # if se.vel_updated:
+        #     R[2,2] = 0.1
+        # else:
+        #     R[2,2] = 1.0
 
         se.gps_updated = False
         se.imu_updated = False
@@ -203,8 +205,11 @@ def state_estimation():
         y = array([se.x_meas, se.y_meas, se.yaw_meas, se.vel_meas, se.psiDot_meas])
 
         # define input
-        d_f_hist.append(se.cmd_servo)           # this is for a 0.2 seconds delay of steering
-        u = [se.cmd_motor, d_f_hist.pop(0)]
+        #d_f_hist.append(se.cmd_servo)           # this is for a 0.2 seconds delay of steering
+        d_f_lp = d_f_lp + 0.2*(se.cmd_servo-d_f_lp) # low pass filter on steering
+        a_lp   = a_lp + 0.5*(se.cmd_motor-a_lp)
+        #u = [se.cmd_motor, d_f_hist.pop(0)]
+        u = [a_lp, d_f_lp]
 
         # build extra arguments for non-linear function
         args = (u, vhMdl, dt, est_mode)

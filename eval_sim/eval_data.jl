@@ -132,11 +132,11 @@ function eval_run(code::AbstractString)
     figure()
     ax2=subplot(211)
     title("Commands")
-    plot(cmd_log.t,cmd_log.z,"-*",cmd_log.t_msg,cmd_log.z,"-x")
+    plot(cmd_log.t-t0,cmd_log.z,"-*",cmd_log.t_msg-t0,cmd_log.z,"-x")
     grid("on")
     xlabel("t [s]")
     subplot(212,sharex=ax2)
-    plot(cmd_pwm_log.t,cmd_pwm_log.z,"-*")
+    plot(cmd_pwm_log.t-t0,cmd_pwm_log.z,"-*")
     grid("on")
     xlabel("t [s]")
 
@@ -247,7 +247,6 @@ function eval_LMPC(code::AbstractString)
     x_est       = d_lmpc["x_est"]
     coeffX      = d_lmpc["coeffX"]
     coeffY      = d_lmpc["coeffY"]
-    s_start     = d_lmpc["s_start"]
     imu_meas    = d_rec["imu_meas"]
     gps_meas    = d_rec["gps_meas"]
     cmd_log     = d_rec["cmd_log"]              # this is the command how it was received by the simulator
@@ -287,7 +286,7 @@ function eval_LMPC(code::AbstractString)
     figure(4)
     title("Open loop predictions")
     #plot(t,state[:,[1,4,5]])
-    for i=1:4:size(t,1)-10
+    for i=1:1:size(t,1)-10
         if sol_z[1,5,i]==0
             plot(t[i:i+10]-t0,sol_z[:,2:4,i])
         else
@@ -298,7 +297,7 @@ function eval_LMPC(code::AbstractString)
 
     figure()
     title("Open loop inputs")
-    for i=1:4:size(t,1)-10
+    for i=1:1:size(t,1)-10
         plot(t[i:i+7]-t0,sol_u[1:8,2,i],t[i:i+9]-t0,sol_u[:,1,i])
     end
     grid("on")
@@ -318,23 +317,23 @@ function eval_LMPC(code::AbstractString)
     grid("on")
 
     # *********** CURVATURE *********************
-    # figure()
-    # c = zeros(size(curv,1),1)
-    # for i=1:size(curv,1)
-    #     s = state[i,6]-s_start[i]
-    #     c[i] = ([s.^8 s.^7 s.^6 s.^5 s.^4 s.^3 s.^2 s.^1 s.^0] * curv[i,:]')[1]
-    # end
-    # plot(s_start+state[:,1],c,"-o")
-    # for i=1:2:size(curv,1)
-    #     s = sol_z[:,1,i]
-    #     c = zeros(size(curv,1),1)
-    #     c = [s.^8 s.^7 s.^6 s.^5 s.^4 s.^3 s.^2 s.^1 s.^0] * curv[i,:]'
-    #     plot(s_start[i]+s,c,"-*")
-    # end
-    # title("Curvature over path")
-    # xlabel("Curvilinear abscissa [m]")
-    # ylabel("Curvature")
-    # grid()
+    figure()
+    c = zeros(size(curv,1),1)
+    for i=1:size(curv,1)
+        s = state[i,6]
+        c[i] = ([s.^8 s.^7 s.^6 s.^5 s.^4 s.^3 s.^2 s.^1 s.^0] * curv[i,:]')[1]
+    end
+    plot(state[:,1],c,"-o")
+    for i=1:2:size(curv,1)
+        s = sol_z[:,1,i]
+        c = zeros(size(curv,1),1)
+        c = [s.^8 s.^7 s.^6 s.^5 s.^4 s.^3 s.^2 s.^1 s.^0] * curv[i,:]'
+        plot(s,c,"-*")
+    end
+    title("Curvature over path")
+    xlabel("Curvilinear abscissa [m]")
+    ylabel("Curvature")
+    grid()
 
     # track = create_track(0.3)
     # figure()
@@ -383,12 +382,12 @@ function eval_LMPC(code::AbstractString)
     #     plot(s_start[i]+sol_z[:,1,i],sol_z[:,2:4,i],"-*")
     # end
 
-    figure()
-    plot(oldTraj[:,6,1,2],oldTraj[:,1:5,1,2],"-x")
-    title("Old Trajectory")
-    legend(["v_x","v_y","psiDot","ePsi","eY"])
-    xlabel("s")
-    grid(1)
+    # figure()
+    # plot(oldTraj[:,6,1,2],oldTraj[:,1:5,1,2],"-x")
+    # title("Old Trajectory")
+    # legend(["v_x","v_y","psiDot","ePsi","eY"])
+    # xlabel("s")
+    # grid(1)
 
     figure()
     ax1=subplot(211)
@@ -417,10 +416,18 @@ function eval_oldTraj(code::AbstractString,i::Int64)
     log_path_LMPC   = "$(homedir())/simulations/output-LMPC-$(code).jld"
     d = load(log_path_LMPC)
     oldTraj = d["oldTraj"]
-    t       = d["t"]
-    plot(t,oldTraj[:,:,1,i],"-*")
+    #t       = d["t"]
+    plot(oldTraj.oldTimes[:,i],oldTraj.oldTraj[:,:,i],"-x")
     grid("on")
     legend(["v_x","v_x","psiDot","ePsi","eY","s"])
+    figure()
+    plot(oldTraj.oldTimes[:,i],oldTraj.oldInput[:,:,i],"-x")
+    grid("on")
+    legend(["a","d_f"])
+    figure()
+    plot(oldTraj.oldTraj[:,6,i],oldTraj.oldTraj[:,1:5,i],"-x")
+    grid("on")
+    legend(["v_x","v_x","psiDot","ePsi","eY"])
 end
 
 function eval_LMPC_coeff(code::AbstractString,k::Int64)
