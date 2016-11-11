@@ -4,30 +4,26 @@
 using PyPlot
 using JLD
 
-Q = diagm([0.1,0.1,0.1,0.1,0.1,0.1,0.1])
-R = diagm([0.1,0.1,0.1,1.0,10.0,10.0])
-
-R_gps_imu = diagm([0.1,0.1,1.0,1.0,0.1,0.1,0.01])
 
 function main(code::AbstractString)
-    global Q, R, R_gps_imu
-    log_path_record = "$(homedir())/open_loop/output-record-$(code).jld"
+    #log_path_record = "$(homedir())/open_loop/output-record-$(code).jld"
+    log_path_record = "$(homedir())/simulations/output-record-$(code).jld"
     d_rec = load(log_path_record)
 
     imu_meas    = d_rec["imu_meas"]
     gps_meas    = d_rec["gps_meas"]
-    cmd_log     = d_rec["cmd_log"]
-    cmd_pwm_log = d_rec["cmd_pwm_log"]
+    cmd_log     = d_rec["cmd_pwm_log"]
+    #cmd_pwm_log = d_rec["cmd_pwm_log"]
     vel_est     = d_rec["vel_est"]
     pos_info    = d_rec["pos_info"]
 
-    t0      = max(imu_meas.t[1],vel_est.t[1],gps_meas.t[1])
-    t_end   = min(imu_meas.t[end],vel_est.t[end],gps_meas.t[end],cmd_pwm_log.t[end])
+    t0      = max(imu_meas.t[1],vel_est.t[1],gps_meas.t[1],cmd_log.t[1])
+    t_end   = min(imu_meas.t[end],vel_est.t[end],gps_meas.t[end],cmd_log.t[end])
 
     l_A = 0.125
     l_B = 0.125
 
-    dt = 1/25
+    dt = 1/50
     t = t0:dt:t_end
     sz = length(t)
     y = zeros(sz,6)
@@ -37,70 +33,91 @@ function main(code::AbstractString)
 
     P = zeros(7,7)
     x_est = zeros(length(t),7)
-    P_gps_imu = zeros(11,11)
-    x_est_gps_imu = zeros(length(t),11)
+    P_gps_imu = zeros(9,9)
+    x_est_gps_imu = zeros(length(t),9)
 
-    yaw0 = imu_meas.z[1,6]
+    yaw0 = imu_meas.z[t0.>imu_meas.t,6][end]#imu_meas.z[1,6]
     gps_dist = zeros(length(t))
 
     yaw_prev = yaw0
+    y_gps_imu[1,4] = 0
 
-    Q_gps_imu = diagm([1/6*dt^3,1/6*dt^3,1/2*dt^2,1/2*dt^2,dt,dt,dt,dt,0.001,0.001,0.001])
+    #Q_gps_imu = diagm([1/6*dt^3,1/6*dt^3,1/2*dt^2,1/2*dt^2,dt,dt,dt,dt,0.001,0.001,0.001])
+    #                   x, y, vx, vy, ax, ay, psi, psidot, psidrift
+    Q_gps_imu = diagm([0.01,0.01,0.1,0.1,1.0,1.0,0.1,1.0,0.01])
+    R_gps_imu = diagm([0.1,0.1,1.0,0.1,1.0,100.0,100.0])
+    #                   x, y, v, psi, psidot, ax, ay
 
     for i=2:length(t)
         # Collect measurements and inputs for this iteration
-        y_gps = gps_meas.z[gps_meas.t.>t[i],:][1,:]
-        y_yaw = imu_meas.z[imu_meas.t.>t[i],6][1]-yaw0
-        y_yawdot = imu_meas.z[imu_meas.t.>t[i],3][1]
-        a_x   = imu_meas.z[imu_meas.t.>t[i],7][1]
-        a_y   = imu_meas.z[imu_meas.t.>t[i],8][1]
-        y_vel_est = vel_est.z[vel_est.t.>t[i]][1]
+        y_gps = gps_meas.z[t[i].>gps_meas.t,:][end,:]
+        #y_yaw = imu_meas.z[t[i].>imu_meas.t,6][end]-yaw0
+        y_yaw = pos_info.z[t[i].>pos_info.t,14][end]
+        y_yawdot = imu_meas.z[t[i].>imu_meas.t,3][end]
+        
+        att = imu_meas.z[t[i].>imu_meas.t,4:6][end,:]
+        acc = imu_meas.z[t[i].>imu_meas.t,7:9][end,:]
+        acc_f = rotMatrix('y',-att[2])*rotMatrix('x',-att[1])*acc'
+        #a_x = imu_meas.z[t[i].>imu_meas.t,7][end]
+        #a_y = imu_meas.z[t[i].>imu_meas.t,8][end]
+        a_x = acc_f[1]
+        a_y = acc_f[2]
 
-        y[i,:] = [y_gps y_yaw y_vel_est a_x a_y]
-        y_gps_imu[i,:] = [y_gps a_x a_y y_yaw y_yawdot y_vel_est]
-        y[:,3] = unwrap!(y[:,3])
-        y_gps_imu[:,5] = unwrap!(y_gps_imu[:,5])
+        #y_vel_est = vel_est.z[t[i].>vel_est.t,1][end]
+        y_vel_est = pos_info.z[t[i].>pos_info.t,15][end]
+
+        y_gps_imu[i,:] = [y_gps y_vel_est y_yaw y_yawdot a_x a_y]
+        y_gps_imu[:,4] = unwrap!(y_gps_imu[:,4])
 
         u[i,:] = cmd_log.z[cmd_log.t.>t[i],:][1,:]
 
         # Adapt R-value of GPS according to distance to last point:
         gps_dist[i] = norm(y[i,1:2]-x_est[i-1,1:2])
         if gps_dist[i] > 0.3
-            R[1,1] = 1+100*gps_dist[i]^2
-            R[2,2] = 1+100*gps_dist[i]^2
-            R_gps_imu[1,1] = 1+100*gps_dist[i]^2
-            R_gps_imu[2,2] = 1+100*gps_dist[i]^2
+            R_gps_imu[1,1] = 1#+100*gps_dist[i]^2
+            R_gps_imu[2,2] = 1#+100*gps_dist[i]^2
         else
-            R[1,1] = 1
-            R[2,2] = 1
             R_gps_imu[1,1] = 1
             R_gps_imu[2,2] = 1
         end
 
-        
         args = (u[i,:],dt,l_A,l_B)
 
         # Calculate new estimate
-        (x_est[i,:], P) = ekf(simModel,x_est[i-1,:]',P,h,y[i,:]',Q,R,args)
         (x_est_gps_imu[i,:], P_gps_imu) = ekf(simModel_gps_imu,x_est_gps_imu[i-1,:]',P_gps_imu,h_gps_imu,y_gps_imu[i,:]',Q_gps_imu,R_gps_imu,args)
     end
 
+    #figure(5)
+    #plot(t-t0,y_gps_imu)
+    #grid("on")
+
+    println("Yaw0 = $yaw0")
     figure(1)
     plot(t-t0,x_est_gps_imu[:,1:2],"-*",gps_meas.t-t0,gps_meas.z)
+    plot(pos_info.t-t0,pos_info.z[:,6:7],"-x")
     grid("on")
+    legend(["x_est","y_est","x_meas","y_meas"])
     title("Comparison x,y estimate and measurement")
 
     figure(2)
-    plot(t-t0,x_est_gps_imu[:,9:11])
+    plot(t-t0,x_est_gps_imu[:,[7,9]],imu_meas.t-t0,imu_meas.z[:,6]-yaw0)
+    plot(pos_info.t-t0,pos_info.z[:,[10,16]],"-x")
     grid("on")
-    title("Drifts")
-    legend(["a_x","a_y","psi"])
+    legend(["psi_est","psi_drift_est","psi_meas"])
 
     figure(3)
     v = sqrt(x_est_gps_imu[:,3].^2+x_est_gps_imu[:,4].^2)
-    plot(t-t0,v,"-*",t-t0,x_est_gps_imu[:,3:4],"--",vel_est.t-t0,vel_est.z)
+    plot(t-t0,v,"-*",t-t0,x_est_gps_imu[:,3:4],"--",vel_est.t-t0,vel_est.z[:,1])
+    plot(pos_info.t-t0,pos_info.z[:,8:9],"-x")
+    legend(["v_est","v_x_est","v_y_est","v_meas"])
     grid("on")
     title("Velocity estimate and measurement")
+
+    figure(4)
+    plot(imu_meas.t-t0,imu_meas.z[:,7:8],t-t0,x_est_gps_imu[:,5:6])
+    #plot(pos_info.t-t0,pos_info.z[:,17:18])
+    grid("on")
+    legend(["a_x_meas","a_y_meas","a_x_est","a_y_est"])
 
     # ax1=subplot(211)
     # plot(t,y,"-x",t,x_est,"-*")
@@ -181,19 +198,16 @@ function h(x,args)
     return C*x
 end
 function h_gps_imu(x,args)
-    C = [1 0 0 0 0 0 0 0 0 0 0;     # x
-         0 1 0 0 0 0 0 0 0 0 0;     # y
-         0 0 0 0 1 0 0 0 1 0 0;     # a_x
-         0 0 0 0 0 1 0 0 0 1 0;     # a_y
-         0 0 0 0 0 0 1 0 0 0 1;     # psi
-         0 0 0 0 0 0 0 1 0 0 0;     # psi_dot
-         0 0 0 0 0 0 0 0 0 0 0]     # v
-    y = C*x
-    y[7] = sqrt(x[3]^2+x[4]^2)      # Idea: v_x_meas = cos(beta)*v, v_y_meas = sin(beta)*v
-    #return C*x
+    y = zeros(7)
+    y[1] = x[1]                     # x
+    y[2] = x[2]                     # y
+    y[3] = sqrt(x[3]^2+x[4]^2)      # v
+    y[4] = x[7]+x[9]                # psi
+    y[5] = x[8]                     # psiDot
+    y[6] = x[5]                     # a_x
+    y[7] = x[6]                     # a_y
     return y
 end
-
 function ekf(f, mx_k, P_k, h, y_kp1, Q, R, args)
     xDim    = size(mx_k,1)
     mx_kp1  = f(mx_k,args)
@@ -232,20 +246,18 @@ function simModel_gps_imu(z,args)
     zNext = copy(z)
     (u,dt,l_A,l_B) = args
     bta = atan(l_A/(l_A+l_B)*tan(u[2]))
-    zNext[1] = z[1] + dt*(cos(z[7])*z[3] - sin(z[7])*z[4]) + 1/2*dt^2*(cos(z[7])*z[5]-sin(z[7])*z[6])       # x
-    zNext[2] = z[2] + dt*(sin(z[7])*z[3] + cos(z[7])*z[4]) + 1/2*dt^2*(sin(z[7])*z[5]+cos(z[7])*z[6])       # y
-    #zNext[1] = z[1] + dt*(cos(z[7])*z[3] - sin(z[7])*z[4]) + 1/2*dt^2*(cos(z[7])*(z[5]+z[8]*z[4])-sin(z[7])*(z[6]-z[8]*z[3]))       # x
-    #zNext[2] = z[2] + dt*(sin(z[7])*z[3] + cos(z[7])*z[4]) + 1/2*dt^2*(sin(z[7])*(z[5]+z[8]*z[4])+cos(z[7])*(z[6]-z[8]*z[3]))       # y
+    #zNext[1] = z[1] + dt*(cos(z[7])*z[3] - sin(z[7])*z[4]) + 1/2*dt^2*(cos(z[7])*z[5]-sin(z[7])*z[6])       # x
+    #zNext[2] = z[2] + dt*(sin(z[7])*z[3] + cos(z[7])*z[4]) + 1/2*dt^2*(sin(z[7])*z[5]+cos(z[7])*z[6])       # y
+    zNext[1] = z[1] + dt*(cos(z[7])*z[3] - sin(z[7])*z[4])       # x
+    zNext[2] = z[2] + dt*(sin(z[7])*z[3] + cos(z[7])*z[4])       # y
     zNext[3] = z[3] + dt*(z[5]+z[8]*z[4])   # v_x
     zNext[4] = z[4] + dt*(z[6]-z[8]*z[3])   # v_y
     zNext[5] = z[5]                         # a_x
     zNext[6] = z[6]                         # a_y
-    zNext[7] = z[7] + dt*(z[3]/l_B*sin(bta))  # psi
-    #zNext[7] = z[7] + dt*z[8]               # psi
+    #zNext[7] = z[7] + dt*(z[3]/l_B*sin(bta))  # psi
+    zNext[7] = z[7] + dt*z[8]               # psi
     zNext[8] = z[8]                         # psidot
-    zNext[9] = z[9]                         # drift_a_x
-    zNext[10] = z[10]                       # drift_a_y
-    zNext[11] = z[11]                       # drift_psi
+    zNext[9] = z[9]                         # drift_psi
     return zNext
 end
 
@@ -291,4 +303,24 @@ function unwrap!(p)
         end
     end
     return p
+end
+
+function rotMatrix(s::Char,deg::Float64)
+    A = zeros(3,3)
+    if s=='x'
+        A = [1 0 0;
+             0 cos(deg) sin(deg);
+             0 -sin(deg) cos(deg)]
+    elseif s=='y'
+        A = [cos(deg) 0 -sin(deg);
+             0 1 0;
+             sin(deg) 0 cos(deg)]
+    elseif s=='z'
+        A = [cos(deg) sin(deg) 0
+             -sin(deg) cos(deg) 0
+             0 0 1]
+    else
+        warn("Wrong angle for rotation matrix")
+    end
+    return A
 end

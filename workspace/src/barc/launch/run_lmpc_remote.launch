@@ -17,7 +17,8 @@
     <node machine="this-pc" pkg="barc" type="barc_record.jl" name="barc_record" output="screen" />
 
     <!-- Estimator -->
-    <node machine="this-pc" pkg="barc" type="state_estimation_KinBkMdl_mixed.py" name="state_estimation_dynamic" output="screen">
+    <!--node machine="this-pc" pkg="barc" type="state_estimation_KinBkMdl_mixed.py" name="state_estimation_dynamic" output="screen"-->
+    <node machine="this-pc" pkg="barc" type="state_estimation_SensorModel.py" name="state_estimation_dynamic" output="screen">
         <!-- ekf properties -->
         <param name="q_std" type="double" value="0.1" />
 

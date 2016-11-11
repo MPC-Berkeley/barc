@@ -17,6 +17,8 @@ using HDF5, JLD, ProfileView
 # pos_info[14] = psi_raw
 # pos_info[15] = v_raw
 # pos_info[16] = psi_drift
+# pos_info[17] = a_x
+# pos_info[18] = a_y
 
 include("../workspace/src/barc/src/barc_lib/classes.jl")
 
@@ -411,6 +413,46 @@ function eval_LMPC(code::AbstractString)
     grid(1)
     legend(["u","d_f"])
 end
+
+function eval_sysID(code::AbstractString)
+    log_path_LMPC   = "$(homedir())/simulations/output-LMPC-$(code).jld"
+    log_path_record = "$(homedir())/simulations/output-record-$(code).jld"
+    d_rec       = load(log_path_record)
+    d_lmpc      = load(log_path_LMPC)
+
+    oldTraj     = d_lmpc["oldTraj"]
+    t           = d_lmpc["t"]
+    state       = d_lmpc["state"]
+    sol_z       = d_lmpc["sol_z"]
+    sol_u       = d_lmpc["sol_u"]
+    cost        = d_lmpc["cost"]
+    curv        = d_lmpc["curv"]
+    c_Vx        = d_lmpc["c_Vx"]
+    c_Vy        = d_lmpc["c_Vy"]
+    c_Psi       = d_lmpc["c_Psi"]
+    cmd         = d_lmpc["cmd"]                 # this is the command how it was sent by the MPC
+    step_diff   = d_lmpc["step_diff"]           # this is the command how it was sent by the MPC
+
+    x_est       = d_lmpc["x_est"]
+    coeffX      = d_lmpc["coeffX"]
+    coeffY      = d_lmpc["coeffY"]
+    imu_meas    = d_rec["imu_meas"]
+    gps_meas    = d_rec["gps_meas"]
+    cmd_log     = d_rec["cmd_log"]              # this is the command how it was received by the simulator
+    pos_info    = d_rec["pos_info"]
+
+    t0 = imu_meas.t[1]
+
+    figure(1)       # longitudinal (xDot)
+    ax1=subplot(211)
+    plot(t-t0,c_Vx)
+    legend(["c1","c2","c3"])
+    grid("on")
+    subplot(212,sharex=ax1)
+    plot(cmd_log.t-t0,cmd_log.z[:,1])
+    grid("on")
+end
+
 
 function eval_oldTraj(code::AbstractString,i::Int64)
     log_path_LMPC   = "$(homedir())/simulations/output-LMPC-$(code).jld"

@@ -84,9 +84,6 @@ function main()
     mdl    = MpcModel(mpcParams,mpcCoeff,modelParams,trackCoeff)
     mdl_pF = MpcModel_pF(mpcParams_pF,modelParams,trackCoeff)
 
-    z_ID = zeros(50,6)
-    u_ID = zeros(50,2)
-
     # ROS-specific variables
     z_est                       = zeros(6)          # this is a buffer that saves current state information (xDot, yDot, psiDot, ePsi, eY, s)
     x_est                       = zeros(4)          # this is a buffer that saves further state information (x, y, psi, v)
@@ -146,7 +143,7 @@ function main()
     posInfo.s = posInfo.s_target/2
     lapStatus.currentLap = 3
     oldTraj.count[3] = 200
-    coeffConstraintCost(oldTraj,mpcCoeff,posInfo,mpcParams,z_ID,u_ID,lapStatus)
+    coeffConstraintCost(oldTraj,mpcCoeff,posInfo,mpcParams,lapStatus)
     oldTraj.count[3] = 1
     lapStatus.currentLap = 1
     oldTraj.oldTraj[1:buffersize,6,1] = NaN*ones(buffersize,1)
@@ -212,7 +209,7 @@ function main()
             # Find coefficients for cost and constraints
             if lapStatus.currentLap > n_pf
                 tic()
-                coeffConstraintCost(oldTraj,mpcCoeff,posInfo,mpcParams,z_ID,u_ID,lapStatus)
+                coeffConstraintCost(oldTraj,mpcCoeff,posInfo,mpcParams,lapStatus)
                 tt = toq()
                 println("Finished coefficients, t = $tt s")
             end
@@ -236,22 +233,6 @@ function main()
             uPrev = circshift(uPrev,1)
             uPrev[1,:] = uCurr[i,:]
             println("Finished solving, status: $(mpcSol.solverStatus), u = $(uCurr[i,:]), t = $tt s")
-
-            # append new states and inputs to old trajectory
-            # oldTraj.oldTraj[oldTraj.oldCost[1]+oldTraj.prebuf+i,:,1] = zCurr[i,:]
-            # oldTraj.oldTraj[oldTraj.oldCost[1]+oldTraj.prebuf+i,6,1] += posInfo.s_target
-            # oldTraj.oldInput[oldTraj.oldCost[1]+oldTraj.prebuf+i,:,1] = uCurr[i,:]
-            # if lapStatus.currentLap==3     # if its the third lap, append to both old trajectories! (since both are the same)
-            #     oldTraj.oldTraj[oldTraj.oldCost[1]+oldTraj.prebuf+i,:,2] = zCurr[i,:]
-            #     oldTraj.oldTraj[oldTraj.oldCost[1]+oldTraj.prebuf+i,6,2] += posInfo.s_target
-            #     oldTraj.oldInput[oldTraj.oldCost[1]+oldTraj.prebuf+i,:,2] = uCurr[i,:]
-            # end
-
-            # For System ID: Update last 50 measurements
-            z_ID = circshift(z_ID,-1)
-            u_ID = circshift(u_ID,-1)
-            z_ID[end,:] = zCurr[i,:]
-            u_ID[end,:] = uCurr[i,:]
 
             # Logging
             # ---------------------------

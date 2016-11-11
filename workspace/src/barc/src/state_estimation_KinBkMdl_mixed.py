@@ -235,7 +235,7 @@ def state_estimation():
         ros_t = rospy.get_rostime()
         state_pub_pos.publish(pos_info(Header(stamp=ros_t), l.s, l.ey, l.epsi, v_est, l.s_start, l.x, l.y, l.v_x, l.v_y,
                                        l.psi, l.psiDot, se.x_meas, se.y_meas, se.yaw_meas, se.vel_meas, psi_drift_est,
-                                       l.coeffX.tolist(), l.coeffY.tolist(),
+                                       0, 0, l.coeffX.tolist(), l.coeffY.tolist(),
                                        l.coeffTheta.tolist(), l.coeffCurvature.tolist()))
 
         # wait

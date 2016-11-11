@@ -17,6 +17,8 @@ float64 y_raw
 float64 psi_raw
 float64 v_raw
 float64 psi_drift
+float64 a_x
+float64 a_y
 float64[] coeffX
 float64[] coeffY
 float64[] coeffTheta
