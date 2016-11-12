@@ -44,6 +44,7 @@ class StateEst(object):
     a_x_meas = 0
     a_y_meas = 0
     imu_updated = False
+    att = (0,0,0)               # attitude
 
     # Velocity
     vel_meas = 0
@@ -104,11 +105,17 @@ class StateEst(object):
         w_z = data.angular_velocity.z
         a_x = data.linear_acceleration.x
         a_y = data.linear_acceleration.y
-        #a_z = data.linear_acceleration.z
+        a_z = data.linear_acceleration.z
 
         self.psiDot_meas = w_z
-        self.a_x_meas = a_x
-        self.a_y_meas = a_y
+        # The next two lines 'project' the measured linear accelerations to a horizontal plane
+        self.a_x_meas = cos(-pitch_raw)*a_x + sin(-pitch_raw)*sin(-roll_raw)*a_y - sin(-pitch_raw)*cos(-roll_raw)*a_z
+        self.a_y_meas = cos(-roll_raw)*a_y + sin(-roll_raw)*a_z
+        #print "Pitch: %f"%(pitch_raw)
+        # print "Roll: %f"%(roll_raw)
+        #self.a_x_meas = a_x
+        #self.a_y_meas = a_y
+        self.att = (roll_raw,pitch_raw,yaw_raw)
         self.imu_updated = True
 
     def vel_est_callback(self, data):
@@ -235,8 +242,8 @@ def state_estimation():
         ros_t = rospy.get_rostime()
         state_pub_pos.publish(pos_info(Header(stamp=ros_t), l.s, l.ey, l.epsi, v_est, l.s_start, l.x, l.y, l.v_x, l.v_y,
                                        l.psi, l.psiDot, se.x_meas, se.y_meas, se.yaw_meas, se.vel_meas, psi_drift_est,
-                                       a_x_est, a_y_est, l.coeffX.tolist(), l.coeffY.tolist(),
-                                       l.coeffTheta.tolist(), l.coeffCurvature.tolist()))
+                                       a_x_est, a_y_est, (0,), (0,),
+                                       (0,), l.coeffCurvature.tolist()))
 
         # wait
         rate.sleep()
