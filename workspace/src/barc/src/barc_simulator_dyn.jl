@@ -166,7 +166,7 @@ function main()
         end
 
         # GPS measurements
-        if i%4 == 0               # 25 Hz
+        if i%6 == 0               # 16 Hz
             x = round(z_current[i,1] + 0.02*randn(),2)       # Indoor gps measures, rounded on cm
             y = round(z_current[i,2] + 0.02*randn(),2)
             if randn()>3            # simulate gps-outlier (probability about 0.13% for randn()>3, 0.62% for randn()>2.5, 2.3% for randn()>2.0 )

@@ -3,8 +3,8 @@ using PyPlot
 using JLD
 
 function main(code::AbstractString)
-    #log_path_record = "$(homedir())/open_loop/output-record-$(code).jld"
-    log_path_record = "$(homedir())/simulations/output-record-$(code).jld"
+    log_path_record = "$(homedir())/open_loop/output-record-$(code).jld"
+    #log_path_record = "$(homedir())/simulations/output-record-$(code).jld"
     d_rec = load(log_path_record)
     L_b = 0.125
 
@@ -20,21 +20,33 @@ function main(code::AbstractString)
 
     t = t0+0.1:.02:t_end-0.1
     v = zeros(length(t))
+    #v2 = copy(v)
     psiDot = zeros(length(t))
-
+    cmd = zeros(length(t))
     for i=1:length(t)
-        v[i] = vel_est.z[t[i].>vel_est.t,1][end]
+        #v[i] = vel_est.z[t[i].>vel_est.t,1][end]
+        v[i] = pos_info.z[t[i].>pos_info.t,15][end]
         psiDot[i] = imu_meas.z[t[i].>imu_meas.t,3][end]
-
+        cmd[i] = cmd_pwm_log.z[t[i].>cmd_pwm_log.t,2][end]
     end
     v_x = real(sqrt(complex(v.^2-psiDot.^2*L_b^2)))
     v_y = L_b*psiDot
+
+    idx = v_x.>1.1
+    psiDot = psiDot[idx]
+    v_x = v_x[idx]
+    cmd = cmd[idx]
     delta = atan2(psiDot*0.25,v_x)
+
     figure(1)
+    ax2=subplot(211)
     plot(t-t0,delta,cmd_log.t-t0,cmd_log.z[:,2])
     grid("on")
     xlabel("t [s]")
     legend(["delta_true","delta_input"])
+    subplot(212,sharex=ax2)
+    plot(cmd_pwm_log.t-t0,cmd_pwm_log.z[:,2])
+    grid("on")
 
     figure(2)
     ax1=subplot(211)

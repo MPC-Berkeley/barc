@@ -1,6 +1,7 @@
 
 using PyPlot
 using JLD
+using Optim
 
 # type Measurements{T}
 #     i::Int64                # measurement counter
@@ -30,8 +31,8 @@ function main(code::AbstractString)
         v[i] = pos_info.z[t[i].>pos_info.t,15][end]
         cmd[i] = cmd_pwm_log.z[t[i].>cmd_pwm_log.t,1][end]
     end
-    v_opt   = v[500:end]
-    cmd_opt = cmd[500:end]
+    v_opt   = v[1:end]
+    cmd_opt = cmd[1:end]
 
     res = optimize(c->cost(cmd_opt,v_opt,c,0),[0.001,0,0.1,0.001,0])
     c = Optim.minimizer(res)
@@ -39,6 +40,43 @@ function main(code::AbstractString)
     cost(cmd_opt,v_opt,c,1)
     println("c = $c")
     println("and c_2 = $c2")
+end
+
+function v_over_u(code::AbstractString)
+    log_path_record = "$(homedir())/open_loop/output-record-$code.jld"
+    d_rec = load(log_path_record)
+
+    cmd_pwm_log = d_rec["cmd_pwm_log"]
+    vel_est     = d_rec["vel_est"]
+    pos_info    = d_rec["pos_info"]
+    imu_meas    = d_rec["imu_meas"]
+
+    t0 = max(cmd_pwm_log.t[1],vel_est.t[1])
+    t_end = min(cmd_pwm_log.t[end],vel_est.t[end])
+
+    L_b = 0.125
+    t = t0+0.1:.02:t_end-0.1
+    v = zeros(length(t))
+    cmd = zeros(length(t),2)
+    psiDot = zeros(length(t))
+
+    for i=1:length(t)
+        #v[i] = vel_est.z[t[i].>vel_est.t,1][end]
+        v[i] = pos_info.z[t[i].>pos_info.t,15][end]
+        cmd[i,:] = cmd_pwm_log.z[t[i].>cmd_pwm_log.t,:][end,:]
+        psiDot[i] = imu_meas.z[t[i].>imu_meas.t,3][end]
+    end
+    v_x = real(sqrt(complex(v.^2-psiDot.^2*L_b^2)))
+    v_y = L_b*psiDot
+    delta = atan2(psiDot*0.25,v_x)
+    c = ((cmd[:,1]-91)/6.5-0.5*v)./delta.^2
+    c = c[abs(c).<100]
+    plot(c)
+    grid("on")
+    figure()
+    plot(v)
+    grid("on")
+    #plot(cmd[:,1],v)
 end
 
 function cost(cmd,v,c,p)

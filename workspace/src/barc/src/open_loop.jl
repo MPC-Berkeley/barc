@@ -25,7 +25,7 @@ function main()
     cmd_log         = Measurements{Float64}(1,zeros(buffersize),zeros(buffersize),zeros(buffersize,2))
     cmd_pwm_log     = Measurements{Float64}(1,zeros(buffersize),zeros(buffersize),zeros(buffersize,2))
     vel_est_log     = Measurements{Float64}(1,zeros(buffersize),zeros(buffersize),zeros(buffersize,5))
-    pos_info_log    = Measurements{Float64}(1,zeros(buffersize),zeros(buffersize),zeros(buffersize,18))
+    pos_info_log    = Measurements{Float64}(1,zeros(buffersize),zeros(buffersize),zeros(buffersize,20))
 
     # Initialize ROS node and topics
     init_node("mpc_traj")
@@ -61,8 +61,9 @@ function main()
     chicane_speed = 1.0
     chicane_turn  = -0.3
 
-    cmd_m = 93
-    t_next = 8
+    cmd_m = 85
+    cmd_s = 60
+    t_next = 7
     mode = 1        # 1 = acc, 2 = break, 3 = break
     # Idea: 5 seconds acc, 3 seconds breaking.
 
@@ -71,21 +72,22 @@ function main()
         t = to_sec(get_rostime())-t0
         if t <= 3
             cmd.motor = 90.0
-            cmd.servo = 80.0
+            cmd.servo = 60.0
         elseif t <= t_next
             if mode == 1
-                cmd.motor = cmd_m
+                cmd.motor = 96
+                cmd.servo = cmd_s
             elseif mode == 2
-                cmd.motor = 80
+                cmd.motor = 70
             end
         elseif t <= 300
             if mode == 1
-                cmd_m += 1
                 mode = 2
             else
+                cmd_s += 2
                 mode = 1
             end
-            t_next = t + 6
+            t_next = t + 4
         # CHICANE:
         # elseif t <= 3
         #     cmd.motor = chicane_speed

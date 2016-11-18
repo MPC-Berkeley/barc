@@ -18,6 +18,7 @@ include("barc_lib/LMPC/MPC_models.jl")
 include("barc_lib/LMPC/coeffConstraintCost.jl")
 include("barc_lib/LMPC/solveMpcProblem.jl")
 include("barc_lib/LMPC/functions.jl")
+include("barc_lib/simModel.jl")
 
 # This function is called whenever a new state estimate is received.
 # It saves this estimate in oldTraj and uses it in the MPC formulation (see in main)
@@ -109,10 +110,12 @@ function main()
     log_c_Psi                   = zeros(10000,3)
     log_cmd                     = zeros(10000,2)
     log_step_diff               = zeros(10000,5)
+    log_t_solv                  = zeros(10000)
+    log_sol_status              = Array(Symbol,10000)
     
     # Initialize ROS node and topics
     init_node("mpc_traj")
-    loop_rate = Rate(10)
+    loop_rate = Rate(1/modelParams.dt)
     pub = Publisher("ecu", ECU, queue_size=1)::RobotOS.Publisher{barc.msg.ECU}
     # The subscriber passes arguments (coeffCurvature and z_est) which are updated by the callback function:
     s1 = Subscriber("pos_info", pos_info, SE_callback, (lapStatus,posInfo,mpcSol,oldTraj,coeffCurvature_update,z_est,x_est),queue_size=1)::RobotOS.Subscriber{barc.msg.pos_info}
@@ -123,13 +126,12 @@ function main()
     # buffer in current lap
     zCurr                       = zeros(10000,6)    # contains state information in current lap (max. 10'000 steps)
     uCurr                       = zeros(10000,2)    # contains input information
-    u_final                     = zeros(2)          # contains last input of one lap
     step_diff                   = zeros(5)
 
     # Specific initializations:
     lapStatus.currentLap    = 1
     lapStatus.currentIt     = 1
-    posInfo.s_target        = 17.76# 12.0#24.0
+    posInfo.s_target        = 12.0#17.76# 12.0#24.0
     k                       = 0                       # overall counter for logging
     
     mpcSol.z = zeros(11,4)
@@ -187,7 +189,6 @@ function main()
                 println("previous state: $(zCurr[i-1,:])")
                 # Important: lapStatus.currentIt is now the number of points up to s > s_target -> -1 in saveOldTraj
                 zCurr[1,:] = zCurr[i,:]         # copy current state
-                u_final    = uCurr[i-1,:]       # ... and input
                 i                     = 1
                 lapStatus.currentIt   = 1       # reset current iteration
                 lapStatus.nextLap = false
@@ -219,12 +220,13 @@ function main()
             tic()
             if lapStatus.currentLap <= n_pf
                 z_pf = [zCurr[i,6],zCurr[i,5],zCurr[i,4],norm(zCurr[i,1:2])]        # use kinematic model and its states
+                #z_pf = simKinModel(z_pf,uPrev[3,:],0.1,trackCoeff.coeffCurvature,modelParams)   # predict next state by one step
                 solveMpcProblem_pathFollow(mdl_pF,mpcSol,mpcParams_pF,trackCoeff,posInfo,modelParams,z_pf,uPrev)
             else                        # otherwise: use system-ID-model
                 #mpcCoeff.c_Vx[3] = max(mpcCoeff.c_Vx[3],0.1)
                 solveMpcProblem(mdl,mpcSol,mpcCoeff,mpcParams,trackCoeff,lapStatus,posInfo,modelParams,zCurr[i,:]',uPrev)
             end
-            tt = toq()
+            log_t_solv[k+1] = toq()
 
             # Write current input information
             uCurr[i,:] = [mpcSol.a_x mpcSol.d_f]
@@ -232,11 +234,12 @@ function main()
 
             uPrev = circshift(uPrev,1)
             uPrev[1,:] = uCurr[i,:]
-            println("Finished solving, status: $(mpcSol.solverStatus), u = $(uCurr[i,:]), t = $tt s")
+            println("Finished solving, status: $(mpcSol.solverStatus), u = $(uCurr[i,:]), t = $(log_t_solv[k+1]) s")
 
             # Logging
             # ---------------------------
             k = k + 1       # counter
+            log_sol_status[k]       = mpcSol.solverStatus
             log_state[k,:]          = zCurr[i,:]
             log_cmd[k+1,:]          = uCurr[i,:]                    # the command is going to be pubished in the next iteration
             log_sol_u[:,:,k]        = mpcSol.u
@@ -271,7 +274,8 @@ function main()
     save(log_path,"oldTraj",oldTraj,"state",log_state[1:k,:],"t",log_t[1:k],"sol_z",log_sol_z[:,:,1:k],"sol_u",log_sol_u[:,:,1:k],
                     "cost",log_cost[1:k,:],"curv",log_curv[1:k,:],"coeffCost",log_coeff_Cost,"coeffConst",log_coeff_Const,
                     "x_est",log_state_x[1:k,:],"coeffX",log_coeffX[1:k,:],"coeffY",log_coeffY[1:k,:],"c_Vx",log_c_Vx[1:k,:],
-                    "c_Vy",log_c_Vy[1:k,:],"c_Psi",log_c_Psi[1:k,:],"cmd",log_cmd[1:k,:],"step_diff",log_step_diff[1:k,:])
+                    "c_Vy",log_c_Vy[1:k,:],"c_Psi",log_c_Psi[1:k,:],"cmd",log_cmd[1:k,:],"step_diff",log_step_diff[1:k,:],
+                    "t_solv",log_t_solv[1:k],"sol_status",log_sol_status[1:k])
     println("Exiting LMPC node. Saved data to $log_path.")
 
 end

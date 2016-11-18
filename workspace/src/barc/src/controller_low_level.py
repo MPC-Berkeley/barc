@@ -38,12 +38,11 @@ class low_level_control(object):
         # Old servo control:
         # self.servo_pwm = 91.365 + 105.6*float(msg.servo)
         # New servo Control
-        if msg.servo < 0.0:         # right curve
-            self.servo_pwm = 95.5 + 118.8*float(msg.servo)
-        elif msg.servo > 0.0:       # left curve
-            self.servo_pwm = 90.8 + 78.9*float(msg.servo)
-        else:
-            self.servo_pwm = 90
+        # if msg.servo < 0.0:         # right curve
+        #     self.servo_pwm = 95.5 + 118.8*float(msg.servo)
+        # elif msg.servo > 0.0:       # left curve
+        #     self.servo_pwm = 90.8 + 78.9*float(msg.servo)
+        self.servo_pwm = 90.0 + 89.0*float(msg.servo)
 
         # compute motor command
         FxR = float(msg.motor)
@@ -58,7 +57,7 @@ class low_level_control(object):
             self.motor_pwm = 93.5 + 46.73*FxR
         self.update_arduino()
     def neutralize(self):
-        self.motor_pwm = 60             # slow down first
+        self.motor_pwm = 40             # slow down first
         self.servo_pwm = 90
         self.update_arduino()
         rospy.sleep(1)                  # slow down for 1 sec

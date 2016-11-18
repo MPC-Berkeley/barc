@@ -131,3 +131,83 @@ function main_pwm(code::AbstractString)
     println("c2 = $(coeff[2]/coeff[1])")
 
 end
+
+function main_pwm2(code::AbstractString)
+    log_path_record = "$(homedir())/open_loop/output-record-$(code).jld"
+    #log_path_record = "$(homedir())/simulations/output-record-$(code).jld"
+    d_rec = load(log_path_record)
+    L_b = 0.125
+
+    imu_meas    = d_rec["imu_meas"]
+    gps_meas    = d_rec["gps_meas"]
+    cmd_log     = d_rec["cmd_log"]
+    cmd_pwm_log = d_rec["cmd_pwm_log"]
+    vel_est     = d_rec["vel_est"]
+    pos_info    = d_rec["pos_info"]
+
+    t0 = max(cmd_pwm_log.t[1],vel_est.t[1],imu_meas.t[1])
+    t_end = min(cmd_pwm_log.t[end],vel_est.t[end],imu_meas.t[end])
+
+    t = t0+0.1:.02:t_end-0.1
+    v = zeros(length(t))
+    #v2 = copy(v)
+    psiDot = zeros(length(t))
+    cmd = zeros(length(t))
+    for i=1:length(t)
+        #v[i] = vel_est.z[t[i].>vel_est.t,1][end]
+        v[i] = pos_info.z[t[i].>pos_info.t,15][end]
+        psiDot[i] = imu_meas.z[t[i].>imu_meas.t,3][end]
+        cmd[i] = cmd_pwm_log.z[t[i].>cmd_pwm_log.t,2][end]
+    end
+    v_x = real(sqrt(complex(v.^2-psiDot.^2*L_b^2)))
+    v_y = L_b*psiDot
+
+    idx = v_x.>1.1
+    psiDot = psiDot[idx]
+    v_x = v_x[idx]
+    cmd = cmd[idx]
+    delta = atan2(psiDot*0.25,v_x)
+
+    c = [cmd ones(size(cmd,1))]\delta
+
+    x = [60;120]
+    y = [x ones(2)]*c
+
+    plot(cmd,delta,"*",x,y)
+    grid("on")
+    legend(["Measurements","Linear approximation"])
+    xlabel("u_PWM")
+    ylabel("delta_F")
+
+    figure(1)
+    ax2=subplot(211)
+    plot(t-t0,delta,cmd_log.t-t0,cmd_log.z[:,2])
+    grid("on")
+    xlabel("t [s]")
+    legend(["delta_true","delta_input"])
+    subplot(212,sharex=ax2)
+    plot(cmd_pwm_log.t-t0,cmd_pwm_log.z[:,2])
+    grid("on")
+
+    figure(2)
+    ax1=subplot(211)
+    plot(cmd_pwm_log.t-t0,floor(cmd_pwm_log.z[:,2]))
+    grid("on")
+    subplot(212,sharex=ax1)
+    plot(vel_est.t-t0,vel_est.z,vel_est.t-t0,mean(vel_est.z[:,2:3],2,),"--")
+    grid("on")
+    legend(["v","v_fl","v_fr","v_bl","v_br","v_mean"])
+end
+
+function showV_V_F_relation()
+    L_F = 0.125
+    L_R = 0.125
+    delta = -0.3:.01:0.3
+    v_F = 1.0
+    v = L_R/L_F*cos(delta).*sqrt(1+L_F^2/(L_F+L_R)^2*tan(delta).^2)
+    v2 = L_R/L_F*sqrt(1+L_F^2/(L_F+L_R)^2*tan(delta).^2)
+    plot(delta,v,delta,v2)
+    grid("on")
+    xlabel("delta")
+    ylabel("v/v_F")
+end
