@@ -1,0 +1,3 @@
+[submodule "workspace/src/barc/src/barc_lib"]
+	path = workspace/src/barc/src/barc_lib
+	url = https://github.com/maxb91/barc_lib
