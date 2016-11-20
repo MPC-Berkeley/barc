@@ -19,7 +19,7 @@ from barc.msg import ECU, Z_KinBkMdl
 from simulator.msg import Z_DynBkMdl
 from numpy import sin, cos, tan, arctan, array, dot, pi
 from numpy import sign, argmin, sqrt, zeros
-from system_models import f_6s, f_KinBkMdl
+from system_models_simulator import KinBkMdl, KinBkMdl
 
 # input variables
 d_f         = 0
@@ -92,14 +92,14 @@ def vehicle_simulator():
         # publish state estimate
         bta         = arctan( L_a / (L_a + L_b) * tan(d_f) )
 
-        if v_x > 1:
+        if abs(v_x) > 0.05:
             z = (x, y, psi, v_x, v_y, r)
             u = (d_f, FxR)
-            (x, y, psi, v_x, v_y, r) = f_6s(z, u, vhMdl, trMdl, F_ext, dt)
+            (x, y, psi, v_x, v_y, r) = DynBkMdl(z, u, vhMdl, trMdl, F_ext, dt)
         else:
             z = (x, y, psi, v_x)
             u = (d_f, FxR)
-            (x, y, psi, v_x) = f_KinBkMdl(z,u, (L_a, L_b), F_ext, dt)
+            (x, y, psi, v_x) = KinBkMdl(z,u, (L_a, L_b), F_ext, dt)
             v_y     = 0
             r = 0
         
