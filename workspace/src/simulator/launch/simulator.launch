@@ -15,6 +15,9 @@
     <param name="tire_model/mu" type="double" value="0.234" />
 
 
-    <!-- LOW LEVEL CONTROLLER -->
+    <!-- SIMULATOR -->
     <node pkg="simulator" type="vehicle_simulator.py" name="simulator" />
+
+    <!-- CONTROLLER -->
+    <node pkg="simulator" type="controller.py" name="controller" />
 </launch>

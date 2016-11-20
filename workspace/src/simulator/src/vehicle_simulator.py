@@ -15,11 +15,11 @@
 
 import rospy
 import time
-from barc.msg import ECU, Z_KinBkMdl
-from simulator.msg import Z_DynBkMdl
+from barc.msg import ECU
+from simulator.msg import Z_DynBkMdl, Z_DynBkMdlErrorFrame 
 from numpy import sin, cos, tan, arctan, array, dot, pi
 from numpy import sign, argmin, sqrt, zeros
-from system_models_simulator import KinBkMdl, KinBkMdl
+from system_models_simulator import f_KinBkMdl, f_DynBkMdl, f_KinBkMdlErrorFrame, f_DynBkMdlErrorFrame
 
 # input variables
 d_f         = 0
@@ -54,6 +54,7 @@ def vehicle_simulator():
     # topic subscriptions / publications
     rospy.Subscriber('ecu', ECU, ecu_callback)
     state_pub   = rospy.Publisher('state_vehicle_simulator', Z_DynBkMdl, queue_size = 10)
+    state_error_frame_pub   = rospy.Publisher('state_vehicle_error_frame_simulator', Z_DynBkMdlErrorFrame, queue_size = 10)
 
         # get vehicle dimension parameters
     L_a = rospy.get_param("L_a")       # distance from CoG to front axel
@@ -87,24 +88,36 @@ def vehicle_simulator():
     v_y = 0
     r   = 0
 
+    s    = 0
+    ey   = 0
+    epsi = 0
     while not rospy.is_shutdown():
 
         # publish state estimate
         bta         = arctan( L_a / (L_a + L_b) * tan(d_f) )
 
         if abs(v_x) > 0.05:
-            z = (x, y, psi, v_x, v_y, r)
+            z  = (x,  y,  psi, v_x, v_y, r)
+            ze = (s, ey, epsi, v_x, v_y, r)
             u = (d_f, FxR)
-            (x, y, psi, v_x, v_y, r) = DynBkMdl(z, u, vhMdl, trMdl, F_ext, dt)
+
+            (x, y,   psi, v_x, v_y, r) = f_DynBkMdl(z, u, vhMdl, trMdl, F_ext, dt)
+            (s, ey, epsi, v_x, v_y, r) = f_DynBkMdlErrorFrame(ze, u, vhMdl, trMdl, F_ext, dt)
+
         else:
-            z = (x, y, psi, v_x)
+            z  = (x, y,   psi, v_x)
+            ze = (s, ey, epsi, v_x)
             u = (d_f, FxR)
-            (x, y, psi, v_x) = KinBkMdl(z,u, (L_a, L_b), F_ext, dt)
+
+            (x, y,   psi, v_x) = f_KinBkMdl(z,u, (L_a, L_b), F_ext, dt)
+            (s, ey, epsi, v_x) = f_KinBkMdlErrorFrame(ze,u, (L_a, L_b), F_ext, dt)
             v_y     = 0
             r = 0
         
         # publish information
         state_pub.publish( Z_DynBkMdl(x, y, psi, v_x, v_y, r) )
+
+        state_error_frame_pub.publish( Z_DynBkMdlErrorFrame(s, ey, epsi, v_x, v_y, r) )
         
         # wait
         rate.sleep()
