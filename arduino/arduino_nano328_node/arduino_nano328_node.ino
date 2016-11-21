@@ -173,7 +173,7 @@ ros::NodeHandle nh;
 ros::Publisher pub_encoder("encoder", &encoder);
 ros::Publisher pub_rc_inputs("rc_inputs", &rc_inputs);
 ros::Publisher pub_ultrasound("ultrasound", &ultrasound);
-ros::Subscriber<barc::ECU> sub_ecu("ecu", ecuCallback);
+ros::Subscriber<barc::ECU> sub_ecu("ecu_pwm", ecuCallback);
 
 
 // Set up ultrasound sensors
@@ -228,8 +228,8 @@ void loop() {
     encoder.BR = car.getEncoderBR();
     pub_encoder.publish(&encoder);
 
-    rc_inputs.motor_pwm = car.getRCThrottle();
-    rc_inputs.servo_pwm = car.getRCSteering();
+    rc_inputs.motor = car.getRCThrottle();
+    rc_inputs.servo = car.getRCSteering();
     pub_rc_inputs.publish(&rc_inputs);
 
     // publish ultra-sound measurement
@@ -304,8 +304,8 @@ void Car::armActuators() {
 }
 
 void Car::writeToActuators(const barc::ECU& ecu) {
-  float motorCMD = saturateMotor(ecu.motor_pwm);
-  float servoCMD = saturateServo(ecu.servo_pwm);
+  float motorCMD = saturateMotor(ecu.motor);
+  float servoCMD = saturateServo(ecu.servo);
   motor.write(motorCMD);
   steering.write(servoCMD);
 }

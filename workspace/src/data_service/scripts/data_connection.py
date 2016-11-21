@@ -1,15 +1,15 @@
 #!/usr/bin/env python
 
 # ---------------------------------------------------------------------------
-# Licensing Information: You are free to use or extend these projects for 
+# Licensing Information: You are free to use or extend these projects for
 # education or reserach purposes provided that (1) you retain this notice
-# and (2) you provide clear attribution to UC Berkeley, including a link 
+# and (2) you provide clear attribution to UC Berkeley, including a link
 # to http://barc-project.com
 #
 # Attibution Information: The barc project ROS code-base was developed
 # at UC Berkeley in the Model Predictive Control (MPC) lab by Jon Gonzales
 # (jon.gonzales@berkeley.edu). The cloud services integation with ROS was developed
-# by Kiet Lam  (kiet.lam@berkeley.edu). The web-server app Dator was 
+# by Kiet Lam  (kiet.lam@berkeley.edu). The web-server app Dator was
 # based on an open source project by Bruce Wootton
 # ---------------------------------------------------------------------------
 
@@ -230,14 +230,13 @@ class DataConnection(object):
                   'experiment_id': experiment['id']}
 
         response = self.client.get(url, params=params, headers=self.sec_header())
-        # print response.content
         if len(json.loads(response.content)['objects']) == 0:
             self.client.post(url, data=json.dumps(params), headers=self.post_header())
             response = self.client.get(url, params=params, headers=self.sec_header())
 
         return json.loads(response.content)['objects'][0]
 
-    def get_or_create_setting(self, key):
+    def get_or_create_setting(self, key, experiment):
         """
         Get or create a setting object for this local computer
         :param setting: Setting key
@@ -245,7 +244,9 @@ class DataConnection(object):
         """
         config =self.configurator.get_config()
         url = self._api_url('setting')
-        params = {'key': key, 'local_computer_id': config['id']}
+        params = {'key': key, 'local_computer_id': config['id'],
+                  'experiment_id': experiment['id']}
+
         response = self.client.get(url, params=params, headers=self.sec_header())
         if len(json.loads(response.content)['objects']) == 0:
             self.client.post(url, data=json.dumps(params), headers=self.post_header())
@@ -253,16 +254,19 @@ class DataConnection(object):
 
         return json.loads(response.content)['objects'][0]
 
-    def write_setting(self, key, value):
+    def write_setting(self, value, setting_id):
         config =self.configurator.get_config()
-        url = self._api_url('setting')
-        params = {'key': key, 'local_computer_id': config['id']}
-        response = self.client.get(url, params=params, headers=self.sec_header())
+        url = self._data_item_url('setting', setting_id)
 
-        setting = json.loads(response.content)['objects'][0]
-        url = self._item_url("setting", setting['id'])
+        params = dict()
         params['value'] = value
-        self.client.put(url, data=json.dumps(params), headers=self.post_header())
+
+        response = self.client.post(url, data=json.dumps(params), headers=self.post_header())
+        if not DataConnection.check_response_ok(response):
+            print "Error posting setting data {}".format(response.content)
+            print "Raising Exception!"
+            raise Exception("Error posting setting data {}".format(response.content))
+
 
     def get_or_create_blob(self, blob_name):
         """

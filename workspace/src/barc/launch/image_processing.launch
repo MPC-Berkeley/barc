@@ -1,0 +1,30 @@
+<launch>
+  <!-- CAMERA NODE -->
+  <node pkg = "uvc_camera" type="uvc_camera_node" name = "serhad_barc_cam" output ="screen">
+    <param name= "pixel_format" value = "MJPG"/>
+    <param name= "width" value = "320"/>
+    <param name= "height" value = "240"/>
+    <param name= "sharpness" value = "255"/>
+    <param name= "saturation" value = "255"/>
+    <param name= "fps" value = "10"/>
+    <param name= "contrast" value = "5"/>
+  </node>
+
+  <node pkg = "barc" type = "image_Processing_Serhad.py" name = "image_processing" output = "screen">
+    <param name= "display_image" value = "True" type = "boolean"/>
+    <param name= "publish_image" value = "False" type = "boolean"/>
+    <param name= "calibrate_transform" value = "False" type = "boolean" />
+    <param name= "black_lane" value = "False" type = "boolean" />
+    <param name= "upperLeftX" value = "155" type = "int" />
+    <param name= "upperLeftY" value = "62" type = "int" />
+    <param name= "upperRightX" value = "158" type = "int" />
+    <param name= "upperRightY" value = "165" type = "int" />
+    <param name= "lowerRightX" value = "85" type = "int" />
+    <param name= "lowerRightY" value = "206" type = "int" />
+    <param name= "lowerLeftX" value = "78" type = "int" />
+    <param name= "lowerLeftY" value = "23" type = "int" />
+  </node>
+</launch>
+
+    
+  

@@ -1,0 +1,26 @@
+#!/bin/bash
+
+
+
+##Main
+
+master=$(hostname)
+
+for i in "$@"; do
+    if [ i="-h" ]; then
+        echo "
+        Usage:
+            Type the car numbers that would be platooning with the master as arguments.
+
+            -h: prints this text, which explains the usage
+
+            -f: reads the platooning cars from the file that follows this flag
+
+            -i: specifying the cars is done interactively
+"
+    else
+        slave=odroid_$i.local
+        ssh $slave
+        ROS_MASTER_URI=http://master:11311
+        ROS_IP=$slave
+

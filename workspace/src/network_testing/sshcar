@@ -1,0 +1,15 @@
+#!/bin/bash -x
+
+case "$1" in
+    "-h" )
+    echo "
+    Usage: sshcar [MASTERCAR] [SLAVECAR]
+    "
+    ;;
+    * )
+
+    ssh -t odroid_${1}.local "export ROS_MASTER_URI=http://$(hostname).local:11311; export ROS_IP=odroid_${1}.local; bash"
+    ;;
+esac
+
+

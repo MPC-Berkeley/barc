@@ -26,6 +26,8 @@ class PID:
         self.int_e_max      = Integrator_max
         self.int_e_min      = Integrator_min
 
+        self.current_value  = 0
+
     def update(self,current_value, dt):
         self.current_value = current_value
 

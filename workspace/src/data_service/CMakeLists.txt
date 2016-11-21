@@ -60,6 +60,7 @@ add_service_files(
   DataRetrieve.srv
   RegisterExperiment.srv
   RegisterSetting.srv
+  RegisterVideo.srv
 )
 
 ## Generate actions in the 'action' folder

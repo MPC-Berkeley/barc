@@ -1,6 +1,6 @@
 # Troubleshooting blinking red LED on ESC
 
-Thanks to Vince Viola for writting this troubleshooting guide
+Thanks to Vince Viola for writing this troubleshooting guide
 
 #### Calibrating ESC
 If the ESC blinks red and fails to respond to any command, do the following:
@@ -12,7 +12,7 @@ If the ESC blinks red and fails to respond to any command, do the following:
 2. Calibrate ESC:
    1. Unplug servo and ESC cable from Arduino, and plug them into the 2.4 GHz receiver. Servo connects to channel 1 (CH1) and ESC connects to channel 2 (CH2). Black wire faces toward car center, white faces torward outside.
    2. Turn off ESC
-   3. Set remote control to the following settings below (other configurations may work).
+   3. Set remote control to the following settings below (other configurations may work), and then turn it on
       * Set ST (steering)  to NOR (normal). In normal mode, turning the steering input frontward turns the steering wheel to the right
       * Set TH (throttle)  to NOR (normal)
       * Set TH.D/R (sensitivity) set to 10

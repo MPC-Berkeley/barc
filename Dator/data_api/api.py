@@ -136,7 +136,8 @@ class SettingResource(ModelResource):
             'local_computer_id': ALL_WITH_RELATIONS,
             'system_id': ALL_WITH_RELATIONS,
             'key': ALL_WITH_RELATIONS,
-            'experiment_id': ALL_WITH_RELATIONS
+            'experiment_id': ALL_WITH_RELATIONS,
+            'value': ALL_WITH_RELATIONS
         }
 
         serializer = PrettyJSONSerializer()
