@@ -306,7 +306,7 @@ void Car::armActuators() {
 void Car::writeToActuators(const barc::ECU& ecu) {
   float motorCMD = saturateMotor(ecu.motor);
   float servoCMD = saturateServo(ecu.servo);
-  motor.write(motorCMD);
+  motor.writeMicroseconds( (uint16_t) (1500.0 + (motorCMD-90.0)*1000.0/180.0) );
   steering.write(servoCMD);
 }
 
