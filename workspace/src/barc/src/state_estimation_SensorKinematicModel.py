@@ -33,29 +33,29 @@ class StateEst(object):
     """This class contains all variables that are read from the sensors and then passed to
     the Kalman filter."""
     # input variables
-    cmd_servo = 0
-    cmd_motor = 0
-    cmd_t     = 0
+    cmd_servo = 0.0
+    cmd_motor = 0.0
+    cmd_t = 0.0
 
     # IMU
-    yaw_prev = 0
-    yaw0 = 0            # yaw at t = 0
-    yaw_meas = 0
-    psiDot_meas = 0
-    a_x_meas = 0
-    a_y_meas = 0
+    yaw_prev = 0.0
+    yaw0 = 0.0            # yaw at t = 0
+    yaw_meas = 0.0
+    psiDot_meas = 0.0
+    a_x_meas = 0.0
+    a_y_meas = 0.0
     imu_updated = False
-    att = (0,0,0)               # attitude
+    att = (0.0,0.0,0.0)               # attitude
 
     # Velocity
-    vel_meas = 0
+    vel_meas = 0.0
     vel_updated = False
-    vel_prev = 0
-    vel_count = 0               # this counts how often the same vel measurement has been received
+    vel_prev = 0.0
+    vel_count = 0.0               # this counts how often the same vel measurement has been received
 
     # GPS
-    x_meas = 0
-    y_meas = 0
+    x_meas = 0.0
+    y_meas = 0.0
     gps_updated = False
     x_hist = zeros(15)
     y_hist = zeros(15)
@@ -63,8 +63,12 @@ class StateEst(object):
     c_X = array([0,0,0])
     c_Y = array([0,0,0])
 
+    # Estimator data
+    x_est = 0.0
+    y_est = 0.0
+
     # General variables
-    t0 = 0                  # Time when the estimator was started
+    t0 = 0.0                # Time when the estimator was started
     running = False         # bool if the car is driving
 
     def __init__(self):
@@ -83,16 +87,18 @@ class StateEst(object):
         # units: [rad] and [rad/s]
         t_now = rospy.get_rostime().to_sec()-self.t0
         t_msg = data.header.stamp.to_sec()-self.t0
-        #if abs(t_now - t_msg) > 0.1:
+        # if abs(t_now - t_msg) > 0.1:
         #    print "GPS: Bad synchronization - dt = %f"%(t_now-t_msg)
         self.x_meas = data.x_m
         self.y_meas = data.y_m
-        self.x_hist = append(self.x_hist, data.x_m)
-        self.y_hist = append(self.y_hist, data.y_m)
-        self.t_gps = append(self.t_gps, t_now)
-        #self.x_hist = delete(self.x_hist,0)
-        #self.y_hist = delete(self.y_hist,0)
-        #self.t_gps  = delete(self.t_gps,0)
+        dist = (self.x_est-data.x_m)**2 + (self.y_est-data.y_m)**2
+        if dist < 1.0:
+            self.x_hist = append(self.x_hist, data.x_m)
+            self.y_hist = append(self.y_hist, data.y_m)
+            self.t_gps = append(self.t_gps, t_msg)
+        # self.x_hist = delete(self.x_hist,0)
+        # self.y_hist = delete(self.y_hist,0)
+        # self.t_gps  = delete(self.t_gps,0)
         self.x_hist = self.x_hist[self.t_gps > t_now-1.0]
         self.y_hist = self.y_hist[self.t_gps > t_now-1.0]
         self.t_gps = self.t_gps[self.t_gps > t_now-1.0]
@@ -133,12 +139,10 @@ class StateEst(object):
 
         self.psiDot_meas = w_z
         # The next two lines 'project' the measured linear accelerations to a horizontal plane
-        #self.a_x_meas = cos(-pitch_raw)*a_x + sin(-pitch_raw)*sin(-roll_raw)*a_y - sin(-pitch_raw)*cos(-roll_raw)*a_z
-        #self.a_y_meas = cos(-roll_raw)*a_y + sin(-roll_raw)*a_z
-        #print "Pitch: %f"%(pitch_raw)
-        # print "Roll: %f"%(roll_raw)
-        self.a_x_meas = a_x
-        self.a_y_meas = a_y
+        self.a_x_meas = cos(-pitch_raw)*a_x + sin(-pitch_raw)*sin(-roll_raw)*a_y - sin(-pitch_raw)*cos(-roll_raw)*a_z
+        self.a_y_meas = cos(-roll_raw)*a_y + sin(-roll_raw)*a_z
+        #self.a_x_meas = a_x
+        #self.a_y_meas = a_y
         self.att = (roll_raw,pitch_raw,yaw_raw)
         self.imu_updated = True
 
@@ -165,7 +169,7 @@ def state_estimation():
     rospy.Subscriber('imu/data', Imu, se.imu_callback)
     rospy.Subscriber('vel_est', Vel_est, se.vel_est_callback)
     rospy.Subscriber('ecu', ECU, se.ecu_callback)
-    rospy.Subscriber('hedge_pos', hedge_pos, se.gps_callback)
+    rospy.Subscriber('hedge_pos', hedge_pos, se.gps_callback, queue_size=1)
     state_pub_pos = rospy.Publisher('pos_info', pos_info, queue_size=1)
 
     # get vehicle dimension parameters
@@ -185,10 +189,8 @@ def state_estimation():
     qa = 10
     qp = 50
     #         x, y, vx, vy, ax, ay, psi, psidot, psidrift, x, y, psi, v
-    Q = diag([0.1,0.1,0.1,0.1,1.0,1.0,0.1,1.0,0.01, 0.01,0.01,1.0,1.0,0.1])
     Q = diag([1/20*dt**5*qa,1/20*dt**5*qa,1/3*dt**3*qa,1/3*dt**3*qa,dt*qa,dt*qa,1/3*dt**3*qp,dt*qp,0.01, 0.01,0.01,1.0,1.0,0.1])
-    R = diag([0.5,0.5,0.5,0.1,10.0,10.0,10.0,     0.5,0.5,0.1,0.5])
-    R = diag([0.5,0.5,0.5,0.1,10.0,1.0,1.0,     0.5,0.5,0.1,0.5])
+    R = diag([0.5,0.5,0.5,0.1,10.0,1.0,1.0,     0.5,0.5,0.1,0.5, 10.0, 10.0])
     #         x,y,v,psi,psiDot,a_x,a_y, x, y, psi, v
 
     # Set up track parameters
@@ -208,10 +210,12 @@ def state_estimation():
     v_est = 0
     psi_est = 0
 
+    est_counter = 0
+
     while not rospy.is_shutdown():
         t_now = rospy.get_rostime().to_sec()-se.t0
         # make R values dependent on current measurement (robust against outliers)
-        sq_gps_dist = (se.x_meas-x_est)**2 + (se.y_meas-y_est)**2
+        # sq_gps_dist = (se.x_meas-x_est)**2 + (se.y_meas-y_est)**2
         # if se.gps_updated and sq_gps_dist < 0.8:      # if there's a new gps value:
         #     R[0,0] = 1.0
         #     R[1,1] = 1.0
@@ -228,26 +232,28 @@ def state_estimation():
         #     R[3,3] = 10.0
         #     R[4,4] = 50.0
         if se.vel_updated:
-            R[2,2] = 0.1
-            R[10,10] = 0.1
+            R[2, 2] = 0.1
+            R[10, 10] = 0.1
         else:
-            R[2,2] = 1.0
-            R[10,10] = 0.1
-        se.x_meas = polyval(se.c_X,t_now)
-        se.y_meas = polyval(se.c_Y,t_now)
+            R[2, 2] = 1.0
+            R[10, 10] = 1.0
+        se.x_meas = polyval(se.c_X, t_now)
+        se.y_meas = polyval(se.c_Y, t_now)
         se.gps_updated = False
         se.imu_updated = False
         se.vel_updated = False
-        # get measurement
-        y = array([se.x_meas, se.y_meas, se.vel_meas, se.yaw_meas, se.psiDot_meas, se.a_x_meas, se.a_y_meas,
-                    se.x_meas, se.y_meas, se.yaw_meas, se.vel_meas])
 
         # define input
         d_f_hist.append(se.cmd_servo)           # this is for a 0.2 seconds delay of steering
-        #d_f_lp = d_f_lp + 0.2*(se.cmd_servo-d_f_lp) # low pass filter on steering
-        a_lp   = a_lp + 0.5*(se.cmd_motor-a_lp)
-        u = [a_lp, d_f_hist.pop(0)]
-        #u = [a_lp, d_f_lp]
+        d_f_lp = d_f_lp + 0.5*(se.cmd_servo-d_f_lp) # low pass filter on steering
+        a_lp = a_lp + 0.5*(se.cmd_motor-a_lp)       # low pass filter on acceleration
+        # u = [a_lp, d_f_hist.pop(0)]
+        u = [a_lp, d_f_lp]
+
+        bta = 0.5 * d_f_lp
+        # get measurement
+        y = array([se.x_meas, se.y_meas, se.vel_meas, se.yaw_meas, se.psiDot_meas, se.a_x_meas, se.a_y_meas,
+                    se.x_meas, se.y_meas, se.yaw_meas, se.vel_meas, cos(bta)*se.vel_meas, sin(bta)*se.vel_meas])
 
         # build extra arguments for non-linear function
         args = (u, vhMdl, dt, 0)
@@ -258,9 +264,15 @@ def state_estimation():
         (x_est, y_est, v_x_est, v_y_est, a_x_est, a_y_est, psi_est, psi_dot_est, psi_drift_est,
             x_est_2, y_est_2, psi_est_2, v_est_2, psi_drift_est_2) = z_EKF           # note, r = EKF estimate yaw rate
 
+        se.x_est = x_est_2
+        se.y_est = y_est_2
+
         # Update track position
         l.set_pos(x_est_2, y_est_2, psi_est_2, v_x_est, v_y_est, psi_dot_est)
-        l.find_s()
+
+        # Calculate new s, ey, epsi (only 12.5 Hz, enough for controller that runs at 10 Hz)
+        if est_counter%4 == 0:
+            l.find_s()
         #l.s = 0
         #l.epsi = 0
         #l.s_start = 0
@@ -273,6 +285,7 @@ def state_estimation():
                                        (0,), l.coeffCurvature.tolist()))
 
         # wait
+        est_counter += 1
         rate.sleep()
 
 if __name__ == '__main__':

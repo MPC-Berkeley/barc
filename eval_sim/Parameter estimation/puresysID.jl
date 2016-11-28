@@ -8,7 +8,7 @@ function main(code::AbstractString,n::Int64)
     #d_rec       = load(log_path_record)
     d_lmpc      = load(log_path_LMPC)
 
-    delay_df    = 0
+    delay_df    = 5
 
     #n = 2
 
@@ -63,20 +63,20 @@ function main(code::AbstractString,n::Int64)
     
     figure(1)
     plot(A_psi*c_psi)
-    plot(y_psi)
-    plot(A_psi,"--")
+    plot(y_psi,"--")
+    #plot(A_psi,"--")
     title("Psi")
 
     figure(2)
     plot(A_vy*c_vy)
-    plot(y_vy)
-    plot(A_vy,"--")
+    plot(y_vy,"--")
+    #plot(A_vy,"--")
     title("Vy")
 
     figure(3)
     plot(A_vx*c_vx)
-    plot(y_vx)
-    plot(A_vx,"--")
+    plot(y_vx,"--")
+    #plot(A_vx,"--")
     title("Vx")
 
     nothing

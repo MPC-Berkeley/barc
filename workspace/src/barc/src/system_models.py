@@ -117,7 +117,7 @@ def f_SensorKinematicModel(z, u, vhMdl, dt, est_mode):
 
 def h_SensorKinematicModel(x, u, vhMdl, dt, est_mode):
     """ This is the measurement model to the kinematic<->sensor model above """
-    y = [0]*11
+    y = [0]*13
     y[0] = x[0]                     # x
     y[1] = x[1]                     # y
     y[2] = sqrt(x[2]**2+x[3]**2)    # v
@@ -129,6 +129,8 @@ def h_SensorKinematicModel(x, u, vhMdl, dt, est_mode):
     y[8] = x[10]                    # y
     y[9] = x[11]+x[13]              # psi
     y[10] = x[12]                   # v
+    y[11] = x[2]                    # v_x
+    y[12] = x[3]                    # v_y
     return array(y)
 
 def f_KinBkMdl_2(z, u, vhMdl, dt, est_mode):

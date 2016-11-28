@@ -47,7 +47,7 @@ function SE_callback(msg::pos_info,lapStatus::LapStatus,posInfo::PosInfo,mpcSol:
     oldTraj.count[lapStatus.currentLap] += 1
 
     # if necessary: append to end of previous lap
-    if lapStatus.currentLap > 1 && z_est[6] < 7.0
+    if lapStatus.currentLap > 1 && z_est[6] < 8.0
         oldTraj.oldTraj[oldTraj.count[lapStatus.currentLap-1],:,lapStatus.currentLap-1] = z_est
         oldTraj.oldTraj[oldTraj.count[lapStatus.currentLap-1],6,lapStatus.currentLap-1] += posInfo.s_target
         #oldTraj.oldInput[oldTraj.count[lapStatus.currentLap-1],:,lapStatus.currentLap-1] = [msg.u_a,msg.u_df]
@@ -57,7 +57,7 @@ function SE_callback(msg::pos_info,lapStatus::LapStatus,posInfo::PosInfo,mpcSol:
     end
 
     #if necessary: append to beginning of next lap
-    if z_est[6] > posInfo.s_target - 7.0
+    if z_est[6] > posInfo.s_target - 8.0
         oldTraj.oldTraj[oldTraj.count[lapStatus.currentLap+1],:,lapStatus.currentLap+1] = z_est
         oldTraj.oldTraj[oldTraj.count[lapStatus.currentLap+1],6,lapStatus.currentLap+1] -= posInfo.s_target
         #oldTraj.oldInput[oldTraj.count[lapStatus.currentLap+1],:,lapStatus.currentLap+1] = [msg.u_a,msg.u_df]
@@ -139,7 +139,7 @@ function main()
     # Specific initializations:
     lapStatus.currentLap    = 1
     lapStatus.currentIt     = 1
-    posInfo.s_target        = 12.0#17.76# 12.0#24.0
+    posInfo.s_target        = 12.0#17.76#24.0
     k                       = 0                       # overall counter for logging
     
     mpcSol.z = zeros(11,4)
@@ -147,8 +147,10 @@ function main()
     mpcSol.a_x = 0
     mpcSol.d_f = 0
 
-    mpcCoeff.c_Psi = [-0.26682109207165566,-0.013445078992161885,1.2389672517023724]
-    mpcCoeff.c_Vy  = [-0.006633028965076818,-0.02997779668710061,0.005781203137095575,0.10642934131787765]
+    #mpcCoeff.c_Psi = [-0.26682109207165566,-0.013445078992161885,1.2389672517023724]
+    mpcCoeff.c_Psi = [-0.3747957571478858,-0.005013036784512181,5.068342163488241]
+    #mpcCoeff.c_Vy  = [-0.006633028965076818,-0.02997779668710061,0.005781203137095575,0.10642934131787765]
+    mpcCoeff.c_Vy  = [0.002968102163011754,-0.09886540158694888,0.012234790760745129,1.099308717654053]
     
     # Precompile coeffConstraintCost:
     oldTraj.oldTraj[1:buffersize,6,1] = linspace(0,posInfo.s_target,buffersize)
@@ -165,7 +167,7 @@ function main()
 
     uPrev = zeros(10,2)     # saves the last 10 inputs (1 being the most recent one)
 
-    n_pf = 2                # number of first path-following laps (needs to be at least 2)
+    n_pf = 2               # number of first path-following laps (needs to be at least 2)
 
     opt_count = 0
 
@@ -176,10 +178,10 @@ function main()
             # This is done at the beginning of the lap because this makes sure that the command is published 0.1s after the state has been received
             # This guarantees a constant publishing frequency of 10 Hz
             # (The state can be predicted by 0.1s)
-            # cmd.header.stamp = get_rostime()
+            cmd.header.stamp = get_rostime()
             # cmd.motor = convert(Float32,mpcSol.a_x)
             # cmd.servo = convert(Float32,mpcSol.d_f)
-            # publish(pub, cmd)
+            publish(pub, cmd)
             # ============================= Initialize iteration parameters =============================
             i                           = lapStatus.currentIt           # current iteration number, just to make notation shorter
             zCurr[i,:]                  = copy(z_est)                   # update state information
@@ -253,10 +255,10 @@ function main()
                 end
             #end
 
-            cmd.header.stamp = get_rostime()
+            #cmd.header.stamp = get_rostime()
             cmd.motor = convert(Float32,mpcSol.a_x)
             cmd.servo = convert(Float32,mpcSol.d_f)
-            publish(pub, cmd)
+            #publish(pub, cmd)
 
             # Write current input information
             uCurr[i,:] = [mpcSol.a_x mpcSol.d_f]

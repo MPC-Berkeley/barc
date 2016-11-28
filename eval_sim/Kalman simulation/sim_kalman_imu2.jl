@@ -29,7 +29,7 @@ function main(code::AbstractString)
     y = zeros(sz,6)
     u = zeros(sz,2)
 
-    y_gps_imu = zeros(sz,11)
+    y_gps_imu = zeros(sz,13)
     q = zeros(sz,2)
 
     P = zeros(7,7)
@@ -37,28 +37,34 @@ function main(code::AbstractString)
     P_gps_imu = zeros(14,14)
     x_est_gps_imu = zeros(length(t),14)
 
-    yaw0 = imu_meas.z[t0.>imu_meas.t,6][end]#imu_meas.z[1,6]
+    yaw0 = imu_meas.z[t0.>imu_meas.t,6][end]
     gps_dist = zeros(length(t))
 
     yaw_prev = yaw0
     y_gps_imu[1,4] = 0
 
+    qa = 10
+    qp = 50
+
     #Q_gps_imu = diagm([1/6*dt^3,1/6*dt^3,1/2*dt^2,1/2*dt^2,dt,dt,dt,dt,0.001,0.001,0.001])
     #                   x, y, vx, vy, ax, ay, psi, psidot, psidrift
     #Q_gps_imu = diagm([0.01,0.01,0.1,0.1,1.0,1.0,0.1,1.0,0.01])
     #R_gps_imu = diagm([0.1,0.1,1.0,0.1,1.0,100.0,100.0])
-    Q_gps_imu = diagm([0.1,0.1,0.1,0.1,1.0,1.0,0.1,1.0,0.01,   0.01,0.01,1.0,1.0,0.1])
-    R_gps_imu = diagm([1.0,1.0,1.0,0.1,10.0,100.0,100.0,       1.0,1.0,0.1,0.5])
+    #Q_gps_imu = diagm([0.1,0.1,0.1,0.1,1.0,1.0,0.1,1.0,0.01,   0.01,0.01,1.0,1.0,0.1])
+    Q_gps_imu = diagm([1/20*dt^5*qa,1/20*dt^5*qa,1/3*dt^3*qa,1/3*dt^3*qa,dt*qa,dt*qa,1/3*dt^3*qp,dt*qp,0.01, 0.01,0.01,1.0,1.0,0.1])
+    #R_gps_imu = diagm([1.0,1.0,1.0,0.1,10.0,100.0,100.0,       1.0,1.0,0.1,0.5])
+    R_gps_imu = diagm([0.5,0.5,1.0,0.1,10.0,10.0,10.0,     0.5,0.5,0.1,0.5, 10.0,10.0])
     #                   x, y, v, psi, psidot, ax, ay
 
     for i=2:length(t)
         # Collect measurements and inputs for this iteration
         # Interpolate GPS-measurements:
-        x_p = gps_meas.z[(t[i].>gps_meas.t) & (t[i]-1.<gps_meas.t),1][:]
-        y_p = gps_meas.z[(t[i].>gps_meas.t) & (t[i]-1.<gps_meas.t),2][:]
-        t_p = gps_meas.t[(t[i].>gps_meas.t) & (t[i]-1.<gps_meas.t)][:]-t0
+        x_p = gps_meas.z[(t[i].>gps_meas.t_msg) & (t[i]-1.<gps_meas.t_msg),1][:]
+        y_p = gps_meas.z[(t[i].>gps_meas.t_msg) & (t[i]-1.<gps_meas.t_msg),2][:]
+        t_p = gps_meas.t[(t[i].>gps_meas.t_msg) & (t[i]-1.<gps_meas.t_msg)][:]-t0
         sl = size(x_p,1)
-        #println(sl)
+
+        # Create polynom for gps data
         if sl > 1
             c_x = [t_p.^2 t_p ones(sl,1)]\x_p
             c_y = [t_p.^2 t_p ones(sl,1)]\y_p
@@ -69,7 +75,6 @@ function main(code::AbstractString)
             y_int = 0
         end
 
-        #println("c_x = $c_x, t = $(t[i]-t0), x_int = $x_int")
         y_gps = gps_meas.z[t[i].>gps_meas.t,:][end,:]
         y_gps = [x_int y_int]
         #y_yaw = imu_meas.z[t[i].>imu_meas.t,6][end]-yaw0
@@ -81,8 +86,8 @@ function main(code::AbstractString)
         rot = imu_meas.z[t[i].>imu_meas.t,1:3][end,:]
         acc_f = rotMatrix('y',-att[2])*rotMatrix('x',-att[1])*acc'
         #rot_f = rotMatrix('y',-att[2])*rotMatrix('x',-att[1])*rot'
-        #a_x = imu_meas.z[t[i].>imu_meas.t,7][end]
-        #a_y = imu_meas.z[t[i].>imu_meas.t,8][end]
+        a_x = imu_meas.z[t[i].>imu_meas.t,7][end]
+        a_y = imu_meas.z[t[i].>imu_meas.t,8][end]
         a_x = acc_f[1]
         a_y = acc_f[2]
         #y_yawdot = rot_f[3]
@@ -90,29 +95,24 @@ function main(code::AbstractString)
         #y_vel_est = vel_est.z[t[i].>vel_est.t,1][end]
         y_vel_est = pos_info.z[t[i].>pos_info.t,15][end]
 
-        y_gps_imu[i,:]  = [y_gps y_vel_est y_yaw y_yawdot a_x a_y y_gps y_yaw y_vel_est]
+        u[i,1] = cmd_log.z[t[i].>cmd_log.t,1][end]
+        u[i,2] = cmd_log.z[t[i]-0.1.>cmd_log.t,2][end]
+
+        bta = atan(0.5*tan(u[i,2]))
+        y_gps_imu[i,:]  = [y_gps y_vel_est y_yaw y_yawdot a_x a_y y_gps y_yaw y_vel_est y_vel_est*cos(bta) y_vel_est*sin(bta)]
         y_gps_imu[:,4]  = unwrap!(y_gps_imu[:,4])
         y_gps_imu[:,10] = unwrap!(y_gps_imu[:,10])
 
-        u[i,1] = cmd_log.z[t[i].>cmd_log.t,1][end]
-        u[i,2] = cmd_log.z[t[i]-0.2.>cmd_log.t,1][end]
-
-        # Adapt R-value of GPS according to distance to last point:
-        # gps_dist[i] = norm(y[i,1:2]-x_est[i-1,1:2])
-        # if gps_dist[i] < 0.8
-        #     R_gps_imu[1,1] = 1#+100*gps_dist[i]^2
-        #     R_gps_imu[2,2] = 1#+100*gps_dist[i]^2
-        #     R_gps_imu[8,8] = 1#+100*gps_dist[i]^2
-        #     R_gps_imu[9,9] = 1#+100*gps_dist[i]^2
-        # else
-        #     R_gps_imu[1,1] = 10
-        #     R_gps_imu[2,2] = 10
-        #     R_gps_imu[8,8] = 10
-        #     R_gps_imu[9,9] = 10
-        # end
 
         args = (u[i,:],dt,l_A,l_B)
 
+        if y_gps_imu[i,3] == y_gps_imu[i-1,3]   # if no new velocity measurement
+            R_gps_imu[2,2] = 1.0
+            R_gps_imu[10,10] = 1.0
+        else
+            R_gps_imu[2,2] = 0.1
+            R_gps_imu[10,10] = 0.1
+        end
         # Calculate new estimate
         (x_est_gps_imu[i,:], P_gps_imu,q[i,1],q[i,2]) = ekf(simModel_gps_imu,x_est_gps_imu[i-1,:]',P_gps_imu,h_gps_imu,y_gps_imu[i,:]',Q_gps_imu,R_gps_imu,args)
     end
@@ -134,21 +134,21 @@ function main(code::AbstractString)
     plot(t-t0,x_est_gps_imu[:,[7,9,12,14]],imu_meas.t-t0,imu_meas.z[:,6]-yaw0)
     plot(pos_info.t-t0,pos_info.z[:,[10,16]],"-x")
     grid("on")
-    legend(["psi_est","psi_drift_est","psi_est_2","psi_drift_est_2","psi_meas"])
+    legend(["psi_est","psi_drift_est","psi_est_2","psi_drift_est_2","psi_meas","psi_onboard","psi_drift_onboard"])
 
     figure(3)
     v = sqrt(x_est_gps_imu[:,3].^2+x_est_gps_imu[:,4].^2)
     plot(t-t0,v,"-*",t-t0,x_est_gps_imu[:,3:4],"--",vel_est.t-t0,vel_est.z[:,1])
     plot(pos_info.t-t0,pos_info.z[:,8:9],"-x")
-    legend(["v_est","v_x_est","v_y_est","v_meas"])
+    legend(["v_est","v_x_est","v_y_est","v_meas","v_x_onboard","v_y_onboard"])
     grid("on")
     title("Velocity estimate and measurement")
 
     figure(4)
-    plot(imu_meas.t-t0,imu_meas.z[:,7:8],t-t0,x_est_gps_imu[:,5:6])
-    #plot(pos_info.t-t0,pos_info.z[:,17:18])
+    plot(imu_meas.t-t0,imu_meas.z[:,7:8],"x",t-t0,x_est_gps_imu[:,5:6])
+    plot(pos_info.t-t0,pos_info.z[:,17:18])
     grid("on")
-    legend(["a_x_meas","a_y_meas","a_x_est","a_y_est"])
+    legend(["a_x_meas","a_y_meas","a_x_est","a_y_est","a_x_onboard","a_y_onboard"])
 
     # PLOT DIRECTIONS
     figure(5)
@@ -176,7 +176,7 @@ function main(code::AbstractString)
 end
 
 function h_gps_imu(x,args)
-    y = zeros(11)
+    y = zeros(13)
     y[1] = x[1]                     # x
     y[2] = x[2]                     # y
     y[3] = sqrt(x[3]^2+x[4]^2)      # v
@@ -188,6 +188,8 @@ function h_gps_imu(x,args)
     y[9] = x[11]                    # y
     y[10] = x[12]+x[14]             # psi
     y[11] = x[13]                   # v
+    y[12] = x[3]                    # v_x
+    y[13] = x[4]                    # v_y
     return y
 end
 function ekf(f, mx_k, P_k, h, y_kp1, Q, R, args)
@@ -200,20 +202,20 @@ function ekf(f, mx_k, P_k, h, y_kp1, Q, R, args)
     P12     = P_kp1*H'
     q_GPS   = (y_kp1-my_kp1)[1:2]'*inv(H*P12+R)[1:2,1:2]*(y_kp1-my_kp1)[1:2]
     q_GPS2   = (y_kp1-my_kp1)[10:11]'*inv(H*P12+R)[10:11,10:11]*(y_kp1-my_kp1)[10:11]
-    if q_GPS[1] > 0.005
-        R[1,1] = 100
-        R[2,2] = 100
-    else
-        R[1,1] = 1
-        R[2,2] = 1
-    end
-    if q_GPS2[1] > 0.005
-        R[8,8] = 100
-        R[9,9] = 100
-    else
-        R[8,8] = 1
-        R[9,9] = 1
-    end
+    # if q_GPS[1] > 0.005
+    #     R[1,1] = 100
+    #     R[2,2] = 100
+    # else
+    #     R[1,1] = 1
+    #     R[2,2] = 1
+    # end
+    # if q_GPS2[1] > 0.005
+    #     R[8,8] = 100
+    #     R[9,9] = 100
+    # else
+    #     R[8,8] = 1
+    #     R[9,9] = 1
+    # end
     K       = P12*inv(H*P12+R)
     mx_kp1  = mx_kp1 + K*(y_kp1-my_kp1)
     P_kp1   = (K*R*K' + (eye(xDim)-K*H)*P_kp1)*(eye(xDim)-K*H)'

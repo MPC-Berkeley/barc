@@ -805,10 +805,10 @@ function simModel(z,u,dt,l_A,l_B)
     bta = atan(l_A/(l_A+l_B)*tan(u[2]))
 
     zNext = copy(z)
-    zNext[1] = z[1] + dt*(z[4]*cos(z[3] + bta))       # x
-    zNext[2] = z[2] + dt*(z[4]*sin(z[3] + bta))     # y
-    zNext[3] = z[3] + dt*(z[4]/l_B*sin(bta))        # psi
-    zNext[4] = z[4] + dt*(u[1] - 0.63 * z[4]^2 * sign(z[4]))                     # v
+    zNext[1] = z[1] + dt*(z[4]*cos(z[3] + bta))                 # x
+    zNext[2] = z[2] + dt*(z[4]*sin(z[3] + bta))                 # y
+    zNext[3] = z[3] + dt*(z[4]/l_B*sin(bta))                    # psi
+    zNext[4] = z[4] + dt*(u[1] - 0.5 * z[4])                    # v
 
     return zNext
 end
@@ -837,6 +837,6 @@ function checkTimes(code::AbstractString)
     plot(t,sol_status_int,"*")
     grid("on")
     subplot(212,sharex=ax1)
-    plot(t,cmd)
+    plot(t,cmd,"-x")
     grid("on")
 end
