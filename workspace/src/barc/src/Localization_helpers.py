@@ -43,12 +43,10 @@ class Localization(object):
     N_nodes_poly_front  = 40                    # number of nodes in front
     ds                  = 0                     # distance between nodes
     nPoints             = N_nodes_poly_front+N_nodes_poly_back+1    # number of points for interpolation in total
-    OrderXY             = 8                     # order of x-y-polynomial interpolation
+    OrderXY             = 6                     # order of x-y-polynomial interpolation
     OrderThetaCurv      = 8                     # order of theta interpolation
     closed              = True                  # open or closed trajectory?
 
-    coeffX = zeros(9)
-    coeffY = zeros(9)
     coeffTheta = zeros(9)
     coeffCurvature = zeros(9)
 
@@ -153,7 +151,7 @@ class Localization(object):
         # theta = add_curve(theta,40,-pi/2)
         # theta = add_curve(theta,35,0)
 
-        # SHORT SIMPLE RACETRACK (smooth curves):
+        # SHORT SIMPLE RACETRACK (smooth curves): 12.0m
         theta = add_curve(theta,10,0)
         theta = add_curve(theta,80,-pi)
         theta = add_curve(theta,20,0)
@@ -308,71 +306,55 @@ class Localization(object):
                 Matrix3rd[i,self.OrderThetaCurv-k] = (s_start + i*self.ds)**k
 
         # Solve system of equations to find polynomial coefficients (for x-y)
-        self.coeffX = linalg.lstsq(Matrix,nodes_X)[0]
-        self.coeffY = linalg.lstsq(Matrix,nodes_Y)[0]
+        coeffX = linalg.lstsq(Matrix,nodes_X)[0]
+        coeffY = linalg.lstsq(Matrix,nodes_Y)[0]
 
         # find angles and curvature along interpolation polynomial
-        b_theta_vec         = zeros(self.nPoints)
+        #b_theta_vec         = zeros(self.nPoints)
         b_curvature_vector  = zeros(self.nPoints)
+        pdcx1 = polyder(coeffX,1)
+        pdcy1 = polyder(coeffY,1)
+        pdcx2 = polyder(coeffX,2)
+        pdcy2 = polyder(coeffY,2)
 
         for j in range(0,self.nPoints):
             s       = s_start + j*self.ds
-            dX      = polyval(polyder(self.coeffX,1),s)
-            dY      = polyval(polyder(self.coeffY,1),s)
-            ddX     = polyval(polyder(self.coeffX,2),s)
-            ddY     = polyval(polyder(self.coeffY,2),s)
-            angle   = arctan2(dY,dX)
-            if j>1:
-                if angle - b_theta_vec[j-1] > pi:
-                    angle = angle - 2*pi
-                elif angle - b_theta_vec[j-1] < -pi:
-                    angle = angle + 2*pi
-
-            b_theta_vec[j] = angle
+            dX      = polyval(pdcx1,s)
+            dY      = polyval(pdcy1,s)
+            ddX     = polyval(pdcx2,s)
+            ddY     = polyval(pdcy2,s)
+            # angle   = arctan2(dY,dX)
+            # if j>1:                                     # unwrap angles
+            #     if angle - b_theta_vec[j-1] > pi:
+            #         angle = angle - 2*pi
+            #     elif angle - b_theta_vec[j-1] < -pi:
+            #         angle = angle + 2*pi
+            # b_theta_vec[j] = angle
             b_curvature_vector[j] = (dX*ddY-dY*ddX)/(dX**2+dY**2)**1.5      # this calculates the curvature values for all points in the interp. interval
                                                                             # these values are going to be approximated by a polynomial!
 
-        # print b_curvature_vector[10:20]
-        # print b_curvature_vector[10:15]
         # calculate coefficients for Theta and curvature
-        coeffTheta      = linalg.lstsq(Matrix3rd,b_theta_vec)[0]
+        #coeffTheta      = linalg.lstsq(Matrix3rd,b_theta_vec)[0]           # not needed
         coeffCurvature  = linalg.lstsq(Matrix3rd,b_curvature_vector)[0]
-
-        # if max(coeffCurvature) > 200:
-        #    print "Large value, idx_min = %f"%(idx_min)
-        #    print(nodes_X)
-        #    print(nodes_Y)
-
 
         # Calculate s
         discretization = 0.001                           # discretization to calculate s
-        
-        j = s_start + arange((self.N_nodes_poly_back-1)*self.ds,(self.N_nodes_poly_back+1)*self.ds,discretization)
-        #print "idx_min     = %f"%idx_min
-        #print "s_idx_start = %f"%s_idx_start
-        #print "idx_start   = %f"%idx_start
-        #print "idx_end     = %f"%idx_end
-        #print "n           = %f"%n
-        #print j
 
-        #print("s_discretization:")
-        #print(j)
-        x_eval      = polyval(self.coeffX,j)
-        y_eval      = polyval(self.coeffY,j)
+        j = s_start + arange((self.N_nodes_poly_back-1)*self.ds,(self.N_nodes_poly_back+1)*self.ds,discretization)
+
+        x_eval      = polyval(coeffX,j)
+        y_eval      = polyval(coeffY,j)
         dist_eval   = sum((self.pos*ones([size(j),2])-vstack((x_eval,y_eval)).transpose())**2,1)**0.5
         idx_s_min   = argmin(dist_eval)
         s           = j[idx_s_min]      # s = minimum distance to points between idx_min-1 and idx_min+1
         eyabs       = amin(dist_eval)   # absolute distance to curve
-        #print dist_eval
 
         # Calculate sign of y
         s0      = s - discretization
-        XCurve0 = polyval(self.coeffX,s0)
-        YCurve0 = polyval(self.coeffY,s0)
-        XCurve  = polyval(self.coeffX,s)
-        YCurve  = polyval(self.coeffY,s)
-        dX      = polyval(polyder(self.coeffX,1),s)
-        dY      = polyval(polyder(self.coeffY,1),s)
+        XCurve0 = polyval(coeffX,s0)
+        YCurve0 = polyval(coeffY,s0)
+        dX      = polyval(polyder(coeffX,1),s)
+        dY      = polyval(polyder(coeffY,1),s)
 
         xyVectorAngle   = arctan2(self.pos[1]-YCurve0, self.pos[0]-XCurve0)
         xyPathAngle     = arctan2(dY,dX)
@@ -381,17 +363,10 @@ class Localization(object):
         # Calculate epsi
         epsi = (self.psi+pi)%(2*pi)-pi-xyPathAngle
         epsi = (epsi+pi)%(2*pi)-pi
-        #print "epsi = %f"%epsi
-        #if abs(epsi) > pi/2:
-        #   if epsi < pi/2:
-        #       epsi = epsi + 2*pi
-        #   else:
-        #       epsi = epsi - 2*pi
-        #epsi = (self.psi+pi)%(2*pi)+pi-xyPathAngle
+
         self.epsi           = epsi
         self.ey             = ey
         self.s              = s
-        self.coeffTheta     = coeffTheta
         self.coeffCurvature = coeffCurvature
         self.s_start        = s_start
 
