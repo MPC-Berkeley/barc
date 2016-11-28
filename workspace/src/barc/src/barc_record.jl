@@ -39,11 +39,11 @@ function main()
     # initiate node, set up publisher / subscriber topics
     init_node("barc_record")
     s1  = Subscriber("ecu", ECU, ECU_callback, (cmd_log,), queue_size=1)::RobotOS.Subscriber{barc.msg.ECU}
-    s2  = Subscriber("imu/data", Imu, IMU_callback, (imu_meas,), queue_size=10)::RobotOS.Subscriber{sensor_msgs.msg.Imu}
+    s2  = Subscriber("imu/data", Imu, IMU_callback, (imu_meas,), queue_size=1)::RobotOS.Subscriber{sensor_msgs.msg.Imu}
     s3  = Subscriber("ecu_pwm", ECU, ECU_PWM_callback, (cmd_pwm_log,), queue_size=1)::RobotOS.Subscriber{barc.msg.ECU}
-    s4  = Subscriber("hedge_pos", hedge_pos, GPS_callback, (gps_meas,), queue_size=10)::RobotOS.Subscriber{marvelmind_nav.msg.hedge_pos}
+    s4  = Subscriber("hedge_pos", hedge_pos, GPS_callback, (gps_meas,), queue_size=30)::RobotOS.Subscriber{marvelmind_nav.msg.hedge_pos}
     s5  = Subscriber("pos_info", pos_info, pos_info_callback, (pos_info_log,), queue_size=1)::RobotOS.Subscriber{barc.msg.pos_info}
-    s6  = Subscriber("vel_est", Vel_est, vel_est_callback, (vel_est_log,), queue_size=10)::RobotOS.Subscriber{barc.msg.Vel_est}
+    s6  = Subscriber("vel_est", Vel_est, vel_est_callback, (vel_est_log,), queue_size=1)::RobotOS.Subscriber{barc.msg.Vel_est}
 
     run_id = get_param("run_id")
 

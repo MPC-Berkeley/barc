@@ -21,6 +21,8 @@ float64 a_x
 float64 a_y
 float64 a_x_raw
 float64 a_y_raw
+float64 u_a
+float64 u_df
 float64[] coeffX
 float64[] coeffY
 float64[] coeffTheta

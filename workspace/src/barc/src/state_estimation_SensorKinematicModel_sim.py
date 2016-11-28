@@ -63,6 +63,13 @@ class StateEst(object):
     c_X = array([0,0,0])
     c_Y = array([0,0,0])
 
+    x_true = 0
+    y_true = 0
+    v_x_true = 0
+    v_y_true = 0
+    psi_true = 0
+    psiDot_true = 0
+
     # General variables
     t0 = 0                  # Time when the estimator was started
     running = False         # bool if the car is driving
@@ -102,6 +109,14 @@ class StateEst(object):
             self.c_X = linalg.lstsq(t_matrix, self.x_hist)[0]
             self.c_Y = linalg.lstsq(t_matrix, self.y_hist)[0]
         self.gps_updated = True
+
+    def real_val(self, data):
+        self.x_true = data.x
+        self.y_true = data.y
+        self.v_x_true = data.v_x
+        self.v_y_true = data.v_y
+        self.psi_true = data.psi
+        self.psiDot_true = data.psiDot
 
     # imu measurement update
     def imu_callback(self, data):
@@ -166,7 +181,8 @@ def state_estimation():
     rospy.Subscriber('vel_est', Vel_est, se.vel_est_callback)
     rospy.Subscriber('ecu', ECU, se.ecu_callback)
     rospy.Subscriber('hedge_pos', hedge_pos, se.gps_callback)
-    state_pub_pos = rospy.Publisher('pos_info', pos_info, queue_size=1)
+    rospy.Subscriber('real_val', pos_info, se.real_val)
+    state_pub_pos = rospy.Publisher('pos_info', pos_info, queue_size=50)
 
     # get vehicle dimension parameters
     L_f = rospy.get_param("L_a")       # distance from CoG to front axel
@@ -259,7 +275,8 @@ def state_estimation():
             x_est_2, y_est_2, psi_est_2, v_est_2, psi_drift_est_2) = z_EKF           # note, r = EKF estimate yaw rate
 
         # Update track position
-        l.set_pos(x_est_2, y_est_2, psi_est_2, v_x_est, v_y_est, psi_dot_est)
+        #l.set_pos(x_est_2, y_est_2, psi_est_2, v_x_est, v_y_est, psi_dot_est)
+        l.set_pos(se.x_true, se.y_true, se.psi_true, v_x_est, v_y_est, psi_dot_est)
         l.find_s()
         #l.s = 0
         #l.epsi = 0
@@ -267,8 +284,8 @@ def state_estimation():
 
         # and then publish position info
         ros_t = rospy.get_rostime()
-        state_pub_pos.publish(pos_info(Header(stamp=ros_t), l.s, l.ey, l.epsi, v_est_2, l.s_start, l.x, l.y, l.v_x, l.v_y,
-                                       l.psi, l.psiDot, se.x_meas, se.y_meas, se.yaw_meas, se.vel_meas, psi_drift_est,
+        state_pub_pos.publish(pos_info(Header(stamp=ros_t), l.s, l.ey, l.epsi, v_est_2, l.s_start, se.x_true, se.y_true, se.v_x_true, se.v_y_true,
+                                       se.psi_true, se.psiDot_true, se.x_meas, se.y_meas, se.yaw_meas, se.vel_meas, psi_drift_est,
                                        a_x_est, a_y_est, se.a_x_meas, se.a_y_meas, se.cmd_motor, se.cmd_servo, (0,), (0,),
                                        (0,), l.coeffCurvature.tolist()))
 

@@ -14,7 +14,7 @@
 =# 
 
 using RobotOS
-@rosimport barc.msg: ECU, Vel_est
+@rosimport barc.msg: ECU, Vel_est, pos_info
 @rosimport data_service.msg: TimeData
 @rosimport geometry_msgs.msg: Vector3
 @rosimport sensor_msgs.msg: Imu
@@ -70,6 +70,7 @@ function main()
     pub_gps = Publisher("hedge_pos", hedge_pos, queue_size=1)::RobotOS.Publisher{marvelmind_nav.msg.hedge_pos}
     pub_imu = Publisher("imu/data", Imu, queue_size=1)::RobotOS.Publisher{sensor_msgs.msg.Imu}
     pub_vel = Publisher("vel_est", Vel_est, queue_size=1)::RobotOS.Publisher{barc.msg.Vel_est}
+    real_val = Publisher("real_val", pos_info, queue_size=1)::RobotOS.Publisher{barc.msg.pos_info}
 
     s1  = Subscriber("ecu", ECU, ECU_callback, (u_current,cmd_log,), queue_size=1)::RobotOS.Subscriber{barc.msg.ECU}
 
@@ -99,13 +100,14 @@ function main()
     modelParams.l_A = 0.125
     modelParams.l_B = 0.125
     modelParams.m   = 1.98
-    modelParams.I_z = 0.24
+    modelParams.I_z = 0.03#0.24             # using homogenous distributed mass over a cuboid
 
     println("Publishing sensor information. Simulator running.")
     imu_data    = Imu()
     vel_est     = Vel_est()
     t0          = to_sec(get_rostime())
     gps_data    = hedge_pos()
+    real_data   = pos_info()
     
 
     z_real.t_msg[1] = t0
@@ -121,9 +123,9 @@ function main()
     while ! is_shutdown()
         t_ros   = get_rostime()
         t       = to_sec(t_ros)
-        if sizeof(cmd_log.z[t.>cmd_log.t+0.2,2]) >= 1
-           u_current[2] = cmd_log.z[t.>cmd_log.t+0.0,2][end]       # artificial steering input delay
-        end
+        #if sizeof(cmd_log.z[t.>cmd_log.t+0.2,2]) >= 1
+        #   u_current[2] = cmd_log.z[t.>cmd_log.t,2][end]       # artificial steering input delay
+        #end
         # update current state with a new row vector
         z_current[i,:],slip_ang[i,:]  = simDynModel_exact_xy(z_current[i-1,:], u_current', dt, modelParams)
 
@@ -144,10 +146,21 @@ function main()
             imu_data.orientation = geometry_msgs.msg.Quaternion(cos(yaw/2), sin(yaw/2), 0, 0)
             imu_data.angular_velocity = Vector3(0,0,psiDot)
             imu_data.header.stamp = t_ros
-            imu_data.linear_acceleration.x = diff(z_current[i-1:i,3])[1]/dt - z_current[i,6]*z_current[i,4] + randn()*0.5
-            imu_data.linear_acceleration.y = diff(z_current[i-1:i,4])[1]/dt + z_current[i,6]*z_current[i,3] + randn()*0.5
+            imu_data.linear_acceleration.x = diff(z_current[i-1:i,3])[1]/dt - z_current[i,6]*z_current[i,4] + randn()*0.3*0
+            imu_data.linear_acceleration.y = diff(z_current[i-1:i,4])[1]/dt + z_current[i,6]*z_current[i,3] + randn()*0.3*0
             publish(pub_imu, imu_data)      # Imu format is defined by ROS, you can look it up by google "rosmsg Imu"
                                             # It's sufficient to only fill the orientation part of the Imu-type (with one quaternion)
+        end
+
+        # real values
+        if i%2 == 0
+            real_data.psiDot = z_current[i,6]
+            real_data.psi    = z_current[i,5]
+            real_data.v_x    = z_current[i,3]
+            real_data.v_y    = z_current[i,4]
+            real_data.x      = z_current[i,1]
+            real_data.y      = z_current[i,2]
+            publish(real_val,real_data)
         end
 
         # Velocity measurements
@@ -169,11 +182,11 @@ function main()
         if i%6 == 0               # 16 Hz
             x = round(z_current[i,1] + 0.02*randn(),2)       # Indoor gps measures, rounded on cm
             y = round(z_current[i,2] + 0.02*randn(),2)
-            if randn()>3            # simulate gps-outlier (probability about 0.13% for randn()>3, 0.62% for randn()>2.5, 2.3% for randn()>2.0 )
+            if randn()>10            # simulate gps-outlier (probability about 0.13% for randn()>3, 0.62% for randn()>2.5, 2.3% for randn()>2.0 )
                 x += 1#randn()        # add random value to x and y
                 y -= 1#randn()
                 #sim_gps_interrupt = 6       # also do a little interruption
-            elseif randn()>3 && sim_gps_interrupt < 0
+            elseif randn()>10 && sim_gps_interrupt < 0
                 sim_gps_interrupt = 10      # simulate gps-interrupt (10 steps at 25 Hz is 0.4 seconds)
             end
             if sim_gps_interrupt < 0

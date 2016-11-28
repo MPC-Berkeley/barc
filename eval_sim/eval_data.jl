@@ -76,19 +76,19 @@ function eval_sim(code::AbstractString)
     
     figure()
     title("Comparison of psi")
-    plot(imu_meas.t,imu_meas.z,"-x",z.t,z.z[:,5:6],pos_info.t,pos_info.z[:,10:11],"-*")
+    plot(imu_meas.t-t0,imu_meas.z,"-x",z.t-t0,z.z[:,5:6],pos_info.t-t0,pos_info.z[:,10:11],"-*")
     legend(["imu_psi","imu_psi_dot","real_psi","real_psi_dot","est_psi","est_psi_dot"])
     grid()
 
     figure()
     title("Comparison of v")
-    plot(z.t,z.z[:,3:4],z.t,sqrt(z.z[:,3].^2+z.z[:,4].^2),pos_info.t,pos_info.z[:,8:9],"-*",pos_info.t,sqrt(pos_info.z[:,8].^2+pos_info.z[:,9].^2),"-*",vel_est.t,vel_est.z)
+    plot(z.t-t0,z.z[:,3:4],z.t-t0,sqrt(z.z[:,3].^2+z.z[:,4].^2),pos_info.t-t0,pos_info.z[:,8:9],"-*",pos_info.t-t0,sqrt(pos_info.z[:,8].^2+pos_info.z[:,9].^2),"-*",vel_est.t-t0,vel_est.z)
     legend(["real_xDot","real_yDot","real_v","est_xDot","est_yDot","est_v","v_x_meas"])
     grid()
 
     figure()
     title("Comparison of x,y")
-    plot(z.t,z.z[:,1:2],pos_info.t,pos_info.z[:,6:7],"-*",gps_meas.t,gps_meas.z)
+    plot(z.t-t0,z.z[:,1:2],pos_info.t-t0,pos_info.z[:,6:7],"-*",gps_meas.t-t0,gps_meas.z)
     legend(["real_x","real_y","est_x","est_y","meas_x","meas_x"])
     grid()
 end
@@ -303,27 +303,27 @@ function eval_LMPC(code::AbstractString)
     grid("on")
 
     # *********** CURVATURE *********************
-    # figure()
-    # c = zeros(size(curv,1),1)
-    # for i=1:size(curv,1)
-    #     s = state[i,6]
-    #     c[i] = ([s.^8 s.^7 s.^6 s.^5 s.^4 s.^3 s.^2 s.^1 s.^0] * curv[i,:]')[1]
-    # end
-    # plot(state[:,6],c,"-o")
-    # for i=1:1:size(curv,1)
-    #     if sol_z[1,5,i] == 0
-    #         s = sol_z[:,1,i]
-    #     else
-    #         s = sol_z[:,6,i]
-    #     end
-    #     c = zeros(size(curv,1),1)
-    #     c = [s.^8 s.^7 s.^6 s.^5 s.^4 s.^3 s.^2 s.^1 s.^0] * curv[i,:]'
-    #     plot(s,c,"-*")
-    # end
-    # title("Curvature over path")
-    # xlabel("Curvilinear abscissa [m]")
-    # ylabel("Curvature")
-    # grid()
+    figure()
+    c = zeros(size(curv,1),1)
+    for i=1:size(curv,1)
+        s = state[i,6]
+        c[i] = ([s.^8 s.^7 s.^6 s.^5 s.^4 s.^3 s.^2 s.^1 s.^0] * curv[i,:]')[1]
+    end
+    plot(state[:,6],c,"-o")
+    for i=1:1:size(curv,1)
+        if sol_z[1,5,i] == 0
+            s = sol_z[:,1,i]
+        else
+            s = sol_z[:,6,i]
+        end
+        c = zeros(size(curv,1),1)
+        c = [s.^8 s.^7 s.^6 s.^5 s.^4 s.^3 s.^2 s.^1 s.^0] * curv[i,:]'
+        plot(s,c,"-*")
+    end
+    title("Curvature over path")
+    xlabel("Curvilinear abscissa [m]")
+    ylabel("Curvature")
+    grid()
 
     track = create_track(0.3)
     figure()
@@ -415,53 +415,81 @@ function eval_predictions(code::AbstractString)
 
     t0 = t[1]
 
+    N = size(sol_z,1)-1     # number of steps (prediction horizon)
+
     figure(1)
     plot(t-t0,step_diff)
     grid("on")
     title("One-step-errors")
     legend(["xDot","yDot","psiDot","ePsi","eY"])
     
+
+    figure(3)
+    plot(pos_info.t-t0,pos_info.z[:,11],"-o")
+    title("Open loop predictions psidot")
+    for i=1:1:size(t,1)-N
+        if sol_z[1,5,i]==NaN
+            #plot(t[i:i+N]-t0,sol_z[:,2,i],"+")
+        else
+            plot(t[i:i+N]-t0,sol_z[:,3,i],"-x")
+        end
+    end
+    grid("on")
+
+    figure(4)
+    plot(pos_info.t-t0,pos_info.z[:,9],"-o")
+    title("Open loop predictions v_y")
+    for i=1:1:size(t,1)-N
+        if sol_z[1,5,i]==NaN
+            #plot(t[i:i+N]-t0,sol_z[:,2,i],"+")
+        else
+            plot(t[i:i+N]-t0,sol_z[:,2,i],"-x")
+        end
+    end
+    grid("on")
+
+
     figure(2)
     ax1=subplot(411)
     title("Open loop predictions e_y")
-    plot(pos_info.t-t0,pos_info.z[:,2],"o")
-    for i=1:5:size(t,1)-10
-        if sol_z[1,5,i]==0
-            plot(t[i:i+10]-t0,sol_z[:,2,i],"+")
+    plot(pos_info.t-t0,pos_info.z[:,2],"-o")
+    for i=1:2:size(t,1)-N
+        if sol_z[1,5,i]==NaN
+            plot(t[i:i+N]-t0,sol_z[:,2,i],"-+")
         else
-            plot(t[i:i+10]-t0,sol_z[:,4,i])
+            plot(t[i:i+N]-t0,sol_z[:,5,i])
         end
     end
     grid("on")
 
     subplot(412,sharex=ax1)
     title("Open loop predictions e_psi")
-    plot(pos_info.t-t0,pos_info.z[:,3],"o")
-    for i=1:5:size(t,1)-10
-        if sol_z[1,5,i]==0
-            plot(t[i:i+10]-t0,sol_z[:,3,i],"+")
+    plot(pos_info.t-t0,pos_info.z[:,3],"-o")
+    for i=1:2:size(t,1)-N
+        if sol_z[1,5,i]==NaN
+            plot(t[i:i+N]-t0,sol_z[:,3,i],"-+")
         else
-            plot(t[i:i+10]-t0,sol_z[:,5,i])
+            plot(t[i:i+N]-t0,sol_z[:,4,i])
         end
     end
     grid("on")
 
     subplot(413,sharex=ax1)
     title("Open loop predictions v")
-    plot(pos_info.t-t0,pos_info.z[:,4],"o")
-    for i=1:5:size(t,1)-10
-        if sol_z[1,5,i]==0
-            plot(t[i:i+10]-t0,sol_z[:,4,i],"+")
+    plot(pos_info.t-t0,pos_info.z[:,8],"-o")
+    for i=1:2:size(t,1)-N
+        if sol_z[1,5,i]==NaN
+            plot(t[i:i+N]-t0,sol_z[:,4,i],"-+")
         else
-            plot(t[i:i+10]-t0,sol_z[:,1,i])
+            plot(t[i:i+N]-t0,sol_z[:,1,i])
         end
     end
     grid("on")
 
     subplot(414,sharex=ax1)
     title("Open loop inputs")
-    for i=1:5:size(t,1)-10
-        plot(t[i:i+7]-t0,sol_u[1:8,2,i],t[i:i+9]-t0,sol_u[:,1,i])
+    for i=1:2:size(t,1)-N
+        plot(t[i:i+N-1]-t0,sol_u[1:N,2,i],t[i:i+N-1]-t0,sol_u[:,1,i])
     end
     grid("on")
 end
@@ -498,6 +526,7 @@ function eval_sysID(code::AbstractString)
 
     figure(1)       # longitudinal (xDot)
     ax1=subplot(211)
+    title("Vx")
     plot(t-t0,c_Vx)
     legend(["c1","c2","c3"])
     grid("on")
@@ -507,10 +536,21 @@ function eval_sysID(code::AbstractString)
 
     figure(2)       # longitudinal (xDot)
     ax2=subplot(211)
+    title("Psi")
     plot(t-t0,c_Psi)
     legend(["c1","c2","c3"])
     grid("on")
     subplot(212,sharex=ax2)
+    plot(cmd_log.t-t0,cmd_log.z[:,2])
+    grid("on")
+
+    figure(3)       # longitudinal (xDot)
+    ax3=subplot(211)
+    title("Vy")
+    plot(t-t0,c_Vy)
+    legend(["c1","c2","c3","c4"])
+    grid("on")
+    subplot(212,sharex=ax3)
     plot(cmd_log.t-t0,cmd_log.z[:,2])
     grid("on")
 end
@@ -542,26 +582,25 @@ function eval_LMPC_coeff(code::AbstractString,k::Int64)
     sol_u       = d["sol_u"]
     coeffCost   = d["coeffCost"]
     coeffConst  = d["coeffConst"]
-    s_start     = d["s_start"]
 
-    s   = sol_z[:,1,k]
+    s   = sol_z[:,6,k]
     ss  = [s.^5 s.^4 s.^3 s.^2 s.^1 s.^0]
     subplot(311)
-    plot(s,sol_z[:,2,k],"-o",s,ss*coeffConst[:,1,1,k],s,ss*coeffConst[:,2,1,k])
+    plot(s,sol_z[:,5,k],"-o",s,ss*coeffConst[:,1,5,k],s,ss*coeffConst[:,2,5,k])
     grid()
-    title("Position = $(s_start[k] + s[1]), k = $k")
+    title("Position = $(s[1]), k = $k")
     xlabel("s")
     ylabel("e_Y")
     subplot(312)
-    plot(s,sol_z[:,3,k],"-o",s,ss*coeffConst[:,1,2,k],s,ss*coeffConst[:,2,2,k])
+    plot(s,sol_z[:,4,k],"-o",s,ss*coeffConst[:,1,4,k],s,ss*coeffConst[:,2,4,k])
     grid()
     xlabel("s")
     ylabel("e_Psi")
     subplot(313)
-    plot(s,sol_z[:,4,k],"-o",s,ss*coeffConst[:,1,3,k],s,ss*coeffConst[:,2,3,k])
+    plot(s,sol_z[:,1,k],"-o",s,ss*coeffConst[:,1,1,k],s,ss*coeffConst[:,2,1,k])
     grid()
     xlabel("s")
-    ylabel("v")
+    ylabel("v_x")
 end
 
 function anim_LMPC(k1,k2)
@@ -772,4 +811,32 @@ function simModel(z,u,dt,l_A,l_B)
     zNext[4] = z[4] + dt*(u[1] - 0.63 * z[4]^2 * sign(z[4]))                     # v
 
     return zNext
+end
+
+function checkTimes(code::AbstractString)
+    log_path_LMPC   = "$(homedir())/simulations/output-LMPC-$(code).jld"
+    d_lmpc      = load(log_path_LMPC)
+
+    t_solv     = d_lmpc["t_solv"]
+    sol_status = d_lmpc["sol_status"]
+    cmd        = d_lmpc["cmd"]                 # this is the command how it was sent by the MPC
+    sol_status_int = zeros(size(t_solv,1))
+    t = d_lmpc["t"]
+
+    for i=1:size(sol_status,1)
+        if sol_status[i]==:Optimal
+            sol_status_int[i] = 1
+        elseif sol_status[i]==:Infeasible
+            sol_status_int[i] = 2
+        elseif sol_status[i]==:UserLimit
+            sol_status_int[i] = 3
+        end
+    end
+    ax1=subplot(211)
+    plot(t,t_solv)
+    plot(t,sol_status_int,"*")
+    grid("on")
+    subplot(212,sharex=ax1)
+    plot(t,cmd)
+    grid("on")
 end
