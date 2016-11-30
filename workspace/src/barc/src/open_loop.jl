@@ -58,11 +58,11 @@ function main()
     vel_est_log.i   = 1
     pos_info_log.i  = 1
     
-    chicane_speed = 1.0
-    chicane_turn  = -0.3
+    chicane_speed = 97#1.0
+    chicane_turn  = [120,60]
 
-    cmd_m = 85
-    cmd_s = 60
+    cmd_m = 94
+    cmd_s = 80
     t_next = 7
     mode = 1        # 1 = acc, 2 = break, 3 = break
     # Idea: 5 seconds acc, 3 seconds breaking.
@@ -72,10 +72,10 @@ function main()
         t = to_sec(get_rostime())-t0
         if t <= 3
             cmd.motor = 90.0
-            cmd.servo = 60.0
+            cmd.servo = 80.0
         elseif t <= t_next
             if mode == 1
-                cmd.motor = 96
+                cmd.motor = cmd_m
                 cmd.servo = cmd_s
             elseif mode == 2
                 cmd.motor = 70
@@ -84,38 +84,41 @@ function main()
             if mode == 1
                 mode = 2
             else
-                cmd_s += 2
+                cmd_s += 0
+                cmd_m += 1
                 mode = 1
             end
             t_next = t + 4
+        # **************************************
         # CHICANE:
         # elseif t <= 3
         #     cmd.motor = chicane_speed
-        #     cmd.servo = -chicane_turn
+        #     cmd.servo = chicane_turn[1]
         # elseif t <= 4
         #     cmd.motor = chicane_speed
-        #     cmd.servo = chicane_turn
+        #     cmd.servo = chicane_turn[2]
         # elseif t <= 5
         #     cmd.motor = chicane_speed
-        #     cmd.servo = -chicane_turn
+        #     cmd.servo = chicane_turn[1]
         # elseif t <= 6
         #     cmd.motor = chicane_speed
-        #     cmd.servo = chicane_turn
+        #     cmd.servo = chicane_turn[2]
         # elseif t <= 7
         #     cmd.motor = chicane_speed
-        #     cmd.servo = -chicane_turn
+        #     cmd.servo = chicane_turn[1]
         # elseif t <= 8
         #     cmd.motor = chicane_speed
-        #     cmd.servo = chicane_turn
+        #     cmd.servo = chicane_turn[2]
         # elseif t <= 9
         #     cmd.motor = chicane_speed
-        #     cmd.servo = -chicane_turn
+        #     cmd.servo = chicane_turn[1]
         # elseif t <= 10
         #     cmd.motor = chicane_speed
-        #     cmd.servo = chicane_turn
+        #     cmd.servo = chicane_turn[2]
         # elseif t <= 11
         #     cmd.motor = chicane_speed
-        #     cmd.servo = -chicane_turn
+        #     cmd.servo = chicane_turn[1]
+        # **************************************
         # CONTINUOUS ACCELERATION:
         # elseif t <= 123
         #     cmd.motor = 0.0+(t-3)/20

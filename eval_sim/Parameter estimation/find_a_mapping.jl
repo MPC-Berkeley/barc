@@ -33,6 +33,8 @@ function main(code::AbstractString)
     end
     v_opt   = v[1:end]
     cmd_opt = cmd[1:end]
+    v_opt   = v[cmd.>94]
+    cmd_opt = cmd[cmd.>94]
 
     res = optimize(c->cost(cmd_opt,v_opt,c,0),[0.001,0,0.1,0.001,0])
     c = Optim.minimizer(res)

@@ -99,11 +99,11 @@ class StateEst(object):
         # self.x_hist = delete(self.x_hist,0)
         # self.y_hist = delete(self.y_hist,0)
         # self.t_gps  = delete(self.t_gps,0)
-        self.x_hist = self.x_hist[self.t_gps > t_now-1.0]
-        self.y_hist = self.y_hist[self.t_gps > t_now-1.0]
-        self.t_gps = self.t_gps[self.t_gps > t_now-1.0]
+        self.x_hist = self.x_hist[self.t_gps > t_now-1.5]
+        self.y_hist = self.y_hist[self.t_gps > t_now-1.5]
+        self.t_gps = self.t_gps[self.t_gps > t_now-1.5]
         sz = size(self.t_gps, 0)
-        if sz > 0:
+        if sz > 4:
             t_matrix = vstack([self.t_gps**2, self.t_gps, ones(sz)]).T
             self.c_X = linalg.lstsq(t_matrix, self.x_hist)[0]
             self.c_Y = linalg.lstsq(t_matrix, self.y_hist)[0]
@@ -190,7 +190,7 @@ def state_estimation():
     qp = 50
     #         x, y, vx, vy, ax, ay, psi, psidot, psidrift, x, y, psi, v
     Q = diag([1/20*dt**5*qa,1/20*dt**5*qa,1/3*dt**3*qa,1/3*dt**3*qa,dt*qa,dt*qa,1/3*dt**3*qp,dt*qp,0.01, 0.01,0.01,1.0,1.0,0.1])
-    R = diag([0.5,0.5,0.5,0.1,10.0,1.0,1.0,     0.5,0.5,0.1,0.5, 10.0, 10.0])
+    R = diag([0.5,0.5,0.5,0.1,10.0,1.0,1.0,     5.0,5.0,0.1,0.5, 1.0, 1.0])
     #         x,y,v,psi,psiDot,a_x,a_y, x, y, psi, v
 
     # Set up track parameters
@@ -247,8 +247,8 @@ def state_estimation():
         d_f_hist.append(se.cmd_servo)           # this is for a 0.2 seconds delay of steering
         d_f_lp = d_f_lp + 0.5*(se.cmd_servo-d_f_lp) # low pass filter on steering
         a_lp = a_lp + 0.5*(se.cmd_motor-a_lp)       # low pass filter on acceleration
-        # u = [a_lp, d_f_hist.pop(0)]
-        u = [a_lp, d_f_lp]
+        u = [a_lp, d_f_hist.pop(0)]
+        #u = [a_lp, d_f_lp]
 
         bta = 0.5 * d_f_lp
         # get measurement
@@ -280,9 +280,9 @@ def state_estimation():
         # and then publish position info
         ros_t = rospy.get_rostime()
         state_pub_pos.publish(pos_info(Header(stamp=ros_t), l.s, l.ey, l.epsi, v_est_2, l.s_start, l.x, l.y, l.v_x, l.v_y,
-                                       l.psi, l.psiDot, se.x_meas, se.y_meas, se.yaw_meas, se.vel_meas, psi_drift_est,
-                                       a_x_est, a_y_est, se.a_x_meas, se.a_y_meas, se.cmd_motor, se.cmd_servo, (0,), (0,),
-                                       (0,), l.coeffCurvature.tolist()))
+                                       l.psi, l.psiDot, se.x_meas, se.y_meas, se.yaw_meas, se.vel_meas, se.psiDot_meas,
+                                       psi_drift_est, a_x_est, a_y_est, se.a_x_meas, se.a_y_meas, se.cmd_motor, se.cmd_servo,
+                                       (0,), (0,), (0,), l.coeffCurvature.tolist()))
 
         # wait
         est_counter += 1

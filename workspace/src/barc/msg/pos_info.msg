@@ -16,6 +16,7 @@ float64 x_raw
 float64 y_raw
 float64 psi_raw
 float64 v_raw
+float64 psiDot_raw
 float64 psi_drift
 float64 a_x
 float64 a_y

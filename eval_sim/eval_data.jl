@@ -1,5 +1,7 @@
 using JLD
 using PyPlot
+using PyCall
+@pyimport matplotlib.animation as animation
 using HDF5, JLD, ProfileView
 # pos_info[1]  = s
 # pos_info[2]  = eY
@@ -400,6 +402,92 @@ function eval_LMPC(code::AbstractString)
     legend(["u","d_f"])
 end
 
+function eval_predictions_kin(code::AbstractString)
+    # This function helps to evaluate predictions of the *kinematic* model
+    log_path_LMPC   = "$(homedir())/simulations/output-LMPC-$(code).jld"
+    log_path_record = "$(homedir())/simulations/output-record-$(code).jld"
+    d_rec       = load(log_path_record)
+    d_lmpc      = load(log_path_LMPC)
+
+    t           = d_lmpc["t"]
+    z           = d_lmpc["state"]
+    sol_z       = d_lmpc["sol_z"]
+    sol_u       = d_lmpc["sol_u"]
+    cmd_lmpc    = d_lmpc["cmd"]
+    cmd_log     = d_rec["cmd_log"]              # this is the command how it was received by the simulator
+    pos_info    = d_rec["pos_info"]
+    step_diff   = d_lmpc["step_diff"]
+
+    t0 = t[1]
+
+    sz = size(z,1)
+    N = size(sol_z,1)-1     # number of steps (prediction horizon)
+    figure(1)
+    plot(pos_info.t-t0,pos_info.z[:,2],"--g")
+    plot(t-t0,z[:,5],"-b")
+    for i=1:sz
+        plot((t[i]-t0):.1:(t[i]-t0+0.1*N),sol_z[:,2,i],"--xr")
+    end
+    grid("on")
+    xlabel("t [s]")
+    legend(["Estimate","LMPC estimate","Prediction"])
+    title("e_y")
+
+    figure(2)
+    plot(pos_info.t-t0,pos_info.z[:,3],"--g")
+    plot(t-t0,z[:,4],"-b")
+    for i=1:sz
+        plot((t[i]-t0):.1:(t[i]-t0+0.1*N),sol_z[:,3,i],"--xr")
+    end
+    grid("on")
+    xlabel("t [s]")
+    legend(["Estimate","LMPC estimate","Prediction"])
+    title("e_psi")
+
+    figure(3)
+    plot(pos_info.t-t0,(pos_info.z[:,8].^2+pos_info.z[:,9].^2).^0.5,"--g")
+    plot(t-t0,(z[:,1].^2+z[:,2].^2).^0.5,"-b")
+    for i=1:sz
+        plot(linspace(t[i]-t0,t[i]-t0+0.1*N,N+1),sol_z[:,4,i],"--xr")
+    end
+    grid("on")
+    xlabel("t [s]")
+    legend(["Estimate","LMPC estimate","Prediction"])
+    title("v")
+
+    figure(4)
+    plot(cmd_log.t-t0,cmd_log.z,"--g")
+    plot(t-t0,cmd_lmpc,"-b")
+    for i=1:sz
+        plot(linspace(t[i]-t0,t[i]-t0+0.1*(N-2),N-1),sol_u[1:N-1,1,i],"--xr")
+        plot(linspace(t[i]-t0,t[i]-t0+0.1*(N-3),N-2),sol_u[1:N-2,2,i],"--xr")
+    end
+    grid("on")
+
+    # Calculate one-step-errors:
+    one_step_err = zeros(sz,4)
+    for i=1:sz-1
+        one_step_err[i,:] = sol_z[2,1:4,i] - [z[i+1,6] z[i+1,5] z[i+1,4] norm(z[i+1,1:2])]
+    end
+
+    # Calculate 'real' d_f
+    L_b = 0.125
+    v_x = real(sqrt(complex((pos_info.z[:,8].^2+pos_info.z[:,9].^2)-pos_info.z[:,11].^2*L_b^2)))
+    delta = atan2(pos_info.z[:,11]*0.25,v_x)
+
+    figure(5)
+    ax1=subplot(211)
+    plot(t-t0,one_step_err)
+    grid("on")
+    legend(["s","ey","epsi","v"])
+    subplot(212,sharex=ax1)
+    plot(t-t0,cmd_lmpc)
+    plot(cmd_log.t_msg-t0,cmd_log.z)
+    plot(cmd_log.t-t0,cmd_log.z,"--")
+    plot(pos_info.t-t0,delta)
+    grid("on")
+
+end
 function eval_predictions(code::AbstractString)
     log_path_LMPC   = "$(homedir())/simulations/output-LMPC-$(code).jld"
     log_path_record = "$(homedir())/simulations/output-record-$(code).jld"
@@ -662,7 +750,58 @@ function anim_LMPC(k1,k2)
     end
 end
 
+function visualize_tdiff(code::AbstractString)
+    log_path_record = "$(homedir())/simulations/output-record-$(code).jld"
+    d_rec       = load(log_path_record)
+    pos_info    = d_rec["pos_info"]
+    t_diff = diff(pos_info.t_msg)
+    t_diff = t_diff[t_diff .< 0.08]
+    plt[:hist](t_diff,100)
+    grid("on")
+    xlabel("t_diff")
+    nothing
+end
 
+function anim_run(code::AbstractString)
+    log_path_record = "$(homedir())/simulations/output-record-$(code).jld"
+    d_rec       = load(log_path_record)
+    pos_info    = d_rec["pos_info"]
+    L_a = 0.125
+    w = 0.15
+    alpha = atan(w/2/L_a)
+    l = sqrt(L_a^2+(w/2)^2)
+    t0 = pos_info.t[1]
+    #Construct Figure and Plot Data
+    fig = figure(figsize=(10,10))
+    ax = axes(xlim = (-3,3),ylim=(-5,1))
+
+    track = create_track(0.3)
+    plot(track[:,1],track[:,2],"b.",track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")
+    grid("on")
+    car = ax[:plot]([],[],"r-+")[1]
+    gps = ax[:plot]([],[],"g*")[1]
+    h_ti = ax[:title]("abc")
+    function init()
+        car[:set_data]([],[])
+        return (car,None)
+    end
+    function animate(k)
+        i = k + 2000
+        car_c = [pos_info.z[i,6]+cos(pos_info.z[i,10]-alpha)*l pos_info.z[i,7]+sin(pos_info.z[i,10]-alpha)*l;
+                pos_info.z[i,6]+cos(pos_info.z[i,10]+alpha)*l pos_info.z[i,7]+sin(pos_info.z[i,10]+alpha)*l;
+                pos_info.z[i,6]+cos(pos_info.z[i,10]+pi-alpha)*l pos_info.z[i,7]+sin(pos_info.z[i,10]+pi-alpha)*l;
+                pos_info.z[i,6]+cos(pos_info.z[i,10]+pi+alpha)*l pos_info.z[i,7]+sin(pos_info.z[i,10]+pi+alpha)*l;
+                pos_info.z[i,6]+cos(pos_info.z[i,10]-alpha)*l pos_info.z[i,7]+sin(pos_info.z[i,10]-alpha)*l]
+        car[:set_data]([car_c[:,1]],[car_c[:,2]])
+        gps[:set_data]([pos_info.z[max(1,i-100):i,12]],[pos_info.z[max(1,i-100):i,13]])
+        ax[:set_title]("t = $(pos_info.t[i]-t0)")
+        #title(pos_info.t[i]-t0)
+        return (car,gps,None)
+    end
+    t=0:30
+    anim = animation.FuncAnimation(fig, animate, frames=1000, interval=50)
+    anim[:save]("test2.mp4", bitrate=-1, extra_args=["-vcodec", "libx264", "-pix_fmt", "yuv420p"]);
+end
 # *****************************************************************
 # ****** HELPER FUNCTIONS *****************************************
 # *****************************************************************
@@ -838,5 +977,19 @@ function checkTimes(code::AbstractString)
     grid("on")
     subplot(212,sharex=ax1)
     plot(t,cmd,"-x")
+    grid("on")
+end
+
+function checkConnectivity(code::AbstractString)
+    log_path_record = "$(homedir())/open_loop/output-record-$code.jld"
+    d_rec = load(log_path_record)
+
+    cmd_pwm_log = d_rec["cmd_pwm_log"]
+    vel_est     = d_rec["vel_est"]
+    pos_info    = d_rec["pos_info"]
+    imu_meas    = d_rec["imu_meas"]
+    gps_meas    = d_rec["gps_meas"]
+
+    plot(gps_meas.t,gps_meas.z,"-x",gps_meas.t_msg,gps_meas.z,"--x",pos_info.t,pos_info.z[:,12:13],"-*",pos_info.t_msg,pos_info.z[:,12:13],"--*")
     grid("on")
 end

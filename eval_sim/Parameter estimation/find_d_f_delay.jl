@@ -32,10 +32,10 @@ function main(code::AbstractString)
     v_x = real(sqrt(complex(v.^2-psiDot.^2*L_b^2)))
     v_y = L_b*psiDot
 
-    idx = v_x.>1.1
-    psiDot = psiDot[idx]
-    v_x = v_x[idx]
-    cmd = cmd[idx]
+    # idx = v_x.>1.1
+    # psiDot = psiDot[idx]
+    # v_x = v_x[idx]
+    # cmd = cmd[idx]
     delta = atan2(psiDot*0.25,v_x)
 
     figure(1)
@@ -47,6 +47,13 @@ function main(code::AbstractString)
     subplot(212,sharex=ax2)
     plot(cmd_pwm_log.t-t0,cmd_pwm_log.z[:,2])
     grid("on")
+
+    figure(3)
+    plot(t-t0,delta,cmd_pwm_log.t-t0,(cmd_pwm_log.z[:,2]-90)/89.0)
+    grid("on")
+    xlabel("t [s]")
+    ylabel("d_f [rad]")
+    legend(["delta_true","delta_input"])
 
     figure(2)
     ax1=subplot(211)

@@ -4,9 +4,11 @@ using JLD
 
 function main(code::AbstractString,n::Int64)
     log_path_LMPC   = "$(homedir())/simulations/output-LMPC-$(code).jld"
+    log_path_record = "$(homedir())/simulations/output-record-$(code).jld"
     #log_path_record = "$(homedir())/simulations/output-record-$(code).jld"
     #d_rec       = load(log_path_record)
     d_lmpc      = load(log_path_LMPC)
+    d_rec       = load(log_path_record)
 
     delay_df    = 5
 
@@ -16,6 +18,8 @@ function main(code::AbstractString,n::Int64)
     #oldTraj.oldTraj  = oldTraj.oldTraj[idx0,:,:]
     #oldTraj.oldInput = oldTraj.oldInput[idx0,:,:]
     oldTraj     = d_lmpc["oldTraj"]
+    pos_info    = d_rec["pos_info"]
+    imu_meas    = d_rec["imu_meas"]
     sz = size(oldTraj.oldTraj[oldTraj.oldTraj[:,1,n].<1000,:,n],1)
     oldTraj.oldTraj[1:sz,:,n] = smooth(oldTraj.oldTraj[1:sz,:,n],5)
     oldTraj.oldInput[1:sz,:,n] = smooth(oldTraj.oldInput[1:sz,:,n],5)
@@ -79,6 +83,9 @@ function main(code::AbstractString,n::Int64)
     #plot(A_vx,"--")
     title("Vx")
 
+    plot(oldTraj.oldTimes[:,1],oldTraj.oldTraj[:,3,1])
+    plot(pos_info.t,pos_info.z[:,11])
+    plot(imu_meas.t,imu_meas.z[:,3])
     nothing
 end
 

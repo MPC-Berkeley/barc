@@ -41,8 +41,8 @@ function SE_callback(msg::pos_info,lapStatus::LapStatus,posInfo::PosInfo,mpcSol:
 
     # save current state in oldTraj
     oldTraj.oldTraj[oldTraj.count[lapStatus.currentLap],:,lapStatus.currentLap] = z_est
-    #oldTraj.oldInput[oldTraj.count[lapStatus.currentLap],:,lapStatus.currentLap] = [msg.u_a,msg.u_df]
-    oldTraj.oldInput[oldTraj.count[lapStatus.currentLap],:,lapStatus.currentLap] += 0.5*([msg.u_a msg.u_df]-oldTraj.oldInput[oldTraj.count[lapStatus.currentLap]-1,:,lapStatus.currentLap])
+    oldTraj.oldInput[oldTraj.count[lapStatus.currentLap],:,lapStatus.currentLap] = [msg.u_a,msg.u_df]
+    #oldTraj.oldInput[oldTraj.count[lapStatus.currentLap],:,lapStatus.currentLap] += 0.5*([msg.u_a msg.u_df]-oldTraj.oldInput[oldTraj.count[lapStatus.currentLap]-1,:,lapStatus.currentLap])
     oldTraj.oldTimes[oldTraj.count[lapStatus.currentLap],lapStatus.currentLap] = to_sec(msg.header.stamp)
     oldTraj.count[lapStatus.currentLap] += 1
 
@@ -60,8 +60,8 @@ function SE_callback(msg::pos_info,lapStatus::LapStatus,posInfo::PosInfo,mpcSol:
     if z_est[6] > posInfo.s_target - 8.0
         oldTraj.oldTraj[oldTraj.count[lapStatus.currentLap+1],:,lapStatus.currentLap+1] = z_est
         oldTraj.oldTraj[oldTraj.count[lapStatus.currentLap+1],6,lapStatus.currentLap+1] -= posInfo.s_target
-        #oldTraj.oldInput[oldTraj.count[lapStatus.currentLap+1],:,lapStatus.currentLap+1] = [msg.u_a,msg.u_df]
-        oldTraj.oldInput[oldTraj.count[lapStatus.currentLap+1],:,lapStatus.currentLap+1] += 0.5*([msg.u_a msg.u_df]-oldTraj.oldInput[oldTraj.count[lapStatus.currentLap+1]-1,:,lapStatus.currentLap+1])
+        oldTraj.oldInput[oldTraj.count[lapStatus.currentLap+1],:,lapStatus.currentLap+1] = [msg.u_a,msg.u_df]
+        #oldTraj.oldInput[oldTraj.count[lapStatus.currentLap+1],:,lapStatus.currentLap+1] += 0.5*([msg.u_a msg.u_df]-oldTraj.oldInput[oldTraj.count[lapStatus.currentLap+1]-1,:,lapStatus.currentLap+1])
         oldTraj.oldTimes[oldTraj.count[lapStatus.currentLap+1],lapStatus.currentLap+1] = to_sec(msg.header.stamp)
         oldTraj.count[lapStatus.currentLap+1] += 1
         oldTraj.idx_start[lapStatus.currentLap+1] = oldTraj.count[lapStatus.currentLap+1]
@@ -72,7 +72,7 @@ end
 function main()
     println("Starting LMPC node.")
 
-    buffersize                  = 2000       # size of oldTraj buffers
+    buffersize                  = 3000       # size of oldTraj buffers
 
     # Define and initialize variables
     # ---------------------------------------------------------------
@@ -139,7 +139,7 @@ function main()
     # Specific initializations:
     lapStatus.currentLap    = 1
     lapStatus.currentIt     = 1
-    posInfo.s_target        = 12.0#17.76#24.0
+    posInfo.s_target        = 17.76#24.0
     k                       = 0                       # overall counter for logging
     
     mpcSol.z = zeros(11,4)
@@ -167,7 +167,7 @@ function main()
 
     uPrev = zeros(10,2)     # saves the last 10 inputs (1 being the most recent one)
 
-    n_pf = 2               # number of first path-following laps (needs to be at least 2)
+    n_pf = 10               # number of first path-following laps (needs to be at least 2)
 
     opt_count = 0
 
@@ -181,7 +181,7 @@ function main()
             cmd.header.stamp = get_rostime()
             # cmd.motor = convert(Float32,mpcSol.a_x)
             # cmd.servo = convert(Float32,mpcSol.d_f)
-            publish(pub, cmd)
+            # publish(pub, cmd)
             # ============================= Initialize iteration parameters =============================
             i                           = lapStatus.currentIt           # current iteration number, just to make notation shorter
             zCurr[i,:]                  = copy(z_est)                   # update state information
@@ -200,8 +200,8 @@ function main()
             # ======================================= Lap trigger =======================================
             if lapStatus.nextLap                # if we are switching to the next lap...
                 println("Finishing one lap at iteration $i")
-                println("current state:  $(zCurr[i,:])")
-                println("previous state: $(zCurr[i-1,:])")
+                println("current state:  ", zCurr[i,:])
+                println("previous state: ", zCurr[i-1,:])
                 # Important: lapStatus.currentIt is now the number of points up to s > s_target -> -1 in saveOldTraj
                 zCurr[1,:] = zCurr[i,:]         # copy current state
                 i                     = 1
@@ -218,8 +218,8 @@ function main()
 
             #  ======================================= Calculate input =======================================
             println("=================================== NEW ITERATION # $i ===================================")
-            println("Current Lap: $(lapStatus.currentLap), It: $(lapStatus.currentIt)")
-            println("State Nr. $i    = $z_est")
+            println("Current Lap: ", lapStatus.currentLap, ", It: ", lapStatus.currentIt)
+            println("State Nr. ", i, "    = ", z_est)
             println("s               = $(posInfo.s)")
             println("s_total         = $(posInfo.s%posInfo.s_target)")
 
@@ -258,7 +258,7 @@ function main()
             #cmd.header.stamp = get_rostime()
             cmd.motor = convert(Float32,mpcSol.a_x)
             cmd.servo = convert(Float32,mpcSol.d_f)
-            #publish(pub, cmd)
+            publish(pub, cmd)
 
             # Write current input information
             uCurr[i,:] = [mpcSol.a_x mpcSol.d_f]

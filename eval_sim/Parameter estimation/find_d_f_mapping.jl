@@ -173,7 +173,7 @@ function main_pwm2(code::AbstractString)
     x = [60;120]
     y = [x ones(2)]*c
 
-    plot(cmd,delta,"*",x,y)
+    plot(cmd,delta,"+",x,y)
     grid("on")
     legend(["Measurements","Linear approximation"])
     xlabel("u_PWM")
