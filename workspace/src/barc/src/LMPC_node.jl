@@ -50,8 +50,8 @@ function SE_callback(msg::pos_info,lapStatus::LapStatus,posInfo::PosInfo,mpcSol:
     if lapStatus.currentLap > 1 && z_est[6] < 8.0
         oldTraj.oldTraj[oldTraj.count[lapStatus.currentLap-1],:,lapStatus.currentLap-1] = z_est
         oldTraj.oldTraj[oldTraj.count[lapStatus.currentLap-1],6,lapStatus.currentLap-1] += posInfo.s_target
-        #oldTraj.oldInput[oldTraj.count[lapStatus.currentLap-1],:,lapStatus.currentLap-1] = [msg.u_a,msg.u_df]
-        oldTraj.oldInput[oldTraj.count[lapStatus.currentLap-1],:,lapStatus.currentLap-1] += 0.5*([msg.u_a msg.u_df]-oldTraj.oldInput[oldTraj.count[lapStatus.currentLap-1]-1,:,lapStatus.currentLap-1])
+        oldTraj.oldInput[oldTraj.count[lapStatus.currentLap-1],:,lapStatus.currentLap-1] = [msg.u_a,msg.u_df]
+        #oldTraj.oldInput[oldTraj.count[lapStatus.currentLap-1],:,lapStatus.currentLap-1] += 0.5*([msg.u_a msg.u_df]-oldTraj.oldInput[oldTraj.count[lapStatus.currentLap-1]-1,:,lapStatus.currentLap-1])
         oldTraj.oldTimes[oldTraj.count[lapStatus.currentLap-1],lapStatus.currentLap-1] = to_sec(msg.header.stamp)
         oldTraj.count[lapStatus.currentLap-1] += 1
     end
@@ -159,7 +159,7 @@ function main()
     lapStatus.currentLap = 3
     oldTraj.count[3] = 200
     coeffConstraintCost(oldTraj,mpcCoeff,posInfo,mpcParams,lapStatus)
-    oldTraj.count[3] = 2
+    oldTraj.count[3] = 1
     lapStatus.currentLap = 1
     oldTraj.oldTraj[1:buffersize,6,1] = NaN*ones(buffersize,1)
     oldTraj.oldTraj[1:buffersize,6,2] = NaN*ones(buffersize,1)
@@ -181,7 +181,7 @@ function main()
             cmd.header.stamp = get_rostime()
             # cmd.motor = convert(Float32,mpcSol.a_x)
             # cmd.servo = convert(Float32,mpcSol.d_f)
-            # publish(pub, cmd)
+            publish(pub, cmd)
             # ============================= Initialize iteration parameters =============================
             i                           = lapStatus.currentIt           # current iteration number, just to make notation shorter
             zCurr[i,:]                  = copy(z_est)                   # update state information
@@ -258,7 +258,7 @@ function main()
             #cmd.header.stamp = get_rostime()
             cmd.motor = convert(Float32,mpcSol.a_x)
             cmd.servo = convert(Float32,mpcSol.d_f)
-            publish(pub, cmd)
+            #publish(pub, cmd)
 
             # Write current input information
             uCurr[i,:] = [mpcSol.a_x mpcSol.d_f]

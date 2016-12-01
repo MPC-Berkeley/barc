@@ -99,9 +99,9 @@ class StateEst(object):
         # self.x_hist = delete(self.x_hist,0)
         # self.y_hist = delete(self.y_hist,0)
         # self.t_gps  = delete(self.t_gps,0)
-        self.x_hist = self.x_hist[self.t_gps > t_now-1.5]
-        self.y_hist = self.y_hist[self.t_gps > t_now-1.5]
-        self.t_gps = self.t_gps[self.t_gps > t_now-1.5]
+        self.x_hist = self.x_hist[self.t_gps > t_now-1.0]
+        self.y_hist = self.y_hist[self.t_gps > t_now-1.0]
+        self.t_gps = self.t_gps[self.t_gps > t_now-1.0]
         sz = size(self.t_gps, 0)
         if sz > 4:
             t_matrix = vstack([self.t_gps**2, self.t_gps, ones(sz)]).T
@@ -186,11 +186,14 @@ def state_estimation():
     z_EKF = zeros(14)                                       # x, y, psi, v, psi_drift
     P = eye(14)                                             # initial dynamics coveriance matrix
 
-    qa = 10
-    qp = 50
+    qa = 1000
+    qp = 1000
     #         x, y, vx, vy, ax, ay, psi, psidot, psidrift, x, y, psi, v
-    Q = diag([1/20*dt**5*qa,1/20*dt**5*qa,1/3*dt**3*qa,1/3*dt**3*qa,dt*qa,dt*qa,1/3*dt**3*qp,dt*qp,0.01, 0.01,0.01,1.0,1.0,0.1])
-    R = diag([0.5,0.5,0.5,0.1,10.0,1.0,1.0,     5.0,5.0,0.1,0.5, 1.0, 1.0])
+    #Q = diag([1/20*dt**5*qa,1/20*dt**5*qa,1/3*dt**3*qa,1/3*dt**3*qa,dt*qa,dt*qa,1/3*dt**3*qp,dt*qp,0.01, 0.01,0.01,1.0,1.0,0.1])
+    #R = diag([0.5,0.5,0.5,0.1,10.0,1.0,1.0,     5.0,5.0,0.1,0.5, 1.0, 1.0])
+
+    Q = diag([1/20*dt**5*qa,1/20*dt**5*qa,1/3*dt**3*qa,1/3*dt**3*qa,dt*qa,dt*qa,1/3*dt**3*qp,dt*qp,0.1, 0.01,0.01,1.0,1.0,0.1])
+    R = diag([5.0,5.0,1.0,10.0,100.0,1000.0,1000.0,     5.0,5.0,10.0,1.0, 10.0,10.0])
     #         x,y,v,psi,psiDot,a_x,a_y, x, y, psi, v
 
     # Set up track parameters
@@ -231,12 +234,12 @@ def state_estimation():
         # else:
         #     R[3,3] = 10.0
         #     R[4,4] = 50.0
-        if se.vel_updated:
-            R[2, 2] = 0.1
-            R[10, 10] = 0.1
-        else:
-            R[2, 2] = 1.0
-            R[10, 10] = 1.0
+        # if se.vel_updated:
+        #     R[2, 2] = 1.0
+        #     R[10, 10] = 1.0
+        # else:
+        #     R[2, 2] = 1.0
+        #     R[10, 10] = 1.0
         se.x_meas = polyval(se.c_X, t_now)
         se.y_meas = polyval(se.c_Y, t_now)
         se.gps_updated = False
@@ -246,11 +249,11 @@ def state_estimation():
         # define input
         d_f_hist.append(se.cmd_servo)           # this is for a 0.2 seconds delay of steering
         d_f_lp = d_f_lp + 0.5*(se.cmd_servo-d_f_lp) # low pass filter on steering
-        a_lp = a_lp + 0.5*(se.cmd_motor-a_lp)       # low pass filter on acceleration
-        u = [a_lp, d_f_hist.pop(0)]
-        #u = [a_lp, d_f_lp]
+        a_lp = a_lp + 1.0*(se.cmd_motor-a_lp)       # low pass filter on acceleration
+        #u = [a_lp, d_f_hist.pop(0)]
+        u = [se.cmd_motor, d_f_hist.pop(0)]
 
-        bta = 0.5 * d_f_lp
+        bta = 0.5 * u[1]
         # get measurement
         y = array([se.x_meas, se.y_meas, se.vel_meas, se.yaw_meas, se.psiDot_meas, se.a_x_meas, se.a_y_meas,
                     se.x_meas, se.y_meas, se.yaw_meas, se.vel_meas, cos(bta)*se.vel_meas, sin(bta)*se.vel_meas])

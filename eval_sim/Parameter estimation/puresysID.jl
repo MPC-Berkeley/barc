@@ -21,8 +21,8 @@ function main(code::AbstractString,n::Int64)
     pos_info    = d_rec["pos_info"]
     imu_meas    = d_rec["imu_meas"]
     sz = size(oldTraj.oldTraj[oldTraj.oldTraj[:,1,n].<1000,:,n],1)
-    oldTraj.oldTraj[1:sz,:,n] = smooth(oldTraj.oldTraj[1:sz,:,n],5)
-    oldTraj.oldInput[1:sz,:,n] = smooth(oldTraj.oldInput[1:sz,:,n],5)
+    oldTraj.oldTraj[1:sz,:,n] = smooth(oldTraj.oldTraj[1:sz,:,n],20)
+    #oldTraj.oldInput[1:sz,:,n] = smooth(oldTraj.oldInput[1:sz,:,n],2)
     # plot(oldTraj.oldInput[1:sz,:,n])
     # for i=2:sz
     #     oldTraj.oldInput[i,:,n] = oldTraj.oldInput[i-1,:,n] + (oldTraj.oldInput[i,:,n]-oldTraj.oldInput[i-1,:,n])*0.5
@@ -83,9 +83,10 @@ function main(code::AbstractString,n::Int64)
     #plot(A_vx,"--")
     title("Vx")
 
-    plot(oldTraj.oldTimes[:,1],oldTraj.oldTraj[:,3,1])
-    plot(pos_info.t,pos_info.z[:,11])
-    plot(imu_meas.t,imu_meas.z[:,3])
+    # figure(4)
+    # plot(oldTraj.oldTimes[:,1],oldTraj.oldTraj[:,3,1])
+    # plot(pos_info.t,pos_info.z[:,11])
+    # plot(imu_meas.t,imu_meas.z[:,3])
     nothing
 end
 

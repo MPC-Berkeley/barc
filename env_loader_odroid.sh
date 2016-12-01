@@ -4,5 +4,5 @@ source /opt/ros/indigo/setup.bash
 source ~/barc/workspace/devel/setup.bash
 export PATH=$PATH:/home/odroid/julia
 export ROS_IP=192.168.100.100
-export ROS_MASTER_URI=http://192.168.100.101:11311
+export ROS_MASTER_URI=http://192.168.100.152:11311
 exec "$@"
