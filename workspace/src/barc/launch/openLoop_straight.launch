@@ -28,7 +28,7 @@
          <!-- PROPERTIES -->
         <param name="FxR_target" type="double" value="0" />
         <param name="t_0" type="int" value="2" />
-		<param name="t_f" type="int" value="15" />
+		<param name="t_f" type="int" value="5" />
 		
         <!-- PID for straight test using imu gyro -->
         <param name="p" type="double" value="0.5" />
