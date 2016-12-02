@@ -6,5 +6,6 @@
 #
 # For modeling and state estimation, motors units are [N], and servo units are [rad]
 # For actuator signals, both have units of PWM angle [deg]. This relates to the duty cycle
+Header header
 float32 motor 
 float32 servo

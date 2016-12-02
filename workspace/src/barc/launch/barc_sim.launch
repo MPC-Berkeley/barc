@@ -1,0 +1,21 @@
+<launch>
+
+    <!-- SYSTEM MODEL -->
+    <!-- vehicle parameters -->
+    <param name="L_a" type="double" value="0.125" />
+    <param name="L_b" type="double" value="0.125" />
+
+    <!-- CONTROL -->
+    <node pkg="barc" type="simple_controller.py" name="control" output="screen" />
+    <!--node pkg="barc" type="open_loop.jl" name="control" output="screen" /-->
+
+    <!-- SIMULATOR -->
+    <node pkg="barc" type="barc_simulator_dyn.jl" name="barc_sim" output="screen" />
+
+    <!--DYNAMIC OBSERVER-->
+    <node pkg="barc" type="state_estimation.py" name="state_estimation_dynamic" output="screen"/>
+
+    <!-- LOW LEVEL CONTROLLER -->
+    <node pkg="barc" type="controller_low_level.py" name="low_level_controller" />
+
+</launch>
