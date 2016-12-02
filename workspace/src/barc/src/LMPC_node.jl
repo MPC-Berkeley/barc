@@ -112,7 +112,7 @@ function main()
     log_t                       = zeros(10000,1)
     log_state                   = zeros(10000,6)
     log_cost                    = zeros(10000,6)
-    log_c_Vx                    = zeros(10000,4)
+    log_c_Vx                    = zeros(10000,5)
     log_c_Vy                    = zeros(10000,4)
     log_c_Psi                   = zeros(10000,3)
     log_cmd                     = zeros(10000,2)
@@ -148,9 +148,9 @@ function main()
     mpcSol.d_f = 0
 
     #mpcCoeff.c_Psi = [-0.26682109207165566,-0.013445078992161885,1.2389672517023724]
-    mpcCoeff.c_Psi = [-0.3747957571478858,-0.005013036784512181,5.068342163488241]
+    #mpcCoeff.c_Psi = [-0.3747957571478858,-0.005013036784512181,5.068342163488241]
     #mpcCoeff.c_Vy  = [-0.006633028965076818,-0.02997779668710061,0.005781203137095575,0.10642934131787765]
-    mpcCoeff.c_Vy  = [0.002968102163011754,-0.09886540158694888,0.012234790760745129,1.099308717654053]
+    #mpcCoeff.c_Vy  = [0.002968102163011754,-0.09886540158694888,0.012234790760745129,1.099308717654053]
     
     # Precompile coeffConstraintCost:
     oldTraj.oldTraj[1:buffersize,6,1] = linspace(0,posInfo.s_target,buffersize)
@@ -167,7 +167,7 @@ function main()
 
     uPrev = zeros(10,2)     # saves the last 10 inputs (1 being the most recent one)
 
-    n_pf = 10               # number of first path-following laps (needs to be at least 2)
+    n_pf = 3               # number of first path-following laps (needs to be at least 2)
 
     opt_count = 0
 
@@ -226,7 +226,7 @@ function main()
             # Find coefficients for cost and constraints
             if lapStatus.currentLap > n_pf
                 tic()
-                #coeffConstraintCost(oldTraj,mpcCoeff,posInfo,mpcParams,lapStatus)
+                coeffConstraintCost(oldTraj,mpcCoeff,posInfo,mpcParams,lapStatus)
                 tt = toq()
                 println("Finished coefficients, t = $tt s")
             end

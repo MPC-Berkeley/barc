@@ -49,7 +49,7 @@ function eval_sim(code::AbstractString)
     vel_est     = d_rec["vel_est"]
 
     t0 = pos_info.t[1]
-    track = create_track(0.3)
+    track = create_track(0.4)
 
     figure()
     ax1=subplot(311)
@@ -110,7 +110,7 @@ function eval_run(code::AbstractString)
     pos_info    = d_rec["pos_info"]
 
     t0      = pos_info.t[1]
-    track   = create_track(0.3)
+    track   = create_track(0.4)
 
     figure()
     plot(gps_meas.z[:,1],gps_meas.z[:,2],"-.",pos_info.z[:,6],pos_info.z[:,7],"-*")
@@ -327,7 +327,7 @@ function eval_LMPC(code::AbstractString)
     ylabel("Curvature")
     grid()
 
-    track = create_track(0.3)
+    track = create_track(0.4)
     figure()
     hold(1)
     plot(x_est[:,1],x_est[:,2],"-*")
@@ -670,6 +670,7 @@ function eval_LMPC_coeff(code::AbstractString,k::Int64)
     sol_u       = d["sol_u"]
     coeffCost   = d["coeffCost"]
     coeffConst  = d["coeffConst"]
+    cost        = d["cost"]
 
     s   = sol_z[:,6,k]
     ss  = [s.^5 s.^4 s.^3 s.^2 s.^1 s.^0]
@@ -689,7 +690,46 @@ function eval_LMPC_coeff(code::AbstractString,k::Int64)
     grid()
     xlabel("s")
     ylabel("v_x")
+    println("Cost = $(cost[k,3])")
 end
+
+function anim_LMPC_coeff(code::AbstractString,i::Int64)
+    log_path_LMPC   = "$(homedir())/simulations/output-LMPC-$(code).jld"
+    d           = load(log_path_LMPC)
+    oldTraj     = d["oldTraj"]
+    sol_z       = d["sol_z"]
+    sol_u       = d["sol_u"]
+    coeffCost   = d["coeffCost"]
+    coeffConst  = d["coeffConst"]
+    cost        = d["cost"]
+
+    for k=i:i+1000
+        clf()
+        s   = sol_z[:,6,k]
+        ss  = [s.^5 s.^4 s.^3 s.^2 s.^1 s.^0]
+        subplot(311)
+        plot(s,sol_z[:,5,k],"-o",s,ss*coeffConst[:,1,5,k],s,ss*coeffConst[:,2,5,k])
+        ylim([-0.4,0.4])
+        grid()
+        title("Position = $(s[1]), k = $k")
+        xlabel("s")
+        ylabel("e_Y")
+        subplot(312)
+        plot(s,sol_z[:,4,k],"-o",s,ss*coeffConst[:,1,4,k],s,ss*coeffConst[:,2,4,k])
+        ylim([-0.5,0.5])
+        grid()
+        xlabel("s")
+        ylabel("e_Psi")
+        subplot(313)
+        plot(s,sol_z[:,1,k],"-o",s,ss*coeffConst[:,1,1,k],s,ss*coeffConst[:,2,1,k])
+        ylim([0.6,1.5])
+        grid()
+        xlabel("s")
+        ylabel("v_x")
+        println("Cost = $(cost[k,3])")
+    end
+end
+
 
 function anim_LMPC(k1,k2)
     d           = load(log_path_LMPC)
@@ -775,7 +815,7 @@ function anim_run(code::AbstractString)
     fig = figure(figsize=(10,10))
     ax = axes(xlim = (-3,3),ylim=(-5,1))
 
-    track = create_track(0.3)
+    track = create_track(0.4)
     plot(track[:,1],track[:,2],"b.",track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")
     grid("on")
     car = ax[:plot]([],[],"r-+")[1]
@@ -800,6 +840,45 @@ function anim_run(code::AbstractString)
     end
     t=0:30
     anim = animation.FuncAnimation(fig, animate, frames=1000, interval=50)
+    anim[:save]("test2.mp4", bitrate=-1, extra_args=["-vcodec", "libx264", "-pix_fmt", "yuv420p"]);
+end
+
+function anim_constraints(code::AbstractString)
+    log_path_record = "$(homedir())/simulations/output-record-$(code).jld"
+    log_path_LMPC   = "$(homedir())/simulations/output-LMPC-$(code).jld"
+    d_rec       = load(log_path_record)
+    d_lmpc      = load(log_path_LMPC)
+
+    t           = d_lmpc["t"]
+    sol_z       = d_lmpc["sol_z"]
+    sol_u       = d_lmpc["sol_u"]
+    coeffCost   = d_lmpc["coeffCost"]
+    coeffConst  = d_lmpc["coeffConst"]
+
+    #Construct Figure and Plot Data
+    fig = figure(figsize=(10,10))
+    ax = axes()
+
+    pred_vx = ax[:plot]([],[],"r-+")[1]
+    poly_vx1 = ax[:plot]([],[],"--")[1]
+    poly_vx2 = ax[:plot]([],[],"--")[1]
+
+    function init()
+        #car[:set_data]([],[])
+        return (None)
+    end
+    function animate(k)
+        i = k + 1000
+        s = sol_z[:,6,i]
+        ss  = [s.^5 s.^4 s.^3 s.^2 s.^1 s.^0]
+        pred_vx[:set_data]([s],[sol_z[:,1,i]])
+        poly_vx1[:set_data]([s],[ss*coeffConst[:,1,1,i]])
+        poly_vx2[:set_data]([s],[ss*coeffConst[:,2,1,i]])
+
+        return (pred_vx,poly_vx1,poly_vx2,None)
+    end
+    t=0:30
+    anim = animation.FuncAnimation(fig, animate, frames=100, interval=50)
     anim[:save]("test2.mp4", bitrate=-1, extra_args=["-vcodec", "libx264", "-pix_fmt", "yuv420p"]);
 end
 # *****************************************************************
