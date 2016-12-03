@@ -6,7 +6,7 @@
 
     <!-- Machines -->
     <machine name="odroid" address="192.168.100.100" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid.sh"/>
-    <machine name="this-pc" address="192.168.100.152" timeout="20.0" env-loader="/home/max/barc/env_loader_pc.sh"/>
+    <machine name="this-pc" address="192.168.100.72" timeout="20.0" env-loader="/home/ugo/Github/barc/env_loader_pc.sh"/>
     
     <!-- Estimator -->
     <node machine="this-pc" pkg="barc" type="state_estimation.py" name="state_estimation_dynamic" output="screen"/>
@@ -31,5 +31,7 @@
     <node machine="odroid" pkg="rosserial_python" type="serial_node.py" name="arduino_node" >
         <param name="port" value="/dev/ttyUSB0" />
     </node>
-
+    
+    <!-- Record the experiment data -->
+    <node pkg="rosbag" type="record" name="rosbag_record" args=" --all" />
 </launch>

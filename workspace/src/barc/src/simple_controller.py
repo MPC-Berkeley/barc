@@ -29,6 +29,8 @@ psi_dot  = 0                     # counts in the front right tire
 v_x      = 0
 v_y      = 0
 
+counter  = 0
+
 # ecu command update
 def measurements_callback(data):
     global x, y, psi, v_x, v_y, psi_dot, epsi, ey, s
@@ -54,22 +56,27 @@ def controller():
     state_pub   = rospy.Publisher('ecu', ECU, queue_size = 10)
 
     # set node rate
-    loop_rate   = 50
+    loop_rate   = 10
     dt          = 1.0 / loop_rate
     rate        = rospy.Rate(loop_rate)
     t0          = time.time()
 
     # set initial conditions 
-    d_f = 0
-    acc = 0
-
+    d_f = 0.0
+    acc = 0.0
+    counter = 0
     while not rospy.is_shutdown():
 
         # publish state estimate
 
-        acc = (1 - v_x)
-        d_f = 0.1*(0 - ey) + (0 - epsi)
+        if counter < 200:
+            acc = 1.0
+            d_f = 0.3
+        else:
+            acc = 0.0
+            d_f = 0.0
 
+        counter = counter + 1    
         # publish information
         state_pub.publish( ECU(Header(stamp=rospy.get_rostime()),acc, d_f) )
 
