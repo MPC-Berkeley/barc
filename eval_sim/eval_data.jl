@@ -112,6 +112,14 @@ function eval_run(code::AbstractString)
     t0      = pos_info.t[1]
     track   = create_track(0.4)
 
+    # Calculate accelerations
+    acc = smooth(diff(smooth(vel_est.z[:,1],10))./diff(vel_est.t),10)
+    figure(10)
+    plot(vel_est.t[1:end-1]-t0,acc,cmd_log.t-t0,cmd_log.z[:,1])
+    grid("on")
+    legend(["Acc","u_a"])
+
+
     figure()
     plot(gps_meas.z[:,1],gps_meas.z[:,2],"-.",pos_info.z[:,6],pos_info.z[:,7],"-*")
     plot(track[:,1],track[:,2],"b.",track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")
@@ -137,7 +145,7 @@ function eval_run(code::AbstractString)
     figure()
     ax2=subplot(211)
     title("Commands")
-    plot(cmd_log.t-t0,cmd_log.z,"-*",cmd_log.t_msg-t0,cmd_log.z,"-x")
+    plot(cmd_log.t-t0,cmd_log.z,"-*",cmd_log.t_msg-t0,cmd_log.z,"-x",pos_info.t-t0,pos_info.z[:,21])
     grid("on")
     xlabel("t [s]")
     subplot(212,sharex=ax2)
@@ -276,8 +284,8 @@ function eval_LMPC(code::AbstractString)
     xlabel("t [s]")
     ylabel("v_x [m/s]")
     subplot(312,sharex=ax1)
-    plot(cmd_log.t-t0,cmd_log.z,"-o",t-t0,cmd[1:length(t),:],"-*")
-    legend(["a_rec","d_f_rec","a_MPC","d_f_MPC"])
+    plot(cmd_log.t-t0,cmd_log.z,"-o",t-t0,cmd[1:length(t),:],"-*",t-t0,state[:,7])
+    legend(["a_rec","d_f_rec","a_MPC","d_f_MPC","acc_filter"])
     grid("on")
     subplot(313,sharex=ax1)
     plot(t-t0,c_Vx)
@@ -1105,4 +1113,14 @@ function checkConnectivity(code::AbstractString)
 
     plot(gps_meas.t,gps_meas.z,"-x",gps_meas.t_msg,gps_meas.z,"--x",pos_info.t,pos_info.z[:,12:13],"-*",pos_info.t_msg,pos_info.z[:,12:13],"--*")
     grid("on")
+end
+
+function smooth(x,n)
+    y = zeros(size(x))
+    for i=1:size(x,1)
+        start = max(1,i-n)
+        fin = min(size(x,1),start + 2*n)
+        y[i,:] = mean(x[start:fin,:],1)
+    end
+    return y
 end

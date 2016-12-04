@@ -24,7 +24,7 @@ include("barc_lib/simModel.jl")
 # It saves this estimate in oldTraj and uses it in the MPC formulation (see in main)
 function SE_callback(msg::pos_info,lapStatus::LapStatus,posInfo::PosInfo,mpcSol::MpcSol,oldTraj::OldTrajectory,trackCoeff::TrackCoeff,z_est::Array{Float64,1},x_est::Array{Float64,1})         # update current position and track data
     # update mpc initial condition
-    z_est[:]                  = [msg.v_x,msg.v_y,msg.psiDot,msg.epsi,msg.ey,msg.s]             # use z_est as pointer
+    z_est[:]                  = [msg.v_x,msg.v_y,msg.psiDot,msg.epsi,msg.ey,msg.s,msg.acc_f]             # use z_est as pointer
     x_est[:]                  = [msg.x,msg.y,msg.psi,msg.v]
     trackCoeff.coeffCurvature = msg.coeffCurvature
 
@@ -93,7 +93,7 @@ function main()
 
     max_N = max(mpcParams.N,mpcParams_pF.N)
     # ROS-specific variables
-    z_est                       = zeros(6)          # this is a buffer that saves current state information (xDot, yDot, psiDot, ePsi, eY, s)
+    z_est                       = zeros(7)          # this is a buffer that saves current state information (xDot, yDot, psiDot, ePsi, eY, s)
     x_est                       = zeros(4)          # this is a buffer that saves further state information (x, y, psi, v)
     coeffX                      = zeros(9)          # buffer for coeffX (only logging)
     coeffY                      = zeros(9)          # buffer for coeffY (only logging)
@@ -103,14 +103,14 @@ function main()
     # Logging variables
     log_coeff_Cost              = NaN*ones(mpcCoeff.order+1,2,10000)
     log_coeff_Const             = NaN*ones(mpcCoeff.order+1,2,5,10000)
-    log_sol_z                   = NaN*ones(max_N+1,6,10000)
+    log_sol_z                   = NaN*ones(max_N+1,7,10000)
     log_sol_u                   = NaN*ones(max_N,2,10000)
     log_curv                    = zeros(10000,trackCoeff.nPolyCurvature+1)
     log_state_x                 = zeros(10000,4)
     log_coeffX                  = zeros(10000,9)
     log_coeffY                  = zeros(10000,9)
     log_t                       = zeros(10000,1)
-    log_state                   = zeros(10000,6)
+    log_state                   = zeros(10000,7)
     log_cost                    = zeros(10000,6)
     log_c_Vx                    = zeros(10000,4)
     log_c_Vy                    = zeros(10000,4)
@@ -132,7 +132,7 @@ function main()
     println("Finished initialization.")
     
     # buffer in current lap
-    zCurr                       = zeros(10000,6)    # contains state information in current lap (max. 10'000 steps)
+    zCurr                       = zeros(10000,7)    # contains state information in current lap (max. 10'000 steps)
     uCurr                       = zeros(10000,2)    # contains input information
     step_diff                   = zeros(5)
 
@@ -292,7 +292,7 @@ function main()
                 log_sol_z[1:mpcParams_pF.N+1,1:4,k]     = mpcSol.z        # only 4 states during path following mode (first 2 laps)
                 log_sol_u[1:mpcParams_pF.N,:,k]         = mpcSol.u
             else
-                log_sol_z[1:mpcParams.N+1,1:6,k]        = mpcSol.z
+                log_sol_z[1:mpcParams.N+1,1:7,k]        = mpcSol.z
                 log_sol_u[1:mpcParams.N,:,k]            = mpcSol.u
             end
 

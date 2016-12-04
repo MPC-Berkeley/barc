@@ -186,8 +186,8 @@ def state_estimation():
     z_EKF = zeros(14)                                       # x, y, psi, v, psi_drift
     P = eye(14)                                             # initial dynamics coveriance matrix
 
-    qa = 1000
-    qp = 1000
+    qa = 1000.0
+    qp = 1000.0
     #         x, y, vx, vy, ax, ay, psi, psidot, psidrift, x, y, psi, v
     #Q = diag([1/20*dt**5*qa,1/20*dt**5*qa,1/3*dt**3*qa,1/3*dt**3*qa,dt*qa,dt*qa,1/3*dt**3*qp,dt*qp,0.01, 0.01,0.01,1.0,1.0,0.1])
     #R = diag([0.5,0.5,0.5,0.1,10.0,1.0,1.0,     5.0,5.0,0.1,0.5, 1.0, 1.0])
@@ -201,19 +201,20 @@ def state_estimation():
     l.create_track()
     l.prepare_trajectory(0.06)
 
-    d_f_hist = [0]*10       # assuming that we are running at 50Hz, array of 10 means 0.2s lag
-    d_f_lp = 0
-    a_lp = 0
+    d_f_hist = [0.0]*10       # assuming that we are running at 50Hz, array of 10 means 0.2s lag
+    d_f_lp = 0.0
+    a_lp = 0.0
 
-    t_now = 0
+    t_now = 0.0
 
     # Estimation variables
     (x_est, y_est, a_x_est, a_y_est) = [0]*4
-    bta = 0
-    v_est = 0
-    psi_est = 0
+    bta = 0.0
+    v_est = 0.0
+    psi_est = 0.0
 
     est_counter = 0
+    acc_f = 0.0
 
     while not rospy.is_shutdown():
         t_now = rospy.get_rostime().to_sec()-se.t0
@@ -254,6 +255,8 @@ def state_estimation():
         u = [se.cmd_motor, d_f_hist.pop(0)]
 
         bta = 0.5 * u[1]
+        acc_f = acc_f + dt*(se.cmd_motor-acc_f)*0.5
+
         # get measurement
         y = array([se.x_meas, se.y_meas, se.vel_meas, se.yaw_meas, se.psiDot_meas, se.a_x_meas, se.a_y_meas,
                     se.x_meas, se.y_meas, se.yaw_meas, se.vel_meas, cos(bta)*se.vel_meas, sin(bta)*se.vel_meas])
@@ -283,7 +286,7 @@ def state_estimation():
         # and then publish position info
         ros_t = rospy.get_rostime()
         state_pub_pos.publish(pos_info(Header(stamp=ros_t), l.s, l.ey, l.epsi, v_est_2, l.s_start, l.x, l.y, l.v_x, l.v_y,
-                                       l.psi, l.psiDot, se.x_meas, se.y_meas, se.yaw_meas, se.vel_meas, se.psiDot_meas,
+                                       l.psi, l.psiDot, acc_f, se.x_meas, se.y_meas, se.yaw_meas, se.vel_meas, se.psiDot_meas,
                                        psi_drift_est, a_x_est, a_y_est, se.a_x_meas, se.a_y_meas, se.cmd_motor, se.cmd_servo,
                                        (0,), (0,), (0,), l.coeffCurvature.tolist()))
 
