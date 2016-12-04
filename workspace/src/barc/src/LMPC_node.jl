@@ -47,7 +47,7 @@ function SE_callback(msg::pos_info,lapStatus::LapStatus,posInfo::PosInfo,mpcSol:
     oldTraj.count[lapStatus.currentLap] += 1
 
     # if necessary: append to end of previous lap
-    if lapStatus.currentLap > 1 && z_est[6] < 8.0
+    if lapStatus.currentLap > 1 && z_est[6] < 12.0
         oldTraj.oldTraj[oldTraj.count[lapStatus.currentLap-1],:,lapStatus.currentLap-1] = z_est
         oldTraj.oldTraj[oldTraj.count[lapStatus.currentLap-1],6,lapStatus.currentLap-1] += posInfo.s_target
         oldTraj.oldInput[oldTraj.count[lapStatus.currentLap-1],:,lapStatus.currentLap-1] = [msg.u_a,msg.u_df]
@@ -57,7 +57,7 @@ function SE_callback(msg::pos_info,lapStatus::LapStatus,posInfo::PosInfo,mpcSol:
     end
 
     #if necessary: append to beginning of next lap
-    if z_est[6] > posInfo.s_target - 8.0
+    if z_est[6] > posInfo.s_target - 12.0
         oldTraj.oldTraj[oldTraj.count[lapStatus.currentLap+1],:,lapStatus.currentLap+1] = z_est
         oldTraj.oldTraj[oldTraj.count[lapStatus.currentLap+1],6,lapStatus.currentLap+1] -= posInfo.s_target
         oldTraj.oldInput[oldTraj.count[lapStatus.currentLap+1],:,lapStatus.currentLap+1] = [msg.u_a,msg.u_df]
@@ -112,7 +112,7 @@ function main()
     log_t                       = zeros(10000,1)
     log_state                   = zeros(10000,6)
     log_cost                    = zeros(10000,6)
-    log_c_Vx                    = zeros(10000,5)
+    log_c_Vx                    = zeros(10000,4)
     log_c_Vy                    = zeros(10000,4)
     log_c_Psi                   = zeros(10000,3)
     log_cmd                     = zeros(10000,2)
@@ -191,9 +191,9 @@ function main()
             # ============================= Pre-Logging (before solving) ================================
             log_t[k+1]                  = to_sec(get_rostime())         # time is measured *before* solving (more consistent that way)
             if size(mpcSol.z,2) == 4                                    # find 1-step-error
-                step_diff = ([mpcSol.z[2,4], 0, 0, mpcSol.z[2,3], mpcSol.z[2,2]]-[norm(zCurr[i,1:2]), 0, 0, zCurr[i,4], zCurr[i,5]]).^2
+                step_diff = ([mpcSol.z[2,4], 0, 0, mpcSol.z[2,3], mpcSol.z[2,2]]-[norm(zCurr[i,1:2]), 0, 0, zCurr[i,4], zCurr[i,5]])
             else
-                step_diff = (mpcSol.z[2,1:5][:]-zCurr[i,1:5][:]).^2
+                step_diff = (mpcSol.z[2,1:5][:]-zCurr[i,1:5][:])
             end
             log_step_diff[k+1,:]          = step_diff
 
@@ -211,6 +211,12 @@ function main()
                 # Set warm start for new solution (because s shifted by s_target)
                 if lapStatus.currentLap <= n_pf
                     setvalue(mdl_pF.z_Ol[:,1],mpcSol.z[:,1]-posInfo.s_target)
+                elseif lapStatus.currentLap == n_pf+1
+                    setvalue(mdl.z_Ol[:,1],mpcSol.z[1:mpcParams.N+1,4])
+                    setvalue(mdl.z_Ol[:,6],mpcSol.z[1:mpcParams.N+1,1]-posInfo.s_target)
+                    setvalue(mdl.z_Ol[:,5],mpcSol.z[1:mpcParams.N+1,2])
+                    setvalue(mdl.z_Ol[:,4],mpcSol.z[1:mpcParams.N+1,3])
+                    setvalue(mdl.u_Ol,mpcSol.u[1:mpcParams.N,:])
                 elseif lapStatus.currentLap > n_pf+1
                     setvalue(mdl.z_Ol[:,6],mpcSol.z[:,6]-posInfo.s_target)
                 end

@@ -167,8 +167,8 @@ function eval_run(code::AbstractString)
 
     figure()
     title("v measurements and estimate")
-    plot(pos_info.t-t0,pos_info.z[:,8:9],"-*",vel_est.t-t0,vel_est.z,"-x")
-    legend(["est_xDot","est_yDot","v_raw"])
+    plot(vel_est.t-t0,vel_est.z[:,1],"-x",pos_info.t-t0,pos_info.z[:,[8:9,4]],"-+")
+    legend(["v_raw","est_xDot","est_yDot","est_v"])
     grid()
 
     # figure()
@@ -495,6 +495,7 @@ function eval_predictions(code::AbstractString)
     d_lmpc      = load(log_path_LMPC)
 
     t           = d_lmpc["t"]
+    z           = d_lmpc["state"]
     sol_z       = d_lmpc["sol_z"]
     sol_u       = d_lmpc["sol_u"]
     cmd_log     = d_rec["cmd_log"]              # this is the command how it was received by the simulator
@@ -505,6 +506,34 @@ function eval_predictions(code::AbstractString)
 
     N = size(sol_z,1)-1     # number of steps (prediction horizon)
 
+    #N = 7
+    sz = size(t,1)
+    # Calculate one-step-errors:
+    ###########
+    # s
+    # eY
+    # ePsi
+    # v
+    ###########
+    # v_x
+    # v_y
+    # psiDot
+    # ePsi
+    # eY
+    # s
+    ###########
+    one_step_err = NaN*ones(sz,6)
+    for i=1:sz-1
+        if isnan(sol_z[1,5,i])          # if we are in path following mode
+            one_step_err[i,1:4] = sol_z[2,1:4,i] - [z[i+1,[6,5,4]] norm(z[i+1,1:2])]
+        else
+            one_step_err[i,:] = sol_z[2,[6,5,4,1,2,3],i] - z[i+1,[6,5,4,1,2,3]]
+        end
+    end
+    i=1
+    while isnan(sol_z[1,5,i])
+        i = i+1
+    end
     figure(1)
     plot(t-t0,step_diff)
     grid("on")
@@ -574,10 +603,11 @@ function eval_predictions(code::AbstractString)
     end
     grid("on")
 
+    N = 7
     subplot(414,sharex=ax1)
     title("Open loop inputs")
     for i=1:2:size(t,1)-N
-        plot(t[i:i+N-1]-t0,sol_u[1:N,2,i],t[i:i+N-1]-t0,sol_u[:,1,i])
+        plot(t[i:i+N-3]-t0,sol_u[1:N-2,2,i],t[i:i+N-1]-t0,sol_u[1:N,1,i])
     end
     grid("on")
 end
@@ -693,7 +723,7 @@ function eval_LMPC_coeff(code::AbstractString,k::Int64)
     println("Cost = $(cost[k,3])")
 end
 
-function anim_LMPC_coeff(code::AbstractString,i::Int64)
+function anim_LMPC_coeff(code::AbstractString)
     log_path_LMPC   = "$(homedir())/simulations/output-LMPC-$(code).jld"
     d           = load(log_path_LMPC)
     oldTraj     = d["oldTraj"]
@@ -703,7 +733,11 @@ function anim_LMPC_coeff(code::AbstractString,i::Int64)
     coeffConst  = d["coeffConst"]
     cost        = d["cost"]
 
-    for k=i:i+1000
+    i=1
+    while isnan(sol_z[1,5,i])
+        i = i+1
+    end
+    for k=i:size(cost,1)
         clf()
         s   = sol_z[:,6,k]
         ss  = [s.^5 s.^4 s.^3 s.^2 s.^1 s.^0]

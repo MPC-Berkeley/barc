@@ -123,9 +123,9 @@ function main()
     while ! is_shutdown()
         t_ros   = get_rostime()
         t       = to_sec(t_ros)
-        #if sizeof(cmd_log.z[t.>cmd_log.t+0.2,2]) >= 1
-        #   u_current[2] = cmd_log.z[t.>cmd_log.t,2][end]       # artificial steering input delay
-        #end
+        # if sizeof(cmd_log.z[t.>cmd_log.t+0.2,2]) >= 1
+        #    u_current[2] = cmd_log.z[t.>=cmd_log.t+0.2,2][end]       # artificial steering input delay
+        # end
         # update current state with a new row vector
         z_current[i,:],slip_ang[i,:]  = simDynModel_exact_xy(z_current[i-1,:], u_current', dt, modelParams)
 
