@@ -193,7 +193,7 @@ def state_estimation():
     #R = diag([0.5,0.5,0.5,0.1,10.0,1.0,1.0,     5.0,5.0,0.1,0.5, 1.0, 1.0])
 
     Q = diag([1/20*dt**5*qa,1/20*dt**5*qa,1/3*dt**3*qa,1/3*dt**3*qa,dt*qa,dt*qa,1/3*dt**3*qp,dt*qp,0.1, 0.01,0.01,1.0,1.0,0.1])
-    R = diag([5.0,5.0,1.0,10.0,100.0,1000.0,1000.0,     5.0,5.0,10.0,1.0, 1.0,1.0])
+    R = diag([5.0,5.0,1.0,10.0,100.0,1000.0,1000.0,     5.0,5.0,10.0,1.0, 10.0,10.0])
     #         x,y,v,psi,psiDot,a_x,a_y, x, y, psi, v
 
     # Set up track parameters
@@ -255,7 +255,6 @@ def state_estimation():
         u = [se.cmd_motor, d_f_hist.pop(0)]
 
         bta = 0.5 * u[1]
-        acc_f = acc_f + dt*(se.cmd_motor-acc_f)*0.5
 
         # get measurement
         y = array([se.x_meas, se.y_meas, se.vel_meas, se.yaw_meas, se.psiDot_meas, se.a_x_meas, se.a_y_meas,
@@ -286,7 +285,7 @@ def state_estimation():
         # and then publish position info
         ros_t = rospy.get_rostime()
         state_pub_pos.publish(pos_info(Header(stamp=ros_t), l.s, l.ey, l.epsi, v_est_2, l.s_start, l.x, l.y, l.v_x, l.v_y,
-                                       l.psi, l.psiDot, acc_f, se.x_meas, se.y_meas, se.yaw_meas, se.vel_meas, se.psiDot_meas,
+                                       l.psi, l.psiDot, se.x_meas, se.y_meas, se.yaw_meas, se.vel_meas, se.psiDot_meas,
                                        psi_drift_est, a_x_est, a_y_est, se.a_x_meas, se.a_y_meas, se.cmd_motor, se.cmd_servo,
                                        (0,), (0,), (0,), l.coeffCurvature.tolist()))
 

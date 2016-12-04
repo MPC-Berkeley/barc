@@ -145,7 +145,7 @@ function eval_run(code::AbstractString)
     figure()
     ax2=subplot(211)
     title("Commands")
-    plot(cmd_log.t-t0,cmd_log.z,"-*",cmd_log.t_msg-t0,cmd_log.z,"-x",pos_info.t-t0,pos_info.z[:,21])
+    plot(cmd_log.t-t0,cmd_log.z,"-*",cmd_log.t_msg-t0,cmd_log.z,"-x")
     grid("on")
     xlabel("t [s]")
     subplot(212,sharex=ax2)
@@ -740,34 +740,47 @@ function anim_LMPC_coeff(code::AbstractString)
     coeffCost   = d["coeffCost"]
     coeffConst  = d["coeffConst"]
     cost        = d["cost"]
+    sol_status = d_lmpc["sol_status"]
 
     i=1
-    while isnan(sol_z[1,5,i])
+    while isnan(sol_z[1,6,i])
         i = i+1
     end
     for k=i:size(cost,1)
         clf()
         s   = sol_z[:,6,k]
         ss  = [s.^5 s.^4 s.^3 s.^2 s.^1 s.^0]
-        subplot(311)
+        subplot(511)
         plot(s,sol_z[:,5,k],"-o",s,ss*coeffConst[:,1,5,k],s,ss*coeffConst[:,2,5,k])
         ylim([-0.4,0.4])
         grid()
-        title("Position = $(s[1]), k = $k")
+        title("Position = $(s[1]), k = $k, status = $(sol_status[k])")
         xlabel("s")
         ylabel("e_Y")
-        subplot(312)
+        subplot(512)
         plot(s,sol_z[:,4,k],"-o",s,ss*coeffConst[:,1,4,k],s,ss*coeffConst[:,2,4,k])
         ylim([-0.5,0.5])
         grid()
         xlabel("s")
         ylabel("e_Psi")
-        subplot(313)
+        subplot(513)
+        plot(s,sol_z[:,3,k],"-o",s,ss*coeffConst[:,1,3,k],s,ss*coeffConst[:,2,3,k])
+        ylim([-0.5,0.5])
+        grid()
+        xlabel("s")
+        ylabel("psiDot")
+        subplot(514)
         plot(s,sol_z[:,1,k],"-o",s,ss*coeffConst[:,1,1,k],s,ss*coeffConst[:,2,1,k])
         ylim([0.6,1.5])
         grid()
         xlabel("s")
         ylabel("v_x")
+        subplot(515)
+        plot(s,sol_z[:,2,k],"-o",s,ss*coeffConst[:,1,2,k],s,ss*coeffConst[:,2,2,k])
+        ylim([-0.5,0.5])
+        grid()
+        xlabel("s")
+        ylabel("v_y")
         println("Cost = $(cost[k,3])")
     end
 end

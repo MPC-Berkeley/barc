@@ -22,9 +22,9 @@ include("barc_lib/simModel.jl")
 
 # This function is called whenever a new state estimate is received.
 # It saves this estimate in oldTraj and uses it in the MPC formulation (see in main)
-function SE_callback(msg::pos_info,lapStatus::LapStatus,posInfo::PosInfo,mpcSol::MpcSol,oldTraj::OldTrajectory,trackCoeff::TrackCoeff,z_est::Array{Float64,1},x_est::Array{Float64,1})         # update current position and track data
+function SE_callback(msg::pos_info,acc_f::Array{Float64},lapStatus::LapStatus,posInfo::PosInfo,mpcSol::MpcSol,oldTraj::OldTrajectory,trackCoeff::TrackCoeff,z_est::Array{Float64,1},x_est::Array{Float64,1})         # update current position and track data
     # update mpc initial condition
-    z_est[:]                  = [msg.v_x,msg.v_y,msg.psiDot,msg.epsi,msg.ey,msg.s,msg.acc_f]             # use z_est as pointer
+    z_est[:]                  = [msg.v_x,msg.v_y,msg.psiDot,msg.epsi,msg.ey,msg.s,acc_f[1]]             # use z_est as pointer
     x_est[:]                  = [msg.x,msg.y,msg.psi,msg.v]
     trackCoeff.coeffCurvature = msg.coeffCurvature
 
@@ -120,12 +120,14 @@ function main()
     log_t_solv                  = zeros(10000)
     log_sol_status              = Array(Symbol,10000)
     
+    acc_f = [0.0]
+
     # Initialize ROS node and topics
     init_node("mpc_traj")
     loop_rate = Rate(1/modelParams.dt)
     pub = Publisher("ecu", ECU, queue_size=1)::RobotOS.Publisher{barc.msg.ECU}
     # The subscriber passes arguments (coeffCurvature and z_est) which are updated by the callback function:
-    s1 = Subscriber("pos_info", pos_info, SE_callback, (lapStatus,posInfo,mpcSol,oldTraj,trackCoeff,z_est,x_est),queue_size=50)::RobotOS.Subscriber{barc.msg.pos_info}
+    s1 = Subscriber("pos_info", pos_info, SE_callback, (acc_f,lapStatus,posInfo,mpcSol,oldTraj,trackCoeff,z_est,x_est),queue_size=50)::RobotOS.Subscriber{barc.msg.pos_info}
     # Note: Choose queue size long enough so that no pos_info packets get lost! They are important for system ID!
 
     run_id = get_param("run_id")
@@ -169,6 +171,7 @@ function main()
 
     n_pf = 3               # number of first path-following laps (needs to be at least 2)
 
+    acc0 = 0.0
     opt_count = 0
 
     # Start node
@@ -241,11 +244,16 @@ function main()
             # Solve the MPC problem
             tic()
             if lapStatus.currentLap <= n_pf
-                z_pf = [zCurr[i,6],zCurr[i,5],zCurr[i,4],norm(zCurr[i,1:2])]        # use kinematic model and its states
+                z_pf = [zCurr[i,6],zCurr[i,5],zCurr[i,4],norm(zCurr[i,1:2]),acc0]        # use kinematic model and its states
                 solveMpcProblem_pathFollow(mdl_pF,mpcSol,mpcParams_pF,trackCoeff,posInfo,modelParams,z_pf,uPrev)
+                acc_f[1] = mpcSol.z[1,5]
+                acc0 = mpcSol.z[2,5]
             else                        # otherwise: use system-ID-model
                 #mpcCoeff.c_Vx[3] = max(mpcCoeff.c_Vx[3],0.1)
+                zCurr[i,7] = acc0
                 solveMpcProblem(mdl,mpcSol,mpcCoeff,mpcParams,trackCoeff,lapStatus,posInfo,modelParams,zCurr[i,:]',uPrev)
+                acc0 = mpcSol.z[2,7]
+                acc_f[1] = mpcSol.z[1,7]
             end
             log_t_solv[k+1] = toq()
 
@@ -288,8 +296,8 @@ function main()
             log_c_Vx[k,:]           = mpcCoeff.c_Vx
             log_c_Vy[k,:]           = mpcCoeff.c_Vy
             log_c_Psi[k,:]          = mpcCoeff.c_Psi
-            if size(mpcSol.z,2) == 4
-                log_sol_z[1:mpcParams_pF.N+1,1:4,k]     = mpcSol.z        # only 4 states during path following mode (first 2 laps)
+            if size(mpcSol.z,2) == 5
+                log_sol_z[1:mpcParams_pF.N+1,1:5,k]     = mpcSol.z        # only 4 states during path following mode (first 2 laps)
                 log_sol_u[1:mpcParams_pF.N,:,k]         = mpcSol.u
             else
                 log_sol_z[1:mpcParams.N+1,1:7,k]        = mpcSol.z

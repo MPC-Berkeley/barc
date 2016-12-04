@@ -12,7 +12,6 @@ float64 v_x
 float64 v_y
 float64 psi
 float64 psiDot
-float64 acc_f
 float64 x_raw
 float64 y_raw
 float64 psi_raw
