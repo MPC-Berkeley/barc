@@ -50,12 +50,23 @@ theta = array([0])
 # theta = add_curve(theta,40,-pi/2)
 # theta = add_curve(theta,35,0)
 
+# SIMPLE GOGGLE TRACK
+theta = add_curve(theta,30,0)
+theta = add_curve(theta,40,-pi/2)
+theta = add_curve(theta,40,-pi/2)
+theta = add_curve(theta,20,-pi/10)
+theta = add_curve(theta,30,pi/5)
+theta = add_curve(theta,20,-pi/10)
+theta = add_curve(theta,40,-pi/2)
+theta = add_curve(theta,40,-pi/2)
+theta = add_curve(theta,38,0)
+
 # SIMPLE TRACK
-theta = add_curve(theta,10,0)
-theta = add_curve(theta,80,-pi)
-theta = add_curve(theta,20,0)
-theta = add_curve(theta,80,-pi)
-theta = add_curve(theta,9,0)
+# theta = add_curve(theta,10,0)
+# theta = add_curve(theta,80,-pi)
+# theta = add_curve(theta,20,0)
+# theta = add_curve(theta,80,-pi)
+# theta = add_curve(theta,9,0)
 
 for i in range(0,size(theta)):
     x = hstack((x, x[-1] + cos(theta[i])*ds))

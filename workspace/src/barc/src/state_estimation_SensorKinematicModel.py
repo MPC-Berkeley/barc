@@ -192,7 +192,7 @@ def state_estimation():
     #Q = diag([1/20*dt**5*qa,1/20*dt**5*qa,1/3*dt**3*qa,1/3*dt**3*qa,dt*qa,dt*qa,1/3*dt**3*qp,dt*qp,0.01, 0.01,0.01,1.0,1.0,0.1])
     #R = diag([0.5,0.5,0.5,0.1,10.0,1.0,1.0,     5.0,5.0,0.1,0.5, 1.0, 1.0])
 
-    Q = diag([1/20*dt**5*qa,1/20*dt**5*qa,1/3*dt**3*qa,1/3*dt**3*qa,dt*qa,dt*qa,1/3*dt**3*qp,dt*qp,0.1, 0.01,0.01,1.0,1.0,0.1])
+    Q = diag([1/20*dt**5*qa,1/20*dt**5*qa,1/3*dt**3*qa,1/3*dt**3*qa,dt*qa,dt*qa,1/3*dt**3*qp,dt*qp,0.1, 0.2,0.2,1.0,1.0,0.1])
     R = diag([5.0,5.0,1.0,10.0,100.0,1000.0,1000.0,     5.0,5.0,10.0,1.0, 10.0,10.0])
     #         x,y,v,psi,psiDot,a_x,a_y, x, y, psi, v
 
@@ -208,39 +208,18 @@ def state_estimation():
     t_now = 0.0
 
     # Estimation variables
-    (x_est, y_est, a_x_est, a_y_est) = [0]*4
+    (x_est, y_est, a_x_est, a_y_est, v_est_2) = [0]*5
     bta = 0.0
     v_est = 0.0
     psi_est = 0.0
 
     est_counter = 0
     acc_f = 0.0
+    vel_meas_est = 0.0
 
     while not rospy.is_shutdown():
         t_now = rospy.get_rostime().to_sec()-se.t0
-        # make R values dependent on current measurement (robust against outliers)
-        # sq_gps_dist = (se.x_meas-x_est)**2 + (se.y_meas-y_est)**2
-        # if se.gps_updated and sq_gps_dist < 0.8:      # if there's a new gps value:
-        #     R[0,0] = 1.0
-        #     R[1,1] = 1.0
-        # else:
-        #     # otherwise just extrapolate measurements:
-        #     #se.x_meas = x_est + dt*(v_est*cos(psi_est+bta))
-        #     #se.y_meas = y_est + dt*(v_est*sin(psi_est+bta))
-        #     R[0,0] = 10.0
-        #     R[1,1] = 10.0
-        # if se.imu_updated:
-        #     R[3,3] = 1.0
-        #     R[4,4] = 5.0
-        # else:
-        #     R[3,3] = 10.0
-        #     R[4,4] = 50.0
-        # if se.vel_updated:
-        #     R[2, 2] = 1.0
-        #     R[10, 10] = 1.0
-        # else:
-        #     R[2, 2] = 1.0
-        #     R[10, 10] = 1.0
+
         se.x_meas = polyval(se.c_X, t_now)
         se.y_meas = polyval(se.c_Y, t_now)
         se.gps_updated = False

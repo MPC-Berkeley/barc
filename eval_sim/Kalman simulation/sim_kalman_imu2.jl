@@ -53,8 +53,11 @@ function main(code::AbstractString)
     #                   x, y, vx, vy, ax, ay, psi, psidot, psidrift
     Q_gps_imu = diagm([1/20*dt^5*qa,1/20*dt^5*qa,1/3*dt^3*qa,1/3*dt^3*qa,dt*qa,dt*qa,1/3*dt^3*qp,dt*qp,0.1, 0.01,0.01,0.1,0.1,0.1])
     #R_gps_imu = diagm([1.0,1.0,1.0,0.1,10.0,100.0,100.0,       1.0,1.0,0.1,0.5])
-    R_gps_imu = diagm([5.0,5.0,1.0,10.0,100.0,1000.0,1000.0,     5.0,5.0,10.0,1.0, 10.0,10.0])
+    R_gps_imu = diagm([5.0,5.0,1.0,10.0,100.0,1000.0,1000.0,     5.0,5.0,10.0,10.0, 10.0,10.0])
     #                   x, y, v, psi, psidot, ax, a_y       x, y, psi, v, v_x, v_y
+
+    y_vel_prev = 0.0
+    y_vel_est = 0.0
 
     for i=2:length(t)
         # Collect measurements and inputs for this iteration
@@ -93,11 +96,17 @@ function main(code::AbstractString)
         a_y = acc_f[2]
         #y_yawdot = rot_f[3]
 
-        #y_vel_est = vel_est.z[t[i].>vel_est.t,1][end]
-        y_vel_est = pos_info.z[t[i].>pos_info.t,15][end]
-
         u[i,1] = cmd_log.z[t[i].>cmd_log.t,1][end]
         u[i,2] = cmd_log.z[t[i]-0.2.>cmd_log.t,2][end]
+
+        #y_vel_est = vel_est.z[t[i].>vel_est.t,1][end]
+        if pos_info.z[t[i].>pos_info.t,15][end] != y_vel_prev
+            y_vel_est = pos_info.z[t[i].>pos_info.t,15][end]
+            y_vel_prev = y_vel_est
+        else
+            y_vel_est = y_vel_est + dt*(u[i,1] - 0.5*x_est_gps_imu[i-1,13])
+        end
+
 
         bta = atan(0.5*tan(u[i,2]))
         y_gps_imu[i,:]  = [y_gps y_vel_est y_yaw y_yawdot a_x a_y y_gps y_yaw y_vel_est y_vel_est*cos(bta) y_vel_est*sin(bta)]
@@ -107,26 +116,15 @@ function main(code::AbstractString)
 
         args = (u[i,:],dt,l_A,l_B)
 
-        # if y_gps_imu[i,3] == y_gps_imu[i-1,3]   # if no new velocity measurement
-        #     R_gps_imu[2,2] = 1.0
-        #     R_gps_imu[10,10] = 1.0
-        # else
-        #     R_gps_imu[2,2] = 1.0#0.1
-        #     R_gps_imu[10,10] = 1.0#0.1
-        # end
         # Calculate new estimate
         (x_est_gps_imu[i,:], P_gps_imu,q[i,1],q[i,2]) = ekf(simModel_gps_imu,x_est_gps_imu[i-1,:]',P_gps_imu,h_gps_imu,y_gps_imu[i,:]',Q_gps_imu,R_gps_imu,args)
     end
-
-    #figure(5)
-    #plot(t-t0,y_gps_imu)
-    #grid("on")
 
     println("Yaw0 = $yaw0")
     figure(1)
     plot(t-t0,x_est_gps_imu[:,1:2],"-*",gps_meas.t-t0,gps_meas.z,"-+",t-t0,y_gps_imu[:,1:2],"--x")
     plot(t-t0,x_est_gps_imu[:,10:11],"-x")
-    plot(pos_info.t-t0,pos_info.z[:,12:13],"..+")
+    #plot(pos_info.t-t0,pos_info.z[:,12:13],"-+")
     #plot(pos_info.t-t0,pos_info.z[:,6:7],"-x")
     grid("on")
     legend(["x_est","y_est","x_meas","y_meas","x_int","y_int","x_est2","y_est2"])
@@ -140,9 +138,9 @@ function main(code::AbstractString)
 
     figure(3)
     v = sqrt(x_est_gps_imu[:,3].^2+x_est_gps_imu[:,4].^2)
-    plot(t-t0,v,"-*",t-t0,x_est_gps_imu[:,3:4],"--",vel_est.t-t0,vel_est.z[:,1])
+    plot(t-t0,v,"-*",t-t0,x_est_gps_imu[:,[3:4,13]],"--",vel_est.t-t0,vel_est.z[:,1])
     plot(pos_info.t-t0,pos_info.z[:,8:9],"-x")
-    legend(["v_est","v_x_est","v_y_est","v_meas","v_x_onboard","v_y_onboard"])
+    legend(["v_est","v_x_est","v_y_est","v_kin_est","v_meas","v_x_onboard","v_y_onboard"])
     grid("on")
     title("Velocity estimate and measurement")
 

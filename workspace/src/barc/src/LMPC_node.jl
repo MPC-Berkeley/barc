@@ -141,7 +141,7 @@ function main()
     # Specific initializations:
     lapStatus.currentLap    = 1
     lapStatus.currentIt     = 1
-    posInfo.s_target        = 17.76#24.0
+    posInfo.s_target        = 17.94#17.76#24.0
     k                       = 0                       # overall counter for logging
     
     mpcSol.z = zeros(11,4)
@@ -202,9 +202,7 @@ function main()
 
             # ======================================= Lap trigger =======================================
             if lapStatus.nextLap                # if we are switching to the next lap...
-                println("Finishing one lap at iteration $i")
-                println("current state:  ", zCurr[i,:])
-                println("previous state: ", zCurr[i-1,:])
+                println("Finishing one lap at iteration ",i)
                 # Important: lapStatus.currentIt is now the number of points up to s > s_target -> -1 in saveOldTraj
                 zCurr[1,:] = zCurr[i,:]         # copy current state
                 i                     = 1
@@ -226,21 +224,21 @@ function main()
             end
 
             #  ======================================= Calculate input =======================================
-            println("=================================== NEW ITERATION # $i ===================================")
+            #println("*** NEW ITERATION # ",i," ***")
             println("Current Lap: ", lapStatus.currentLap, ", It: ", lapStatus.currentIt)
-            println("State Nr. ", i, "    = ", z_est)
-            println("s               = $(posInfo.s)")
-            println("s_total         = $(posInfo.s%posInfo.s_target)")
+            #println("State Nr. ", i, "    = ", z_est)
+            #println("s               = $(posInfo.s)")
+            #println("s_total         = $(posInfo.s%posInfo.s_target)")
 
             # Find coefficients for cost and constraints
             if lapStatus.currentLap > n_pf
                 tic()
                 coeffConstraintCost(oldTraj,mpcCoeff,posInfo,mpcParams,lapStatus)
                 tt = toq()
-                println("Finished coefficients, t = $tt s")
+                println("Finished coefficients, t = ",tt," s")
             end
 
-            println("Starting solving.")
+            #println("Starting solving.")
             # Solve the MPC problem
             tic()
             if lapStatus.currentLap <= n_pf
@@ -280,7 +278,7 @@ function main()
 
             uPrev = circshift(uPrev,1)
             uPrev[1,:] = uCurr[i,:]
-            println("Finished solving, status: $(mpcSol.solverStatus), u = $(uCurr[i,:]), t = $(log_t_solv[k+1]) s")
+            #println("Finished solving, status: $(mpcSol.solverStatus), u = $(uCurr[i,:]), t = $(log_t_solv[k+1]) s")
 
             # Logging
             # ---------------------------

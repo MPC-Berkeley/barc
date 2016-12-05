@@ -740,7 +740,7 @@ function anim_LMPC_coeff(code::AbstractString)
     coeffCost   = d["coeffCost"]
     coeffConst  = d["coeffConst"]
     cost        = d["cost"]
-    sol_status = d_lmpc["sol_status"]
+    sol_status  = d["sol_status"]
 
     i=1
     while isnan(sol_z[1,6,i])
@@ -1008,12 +1008,23 @@ function create_track(w)
     # add_curve(theta,49,0)
 
     # GOGGLE TRACK
+    # add_curve(theta,30,0)
+    # add_curve(theta,40,-pi/2)
+    # add_curve(theta,40,-pi/2)
+    # add_curve(theta,20,-pi/6)
+    # add_curve(theta,30,pi/3)
+    # add_curve(theta,20,-pi/6)
+    # add_curve(theta,40,-pi/2)
+    # add_curve(theta,40,-pi/2)
+    # add_curve(theta,35,0)
+
+    # SIMPLE GOGGLE TRACK
     add_curve(theta,30,0)
     add_curve(theta,40,-pi/2)
     add_curve(theta,40,-pi/2)
-    add_curve(theta,20,-pi/6)
-    add_curve(theta,30,pi/3)
-    add_curve(theta,20,-pi/6)
+    add_curve(theta,20,-pi/10)
+    add_curve(theta,30,pi/5)
+    add_curve(theta,20,-pi/10)
     add_curve(theta,40,-pi/2)
     add_curve(theta,40,-pi/2)
     add_curve(theta,35,0)

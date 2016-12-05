@@ -40,10 +40,10 @@ class Localization(object):
     psi                 = 0                     # current orientation
     nodes               = array([0])            # all nodes are saved in a matrix
     N_nodes_poly_back   = 20                    # number of nodes behind current position
-    N_nodes_poly_front  = 40                    # number of nodes in front
+    N_nodes_poly_front  = 60                    # number of nodes in front
     ds                  = 0                     # distance between nodes
     nPoints             = N_nodes_poly_front+N_nodes_poly_back+1    # number of points for interpolation in total
-    OrderXY             = 6                     # order of x-y-polynomial interpolation
+    OrderXY             = 9                     # order of x-y-polynomial interpolation
     OrderThetaCurv      = 8                     # order of theta interpolation
     closed              = True                  # open or closed trajectory?
 
@@ -140,16 +140,27 @@ class Localization(object):
         # theta = add_curve(theta,100,-pi)
         # theta = add_curve(theta,49,0)
 
-        # GOGGLE TRACK: length = 17.76m
+        # AGGRESSIVE GOGGLE TRACK: length = 17.76m
+        # theta = add_curve(theta,30,0)
+        # theta = add_curve(theta,40,-pi/2)
+        # theta = add_curve(theta,40,-pi/2)
+        # theta = add_curve(theta,20,-pi/6)
+        # theta = add_curve(theta,30,pi/3)
+        # theta = add_curve(theta,20,-pi/6)
+        # theta = add_curve(theta,40,-pi/2)
+        # theta = add_curve(theta,40,-pi/2)
+        # theta = add_curve(theta,35,0)
+
+        # SIMPLE GOGGLE TRACK: length = 17.94m
         theta = add_curve(theta,30,0)
         theta = add_curve(theta,40,-pi/2)
         theta = add_curve(theta,40,-pi/2)
-        theta = add_curve(theta,20,-pi/6)
-        theta = add_curve(theta,30,pi/3)
-        theta = add_curve(theta,20,-pi/6)
+        theta = add_curve(theta,20,-pi/10)
+        theta = add_curve(theta,30,pi/5)
+        theta = add_curve(theta,20,-pi/10)
         theta = add_curve(theta,40,-pi/2)
         theta = add_curve(theta,40,-pi/2)
-        theta = add_curve(theta,35,0)
+        theta = add_curve(theta,38,0)
 
         # SHORT SIMPLE RACETRACK (smooth curves): 12.0m
         # theta = add_curve(theta,10,0)
