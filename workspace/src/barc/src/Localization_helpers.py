@@ -39,12 +39,12 @@ class Localization(object):
     pos                 = 0                     # current position
     psi                 = 0                     # current orientation
     nodes               = array([0])            # all nodes are saved in a matrix
-    N_nodes_poly_back   = 20                    # number of nodes behind current position
-    N_nodes_poly_front  = 50                    # number of nodes in front
+    N_nodes_poly_back   = 30                    # number of nodes behind current position
+    N_nodes_poly_front  = 80                    # number of nodes in front
     ds                  = 0                     # distance between nodes
     nPoints             = N_nodes_poly_front+N_nodes_poly_back+1    # number of points for interpolation in total
-    OrderXY             = 4                     # order of x-y-polynomial interpolation
-    OrderThetaCurv      = 3                     # order of theta interpolation
+    OrderXY             = 8                     # order of x-y-polynomial interpolation
+    OrderThetaCurv      = 6                     # order of theta interpolation
     closed              = True                  # open or closed trajectory?
 
     coeffCurvature = zeros(4)
