@@ -383,8 +383,8 @@ class Localization(object):
         epsi = (self.psi+pi)%(2*pi)-pi-xyPathAngle
         epsi = (epsi+pi)%(2*pi)-pi
 
-        if s < 0.0:
-            s = s + self.n*self.ds
+        #if s < 0.0:
+        #    s = s + self.n*self.ds
 
         self.epsi           = epsi
         self.ey             = ey

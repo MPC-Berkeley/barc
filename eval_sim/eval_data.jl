@@ -2,7 +2,7 @@ using JLD
 using PyPlot
 using PyCall
 @pyimport matplotlib.animation as animation
-using HDF5, JLD, ProfileView
+using JLD, ProfileView
 # pos_info[1]  = s
 # pos_info[2]  = eY
 # pos_info[3]  = ePsi
@@ -1023,11 +1023,13 @@ function create_track(w)
     # SIMPLE GOGGLE TRACK
     add_curve(theta,30,0)
     add_curve(theta,40,-pi/2)
+    add_curve(theta,10,0)
     add_curve(theta,40,-pi/2)
-    add_curve(theta,20,-pi/10)
-    add_curve(theta,30,pi/5)
-    add_curve(theta,20,-pi/10)
+    add_curve(theta,20,pi/10)
+    add_curve(theta,30,-pi/5)
+    add_curve(theta,20,pi/10)
     add_curve(theta,40,-pi/2)
+    add_curve(theta,10,0)
     add_curve(theta,40,-pi/2)
     add_curve(theta,35,0)
 

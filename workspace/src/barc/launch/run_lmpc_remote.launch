@@ -8,7 +8,7 @@
 
     <!-- Machines -->
     <machine name="odroid" address="192.168.100.100" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid.sh"/>
-    <machine name="this-pc" address="192.168.100.152" timeout="20.0" env-loader="/home/max/barc/env_loader_pc.sh"/>
+    <machine name="this-pc" address="192.168.100.72" timeout="20.0" env-loader="/home/max/barc/env_loader_pc.sh"/>
     
     <!-- START NODES -->
     <!-- Simulator -->
