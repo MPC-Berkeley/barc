@@ -199,7 +199,7 @@ def state_estimation():
     # Set up track parameters
     l = Localization()
     l.create_track()
-    l.prepare_trajectory(0.06)
+    #l.prepare_trajectory(0.06)
 
     d_f_hist = [0.0]*10       # assuming that we are running at 50Hz, array of 10 means 0.2s lag
     d_f_lp = 0.0

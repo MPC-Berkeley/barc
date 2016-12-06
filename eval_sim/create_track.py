@@ -3,7 +3,7 @@ import matplotlib.pyplot as plt
 
 x = array([0])           # starting point
 y = array([0])
-ds = 0.06
+ds = 0.03
 theta = 0
 d_theta = 0
 
@@ -51,15 +51,30 @@ theta = array([0])
 # theta = add_curve(theta,35,0)
 
 # SIMPLE GOGGLE TRACK
-theta = add_curve(theta,30,0)
-theta = add_curve(theta,40,-pi/2)
-theta = add_curve(theta,40,-pi/2)
-theta = add_curve(theta,20,-pi/10)
-theta = add_curve(theta,30,pi/5)
-theta = add_curve(theta,20,-pi/10)
-theta = add_curve(theta,40,-pi/2)
-theta = add_curve(theta,40,-pi/2)
-theta = add_curve(theta,38,0)
+# theta = add_curve(theta,30,0)
+# theta = add_curve(theta,40,-pi/2)
+# theta = add_curve(theta,10,0)
+# theta = add_curve(theta,40,-pi/2)
+# theta = add_curve(theta,20,pi/10)
+# theta = add_curve(theta,30,-pi/5)
+# theta = add_curve(theta,20,pi/10)
+# theta = add_curve(theta,40,-pi/2)
+# theta = add_curve(theta,10,0)
+# theta = add_curve(theta,40,-pi/2)
+# theta = add_curve(theta,37,0)
+
+# SIMPLE GOGGLE TRACK
+# theta = add_curve(theta,60,0)
+# theta = add_curve(theta,80,-pi/2)
+# theta = add_curve(theta,20,0)
+# theta = add_curve(theta,80,-pi/2)
+# theta = add_curve(theta,40,pi/10)
+# theta = add_curve(theta,60,-pi/5)
+# theta = add_curve(theta,40,pi/10)
+# theta = add_curve(theta,80,-pi/2)
+# theta = add_curve(theta,20,0)
+# theta = add_curve(theta,80,-pi/2)
+# theta = add_curve(theta,75,0)
 
 # SIMPLE TRACK
 # theta = add_curve(theta,10,0)

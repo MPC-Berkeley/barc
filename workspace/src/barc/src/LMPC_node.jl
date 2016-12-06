@@ -29,7 +29,7 @@ function SE_callback(msg::pos_info,acc_f::Array{Float64},lapStatus::LapStatus,po
     trackCoeff.coeffCurvature = msg.coeffCurvature
 
     # check if lap needs to be switched
-    if z_est[6] % posInfo.s_target <= lapStatus.s_lapTrigger && lapStatus.switchLap
+    if z_est[6] <= lapStatus.s_lapTrigger && lapStatus.switchLap
         oldTraj.idx_end[lapStatus.currentLap] = oldTraj.count[lapStatus.currentLap]
         oldTraj.oldCost[lapStatus.currentLap] = oldTraj.idx_end[lapStatus.currentLap] - oldTraj.idx_start[lapStatus.currentLap]
         lapStatus.currentLap += 1
@@ -141,7 +141,7 @@ function main()
     # Specific initializations:
     lapStatus.currentLap    = 1
     lapStatus.currentIt     = 1
-    posInfo.s_target        = 17.94#17.76#24.0
+    posInfo.s_target        = 19.11#19.14#17.94#17.76#24.0
     k                       = 0                       # overall counter for logging
     
     mpcSol.z = zeros(11,4)
@@ -159,7 +159,7 @@ function main()
     oldTraj.oldTraj[1:buffersize,6,2] = linspace(0,posInfo.s_target,buffersize)
     posInfo.s = posInfo.s_target/2
     lapStatus.currentLap = 3
-    oldTraj.count[3] = 200
+    oldTraj.count[3] = 500
     coeffConstraintCost(oldTraj,mpcCoeff,posInfo,mpcParams,lapStatus)
     oldTraj.count[3] = 1
     lapStatus.currentLap = 1

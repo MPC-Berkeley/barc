@@ -40,15 +40,14 @@ class Localization(object):
     psi                 = 0                     # current orientation
     nodes               = array([0])            # all nodes are saved in a matrix
     N_nodes_poly_back   = 20                    # number of nodes behind current position
-    N_nodes_poly_front  = 60                    # number of nodes in front
+    N_nodes_poly_front  = 50                    # number of nodes in front
     ds                  = 0                     # distance between nodes
     nPoints             = N_nodes_poly_front+N_nodes_poly_back+1    # number of points for interpolation in total
-    OrderXY             = 9                     # order of x-y-polynomial interpolation
-    OrderThetaCurv      = 8                     # order of theta interpolation
+    OrderXY             = 4                     # order of x-y-polynomial interpolation
+    OrderThetaCurv      = 3                     # order of theta interpolation
     closed              = True                  # open or closed trajectory?
 
-    coeffTheta = zeros(9)
-    coeffCurvature = zeros(9)
+    coeffCurvature = zeros(4)
 
     s = 0                   # distance from s_start to current closest node (idx_min)
     s_start = 0             # distance along path from first node to start node (which is N_nodes_poly_back behind current closest node)
@@ -113,7 +112,7 @@ class Localization(object):
     def create_track(self):
         x = array([0])           # starting point
         y = array([0])
-        ds = 0.06
+        ds = 0.03
         theta = array([0])
 
         # Sophisticated racetrack: length = 25.62m
@@ -134,11 +133,11 @@ class Localization(object):
         # theta = add_curve(theta,28,0)
 
         # # SIMPLE RACETRACK (smooth curves): length = 24.0m
-        # theta = add_curve(theta,50,0)
-        # theta = add_curve(theta,100,-pi)
-        # theta = add_curve(theta,100,0)
-        # theta = add_curve(theta,100,-pi)
-        # theta = add_curve(theta,49,0)
+        # theta = add_curve(theta,10,0)
+        # theta = add_curve(theta,80,-pi)
+        # theta = add_curve(theta,20,0)
+        # theta = add_curve(theta,80,-pi)
+        # theta = add_curve(theta,9,0)
 
         # AGGRESSIVE GOGGLE TRACK: length = 17.76m
         # theta = add_curve(theta,30,0)
@@ -152,15 +151,30 @@ class Localization(object):
         # theta = add_curve(theta,35,0)
 
         # SIMPLE GOGGLE TRACK: length = 17.94m
-        theta = add_curve(theta,30,0)
-        theta = add_curve(theta,40,-pi/2)
-        theta = add_curve(theta,40,-pi/2)
-        theta = add_curve(theta,20,-pi/10)
-        theta = add_curve(theta,30,pi/5)
-        theta = add_curve(theta,20,-pi/10)
-        theta = add_curve(theta,40,-pi/2)
-        theta = add_curve(theta,40,-pi/2)
-        theta = add_curve(theta,38,0)
+        # theta = add_curve(theta,30,0)
+        # theta = add_curve(theta,40,-pi/2)
+        # #theta = add_curve(theta,10,0)
+        # theta = add_curve(theta,40,-pi/2)
+        # theta = add_curve(theta,20,pi/10)
+        # theta = add_curve(theta,30,-pi/5)
+        # theta = add_curve(theta,20,pi/10)
+        # theta = add_curve(theta,40,-pi/2)
+        # #theta = add_curve(theta,10,0)
+        # theta = add_curve(theta,40,-pi/2)
+        # theta = add_curve(theta,37,0)
+
+        # GOGGLE TRACK WITH STRAIGHT LINES, LENGTH = 19.11m (using ds = 0.03m)
+        theta = add_curve(theta,60,0)
+        theta = add_curve(theta,80,-pi/2)
+        theta = add_curve(theta,20,0)
+        theta = add_curve(theta,80,-pi/2)
+        theta = add_curve(theta,40,pi/10)
+        theta = add_curve(theta,60,-pi/5)
+        theta = add_curve(theta,40,pi/10)
+        theta = add_curve(theta,80,-pi/2)
+        theta = add_curve(theta,20,0)
+        theta = add_curve(theta,80,-pi/2)
+        theta = add_curve(theta,75,0)
 
         # SHORT SIMPLE RACETRACK (smooth curves): 12.0m
         # theta = add_curve(theta,10,0)
@@ -179,7 +193,7 @@ class Localization(object):
         self.ds = ds
         self.n = size(x)
         print "number of nodes: %i"%self.n
-        print "length : %f"%((self.n-1)*ds)
+        print "length : %f"%((self.n)*ds)
 
     def create_racetrack(self,L=1.0,b=1.0,ds=0.5,c=array([0,0]),ang=0):     # problem: points are not equidistant at connecing points
         x = linspace(0,L/2.0,5)#arange(0,L/2.0,ds)                                          # otherwise: would create a racetrack with parallel lines
@@ -238,12 +252,6 @@ class Localization(object):
         xn = interp(sn,s,x)
         yn = interp(sn,s,y)
 
-        # if length - sn[-1] < dsn:
-        #     sn = sn[0:n-1]
-        #     xn = xn[0:n-1]
-        #     yn = yn[0:n-1]
-        #     n = n - 1
-
         self.nodes = array([xn,yn])
         self.ds = dsn
         self.n = size(xn)
@@ -268,23 +276,31 @@ class Localization(object):
     def find_s(self):
         dist        = sum((self.pos*ones([self.n,2])-self.nodes.transpose())**2,1)**0.5 # distance of current position to all nodes
         idx_min     = argmin(dist)              # index of minimum distance
-        # print "closest point: %f"%idx_min
+
         n           = self.n                    # number of nodes
         nPoints     = self.nPoints              # number of points for polynomial approximation (around current position)
-        
+
         # Use closest node to determine start and end of polynomial approximation
         idx_start = idx_min - self.N_nodes_poly_back
         idx_end   = idx_min + self.N_nodes_poly_front
 
+        n_poly = self.N_nodes_poly_back + self.N_nodes_poly_front + 1
+
         s_start = idx_start * self.ds
+
         if self.closed == True:                 # if the track is modeled as closed (start = end)
             if idx_start<0:                     # and if the start for polynomial approx. is before the start line
                 nodes_X = hstack((self.nodes[0,n+idx_start:n],self.nodes[0,0:idx_end+1]))       # then stack the end and beginning of a lap together
                 nodes_Y = hstack((self.nodes[1,n+idx_start:n],self.nodes[1,0:idx_end+1]))
+                #nodes_X = hstack((linspace(idx_start,-1,-idx_start)*self.ds,self.nodes[0,0:idx_end+1]))
+                #nodes_Y = hstack((zeros(-idx_start),self.nodes[1,0:idx_end+1]))
+
                 idx_start = n+idx_start
             elif idx_end>n-1:                   # if the end is behind the finish line
                 nodes_X = hstack((self.nodes[0,idx_start:n],self.nodes[0,0:idx_end+1-n]))       # then stack the end and beginning of the lap together
                 nodes_Y = hstack((self.nodes[1,idx_start:n],self.nodes[1,0:idx_end+1-n]))
+                #nodes_X = hstack((self.nodes[0,idx_start:n],self.nodes[0,n-1]+linspace(1,idx_end-n+1,idx_end-n+1)*self.ds))
+                #nodes_Y = hstack((self.nodes[1,idx_start:n],ones(idx_end-n+1)*self.nodes[1,n-1]))
             else:                               # if we are somewhere in the middle of the track
                 nodes_X = self.nodes[0,idx_start:idx_end+1]     # then just use the nodes from idx_start to end for interpolation
                 nodes_Y = self.nodes[1,idx_start:idx_end+1]
@@ -334,18 +350,10 @@ class Localization(object):
             dY      = polyval(pdcy1,s)
             ddX     = polyval(pdcx2,s)
             ddY     = polyval(pdcy2,s)
-            # angle   = arctan2(dY,dX)
-            # if j>1:                                     # unwrap angles
-            #     if angle - b_theta_vec[j-1] > pi:
-            #         angle = angle - 2*pi
-            #     elif angle - b_theta_vec[j-1] < -pi:
-            #         angle = angle + 2*pi
-            # b_theta_vec[j] = angle
             b_curvature_vector[j] = (dX*ddY-dY*ddX)/(dX**2+dY**2)**1.5      # this calculates the curvature values for all points in the interp. interval
                                                                             # these values are going to be approximated by a polynomial!
 
-        # calculate coefficients for Theta and curvature
-        #coeffTheta      = linalg.lstsq(Matrix3rd,b_theta_vec)[0]           # not needed
+        # calculate coefficients for curvature
         coeffCurvature  = linalg.lstsq(Matrix3rd,b_curvature_vector)[0]
 
         # Calculate s
@@ -374,6 +382,9 @@ class Localization(object):
         # Calculate epsi
         epsi = (self.psi+pi)%(2*pi)-pi-xyPathAngle
         epsi = (epsi+pi)%(2*pi)-pi
+
+        if s < 0.0:
+            s = s + self.n*self.ds
 
         self.epsi           = epsi
         self.ey             = ey
