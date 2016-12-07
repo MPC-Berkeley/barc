@@ -192,6 +192,66 @@ function eval_run(code::AbstractString)
     nothing
 end
 
+function plot_v_ey_over_s(code::AbstractString,laps::Array{Int64})
+    log_path_LMPC   = "$(homedir())/simulations/output-LMPC-$(code).jld"
+    d_lmpc      = load(log_path_LMPC)
+
+    oldTraj     = d_lmpc["oldTraj"]
+    n_laps = size(laps,1)
+
+    println("OldCost: ",oldTraj.oldCost)
+    # plot v_x over s   
+    figure(1)
+    for i=1:n_laps
+        idx = (oldTraj.oldTraj[:,6,laps[i]] .>= 0.0) & (oldTraj.oldTraj[:,6,laps[i]] .<= 19.11)
+        plot(oldTraj.oldTraj[idx,6,laps[i]],oldTraj.oldTraj[idx,1,laps[i]],label="Lap $(laps[i])")
+    end
+    legend()
+    xlabel("s [m]")
+    ylabel("v [m/s]")
+
+    # plot e_y over s   
+    figure(2)
+    for i=1:n_laps
+        idx = (oldTraj.oldTraj[:,6,laps[i]] .>= 0.0) & (oldTraj.oldTraj[:,6,laps[i]] .<= 19.11)
+        plot(oldTraj.oldTraj[idx,6,laps[i]],oldTraj.oldTraj[idx,5,laps[i]],label="Lap $(laps[i])")
+    end
+    legend()
+    xlabel("s [m]")
+    ylabel("e_Y [m]")
+end
+
+function plot_v_over_xy(code::AbstractString,lap::Int64)
+    log_path_record = "$(homedir())/simulations/output-record-$(code).jld"
+    log_path_LMPC   = "$(homedir())/simulations/output-LMPC-$(code).jld"
+    d_rec       = load(log_path_record)
+    d_lmpc      = load(log_path_LMPC)
+
+    oldTraj     = d_lmpc["oldTraj"]
+    pos_info    = d_rec["pos_info"]
+
+    # Find timing of selected lap:
+    t_start = oldTraj.oldTimes[oldTraj.oldTraj[:,6,lap].>=0,lap][1]
+    t_end = oldTraj.oldTimes[oldTraj.oldTraj[:,6,lap].<=19.11,lap][end]
+    println("Laptime = $(t_end-t_start) s")
+
+    idx = (pos_info.t.>=t_start) & (pos_info.t.<=t_end)
+
+    track   = create_track(0.4)
+
+    figure()
+    plot(track[:,1],track[:,2],"b.",track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")
+    scatter(pos_info.z[idx,6],pos_info.z[idx,7],c=pos_info.z[idx,8],cmap=ColorMap("jet"),edgecolors="face")
+    grid(1)
+    title("x-y-view")
+    axis("equal")
+    cb = colorbar()
+    cb[:set_label]("Velocity [m/s]")
+    println("Average v_x = ",mean(pos_info.z[idx,8])," m/s")
+
+end
+
+
 function eval_open_loop(code::AbstractString)
     log_path_record = "$(homedir())/open_loop/output-record-$(code).jld"
     d_rec = load(log_path_record)
