@@ -47,7 +47,7 @@ function SE_callback(msg::pos_info,acc_f::Array{Float64},lapStatus::LapStatus,po
     oldTraj.count[lapStatus.currentLap] += 1
 
     # if necessary: append to end of previous lap
-    if lapStatus.currentLap > 1 && z_est[6] < 12.0
+    if lapStatus.currentLap > 1 && z_est[6] < 16.0
         oldTraj.oldTraj[oldTraj.count[lapStatus.currentLap-1],:,lapStatus.currentLap-1] = z_est
         oldTraj.oldTraj[oldTraj.count[lapStatus.currentLap-1],6,lapStatus.currentLap-1] += posInfo.s_target
         oldTraj.oldInput[oldTraj.count[lapStatus.currentLap-1],:,lapStatus.currentLap-1] = [msg.u_a,msg.u_df]
@@ -57,7 +57,7 @@ function SE_callback(msg::pos_info,acc_f::Array{Float64},lapStatus::LapStatus,po
     end
 
     #if necessary: append to beginning of next lap
-    if z_est[6] > posInfo.s_target - 12.0
+    if z_est[6] > posInfo.s_target - 16.0
         oldTraj.oldTraj[oldTraj.count[lapStatus.currentLap+1],:,lapStatus.currentLap+1] = z_est
         oldTraj.oldTraj[oldTraj.count[lapStatus.currentLap+1],6,lapStatus.currentLap+1] -= posInfo.s_target
         oldTraj.oldInput[oldTraj.count[lapStatus.currentLap+1],:,lapStatus.currentLap+1] = [msg.u_a,msg.u_df]
@@ -112,7 +112,7 @@ function main()
     log_t                       = zeros(10000,1)
     log_state                   = zeros(10000,7)
     log_cost                    = zeros(10000,6)
-    log_c_Vx                    = zeros(10000,4)
+    log_c_Vx                    = zeros(10000,3)
     log_c_Vy                    = zeros(10000,4)
     log_c_Psi                   = zeros(10000,3)
     log_cmd                     = zeros(10000,2)

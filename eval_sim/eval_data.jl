@@ -2,7 +2,7 @@ using JLD
 using PyPlot
 using PyCall
 @pyimport matplotlib.animation as animation
-using HDF5, JLD, ProfileView
+using JLD, ProfileView
 # pos_info[1]  = s
 # pos_info[2]  = eY
 # pos_info[3]  = ePsi
@@ -378,7 +378,8 @@ function eval_LMPC(code::AbstractString)
     for i=1:size(curv,1)
         s = state[i,6]
         #c[i] = ([s.^8 s.^7 s.^6 s.^5 s.^4 s.^3 s.^2 s.^1 s.^0] * curv[i,:]')[1]
-        c[i] = ([s.^3 s.^2 s.^1 s.^0] * curv[i,:]')[1]
+        c[i] = ([s.^6 s.^5 s.^4 s.^3 s.^2 s.^1 s.^0] * curv[i,:]')[1]
+        #c[i] = ([s.^3 s.^2 s.^1 s.^0] * curv[i,:]')[1]
     end
     plot(state[:,6],c,"-o")
     for i=1:5:size(curv,1)
@@ -389,7 +390,8 @@ function eval_LMPC(code::AbstractString)
         end
         c = zeros(size(curv,1),1)
         #c = [s.^8 s.^7 s.^6 s.^5 s.^4 s.^3 s.^2 s.^1 s.^0] * curv[i,:]'
-        c = [s.^3 s.^2 s.^1 s.^0] * curv[i,:]'
+        c = [s.^6 s.^5 s.^4 s.^3 s.^2 s.^1 s.^0] * curv[i,:]'
+        #c = [s.^3 s.^2 s.^1 s.^0] * curv[i,:]'
         plot(s,c,"-*")
     end
     title("Curvature over path")
@@ -1083,11 +1085,13 @@ function create_track(w)
     # SIMPLE GOGGLE TRACK
     add_curve(theta,30,0)
     add_curve(theta,40,-pi/2)
+    add_curve(theta,10,0)
     add_curve(theta,40,-pi/2)
-    add_curve(theta,20,-pi/10)
-    add_curve(theta,30,pi/5)
-    add_curve(theta,20,-pi/10)
+    add_curve(theta,20,pi/10)
+    add_curve(theta,30,-pi/5)
+    add_curve(theta,20,pi/10)
     add_curve(theta,40,-pi/2)
+    add_curve(theta,10,0)
     add_curve(theta,40,-pi/2)
     add_curve(theta,35,0)
 

@@ -19,7 +19,7 @@ ss = empty(n)
 for i in range(0,n):
     l.set_pos(l.nodes[0,i], l.nodes[1,i], 0.0,0.0,0.0,0.0)
     l.find_s()
-    s = linspace(l.s,l.s+1.0,5)
+    s = linspace(l.s,l.s+2.0,5)
     ss[i] = l.s
     #c[i,:] = polyval(l.coeffCurvature,s)
     c = polyval(l.coeffCurvature,s)
