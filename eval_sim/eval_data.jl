@@ -129,13 +129,16 @@ function eval_run(code::AbstractString)
     legend(["GPS meas","estimate"])
     
     figure()
-    plot(imu_meas.t-t0,imu_meas.z[:,7:9])
+    #plot(imu_meas.t-t0,imu_meas.z[:,7:9])
     plot(pos_info.t-t0,pos_info.z[:,19:20])
     grid("on")
+    legend(["a_x","a_y"])
+    ylabel("a [m/s^2]")
+    xlabel("t [s]")
     title("Measured accelerations")
 
     figure()
-    plot(gps_meas.t-t0,gps_meas.z,"-*",pos_info.t-t0,pos_info.z[:,6:7],"-x",gps_meas.t_msg-t0,gps_meas.z,"--x")
+    plot(gps_meas.t-t0,gps_meas.z,"-*",pos_info.t-t0,pos_info.z[:,6:7],"-",gps_meas.t_msg-t0,gps_meas.z,"--")
     grid(1)
     title("GPS comparison")
     xlabel("t [s]")
@@ -192,6 +195,27 @@ function eval_run(code::AbstractString)
     nothing
 end
 
+function plot_friction_circle(code::AbstractString,lap::Int64)
+    log_path_record = "$(homedir())/simulations/output-record-$(code).jld"
+    log_path_LMPC   = "$(homedir())/simulations/output-LMPC-$(code).jld"
+    d_rec       = load(log_path_record)
+    d_lmpc      = load(log_path_LMPC)
+
+    oldTraj     = d_lmpc["oldTraj"]
+    pos_info    = d_rec["pos_info"]
+
+    # Find timing of selected lap:
+    t_start = oldTraj.oldTimes[oldTraj.oldTraj[:,6,lap].>=0,lap][1]
+    t_end = oldTraj.oldTimes[oldTraj.oldTraj[:,6,lap].<=19.11,lap][end]
+    idx = (pos_info.t.>t_start) & (pos_info.t.<t_end) 
+    plot(pos_info.z[idx,17],pos_info.z[idx,18])
+    grid("on")
+    xlabel("a_x [m/s^2]")
+    ylabel("a_y [m/s^2]")
+    axis("equal")
+    title("")
+end
+
 function plot_v_ey_over_s(code::AbstractString,laps::Array{Int64})
     log_path_LMPC   = "$(homedir())/simulations/output-LMPC-$(code).jld"
     d_lmpc      = load(log_path_LMPC)
@@ -204,11 +228,14 @@ function plot_v_ey_over_s(code::AbstractString,laps::Array{Int64})
     figure(1)
     for i=1:n_laps
         idx = (oldTraj.oldTraj[:,6,laps[i]] .>= 0.0) & (oldTraj.oldTraj[:,6,laps[i]] .<= 19.11)
-        plot(oldTraj.oldTraj[idx,6,laps[i]],oldTraj.oldTraj[idx,1,laps[i]],label="Lap $(laps[i])")
+        plot(smooth(oldTraj.oldTraj[idx,6,laps[i]],5),oldTraj.oldTraj[idx,1,laps[i]],label="Lap $(laps[i])")
     end
     legend()
+    grid("on")
     xlabel("s [m]")
     ylabel("v [m/s]")
+    xlim([0,19.11])
+    ylim([0,3.2])
 
     # plot e_y over s   
     figure(2)
@@ -217,8 +244,31 @@ function plot_v_ey_over_s(code::AbstractString,laps::Array{Int64})
         plot(oldTraj.oldTraj[idx,6,laps[i]],oldTraj.oldTraj[idx,5,laps[i]],label="Lap $(laps[i])")
     end
     legend()
+    grid("on")
     xlabel("s [m]")
     ylabel("e_Y [m]")
+    xlim([0,19.11])
+    ylim([-0.5,0.5])
+
+    # plot lap time over iterations
+    laps_run = size(oldTraj.oldCost[oldTraj.oldCost.>1],1)
+    lap_times = zeros(laps_run)
+    for i=1:laps_run
+        t_start = oldTraj.oldTimes[oldTraj.oldTraj[:,6,i].>=0,i][1]
+        t_end = oldTraj.oldTimes[oldTraj.oldTraj[:,6,i].<=19.11,i][end]
+        lap_times[i] = t_end-t_start
+    end
+    figure(3)
+    plot(1:size(lap_times,1),lap_times,"-o")
+    grid("on")
+    xlabel("Lap number")
+    ylabel("Lap time [s]")
+    ylim([0,25])
+end
+
+function plots_for_presentation()
+    code = "dc15"
+    laps = [2,4,6,17,18]
 end
 
 function plot_v_over_xy(code::AbstractString,lap::Int64)
@@ -241,7 +291,7 @@ function plot_v_over_xy(code::AbstractString,lap::Int64)
 
     figure()
     plot(track[:,1],track[:,2],"b.",track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")
-    scatter(pos_info.z[idx,6],pos_info.z[idx,7],c=pos_info.z[idx,8],cmap=ColorMap("jet"),edgecolors="face")
+    scatter(pos_info.z[idx,6],pos_info.z[idx,7],c=pos_info.z[idx,8],cmap=ColorMap("jet"),edgecolors="face",vmin=0.5,vmax=2.0)
     grid(1)
     title("x-y-view")
     axis("equal")
@@ -1172,6 +1222,7 @@ function checkTimes(code::AbstractString)
     cmd        = d_lmpc["cmd"]                 # this is the command how it was sent by the MPC
     sol_status_int = zeros(size(t_solv,1))
     t = d_lmpc["t"]
+    t0 = t[1]
 
     for i=1:size(sol_status,1)
         if sol_status[i]==:Optimal
@@ -1189,6 +1240,13 @@ function checkTimes(code::AbstractString)
     subplot(212,sharex=ax1)
     plot(t,cmd,"-x")
     grid("on")
+
+    figure(2)
+    plot(t-t0,t_solv)
+    title("Solver time")
+    grid("on")
+    xlabel("t [s]")
+    ylabel("Solver time [s]")
 end
 
 function checkConnectivity(code::AbstractString)
