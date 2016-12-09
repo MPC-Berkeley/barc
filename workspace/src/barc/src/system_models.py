@@ -23,6 +23,8 @@ def f_KinBkMdl(z, u, vhMdl, dt, est_mode):
     process model
     input: state z at time k, z[k] := [x[k], y[k], psi[k], v[k]]
     output: state at next time step z[k+1]
+    Does not account for drift in psi estimation!
+    -> Either put low trust on measured psi-values or add extra state for drift estimation!
     """
     #c = array([0.5431, 1.2767, 2.1516, -2.4169])
 
@@ -49,50 +51,28 @@ def f_KinBkMdl(z, u, vhMdl, dt, est_mode):
 
     return array([x_next, y_next, psi_next, v_next])
 
-def f_KinBkMdl_mixed(z, u, vhMdl, dt, est_mode):
-    (l_A,l_B) = vhMdl
-    #bta = atan(l_A/(l_A+l_B)*tan(u[2]))
-    bta = math.atan2(z[3],z[2])
-    zNext = [0]*11
-    zNext[0] = z[0] + dt*(sqrt(z[2]**2+z[3]**2)*cos(z[6] + bta))    # x
-    zNext[1] = z[1] + dt*(sqrt(z[2]**2+z[3]**2)*sin(z[6] + bta))    # y
-    zNext[2] = z[2] + dt*(z[4]+z[7]*z[3])                           # v_x
-    zNext[3] = z[3] + dt*(z[5]-z[7]*z[2])                           # v_y
-    zNext[4] = z[4]                                                 # a_x
-    zNext[5] = z[5]                                                 # a_y
-    zNext[6] = z[6] + dt*(sqrt(z[2]**2+z[3]**2)/l_B*sin(bta))       # psi
-    zNext[7] = z[7]                                                 # psidot
-    zNext[8] = z[8]                                                 # drift_a_x
-    zNext[9] = z[9]                                                 # drift_a_y
-    zNext[10] = z[10]                                               # drift_psi
-    return array(zNext)
-
-def f_SensorModel(z, u, vhMdl, dt, est_mode):
-    """ This Sensor model uses *only* sensor data and does not consider car dynamics!
-    Essentially, it only integrates acceleration data and puts it together with GPS data. """
-    zNext = [0]*9
-    zNext[0] = z[0] + dt*(cos(z[6])*z[2] - sin(z[6])*z[3])          # x
-    zNext[1] = z[1] + dt*(sin(z[6])*z[2] + cos(z[6])*z[3])          # y
-    zNext[2] = z[2] + dt*(z[4]+z[7]*z[3])                           # v_x
-    zNext[3] = z[3] + dt*(z[5]-z[7]*z[2])                           # v_y
-    zNext[4] = z[4]                                                 # a_x
-    zNext[5] = z[5]                                                 # a_y
-    zNext[6] = z[6] + dt*(z[7])                                     # psi
-    zNext[7] = z[7]                                                 # psidot
-    zNext[8] = z[8]                                                 # drift_psi
-    return array(zNext)
-
-def h_SensorModel(x, u, vhMdl, dt, est_mode):
-    """ This is the measurement model to the sensor model above """
-    y = [0]*7
-    y[0] = x[0]                     # x
-    y[1] = x[1]                     # y
-    y[2] = sqrt(x[2]**2+x[3]**2)    # v
-    y[3] = x[6]+x[8]                # psi
-    y[4] = x[7]                     # psiDot
-    y[5] = x[4]                     # a_x
-    y[6] = x[5]                     # a_y
-    return array(y)
+def h_KinBkMdl(x, u, vhMdl, dt, est_mode):
+    """
+    Measurement model
+    """
+    if est_mode==1:                     # GPS, IMU, Enc
+        C = array([[1, 0, 0, 0],
+                   [0, 1, 0, 0],
+                   [0, 0, 1, 0],
+                   [0, 0, 0, 1]])
+    elif est_mode==2:                     # IMU, Enc
+        C = array([[0, 0, 1, 0],
+                   [0, 0, 0, 1]])
+    elif est_mode==3:                     # GPS
+        C = array([[1, 0, 0, 0],
+                   [0, 1, 0, 0]])
+    elif est_mode==4:                     # GPS, Enc
+        C = array([[1, 0, 0, 0],
+                   [0, 1, 0, 0],
+                   [0, 0, 0, 1]])
+    else:
+        print("Wrong est_mode")
+    return dot(C, x)
 
 def f_SensorKinematicModel(z, u, vhMdl, dt, est_mode):
     """ This Sensor model contains a pure Sensor-Model and a Kinematic model. They're independent from each other."""
@@ -132,114 +112,3 @@ def h_SensorKinematicModel(x, u, vhMdl, dt, est_mode):
     y[11] = x[2]                    # v_x
     y[12] = x[3]                    # v_y
     return array(y)
-
-def f_KinBkMdl_2(z, u, vhMdl, dt, est_mode):
-    (l_A,l_B) = vhMdl
-    #bta = atan(l_A/(l_A+l_B)*tan(u[2]))
-    bta = math.atan2(l_A*tan(u[1]),l_A+l_B)
-    #print "========================"
-    #print "bta = %f"%bta
-    #print "psi = %f"%z[6]
-    zNext = [0]*6
-    zNext[0] = z[0] + dt*(z[3]*cos(z[2] + bta))    # x
-    zNext[1] = z[1] + dt*(z[3]*sin(z[2] + bta))    # y
-    zNext[2] = z[2] + dt*(z[3]/l_B*sin(bta))       # psi
-    zNext[3] = z[3] + dt*(u[0] - 0.5*z[3])         # v
-    zNext[4] = z[4]                                # psiDot
-    zNext[5] = z[5]                                # drift_psi
-    return array(zNext)
-
-def h_KinBkMdl_2(x, u, vhMdl, dt, est_mode):
-    """This Measurement model uses gps, imu and encoders"""
-    y = [0]*5
-    y[0] = x[0]                     # x
-    y[1] = x[1]                     # y
-    y[2] = x[2]+x[5]                # psi
-    y[3] = x[3]                     # v
-    y[4] = x[4]                     # psiDot
-    return array(y)
-
-def h_KinBkMdl_mixed(x, u, vhMdl, dt, est_mode):
-    """This Measurement model uses gps, imu and encoders"""
-    y = [0]*7
-    y[0] = x[0]                     # x
-    y[1] = x[1]                     # y
-    y[2] = sqrt(x[2]**2+x[3]**2)    # v
-    y[3] = x[6]+x[10]               # psi
-    y[4] = x[7]                     # psiDot
-    y[5] = x[4]+x[8]                # a_x
-    y[6] = x[5]+x[9]                # a_y
-    return array(y)
-
-def h_KinBkMdl_mixed_nodrift(x, u, vhMdl, dt, est_mode):
-    """This Measurement model uses gps, imu and encoders"""
-    y = [0]*7
-    y[0] = x[0]                     # x
-    y[1] = x[1]                     # y
-    y[2] = sqrt(x[2]**2+x[3]**2)    # v
-    y[3] = x[6]+x[8]                # psi
-    y[4] = x[7]                     # psiDot
-    y[5] = x[4]                     # a_x
-    y[6] = x[5]                     # a_y
-    return array(y)
-
-def h_KinBkMdl(x, u, vhMdl, dt, est_mode):
-    """
-    Measurement model
-    """
-    if est_mode==1:                     # GPS, IMU, Enc
-        C = array([[1, 0, 0, 0],
-                   [0, 1, 0, 0],
-                   [0, 0, 1, 0],
-                   [0, 0, 0, 1]])
-    elif est_mode==2:                     # IMU, Enc
-        C = array([[0, 0, 1, 0],
-                   [0, 0, 0, 1]])
-    elif est_mode==3:                     # GPS
-        C = array([[1, 0, 0, 0],
-                   [0, 1, 0, 0]])
-    elif est_mode==4:                     # GPS, Enc
-        C = array([[1, 0, 0, 0],
-                   [0, 1, 0, 0],
-                   [0, 0, 0, 1]])
-    else:
-        print("Wrong est_mode")
-    return dot(C, x)
-
-def h_KinBkMdl_psi_drift(x, u, vhMdl, dt, est_mode):
-    """
-    Measurement model
-    """
-    if est_mode==1:                     # GPS, IMU, Enc
-        C = array([[1, 0, 0, 0, 0],
-                   [0, 1, 0, 0, 0],
-                   [0, 0, 1, 0, 1],
-                   [0, 0, 0, 1, 0]])
-    elif est_mode==2:                     # IMU, Enc
-        C = array([[0, 0, 1, 0, 1],
-                   [0, 0, 0, 1, 0]])
-    elif est_mode==3:                     # GPS
-        C = array([[1, 0, 0, 0, 0],
-                   [0, 1, 0, 0, 0]])
-    elif est_mode==4:                     # GPS, Enc
-        C = array([[1, 0, 0, 0, 0],
-                   [0, 1, 0, 0, 0],
-                   [0, 0, 0, 1, 0]])
-    else:
-        print("Wrong est_mode")
-    return dot(C, x)
-
-def h_KinBkMdl_predictive(x):
-    """
-    measurement model
-    """
-    # For GPS, IMU and encoders:
-    # C = array([[1, 0, 0, 0],
-    #            [0, 1, 0, 0],
-    #            [0, 0, 1, 0],
-    #            [0, 0, 0, 1]])
-    # For GPS only:
-    C = array([[1, 0, 0, 0, 0, 0, 0, 0],
-               [0, 1, 0, 0, 0, 0, 0, 0],
-               [0, 0, 1, 0, 0, 0, 0, 0]])
-    return dot(C, x)
