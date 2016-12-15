@@ -47,7 +47,7 @@ class Localization(object):
     OrderThetaCurv      = 8                     # order of theta interpolation
     closed              = True                  # open or closed trajectory?
 
-    coeffCurvature = zeros(4)
+    coeffCurvature = zeros(OrderThetaCurv + 1)
 
     s = 0                   # distance from s_start to current closest node (idx_min)
     s_start = 0             # distance along path from first node to start node (which is N_nodes_poly_back behind current closest node)
