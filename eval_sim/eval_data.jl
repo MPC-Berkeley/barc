@@ -266,11 +266,6 @@ function plot_v_ey_over_s(code::AbstractString,laps::Array{Int64})
     ylim([0,25])
 end
 
-function plots_for_presentation()
-    code = "dc15"
-    laps = [2,4,6,17,18]
-end
-
 function plot_v_over_xy(code::AbstractString,lap::Int64)
     log_path_record = "$(homedir())/simulations/output-record-$(code).jld"
     log_path_LMPC   = "$(homedir())/simulations/output-LMPC-$(code).jld"
@@ -351,8 +346,6 @@ function eval_open_loop(code::AbstractString)
     ylabel("Position [m]")
     grid("on")
 end
-
-
 
 # THIS FUNCTION EVALUATES MPC-SPECIFIC DATA
 # *****************************************
@@ -899,66 +892,6 @@ function anim_LMPC_coeff(code::AbstractString)
     end
 end
 
-
-function anim_LMPC(k1,k2)
-    d           = load(log_path_LMPC)
-    oldTraj     = d["oldTraj"]
-    sol_z       = d["sol_z"]
-    sol_u       = d["sol_u"]
-    coeffCost   = d["coeffCost"]
-    coeffConst  = d["coeffConst"]
-    s_start     = d["s_start"]
-    state       = d["state"]
-
-    N = size(sol_z,1)-1
-
-    for k=k1:k2
-        s = sol_z[1:10,1,k]
-        subplot(211)
-        plot(s,sol_u[:,1,k],"-o")
-        ylim([-1,2])
-        xlim([0,2])
-        grid()
-        subplot(212)
-        plot(s,sol_u[:,2,k],"-o")
-        ylim([-0.5,0.5])
-        xlim([0,2])
-        grid()
-        sleep(0.1)
-    end
-
-    figure()
-    hold(0)
-    for k=k1:k2
-        s_state = s_start[k:k+N] + state[k:k+N,1] - s_start[k]
-        s   = sol_z[:,1,k]
-        ss  = [s.^5 s.^4 s.^3 s.^2 s.^1 s.^0]
-        subplot(311)
-        plot(s,sol_z[:,2,k],"-o",s_state,state[k:k+N,2],"-*",s,ss*coeffConst[:,1,1,k],s,ss*coeffConst[:,2,1,k])
-        grid()
-        title("Position = $(s_start[k] + s[1]), k = $k")
-        xlabel("s")
-        xlim([0,3])
-        ylim([-0.2,0.2])
-        ylabel("e_Y")
-        subplot(312)
-        plot(s,sol_z[:,3,k],"-o",s_state,state[k:k+N,3],"-*",s,ss*coeffConst[:,1,2,k],s,ss*coeffConst[:,2,2,k])
-        grid()
-        xlabel("s")
-        ylabel("e_Psi")
-        xlim([0,3])
-        ylim([-0.2,0.2])
-        subplot(313)
-        plot(s,sol_z[:,4,k],"-o",s_state,state[k:k+N,4],"-*",s,ss*coeffConst[:,1,3,k],s,ss*coeffConst[:,2,3,k])
-        grid()
-        xlabel("s")
-        ylabel("v")
-        xlim([0,3])
-        ylim([0,2])
-        sleep(0.1)
-    end
-end
-
 function visualize_tdiff(code::AbstractString)
     log_path_record = "$(homedir())/simulations/output-record-$(code).jld"
     d_rec       = load(log_path_record)
@@ -1050,6 +983,7 @@ function anim_constraints(code::AbstractString)
     anim = animation.FuncAnimation(fig, animate, frames=100, interval=50)
     anim[:save]("test2.mp4", bitrate=-1, extra_args=["-vcodec", "libx264", "-pix_fmt", "yuv420p"]);
 end
+
 # *****************************************************************
 # ****** HELPER FUNCTIONS *****************************************
 # *****************************************************************
