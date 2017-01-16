@@ -57,7 +57,7 @@ type MpcModel
         z_Ref       = cat(2,v_ref*ones(N+1,1),zeros(N+1,5))       # Reference trajectory: path following -> stay on line and keep constant velocity
         u_Ref       = zeros(N,2)
 
-        mdl = Model(solver = IpoptSolver(print_level=0,max_cpu_time=0.08))#,check_derivatives_for_naninf="yes"))#,linear_solver="ma57",print_user_options="yes"))
+        mdl = Model(solver = IpoptSolver(print_level=0,max_cpu_time=0.09))#,check_derivatives_for_naninf="yes"))#,linear_solver="ma57",print_user_options="yes"))
 
         @variable( mdl, z_Ol[1:(N+1),1:7])
         @variable( mdl, u_Ol[1:N,1:2])
@@ -66,9 +66,9 @@ type MpcModel
         @variable( mdl, eps[1:N+1] >= 0) # eps for soft lane constraints
 
         z_lb_6s = ones(mpcParams.N+1,1)*[0.1 -Inf -Inf -Inf -Inf -Inf -Inf]                      # lower bounds on states
-        z_ub_6s = ones(mpcParams.N+1,1)*[2.5  Inf Inf  Inf  Inf  Inf Inf]                      # upper bounds
-        u_lb_6s = ones(mpcParams.N,1) * [-1.0  -0.3]                                         # lower bounds on steering
-        u_ub_6s = ones(mpcParams.N,1) * [2.0   0.3]                                         # upper bounds
+        z_ub_6s = ones(mpcParams.N+1,1)*[3.5  Inf Inf  Inf  Inf  Inf Inf]                      # upper bounds
+        u_lb_6s = ones(mpcParams.N,1) * [-20.0  -0.3]                                         # lower bounds on steering
+        u_ub_6s = ones(mpcParams.N,1) * [30.0    0.3]                                         # upper bounds
 
         for i=1:2
             for j=1:N

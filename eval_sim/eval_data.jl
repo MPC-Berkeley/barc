@@ -420,8 +420,8 @@ function eval_LMPC(code::AbstractString)
     c = zeros(size(curv,1),1)
     for i=1:size(curv,1)
         s = state[i,6]
-        #c[i] = ([s.^8 s.^7 s.^6 s.^5 s.^4 s.^3 s.^2 s.^1 s.^0] * curv[i,:]')[1]
-        c[i] = ([s.^6 s.^5 s.^4 s.^3 s.^2 s.^1 s.^0] * curv[i,:]')[1]
+        c[i] = ([s.^8 s.^7 s.^6 s.^5 s.^4 s.^3 s.^2 s.^1 s.^0] * curv[i,:]')[1]
+        #c[i] = ([s.^6 s.^5 s.^4 s.^3 s.^2 s.^1 s.^0] * curv[i,:]')[1]
         #c[i] = ([s.^3 s.^2 s.^1 s.^0] * curv[i,:]')[1]
     end
     plot(state[:,6],c,"-o")
@@ -432,8 +432,8 @@ function eval_LMPC(code::AbstractString)
             s = sol_z[:,6,i]
         end
         c = zeros(size(curv,1),1)
-        #c = [s.^8 s.^7 s.^6 s.^5 s.^4 s.^3 s.^2 s.^1 s.^0] * curv[i,:]'
-        c = [s.^6 s.^5 s.^4 s.^3 s.^2 s.^1 s.^0] * curv[i,:]'
+        c = [s.^8 s.^7 s.^6 s.^5 s.^4 s.^3 s.^2 s.^1 s.^0] * curv[i,:]'
+        #c = [s.^6 s.^5 s.^4 s.^3 s.^2 s.^1 s.^0] * curv[i,:]'
         #c = [s.^3 s.^2 s.^1 s.^0] * curv[i,:]'
         plot(s,c,"-*")
     end

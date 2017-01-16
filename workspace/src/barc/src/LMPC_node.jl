@@ -47,7 +47,7 @@ function SE_callback(msg::pos_info,acc_f::Array{Float64},lapStatus::LapStatus,po
     oldTraj.count[lapStatus.currentLap] += 1
 
     # if necessary: append to end of previous lap
-    if lapStatus.currentLap > 1 && z_est[6] < 16.0
+    if lapStatus.currentLap > 1 && z_est[6] < 18.0
         oldTraj.oldTraj[oldTraj.count[lapStatus.currentLap-1],:,lapStatus.currentLap-1] = z_est
         oldTraj.oldTraj[oldTraj.count[lapStatus.currentLap-1],6,lapStatus.currentLap-1] += posInfo.s_target
         oldTraj.oldInput[oldTraj.count[lapStatus.currentLap-1],:,lapStatus.currentLap-1] = [msg.u_a,msg.u_df]
@@ -57,7 +57,7 @@ function SE_callback(msg::pos_info,acc_f::Array{Float64},lapStatus::LapStatus,po
     end
 
     #if necessary: append to beginning of next lap
-    if z_est[6] > posInfo.s_target - 16.0
+    if z_est[6] > posInfo.s_target - 18.0
         oldTraj.oldTraj[oldTraj.count[lapStatus.currentLap+1],:,lapStatus.currentLap+1] = z_est
         oldTraj.oldTraj[oldTraj.count[lapStatus.currentLap+1],6,lapStatus.currentLap+1] -= posInfo.s_target
         oldTraj.oldInput[oldTraj.count[lapStatus.currentLap+1],:,lapStatus.currentLap+1] = [msg.u_a,msg.u_df]
@@ -72,7 +72,7 @@ end
 function main()
     println("Starting LMPC node.")
 
-    buffersize                  = 3000       # size of oldTraj buffers
+    buffersize                  = 7000       # size of oldTraj buffers
 
     # Define and initialize variables
     # ---------------------------------------------------------------
