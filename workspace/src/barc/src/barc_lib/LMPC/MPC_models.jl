@@ -67,8 +67,8 @@ type MpcModel
 
         z_lb_6s = ones(mpcParams.N+1,1)*[0.1 -Inf -Inf -Inf -Inf -Inf -Inf]                      # lower bounds on states
         z_ub_6s = ones(mpcParams.N+1,1)*[3.5  Inf Inf  Inf  Inf  Inf Inf]                      # upper bounds
-        u_lb_6s = ones(mpcParams.N,1) * [-20.0  -0.3]                                         # lower bounds on steering
-        u_ub_6s = ones(mpcParams.N,1) * [30.0    0.3]                                         # upper bounds
+        u_lb_6s = ones(mpcParams.N,1) * [-1.0  -0.3]                                         # lower bounds on steering
+        u_ub_6s = ones(mpcParams.N,1) * [2.0   0.3]                                         # upper bounds
 
         for i=1:2
             for j=1:N
