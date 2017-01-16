@@ -72,7 +72,7 @@ end
 function main()
     println("Starting LMPC node.")
 
-    buffersize                  = 3000       # size of oldTraj buffers
+    buffersize                  = 4000       # size of oldTraj buffers
 
     # Define and initialize variables
     # ---------------------------------------------------------------
