@@ -8,7 +8,7 @@ class Proxy():
 
     def __init__(self):
         self.ecu = rospy.Publisher('/ecu', barc/ECU, queue_size=10)
-        rospy.init_node('Car_10')
+        rospy.init_node('Car_Slave')
 
     def callback(data):
         self.ecu.publish(data)

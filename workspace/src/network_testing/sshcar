@@ -1,15 +1,39 @@
-#!/bin/bash -x
+#!/bin/bash
+if [ $# -eq 2 ]; then
+    
+    ssh -t ${2}.local "export ROS_MASTER_URI=http://${1}.local:11311; export ROS_IP=odroid_${2}.local; bash"
+
+elif [ $# -eq 1 ]; then
 
 case "$1" in
     "-h" )
     echo "
-    Usage: sshcar [MASTERCAR] [SLAVECAR]
+    Main syntax: sshcar [MASTERCAR] [SLAVECAR]
+
+        Write out the full hostname for MASTERCAR and SLAVECAR. sshcar is only useful when running from the Master Car.
+
+        Do not close the terminals after sshcar, or else the environment variables will be reset to the default.
+
+    Other syntax:
+
+    sshcar [SLAVECAR]
+
+        Shorthand of the main syntax. Assumes that the master car is the current host. 
+        
+    sshcar -h        
+        
+        Pulls up this message for reference.
     "
     ;;
     * )
 
-    ssh -t odroid_${1}.local "export ROS_MASTER_URI=http://$(hostname).local:11311; export ROS_IP=odroid_${1}.local; bash"
+    ssh -t ${1}.local "export ROS_MASTER_URI=http://$(hostname).local:11311; export ROS_IP=${1}.local; bash"
     ;;
 esac
+
+else
+    echo "Invalid syntax. Type 'sshcar -h' for help."
+    
+fi
 
 

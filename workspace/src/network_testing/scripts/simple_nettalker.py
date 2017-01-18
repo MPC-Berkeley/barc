@@ -8,7 +8,7 @@ def lead():
     sig = rospy.Publisher('signal', barc/ECU, queue_size=10)
     ecu = rospy.Publisher('/ecu', barc/ECU, queue_size=10)
 
-    rospy.init_node('Car_2')
+    rospy.init_node('Car_Master')
 
     r = rospy.rate(1)
 
