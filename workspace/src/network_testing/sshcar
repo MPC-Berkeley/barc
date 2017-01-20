@@ -1,7 +1,7 @@
 #!/bin/bash
 if [ $# -eq 2 ]; then
     
-    ssh -t ${2}.local "export ROS_MASTER_URI=http://${1}.local:11311; export ROS_IP=odroid_${2}.local; bash"
+    ssh -t ${2}.local "export ROS_MASTER_URI=http://${1}.local:11311; export ROS_IP=${2}.local; export ROS_HOSTNAME=${2}.local; bash"
 
 elif [ $# -eq 1 ]; then
 
@@ -18,16 +18,30 @@ case "$1" in
 
     sshcar [SLAVECAR]
 
-        Shorthand of the main syntax. Assumes that the master car is the current host. 
+        Shorthand of the main syntax. Assumes that the master car is the current host, and that the host name of the master is resolvable. 
         
+    source sshcar -s
+        
+        This is used to set the ROS environment variables for the current machine. It performs the same task but without the ssh.
+
+        It is necessary to use source in this case. Without source, the script will run in a child process and will not change any enivornment variables in the current terminal.
+    
     sshcar -h        
         
         Pulls up this message for reference.
     "
     ;;
+    "-s" )
+    
+    export ROS_MASTER_URI=http://$(hostname).local:11311
+    export ROS_IP=$(hostname).local
+    export ROS_HOSTNAME=$(hostname).local
+
+    ;;
+    
     * )
 
-    ssh -t ${1}.local "export ROS_MASTER_URI=http://$(hostname).local:11311; export ROS_IP=${1}.local; bash"
+    ssh -t ${1}.local "export ROS_MASTER_URI=http://$(hostname).local:11311; export ROS_IP=${1}.local; export ROS_HOSTNAME=${1}.local; bash"
     ;;
 esac
 
