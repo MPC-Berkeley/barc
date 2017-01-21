@@ -1,4 +1,4 @@
-#!/usr/bin/env julia
+#!/usr/bin/env julia4
 
 using RobotOS
 @rosimport barc.msg: ECU, pos_info
@@ -142,7 +142,7 @@ function main()
     # Specific initializations:
     lapStatus.currentLap    = 1
     lapStatus.currentIt     = 1
-    posInfo.s_target        = 19.11#19.14#17.94#17.76#24.0
+    posInfo.s_target        = 21.27#19.14#17.94#17.76#24.0
     k                       = 0                       # overall counter for logging
     
     mpcSol.z = zeros(11,4)
