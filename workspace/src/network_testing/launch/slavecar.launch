@@ -1,0 +1,17 @@
+<launch>
+
+    <arg name="car"/>
+    
+    <node pkg="network_testing" type="add_slave.py" name="add_slave"/>
+
+    <node
+        pkg="network_testing"
+        type="serial_node.py"
+        launch-prefix="xterm -e"
+        name="serial_node"
+        ns="$(arg car)"
+     />
+
+
+
+<launch/>

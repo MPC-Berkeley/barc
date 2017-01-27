@@ -1,0 +1,34 @@
+#!/bin/bash
+
+case $1 in
+
+    -m)
+        source ./sshcar -s
+        master=$(rosparam get master 2> /dev/null)
+        if [ -n master ]; then
+            echo "According to the parameter server, a master already exists.
+            If you would like to make this car the master, either
+            stop the current master and restart the network with this car, or
+            take this car off the current network and make it a master on a new network."
+        else
+            roslaunch network_testing mastercar.launch car:=$(hostname) & 
+        fi
+        exit 0
+    ;;
+
+    -s)
+        if [ $# = 2 ]; then
+            ./sshcar -l ${2}
+        else
+            echo "Invalid syntax: use 'rosbarc_network -h' for help on usage"
+        fi
+        
+    ;;
+
+    -h)
+        echo "Manual:
+            source rosbarc_network [FLAG] [ARG]
+        "
+    ;;
+
+esac

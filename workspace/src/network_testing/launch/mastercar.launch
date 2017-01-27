@@ -1,0 +1,19 @@
+<launch>
+
+    <arg name="car"/>
+
+
+    <node
+        pkg="rosserial_python"
+        type="serial_node.py"
+        launch-prefix="xterm -e"
+        name="serial_node"
+        required="true"
+        ns="$(arg car)"
+    />
+    
+    <param name="master" value="$(arg car)"/>
+
+
+
+</launch>

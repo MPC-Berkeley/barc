@@ -1,7 +1,30 @@
 #!/bin/bash
+
+env_var() {
+
+    export ROS_MASTER_URI=http://${1}.local:11311/
+    export ROS_IP=${2}.local
+    export ROS_HOSTNAME=${2}.local
+    #exit 0
+
+}
+
+
 if [ $# -eq 2 ]; then
+
+case "$1" in
+    "-s" )
+     env_var ${2} $(hostname)
+#    export ROS_MASTER_URI=http://${2}.local:11311
+#    export ROS_IP=$(hostname).local
+#    export ROS_HOSTNAME=$(hostname).local
+    ;;
+    
+    * )
     
     ssh -t ${2}.local "export ROS_MASTER_URI=http://${1}.local:11311; export ROS_IP=${2}.local; export ROS_HOSTNAME=${2}.local; bash"
+    ;;
+esac
 
 elif [ $# -eq 1 ]; then
 
@@ -22,9 +45,17 @@ case "$1" in
         
     source sshcar -s
         
-        This is used to set the ROS environment variables for the current machine. It performs the same task but without the ssh.
+        This is used to set the ROS environment variables for the current machine, assuming that it is the master. It performs the same task but without the ssh.
 
         It is necessary to use source in this case. Without source, the script will run in a child process and will not change any enivornment variables in the current terminal.
+
+    source sshcar -s [MASTERCAR]
+
+        Performs the same task as "source sshcar -s" but with a designated master machine.
+
+    sshcar -l [SLAVECAR]
+
+        In addition to setting the environment variables and ssh'ing into the car, it will initiate the car's sensors in the appropriate namespace.
     
     sshcar -h        
         
@@ -33,12 +64,18 @@ case "$1" in
     ;;
     "-s" )
     
-    export ROS_MASTER_URI=http://$(hostname).local:11311
-    export ROS_IP=$(hostname).local
-    export ROS_HOSTNAME=$(hostname).local
-
+     env_var $(hostname) $(hostname)
+#    export ROS_MASTER_URI=http://$(hostname).local:11311
+#    export ROS_IP=$(hostname).local
+#    export ROS_HOSTNAME=$(hostname).local
     ;;
+   
+    "-l" )
+    ssh -t ${2}.local "export ROS_MASTER_URI=http://$(hostname).local:11311; export ROS_IP=${2}.local; export ROS_HOSTNAME=${2}.local;
     
+        roslaunch network_testing slavecar.launch car:=${2}; bash"
+    ;;
+
     * )
 
     ssh -t ${1}.local "export ROS_MASTER_URI=http://$(hostname).local:11311; export ROS_IP=${1}.local; export ROS_HOSTNAME=${1}.local; bash"

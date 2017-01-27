@@ -1,0 +1,5 @@
+<launch>
+
+<node pkg="network_testing" type="add_slave.py" name="add_slave"/>
+
+</launch>
