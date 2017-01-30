@@ -44,7 +44,7 @@ This assumes that you have at least one monitor that is connected to one of the 
 If you find a bug, or have any questions, please contact Kegan Kawamura (kgnkwmr@berkeley.edu).
 
 #### Useful links
--   [Background of using ROS over multiple machines](//wiki.ros.org/ROS/Tutorials/MultipleMachines)
+-   [Background of using ROS over multiple machines](http://wiki.ros.org/ROS/Tutorials/MultipleMachines)
 -   [Using Avahi to resolve hostnames on a network](//wiki.archlinux.org/index.php/avahi#Hostname_resolution)
 -   Important environment variables: [ROS_MASTER_URI](//wiki.ros.org/ROS/EnvironmentVariables#ROS_MASTER_URI), [ROS_IP/ROS_HOSTNAME](//wiki.ros.org/ROS/EnvironementVariables#ROS_IP.2BAC8-ROS_HOSTNAME)
 -   [Running analogous nodes on different machines at the same time](//wiki.ros.org/Nodes#Remapping_Arguments.A.22Pushing_Down.22)
