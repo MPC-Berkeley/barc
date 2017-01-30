@@ -9,17 +9,42 @@ env_var() {
 
 }
 
+source=1
+if [ "${BASH_SOURCE[0]}" != "${0}" ]; then
+    source=0    #source is used to call script
+fi
+
+source_exit() {
+    if [ ${source} -eq 1 ]; then
+        exit ${1}
+    fi
+}
+
+source_warn() {
+    
+     if [ ${source} -eq 1 ] ; then
+        echo "source was not used when calling the script. Nothing in the current terminal has changed."
+     fi
+
+}
 
 if [ $# -eq 2 ]; then
 
 case "$1" in
     "-s" )
+     source_warn
      env_var ${2} $(hostname)
 #    export ROS_MASTER_URI=http://${2}.local:11311
 #    export ROS_IP=$(hostname).local
 #    export ROS_HOSTNAME=$(hostname).local
     ;;
     
+    "-l" )
+    ssh -t ${2}.local "export ROS_MASTER_URI=http://$(hostname).local:11311; export ROS_IP=${2}.local; export ROS_HOSTNAME=${2}.local;
+    
+        roslaunch network_testing slavecar.launch car:=${2}; bash -i -c echo hi"
+    ;;
+
     * )
     
     ssh -t ${2}.local "export ROS_MASTER_URI=http://${1}.local:11311; export ROS_IP=${2}.local; export ROS_HOSTNAME=${2}.local; bash"
@@ -64,18 +89,15 @@ case "$1" in
     ;;
     "-s" )
     
+     if [ ${source} -eq 1 ] ; then
+        echo "source was not used when calling the script. Nothing in the current terminal has changed."
+     fi
      env_var $(hostname) $(hostname)
 #    export ROS_MASTER_URI=http://$(hostname).local:11311
 #    export ROS_IP=$(hostname).local
 #    export ROS_HOSTNAME=$(hostname).local
     ;;
    
-    "-l" )
-    ssh -t ${2}.local "export ROS_MASTER_URI=http://$(hostname).local:11311; export ROS_IP=${2}.local; export ROS_HOSTNAME=${2}.local;
-    
-        roslaunch network_testing slavecar.launch car:=${2}; bash"
-    ;;
-
     * )
 
     ssh -t ${1}.local "export ROS_MASTER_URI=http://$(hostname).local:11311; export ROS_IP=${1}.local; export ROS_HOSTNAME=${1}.local; bash"
@@ -83,8 +105,10 @@ case "$1" in
 esac
 
 else
-    echo "Invalid syntax. Type 'sshcar -h' for help."
+    echo "Invalid syntax. Type 'sshcar -h' for help." >&2
+    source_exit 1
     
 fi
 
 
+source_exit 0

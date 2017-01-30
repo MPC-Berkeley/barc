@@ -1,9 +1,0 @@
-rosdistro: 'indigo
-
-  '
-roslaunch:
-  uris: {host_odroid_10__38854: 'http://odroid_10:38854/', host_odroid_10__52845: 'http://odroid_10:52845/'}
-rosversion: '1.11.20
-
-  '
-run_id: 664c9322-e353-11e6-8664-001e06300d77

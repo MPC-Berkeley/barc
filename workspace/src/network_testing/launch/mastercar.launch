@@ -12,8 +12,12 @@
         ns="$(arg car)"
     />
     
-    <param name="master" value="$(arg car)"/>
-
+    <node
+        pkg="network_testing"
+        type="master_handle.py"
+        name="master_car_handler"
+        required="true"
+    />
 
 
 </launch>
