@@ -1,8 +1,9 @@
 import rosbag
 import numpy as np
 import matplotlib.pyplot as plt
+import os
 
-bag = rosbag.Bag('../rosbag/2017-01-31-20-33-42.bag')
+bag = rosbag.Bag(os.path.expanduser("~/rosbag/2017-01-31-20-50-50.bag"))
 
 
 topics = bag.get_type_and_topic_info()[1].keys()
