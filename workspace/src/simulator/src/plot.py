@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 
-bag = rosbag.Bag(os.path.expanduser("~/rosbag/2017-01-31-20-50-50.bag"))
+bag = rosbag.Bag(os.path.expanduser("~/rosbag/2017-01-31-21-27-32.bag"))
 
 
 topics = bag.get_type_and_topic_info()[1].keys()
@@ -50,7 +50,7 @@ for (topic, msg, t) in bag.read_messages(topics=['/ecu']) :
 # print counter
 
 plt.figure(1)
-plt.plot(x_raw, y_raw,'-o')
+plt.plot(x_raw, y_raw)
 plt.ylabel('Position along Y-axis [m]')
 plt.xlabel('Position along X-axis [m]')
 
@@ -60,12 +60,12 @@ plt.ylabel('Velocity [m/s]')
 
 
 plt.figure(3)
-plt.plot(time, d_f, '-o')
+plt.plot(d_f)
 plt.ylabel('Steering [rad]')
 
 
 plt.figure(4)
-plt.plot(time, acc, '-o')
+plt.plot(acc)
 plt.ylabel('Acceleration [m/s^2]')
 
 plt.show()
