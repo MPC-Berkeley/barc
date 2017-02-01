@@ -18,6 +18,6 @@
     <!-- SIMULATOR -->
     <node pkg="simulator" type="vehicle_simulator.py" name="simulator" />
 
-    <!-- CONTROLLER -->
-    <node pkg="simulator" type="controller.py" name="controller" />
+    <!-- Record the experiment data -->
+    <node pkg="rosbag" type="record" name="rosbag_record" args=" --all" />
 </launch>

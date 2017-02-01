@@ -75,7 +75,7 @@ def f_DynBkMdl(z, u, vhMdl, trMdl, F_ext, dt):
 
     return array([X_next, Y_next, psi_next, v_x_next, v_y_next, r_next])
     
-def f_DynBkMdlErrorFrame(z, u, vhMdl, trMdl, F_ext, dt): 
+def ef_DynBkMdl(z, u, vhMdl, trMdl, F_ext, dt): 
     """
     process model
     input: state z at time k, z[k] := [S[k], Ey[k], epsi[k], v_x[k], v_y[k], r[k]])
@@ -201,7 +201,7 @@ def f_KinBkMdl(z,u,vhMdl, F_ext, dt):
 
     return array([x_next, y_next, psi_next, v_next])
 
-def f_KinBkMdlErrorFrame(z,u,vhMdl, F_ext, dt):
+def ef_KinBkMdl(z,u,vhMdl, F_ext, dt):
     """
     process model
     input: state z at time k, z[k] := [x[k], y[k], epsi[k], v[k]]
