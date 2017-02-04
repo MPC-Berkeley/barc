@@ -26,3 +26,13 @@ if ! hash ano 2>/dev/null; then
     sudo cp /etc/avrdude.conf /etc/avrdude/
     cd;
 fi
+
+
+# install monokai colors for vim
+cd
+rm -rf .vim
+mkdir -p .vim
+cd .vim
+git init
+git remote add origin https://github.com/sickill/vim-monokai.git
+git pull origin master
