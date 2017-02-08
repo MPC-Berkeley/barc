@@ -5,7 +5,7 @@ catkin_make clean
 catkin_make
 
 # configure ROS environment
-source /home/odroid/barc/workspace/devel/setup.bash
+source $HOME/barc/workspace/devel/setup.bash
 
 # rebuild arduino libraries
 cd ~/sketchbook/libraries
