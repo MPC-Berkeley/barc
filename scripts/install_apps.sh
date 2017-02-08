@@ -8,15 +8,6 @@ if ! hash ano 2>/dev/null; then
     # install tool
     sudo make install; cd; sudo rm -rf Arturo
 
-    # create arduino upload-folder
-    cd ~/barc/arduino/
-    mkdir .arduino_nano328_node
-    cd .arduino_nano328_node
-
-    # initialize space
-    ano init -t blink; rm src/sketch.ino
-    cp ~/barc/arduino/arduino_nano328_node/arduino_nano328_node.ino src/
-
     # link to arduino libraries
     rm -r lib
     ln -s ~/sketchbook/libraries lib
