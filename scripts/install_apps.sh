@@ -32,3 +32,8 @@ cd .vim
 git init
 git remote add origin https://github.com/sickill/vim-monokai.git
 git pull origin master
+
+# install apps
+# * vim text editor
+# * chrony time synchronization utility
+sudo apt-get install vim chrony
