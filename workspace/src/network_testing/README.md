@@ -39,16 +39,16 @@ This assumes that you have at least one monitor that is connected to one of the 
 -   If sshcar could not resolve the hostname, the slave car is either not connected to the network, or the hostname is incorrect.
 
 ### Hostname
-To check a computer's hostname, simply run 'hostname' in the bash terminal.
+To check a computer's hostname, simply run `hostname` in the bash terminal.
 
 If your hostname is not unique, or you just want to change it so that it is easier to identify, perform the following steps (taken from [here](http://www.cyberciti.biz/faq/ubuntu-change-hostname-command/)):
 
-1. Edit the file /etc/hostname. You can do this by running 'sudo vim /etc/hostname'
+1. Edit the file /etc/hostname. You can do this by running `sudo vim /etc/hostname`.
 2. Delete the old hostname and replace with the new one. Save and close the file.
-3. Edit the file /etc/hosts. You can do this by running 'sudo vim /etc/hosts'
+3. Edit the file /etc/hosts. You can do this by running `sudo vim /etc/hosts`.
 4. Replace all occurences of the old hostname with the new one. Save and close the file.
-5. Reboot the system so changes take effect. You can do this by running 'sudo reboot'
-6. Once the system reboots, confirm that the hostname has changed by running 'hostname'
+5. Reboot the system so changes take effect. You can do this by running `sudo reboot`.
+6. Once the system reboots, confirm that the hostname has changed by running `hostname`.
 
 ### Networking Background
 To establish communication between the BARC units, we must first make sure that they are on the same Wifi network. Currently, the Wifi network is being emitted by a router attached to the master car, but the origin of the network does not matter as long as all the cars are connected to the same one.
@@ -60,14 +60,14 @@ However, even then, this does not always work. To confirm that each unit is on t
 1. Attach a monitor to one unit of your choosing (master car recommended).
 2. Confirm that the unit is on the correct network. If not, manually connect it to the correct one.
 3. Open a terminal.
-4. To check if a certain unit (which is not the current unit) is connected to the correct network, you can run 'ping [HOSTNAME of foreign unit].local'
+4. To check if a certain unit (which is not the current unit) is connected to the correct network, you can run `ping [HOSTNAME of foreign unit].local`.
 5. If 'ping' does not exit and is able to send and receive packets from the foreign unit, the foreign unit is on the correct network. If 'ping' fails, try turning off and on the Wifi antenna on the foreign unit, and ping again after a few seconds. By rebooting the antenna, it may connect to the correct network. As a last resort, you may need to connect a monitor to the foreign unit to manually connect to the appropriate network.
 6. Repeat steps 4 and 5 on each unit that you want to use.
 
-######Clarification on usage of Ping
+##### Clarification on usage of Ping
 Normally, you would need to type the IP address of the foreign machine in order to ping it.
 
-'ping [IP ADDRESS]'
+`ping [IP ADDRESS]`
 
 However, we want to keep the process as general as possible. IP addresses may change when cars reconnect to a network, and we do not want to have to keep checking (or remembering!) the IP addresses of each unit being used for the BARC experiment. In order to alleviate this, Avahi has made it possible to substitute a machine's hostname for the IP address (there is a link that explains this below). Essentially, we can use "[HOSTNAME].local" as a substitute for IP addresses in most commands. This has been utilized throughout the development of this software, including ssh.
 
