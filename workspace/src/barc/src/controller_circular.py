@@ -20,22 +20,30 @@ from numpy import pi
 import rospy
 
 #############################################################
-def circular(t_i, t_0, t_f, d_f_target, FxR_target):
+
+def circular(t_i, t_0, t_1, t_2, t_3, d_f_target, FxR_target):
     # rest
     if t_i < t_0:
         d_f     = 0
         FxR     = 0
 
     # start moving
-    elif (t_i < t_f):
-        d_f     = d_f_target
+    elif (t_i < t_1):
+        d_f     = 2*(d_f_target-0)*(t_i-t_0)/2.
+        FxR     = FxR_target
+    
+    elif (t_i < t_2):
+        d_f     = 2*d_f_target-4*(d_f_target)*(t_i-t_1)/2.
         FxR     = FxR_target
 
+    elif (t_i < t_3):
+        d_f     = -2*d_f_target + 4*(d_f_target)*(t_i-t_2)/2.
+        FxR     = FxR_target
     # stop experiment
     else:
         d_f     = 0
         FxR     = 0
-
+    print FxR, d_f
     return (FxR, d_f)
 
 
@@ -60,12 +68,12 @@ def main_auto():
     # main loop
     while not is_shutdown():
         # get command signal
-        (FxR, d_f) = circular(t_i, t_0, t_f, d_f_target, FxR_target)
+        (FxR, d_f) = circular(t_i, t_0, 4, 6.5, 8, 0.1, FxR_target)
 			
         # send command signal 
         ecu_cmd = ECU(FxR, d_f)
+        print t_i, FxR, d_f
         nh.publish(ecu_cmd)
-	
         # wait
         t_i += dt
         rate.sleep()
