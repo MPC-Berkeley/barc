@@ -20,6 +20,7 @@ fi
 
 # install EnableInterrupt library for arduino
 if [ ! -d $HOME/sketchbook/libraries/EnableInterrupt ]; then
+    mkdir -p $HOME/sketchbook/libraries
     cd $HOME/sketchbook/libraries
     wget -O enableinterrupt.zip "https://bintray.com/greygnome/generic/download_file?file_path=enableinterrupt-0.9.5.zip"
     unzip enableinterrupt.zip
