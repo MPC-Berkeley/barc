@@ -40,4 +40,4 @@ git pull origin master
 # * chrony  - time synchronization utility
 # * tree    - file directory visualization utility
 # * htop    - interactive process viewer
-sudo apt-get install vim chrony tree htop
+sudo apt-get install vim chrony tree htop tmux

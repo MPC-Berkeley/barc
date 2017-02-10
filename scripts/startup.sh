@@ -21,6 +21,7 @@ source $HOME/team_name.sh
 #   * rebuild_system    - rebuild all the ROS packages 
 alias nanorst='cd ~/barc/arduino/.arduino_nano328_node; cp ../arduino_nano328_node/arduino_nano328_node.ino src/; ano clean; ano build -m nano328; ano upload -m nano328 -p /dev/ttyUSB0; roscd barc'
 alias rebuild_system='source ~/barc/scripts/rebuild_system.sh'
+alias tmux='tmux -2'
 
 # set configuration script for vim text editor
 cp ~/barc/scripts/vimrc ~/.vimrc
