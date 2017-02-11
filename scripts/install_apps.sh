@@ -19,10 +19,12 @@ if ! hash ano 2>/dev/null; then
 fi
 
 # install EnableInterrupt library for arduino
-cd ~/sketchbook/libraries
-wget -O enableinterrupt.zip "https://bintray.com/greygnome/generic/download_file?file_path=enableinterrupt-0.9.5.zip"
-unzip enableinterrupt.zip
-rm enableinterrupt.zip
+if [ ! -d $HOME/sketchbook/libraries/EnableInterrupt ]; then
+    cd $HOME/sketchbook/libraries
+    wget -O enableinterrupt.zip "https://bintray.com/greygnome/generic/download_file?file_path=enableinterrupt-0.9.5.zip"
+    unzip enableinterrupt.zip
+    rm enableinterrupt.zip
+fi
 
 # install monokai colors for vim
 cd
@@ -32,3 +34,10 @@ cd .vim
 git init
 git remote add origin https://github.com/sickill/vim-monokai.git
 git pull origin master
+
+# install apps
+# * vim     - text editor
+# * chrony  - time synchronization utility
+# * tree    - file directory visualization utility
+# * htop    - interactive process viewer
+sudo apt-get install vim chrony tree htop tmux
