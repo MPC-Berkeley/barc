@@ -1,6 +1,6 @@
 <launch>
      <!-- Machines -->
-    <machine name="odroid" address="192.168.100.100" user="odroid" timeout="20.0" env-loader="$HOME/barc/env_loader_odroid.sh"/>
+    <machine name="odroid" address="192.168.100.100" user="odroid" timeout="20.0" env-loader="$HOME/barc/scripts/remote-machines/env_loader_odroid.sh"/>
     <machine name="pc" address="192.168.100.101" timeout="20.0" />
 
     <!-- IMU  -->
