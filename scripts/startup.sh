@@ -1,7 +1,7 @@
 #!/bin/bash
 # local start up script when opening bash session
 
-
+# set environment variable for python 
 export WORKON_HOME=$HOME/.virtualenvs
 export VIRTUALENVWRAPPER_PYTHON=/usr/bin/python
 export VIRTUALENVWRAPPER_VIRTUALENV=/usr/local/bin/virtualenv
@@ -9,11 +9,19 @@ export VIRTUALENVWRAPPER_VIRTUALENV_ARGS='--no-site-packages'
 source /usr/local/bin/virtualenvwrapper.sh
 workon barc
 
-source /home/odroid/team_name.sh
-
-alias nanorst='cd ~/barc/arduino/.arduino_nano328_node; cp ../arduino_nano328_node/arduino_nano328_node.ino src/; ano clean; ano build -m nano328; ano upload -m nano328 -p /dev/ttyUSB0; roscd barc'
-alias rebuild_system='source ~/barc/scripts/rebuild_system.sh'
-
+# set environment variables for ROS
+source $HOME/barc/workspace/devel/setup.bash
 export ROS_HOME=$HOME/barc/workspace/src/barc/rosbag/
 
+# set environment variables for Amazon Web Server
+source $HOME/team_name.sh
+
+# define commands
+#   * nanorst           - resets the arduino nano from the command line (assuming the device is connected and on port /dev/ttyUSB0
+#   * rebuild_system    - rebuild all the ROS packages 
+alias nanorst='cd ~/barc/arduino/.arduino_nano328_node; cp ../arduino_nano328_node/arduino_nano328_node.ino src/; ano clean; ano build -m nano328; ano upload -m nano328 -p /dev/ttyUSB0; roscd barc'
+alias rebuild_system='source ~/barc/scripts/rebuild_system.sh'
+alias tmux='tmux -2'
+
+# set configuration script for vim text editor
 cp ~/barc/scripts/vimrc ~/.vimrc
