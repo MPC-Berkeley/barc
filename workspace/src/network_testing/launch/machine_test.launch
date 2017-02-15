@@ -1,0 +1,11 @@
+<launch>
+
+    <arg name="remotecar" default="odroid.local">
+
+    <machine name="slaveone" address=$(arg remotecar) env-loader="/opt/ros/indigo/env.sh"/>
+
+    <node machine="slaveone" pkg="rosserial_python" type="serial_node.py" name="slaveserial"/>
+
+
+
+</launch>
