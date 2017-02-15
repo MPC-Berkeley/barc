@@ -61,3 +61,14 @@ sudo ntpdate -s time.nist.gov
 sudo service ntp start
 ```
 If you have a "no server suitable for synchronization found", your hosting provider may be blocking ntp packets. Refer to [this](http://askubuntu.com/questions/429306/ntpdate-no-server-suitable-for-synchronization-found) community question for more information
+
+### Corrupted file system
+If for some reason the Odroid's file system becomes corrupt, the Odroid may not be able to boot properly. To fix this, it is necessary to repair the eMMC. Since the Odroid cannot boot, it is necessary to repair the chip externally.
+
+Remove the eMMC from the Odroid, and attach it to the [Transcend USB](dn.odroid.com/homebackup/201407071823125107.jpg). Insert the USB into a computer with a Linux environment. Open the terminal, and make sure that the USB is properly recognized. A useful command for this is `lsblk`. `lsblk` will display the different disks and partitions on the computer.
+
+Once you've confirmed that the USB is recognized and which name it has (it will likely be /dev/sdb), we need to check which partition contains the Linux OS, which is where the corrupted filesystem likely is. To do this, run the command `sudo fdisk -l` in the terminal. This should display information similiar to `lsblk`. Under the eMMC memory, there should be a partition with "Linux" as its System type (likely to be /dev/sdb2). Now run `fsck [PARTITION]` (e.g. `fsck /dev/sdb2`). This should give you several prompts, and should automatically fix the file system. If it tells you that you do not have the permission to do this, try `sudo fsck [PARTITION]`.
+
+Once the repair is over, remove the USB and insert the eMMC back into the Odroid. Try booting the Odroid to confirm that the repair was successful.
+
+
