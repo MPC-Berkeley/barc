@@ -15,7 +15,7 @@
 
 from numpy import array, dot, eye, copy
 from numpy import dot, zeros
-from scipy.linalg import inv
+from numpy.linalg import inv
 import rospy
 
 def ekf(f, mx_k, P_k, h, y_kp1, Q, R, args):

@@ -116,7 +116,7 @@ def enc_callback(data):
         # Uncomment/modify according to your encoder setup
         # v_meas    = (v_FL + v_FR)/2.0
         # Modification for 3 working encoders
-        v_meas = (v_FL + v_BL + v_BR)/3.0
+        v_meas = (v_FL + v_FR)/2.0
         # Modification for bench testing (driven wheels only)
         # v = (v_BL + v_BR)/2.0
 
