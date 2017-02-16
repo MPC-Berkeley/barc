@@ -110,7 +110,7 @@ function eval_run(code::AbstractString)
     pos_info    = d_rec["pos_info"]
 
     t0      = pos_info.t[1]
-    track   = create_track(0.4)
+    track   = create_track(0.6)
 
     # Calculate accelerations
     acc = smooth(diff(smooth(vel_est.z[:,1],10))./diff(vel_est.t),10)
@@ -178,7 +178,7 @@ function eval_run(code::AbstractString)
 
     figure()
     title("v measurements and estimate")
-    plot(vel_est.t-t0,vel_est.z[:,1],"-x",pos_info.t-t0,pos_info.z[:,[8:9,4]],"-+")
+    plot(vel_est.t-t0,vel_est.z[:,1],"-x",pos_info.t-t0,pos_info.z[:,[8:9;4]],"-+")
     legend(["v_raw","est_xDot","est_yDot","est_v"])
     grid()
 
@@ -266,6 +266,11 @@ function plot_v_ey_over_s(code::AbstractString,laps::Array{Int64})
     ylim([0,25])
 end
 
+function plots_for_presentation()
+    code = "dc15"
+    laps = [2,4,6,17,18]
+end
+
 function plot_v_over_xy(code::AbstractString,lap::Int64)
     log_path_record = "$(homedir())/simulations/output-record-$(code).jld"
     log_path_LMPC   = "$(homedir())/simulations/output-LMPC-$(code).jld"
@@ -347,6 +352,8 @@ function eval_open_loop(code::AbstractString)
     grid("on")
 end
 
+
+
 # THIS FUNCTION EVALUATES MPC-SPECIFIC DATA
 # *****************************************
 function eval_LMPC(code::AbstractString)
@@ -418,13 +425,19 @@ function eval_LMPC(code::AbstractString)
     # *********** CURVATURE *********************
     figure()
     c = zeros(size(curv,1),1)
+    nPolyCurvature = size(curv,2) - 1
     for i=1:size(curv,1)
         s = state[i,6]
-        c[i] = ([s.^8 s.^7 s.^6 s.^5 s.^4 s.^3 s.^2 s.^1 s.^0] * curv[i,:]')[1]
-        #c[i] = ([s.^6 s.^5 s.^4 s.^3 s.^2 s.^1 s.^0] * curv[i,:]')[1]
-        #c[i] = ([s.^3 s.^2 s.^1 s.^0] * curv[i,:]')[1]
+        j=0:nPolyCurvature
+        curvTemp = 0
+            for j=0:nPolyCurvature
+                curvTemp += s^j * curv[i,nPolyCurvature-j+1] 
+            end
+        c[i] = curvTemp
     end
     plot(state[:,6],c,"-o")
+
+    #=
     for i=1:5:size(curv,1)
         if isnan(sol_z[1,6,i])
             s = sol_z[:,1,i]
@@ -437,6 +450,7 @@ function eval_LMPC(code::AbstractString)
         #c = [s.^3 s.^2 s.^1 s.^0] * curv[i,:]'
         plot(s,c,"-*")
     end
+    =#
     title("Curvature over path")
     xlabel("Curvilinear abscissa [m]")
     ylabel("Curvature")
@@ -450,13 +464,14 @@ function eval_LMPC(code::AbstractString)
     plot(track[:,1],track[:,2],"b.",track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")
     axis("equal")
     grid(1)
+    # uncommented by michael
     # HERE YOU CAN CHOOSE TO PLOT DIFFERENT DATA:
     # CURRENT HEADING (PLOTTED BY A LINE)
-    for i=1:10:size(pos_info.t,1)
-        dir = [cos(pos_info.z[i,10]) sin(pos_info.z[i,10])]
-        lin = [pos_info.z[i,6:7]; pos_info.z[i,6:7] + 0.1*dir]
-        plot(lin[:,1],lin[:,2],"-+")
-    end
+    # for i=1:10:size(pos_info.t,1)
+    #     dir = [cos(pos_info.z[i,10]) sin(pos_info.z[i,10])]
+    #     lin = [pos_info.z[i,6:7]; pos_info.z[i,6:7] + 0.1*dir]
+    #     plot(lin[:,1],lin[:,2],"-+")
+    # end
 
     # PREDICTED PATH
     # for i=1:4:size(x_est,1)
@@ -892,6 +907,66 @@ function anim_LMPC_coeff(code::AbstractString)
     end
 end
 
+
+function anim_LMPC(k1,k2)
+    d           = load(log_path_LMPC)
+    oldTraj     = d["oldTraj"]
+    sol_z       = d["sol_z"]
+    sol_u       = d["sol_u"]
+    coeffCost   = d["coeffCost"]
+    coeffConst  = d["coeffConst"]
+    s_start     = d["s_start"]
+    state       = d["state"]
+
+    N = size(sol_z,1)-1
+
+    for k=k1:k2
+        s = sol_z[1:10,1,k]
+        subplot(211)
+        plot(s,sol_u[:,1,k],"-o")
+        ylim([-1,2])
+        xlim([0,2])
+        grid()
+        subplot(212)
+        plot(s,sol_u[:,2,k],"-o")
+        ylim([-0.5,0.5])
+        xlim([0,2])
+        grid()
+        sleep(0.1)
+    end
+
+    figure()
+    hold(0)
+    for k=k1:k2
+        s_state = s_start[k:k+N] + state[k:k+N,1] - s_start[k]
+        s   = sol_z[:,1,k]
+        ss  = [s.^5 s.^4 s.^3 s.^2 s.^1 s.^0]
+        subplot(311)
+        plot(s,sol_z[:,2,k],"-o",s_state,state[k:k+N,2],"-*",s,ss*coeffConst[:,1,1,k],s,ss*coeffConst[:,2,1,k])
+        grid()
+        title("Position = $(s_start[k] + s[1]), k = $k")
+        xlabel("s")
+        xlim([0,3])
+        ylim([-0.2,0.2])
+        ylabel("e_Y")
+        subplot(312)
+        plot(s,sol_z[:,3,k],"-o",s_state,state[k:k+N,3],"-*",s,ss*coeffConst[:,1,2,k],s,ss*coeffConst[:,2,2,k])
+        grid()
+        xlabel("s")
+        ylabel("e_Psi")
+        xlim([0,3])
+        ylim([-0.2,0.2])
+        subplot(313)
+        plot(s,sol_z[:,4,k],"-o",s_state,state[k:k+N,4],"-*",s,ss*coeffConst[:,1,3,k],s,ss*coeffConst[:,2,3,k])
+        grid()
+        xlabel("s")
+        ylabel("v")
+        xlim([0,3])
+        ylim([0,2])
+        sleep(0.1)
+    end
+end
+
 function visualize_tdiff(code::AbstractString)
     log_path_record = "$(homedir())/simulations/output-record-$(code).jld"
     d_rec       = load(log_path_record)
@@ -983,7 +1058,6 @@ function anim_constraints(code::AbstractString)
     anim = animation.FuncAnimation(fig, animate, frames=100, interval=50)
     anim[:save]("test2.mp4", bitrate=-1, extra_args=["-vcodec", "libx264", "-pix_fmt", "yuv420p"]);
 end
-
 # *****************************************************************
 # ****** HELPER FUNCTIONS *****************************************
 # *****************************************************************
@@ -1031,6 +1105,23 @@ function create_track(w)
     ds = 0.06
 
     theta = [0.0]
+	
+
+
+    # MICHAS TRACK
+    add_curve(theta,25,0)
+    add_curve(theta,40,-pi/2)
+    add_curve(theta,45,0)
+    add_curve(theta,40,-pi/2)
+    add_curve(theta,10,0)
+    add_curve(theta,40,-pi/2)
+    add_curve(theta,5,0)
+    add_curve(theta,40,+pi/2)
+    add_curve(theta,6,0)
+    add_curve(theta,30,-pi/2)
+    add_curve(theta,5,0)
+    add_curve(theta,30,-pi/2)
+    add_curve(theta,38,0)
 
     # SOPHISTICATED TRACK
     # add_curve(theta,30,0.0)
@@ -1067,17 +1158,17 @@ function create_track(w)
     # add_curve(theta,35,0)
 
     # SIMPLE GOGGLE TRACK
-    add_curve(theta,30,0)
-    add_curve(theta,40,-pi/2)
-    add_curve(theta,10,0)
-    add_curve(theta,40,-pi/2)
-    add_curve(theta,20,pi/10)
-    add_curve(theta,30,-pi/5)
-    add_curve(theta,20,pi/10)
-    add_curve(theta,40,-pi/2)
-    add_curve(theta,10,0)
-    add_curve(theta,40,-pi/2)
-    add_curve(theta,35,0)
+    # add_curve(theta,30,0)
+    # add_curve(theta,40,-pi/2)
+    # add_curve(theta,10,0)
+    # add_curve(theta,40,-pi/2)
+    # add_curve(theta,20,pi/10)
+    # add_curve(theta,30,-pi/5)
+    # add_curve(theta,20,pi/10)
+    # add_curve(theta,40,-pi/2)
+    # add_curve(theta,10,0)
+    # add_curve(theta,40,-pi/2)
+    # add_curve(theta,35,0)
 
     #  # SHORT SIMPLE track
     # add_curve(theta,10,0)

@@ -56,12 +56,20 @@ class low_level_control(object):
             self.motor_pwm = 93.5 + 46.73*FxR
         self.update_arduino()
     def neutralize(self):
-        self.motor_pwm = 40             # slow down first
+        #self.motor_pwm = 40             # slow down first
         self.servo_pwm = 90
         self.update_arduino()
         rospy.sleep(1)                  # slow down for 1 sec
         self.motor_pwm = 90
         self.update_arduino()
+
+        for i in range(1,10):         # michael: something to try, to make that car really stops for 10s
+            self.update_arduino()
+            rospy.sleep(1)
+            # str = "Stop car: %i s"%i
+            # rospy.loginfo(str)
+
+
     def update_arduino(self):
         self.ecu_cmd.header.stamp = get_rostime()
         self.ecu_cmd.motor = self.motor_pwm

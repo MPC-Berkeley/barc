@@ -40,14 +40,14 @@ class Localization(object):
     psi                 = 0                     # current orientation
     nodes               = array([0])            # all nodes are saved in a matrix
     N_nodes_poly_back   = 30                    # number of nodes behind current position
-    N_nodes_poly_front  = 100                    # number of nodes in front
+    N_nodes_poly_front  = 150                    # number of nodes in front
     ds                  = 0                     # distance between nodes
     nPoints             = N_nodes_poly_front+N_nodes_poly_back+1    # number of points for interpolation in total
     OrderXY             = 10                     # order of x-y-polynomial interpolation
     OrderThetaCurv      = 8                     # order of theta interpolation
     closed              = True                  # open or closed trajectory?
 
-    coeffCurvature = zeros(OrderThetaCurv + 1)
+    coeffCurvature = zeros(9)
 
     s = 0                   # distance from s_start to current closest node (idx_min)
     s_start = 0             # distance along path from first node to start node (which is N_nodes_poly_back behind current closest node)
@@ -175,8 +175,8 @@ class Localization(object):
         # theta = add_curve(theta,20,0)
         # theta = add_curve(theta,80,-pi/2)
         # theta = add_curve(theta,75,0)
-	   
-       # MICHAS
+	
+	   # MICHAEL'S RACETRACK
         theta =add_curve(theta,50,0)
         theta =add_curve(theta,80,-pi/2)
         theta =add_curve(theta,90,0)

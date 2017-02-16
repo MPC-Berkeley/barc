@@ -4,21 +4,41 @@
 using PyPlot
 using JLD
 
+Q = diagm([0.1,0.1,0.1,0.1,0.1,0.1,0.1])
+R = diagm([0.1,0.1,0.1,1.0,10.0,10.0])
+
+# pos_info[1]  = s
+# pos_info[2]  = eY
+# pos_info[3]  = ePsi
+# pos_info[4]  = v
+# pos_info[5]  = s_start
+# pos_info[6]  = x
+# pos_info[7]  = y
+# pos_info[8]  = v_x
+# pos_info[9]  = v_y
+# pos_info[10] = psi
+# pos_info[11] = psiDot
+# pos_info[12] = x_raw
+# pos_info[13] = y_raw
+# pos_info[14] = psi_raw
+# pos_info[15] = v_raw
+# pos_info[16] = psi_drift
+
 
 function main(code::AbstractString)
-    #log_path_record = "$(homedir())/open_loop/output-record-$(code).jld"
-    log_path_record = "$(homedir())/simulations/output-record-$(code).jld"
+    global Q, R, R_gps_imu
+    log_path_record = "$(homedir())/open_loop/output-record-$(code).jld"
     d_rec = load(log_path_record)
 
     imu_meas    = d_rec["imu_meas"]
     gps_meas    = d_rec["gps_meas"]
     cmd_log     = d_rec["cmd_log"]
-    #cmd_pwm_log = d_rec["cmd_pwm_log"]
+    cmd_pwm_log = d_rec["cmd_pwm_log"]
     vel_est     = d_rec["vel_est"]
     pos_info    = d_rec["pos_info"]
 
-    t0      = max(imu_meas.t[1],vel_est.t[1],gps_meas.t[1],cmd_log.t[1])+0.3
-    t_end   = min(imu_meas.t[end],vel_est.t[end],gps_meas.t[end],cmd_log.t[end])
+    t0      = max(imu_meas.t[1],vel_est.t[1],gps_meas.t[1])
+    t_end   = min(imu_meas.t[end],vel_est.t[end],gps_meas.t[end],cmd_pwm_log.t[end])
 
     l_A = 0.125
     l_B = 0.125
@@ -33,126 +53,155 @@ function main(code::AbstractString)
 
     P = zeros(7,7)
     x_est = zeros(length(t),7)
-    P_gps_imu = zeros(9,9,10000)
+    P_gps_imu = zeros(9,9)
     x_est_gps_imu = zeros(length(t),9)
+    #x_est_gps_imu[1,11] = 0.5
+    #x_est_gps_imu[1,10] = -0.6
 
-    yaw0 = imu_meas.z[t0.>imu_meas.t,6][end]#imu_meas.z[1,6]
+    yaw0 = imu_meas.z[1,6]
     gps_dist = zeros(length(t))
 
     yaw_prev = yaw0
-    y_gps_imu[1,4] = 0
 
-    #Q_gps_imu = diagm([1/6*dt^3,1/6*dt^3,1/2*dt^2,1/2*dt^2,dt,dt,dt,dt,0.001,0.001,0.001])
-    #                   x, y, vx, vy, ax, ay, psi, psidot, psidrift
-    Q_gps_imu = diagm([0.01,0.01,0.1,0.1,1.0,1.0,0.1,1.0,0.01])
-    R_gps_imu = diagm([0.1,0.1,1.0,0.1,1.0,100.0,100.0])
-    #Q_gps_imu = diagm([0.1,0.1,0.1,0.1,1.0,1.0,0.1,1.0,0.01])
-    R_gps_imu = diagm([1.0,1.0,1.0,0.1,10.0,100.0,100.0])
+    #Q_gps_imu = diagm([1/6*dt^3,1/6*dt^3,1/2*dt^2,1/2*dt^2,dt,dt,dt,dt,0.01,0.01,0.01])
+    #Q_gps_imu = diagm([0.001,0.001,0.001,0.001,0.001,0.001,0.01,0.1,0.00001])
+    #R_gps_imu = diagm([0.1,0.1,0.1,0.001,0.01,0.01,0.01])
+    
+    Q_gps_imu = diagm([0.01,0.01,0.1,0.1,0.1,0.1,0.01,0.1,0.0000001])
+    R_gps_imu = diagm([0.1,0.1,10.0,0.01,1.0,10.0,10.0])
 
-    Q_acc = [dt^5/20    0       dt^4/8  0       dt^3/6  0       0       0       0;
-             0          dt^5/20 0       dt^4/8  0       dt^3/6  0       0       0;
-             dt^4/8     0       dt^3/3  0       dt^2/2  0       0       0       0;
-             0          dt^4/8  0       dt^3/3  0       dt^2/2  0       0       0;
-             dt^3/6     0       dt^2/2  0       dt      0       0       0       0;
-             0          dt^3/6  0       dt^2/2  0       dt      0       0       0;
-             0          0       0       0       0       0       dt/10   0       0;
-             0          0       0       0       0       0       0       dt      0;
-             0          0       0       0       0       0       0       0       dt/100]*20
+    att_raw = zeros(sz,3)
+    att_normalized = zeros(sz,3)
 
-    #Q_gps_imu = Q_acc
-    #                   x, y, v, psi, psidot, ax, ay
+    acc_raw = zeros(sz,3)
+    acc_normalized = zeros(sz,3)
+    acc_inert = zeros(sz,3)
 
+    omega_normalized = zeros(sz,3)
+
+    gps_gate = zeros(length(t))
+    # Calibrate IMU:
+    t_start = cmd_log.t[1]
+    imu_att_cal = mean(imu_meas.z[imu_meas.t.<t_start,4:6],1)   # average attitude values (euler) for calibration
+    imu_att_cal[3] = 0
+    BI_A = eulerTrans(imu_att_cal)
+
+    gps_prev = gps_meas.z[1,:]
+    # measured: IMU_a
+    # calibrated: Z_a
+    # need matrix Z_IMU_A
     for i=2:length(t)
         # Collect measurements and inputs for this iteration
         y_gps = gps_meas.z[t[i].>gps_meas.t,:][end,:]
-        #y_yaw = imu_meas.z[t[i].>imu_meas.t,6][end]-yaw0
-        y_yaw = pos_info.z[t[i].>pos_info.t,14][end]
+        y_yaw = imu_meas.z[t[i].>imu_meas.t,6][end]-yaw0
         y_yawdot = imu_meas.z[t[i].>imu_meas.t,3][end]
-        
-        att = imu_meas.z[t[i].>imu_meas.t,4:6][end,:]
-        acc = imu_meas.z[t[i].>imu_meas.t,7:9][end,:]
-        rot = imu_meas.z[t[i].>imu_meas.t,1:3][end,:]
-        acc_f = rotMatrix('y',-att[2])*rotMatrix('x',-att[1])*acc'
-        #rot_f = rotMatrix('y',-att[2])*rotMatrix('x',-att[1])*rot'
-        #a_x = imu_meas.z[t[i].>imu_meas.t,7][end]
-        #a_y = imu_meas.z[t[i].>imu_meas.t,8][end]
-        a_x = acc_f[1]
-        a_y = acc_f[2]
-        #y_yawdot = rot_f[3]
+        a_x = imu_meas.z[t[i].>imu_meas.t,7][end]
+        a_y = imu_meas.z[t[i].>imu_meas.t,8][end]
+        y_vel_est = vel_est.z[t[i].>vel_est.t][end]
 
-        #y_vel_est = vel_est.z[t[i].>vel_est.t,1][end]
-        y_vel_est = pos_info.z[t[i].>pos_info.t,15][end]
-
-        y_gps_imu[i,:] = [y_gps y_vel_est y_yaw y_yawdot a_x a_y]
+        acc_raw[i,:] = imu_meas.z[t[i].>imu_meas.t,7:9][end,:]
+        att_raw[i,:] = imu_meas.z[t[i].>imu_meas.t,4:6][end,:]
+        #BI_A = eulerTrans([att_raw[i,1:2] 0])
+        BI_A = eye(3)
+        acc_normalized[i,:] = BI_A'*acc_raw[i,:]'
+        omega_normalized[i,:] = BI_A'*imu_meas.z[t[i].>imu_meas.t,1:3][end,:]'
+        #acc_inert[i,:] = eulerTrans([imu_meas.z[imu_meas.t.>t[i],4:5][1,:] y_yaw])'*acc_raw[i,:]'
+        y[i,:] = [y_gps y_yaw y_vel_est a_x a_y]
+        #y_gps_imu[i,:] = [y_gps y_vel_est y_yaw y_yawdot a_x a_y]
+        y_gps_imu[i,:] = [y_gps y_vel_est y_yaw omega_normalized[i,3] acc_normalized[i,1:2]]
+        y[:,3] = unwrap!(y[:,3])
         y_gps_imu[:,4] = unwrap!(y_gps_imu[:,4])
+        #y_gps_imu[i,6:7] = [0 0]
 
-        u[i,:] = cmd_log.z[t[i]-0.2.>(cmd_log.t),:][end,:]
+        u[i,:] = cmd_log.z[t[i].>cmd_log.t,:][end,:]
 
+        #att_raw[i,:] = imu_meas.z[imu_meas.t.>t[i],4:6][1,:]
+        #att_normalized[i,:] = Z_IMU_A' * att_raw[i,:]'
+        #att_normalized[i,:] = angRates2EulerRates(att_raw[i,:],[-imu_meas.z[imu_meas.t.>t[i],4:5][1,1:2] imu_meas.z[imu_meas.t.>t[i],6][1]])
+        #att_normalized[i,:] = rotMatrix('y',imu_meas.z[imu_meas.t.>t[i],5][1])*rotMatrix('x',imu_meas.z[imu_meas.t.>t[i],4][1])*att_raw[i,:]'
         # Adapt R-value of GPS according to distance to last point:
         gps_dist[i] = norm(y[i,1:2]-x_est[i-1,1:2])
-        if gps_dist[i] < 0.8
-            R_gps_imu[1,1] = 1#+100*gps_dist[i]^2
-            R_gps_imu[2,2] = 1#+100*gps_dist[i]^2
+        #gps_gate[i] = 
+        # if gps_dist[i] > 1.0
+        #     R[1,1] = 1+10*gps_dist[i]^2
+        #     R[2,2] = 1+10*gps_dist[i]^2
+        #     R_gps_imu[1,1] = 1.0+100*gps_dist[i]^2
+        #     R_gps_imu[2,2] = 1.0+100*gps_dist[i]^2
+        # else
+        #     R[1,1] = 1
+        #     R[2,2] = 1
+        #     R_gps_imu[1,1] = 0.1
+        #     R_gps_imu[2,2] = 0.1
+        # end
+        if gps_prev == y_gps
+            R_gps_imu[1:2,1:2] = 10*eye(2)
         else
-            R_gps_imu[1,1] = 10
-            R_gps_imu[2,2] = 10
+            R_gps_imu[1:2,1:2] = 0.1*eye(2)
         end
-
+        gps_prev = y_gps
         args = (u[i,:],dt,l_A,l_B)
 
         # Calculate new estimate
-        (x_est_gps_imu[i,:], P_gps_imu[:,:,i]) = ekf(simModel_gps_imu,x_est_gps_imu[i-1,:]',P_gps_imu[:,:,i-1],h_gps_imu,y_gps_imu[i,:]',Q_gps_imu,R_gps_imu,args)
+        (x_est[i,:], P) = ekf(simModel,x_est[i-1,:]',P,h,y[i,:]',Q,R,args)
+        (x_est_gps_imu[i,:], P_gps_imu, gps_gate[i]) = ekf_gate(simModel_gps_imu,x_est_gps_imu[i-1,:]',P_gps_imu,h_gps_imu,y_gps_imu[i,:]',Q_gps_imu,R_gps_imu,args)
     end
 
-    #figure(5)
-    #plot(t-t0,y_gps_imu)
-    #grid("on")
-
-    println("Yaw0 = $yaw0")
     figure(1)
-    plot(t-t0,x_est_gps_imu[:,1:2],"-*",gps_meas.t-t0,gps_meas.z)
-    plot(pos_info.t-t0,pos_info.z[:,6:7],"-x")
+    plot(t-t0,x_est_gps_imu[:,1:2],"-*",gps_meas.t-t0,gps_meas.z,pos_info.t-t0,pos_info.z[:,6:7],"-x")
     grid("on")
-    legend(["x_est","y_est","x_meas","y_meas"])
     title("Comparison x,y estimate and measurement")
+    legend(["x_est","y_est","x_meas","y_meas","x_onboard","y_onboard"])
 
     figure(2)
-    plot(t-t0,x_est_gps_imu[:,[7,9]],imu_meas.t-t0,imu_meas.z[:,6]-yaw0)
-    plot(pos_info.t-t0,pos_info.z[:,[10,16]],"-x")
+    plot(t-t0,x_est_gps_imu[:,9])
     grid("on")
-    legend(["psi_est","psi_drift_est","psi_meas"])
+    title("Drifts")
+    legend(["psi"])
 
     figure(3)
     v = sqrt(x_est_gps_imu[:,3].^2+x_est_gps_imu[:,4].^2)
-    plot(t-t0,v,"-*",t-t0,x_est_gps_imu[:,3:4],"--",vel_est.t-t0,vel_est.z[:,1])
-    plot(pos_info.t-t0,pos_info.z[:,8:9],"-x")
-    legend(["v_est","v_x_est","v_y_est","v_meas"])
+    plot(t-t0,v,"-*",t-t0,x_est_gps_imu[:,3:4],"--",vel_est.t-t0,vel_est.z,pos_info.t-t0,pos_info.z[:,8:9],"-x")
     grid("on")
+    legend(["v","v_x_est","v_y_est","v_meas","v_x_onboard","v_y_onboard"])
     title("Velocity estimate and measurement")
 
     figure(4)
-    plot(imu_meas.t-t0,imu_meas.z[:,7:8],t-t0,x_est_gps_imu[:,5:6])
-    #plot(pos_info.t-t0,pos_info.z[:,17:18])
+    plot(t-t0,x_est_gps_imu[:,7],"-*",t-t0,y_gps_imu[:,4])
     grid("on")
-    legend(["a_x_meas","a_y_meas","a_x_est","a_y_est"])
+    title("Comparison yaw")
+    legend(["psi_est","psi_meas"])
 
     figure(5)
-    plot(x_est_gps_imu[:,1],x_est_gps_imu[:,2])
+    plot(imu_meas.t-t0,imu_meas.z[:,3],t-t0,x_est_gps_imu[:,8])
+    title("w_z")
+    legend(["w_z_meas","w_z_est"])
     grid("on")
-    title("x-y-view")
-    for i=1:10:size(pos_info.t,1)
-        #d_f = cmd_log.z[pos_info.t[i].>(cmd_log.t-0.2),2][end]
-        #bta = atan(l_A/(l_A+l_B)*tan(d_f))
-        dir = [cos(pos_info.z[i,10]) sin(pos_info.z[i,10])]
-        lin = [pos_info.z[i,6:7]; pos_info.z[i,6:7] + 0.1*dir]
-        plot(lin[:,1],lin[:,2],"-+")
-    end
-    for i=1:10:size(t,1)
-        bta = atan(l_A/(l_A+l_B)*tan(u[i,2]))
-        dir = [cos(x_est_gps_imu[i,7]+bta) sin(x_est_gps_imu[i,7]+bta)]
-        lin = [x_est_gps_imu[i,1:2]; x_est_gps_imu[i,1:2] + 0.1*dir]
-        plot(lin[:,1],lin[:,2],"-*")
-    end
+
+    figure(6)
+    #plot(imu_meas.t-t0,imu_meas.z[:,7:8],t-t0,x_est_gps_imu[:,5:6])
+    plot(t-t0,acc_normalized[:,1:2],t-t0,x_est_gps_imu[:,5:6])
+    title("Accelerations")
+    legend(["a_x_meas","a_y_meas","a_x_est","a_y_est"])
+    grid("on")
+
+    figure(7)
+    plot(t-t0,gps_gate,t-t0,gps_dist,gps_meas.t-t0,gps_meas.z)
+    grid("on")
+    legend(["gate","dist"])
+
+    # CORRELATIONS:
+    figure(8)
+    plot(94.14+2.7678*u[:,1],y[:,4],"*")
+    grid("on")
+    title("Comparison motor input and velocity")
+    xlabel("PWM signal")
+    ylabel("v [m/s]")
+
+    delta = atan(x_est_gps_imu[:,8]*0.25./x_est_gps_imu[:,3])
+    #delta2 = atan(0.25/sqrt(y_gps_imu[:,3].^2./y_gps_imu[:,5].^2-0.125^2))
+    figure(9)
+    plot(u[:,2],delta,"*")
+    grid("on")
 
     # ax1=subplot(211)
     # plot(t,y,"-x",t,x_est,"-*")
@@ -243,6 +292,7 @@ function h_gps_imu(x,args)
     y[7] = x[6]                     # a_y
     return y
 end
+
 function ekf(f, mx_k, P_k, h, y_kp1, Q, R, args)
     xDim    = size(mx_k,1)
     mx_kp1  = f(mx_k,args)
@@ -255,6 +305,27 @@ function ekf(f, mx_k, P_k, h, y_kp1, Q, R, args)
     mx_kp1  = mx_kp1 + K*(y_kp1-my_kp1)
     P_kp1   = (K*R*K' + (eye(xDim)-K*H)*P_kp1)*(eye(xDim)-K*H)'
     return mx_kp1, P_kp1
+end
+
+function ekf_gate(f, mx_k, P_k, h, y_kp1, Q, R, args)
+    xDim    = size(mx_k,1)
+    mx_kp1  = f(mx_k,args)
+    A       = numerical_jac(f,mx_k,args)
+    P_kp1   = A*P_k*A' + Q
+    my_kp1  = h(mx_kp1,args)
+    H       = numerical_jac(h,mx_kp1,args)
+    P12     = P_kp1*H'
+    S       = H*P12
+    gps_err = ((y_kp1[1:2]-my_kp1[1:2])'*inv(S[1:2,1:2])*(y_kp1[1:2]-my_kp1[1:2]))[1]
+    # if gps_err > 100.0
+    #     R[1:2,1:2] = eye(2)*100
+    # else
+    #     R[1:2,1:2] = eye(2)*0.1
+    # end
+    K       = P12*inv(H*P12+R)
+    mx_kp1  = mx_kp1 + K*(y_kp1-my_kp1)
+    P_kp1   = (K*R*K' + (eye(xDim)-K*H)*P_kp1)*(eye(xDim)-K*H)'
+    return mx_kp1, P_kp1, gps_err
 end
 
 function simModel(z,args)
@@ -278,19 +349,17 @@ function simModel(z,args)
 end
 
 function simModel_gps_imu(z,args)
-    zNext = copy(z)
     (u,dt,l_A,l_B) = args
-    bta = atan(l_A/(l_A+l_B)*tan(u[2]))
-    #zNext[1] = z[1] + dt*(cos(z[7])*z[3] - sin(z[7])*z[4]) + 1/2*dt^2*(cos(z[7])*z[5]-sin(z[7])*z[6])       # x
-    #zNext[2] = z[2] + dt*(sin(z[7])*z[3] + cos(z[7])*z[4]) + 1/2*dt^2*(sin(z[7])*z[5]+cos(z[7])*z[6])       # y
-    zNext[1] = z[1] + dt*(cos(z[7])*z[3] - sin(z[7])*z[4])       # x
-    zNext[2] = z[2] + dt*(sin(z[7])*z[3] + cos(z[7])*z[4])       # y
+    #bta = atan(l_A/(l_A+l_B)*tan(u[2]))
+    bta = atan2(z[4],z[3])
+    zNext = copy(z)
+    zNext[1] = z[1] + dt*(sqrt(z[3]^2+z[4]^2)*cos(z[7] + bta))                     # x
+    zNext[2] = z[2] + dt*(sqrt(z[3]^2+z[4]^2)*sin(z[7] + bta))                     # y
     zNext[3] = z[3] + dt*(z[5]+z[8]*z[4])   # v_x
     zNext[4] = z[4] + dt*(z[6]-z[8]*z[3])   # v_y
     zNext[5] = z[5]                         # a_x
     zNext[6] = z[6]                         # a_y
-    #zNext[7] = z[7] + dt*(z[3]/l_B*sin(bta))  # psi
-    zNext[7] = z[7] + dt*z[8]               # psi
+    zNext[7] = z[7] + dt*(sqrt(z[3]^2+z[4]^2)/l_B*sin(bta))  # psi
     zNext[8] = z[8]                         # psidot
     zNext[9] = z[9]                         # drift_psi
     return zNext
@@ -358,4 +427,17 @@ function rotMatrix(s::Char,deg::Float64)
         warn("Wrong angle for rotation matrix")
     end
     return A
+end
+
+function angRates2EulerRates(w::Array{Float64},deg::Array{Float64})
+    (p,q,r) = w
+    (phi,theta,psi) = deg
+    phidot = p + sin(phi)*tan(theta)*q + cos(phi)*tan(theta)*r
+    thetadot = cos(phi)*q - sin(phi)*r
+    psidot = sin(phi)*sec(theta)*q + cos(phi)*sec(theta)*r
+    return [phidot,thetadot,psidot]
+end
+
+function eulerTrans(deg::Array{Float64})    # Transformation matrix inertial -> body
+    return rotMatrix('x',deg[1])*rotMatrix('y',deg[2])*rotMatrix('z',deg[3])
 end

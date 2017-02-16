@@ -34,6 +34,7 @@ function main(code::AbstractString)
     P = zeros(7,7)
     x_est = zeros(length(t),7)
     P_gps_imu = zeros(9,9,10000)
+    A_gps_imu = zeros(9,9,10000)
     x_est_gps_imu = zeros(length(t),9)
 
     yaw0 = imu_meas.z[t0.>imu_meas.t,6][end]#imu_meas.z[1,6]
@@ -48,16 +49,6 @@ function main(code::AbstractString)
     R_gps_imu = diagm([0.1,0.1,1.0,0.1,1.0,100.0,100.0])
     #Q_gps_imu = diagm([0.1,0.1,0.1,0.1,1.0,1.0,0.1,1.0,0.01])
     R_gps_imu = diagm([1.0,1.0,1.0,0.1,10.0,100.0,100.0])
-
-    Q_acc = [dt^5/20    0       dt^4/8  0       dt^3/6  0       0       0       0;
-             0          dt^5/20 0       dt^4/8  0       dt^3/6  0       0       0;
-             dt^4/8     0       dt^3/3  0       dt^2/2  0       0       0       0;
-             0          dt^4/8  0       dt^3/3  0       dt^2/2  0       0       0;
-             dt^3/6     0       dt^2/2  0       dt      0       0       0       0;
-             0          dt^3/6  0       dt^2/2  0       dt      0       0       0;
-             0          0       0       0       0       0       dt/10   0       0;
-             0          0       0       0       0       0       0       dt      0;
-             0          0       0       0       0       0       0       0       dt/100]*20
 
     #Q_gps_imu = Q_acc
     #                   x, y, v, psi, psidot, ax, ay
@@ -101,8 +92,17 @@ function main(code::AbstractString)
         args = (u[i,:],dt,l_A,l_B)
 
         # Calculate new estimate
-        (x_est_gps_imu[i,:], P_gps_imu[:,:,i]) = ekf(simModel_gps_imu,x_est_gps_imu[i-1,:]',P_gps_imu[:,:,i-1],h_gps_imu,y_gps_imu[i,:]',Q_gps_imu,R_gps_imu,args)
+        (x_est_gps_imu[i,:], P_gps_imu[:,:,i], A_gps_imu[:,:,i]) = ekf(simModel_gps_imu,x_est_gps_imu[i-1,:]',P_gps_imu[:,:,i-1],h_gps_imu,y_gps_imu[i,:]',Q_gps_imu,R_gps_imu,args)
     end
+
+    Q_max = zeros(9,9)
+    for i=1:length(t)-1
+        Q_max = Q_max + x_est_gps_imu[i+1,:]'*x_est_gps_imu[i+1,:] -
+                        x_est_gps_imu[i+1,:]'*x_est_gps_imu[i,:]*A_gps_imu[:,:,i]' - 
+                        A_gps_imu[:,:,i]*x_est_gps_imu[i,:]'*x_est_gps_imu[i+1,:] + 
+                        A_gps_imu[:,:,i]*x_est_gps_imu[i,:]'*x_est_gps_imu[i,:]*A_gps_imu[:,:,i]'
+    end
+    Q_max /= length(t)
 
     #figure(5)
     #plot(t-t0,y_gps_imu)
@@ -254,7 +254,7 @@ function ekf(f, mx_k, P_k, h, y_kp1, Q, R, args)
     K       = P12*inv(H*P12+R)
     mx_kp1  = mx_kp1 + K*(y_kp1-my_kp1)
     P_kp1   = (K*R*K' + (eye(xDim)-K*H)*P_kp1)*(eye(xDim)-K*H)'
-    return mx_kp1, P_kp1
+    return mx_kp1, P_kp1, A
 end
 
 function simModel(z,args)
