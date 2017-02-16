@@ -15,14 +15,12 @@
 
 using RobotOS
 @rosimport barc.msg: ECU, Vel_est, pos_info
-@rosimport data_service.msg: TimeData
 @rosimport geometry_msgs.msg: Vector3
 @rosimport sensor_msgs.msg: Imu
 @rosimport marvelmind_nav.msg: hedge_pos
 @rosimport std_msgs.msg: Header
 rostypegen()
 using barc.msg
-using data_service.msg
 using geometry_msgs.msg
 using sensor_msgs.msg
 using std_msgs.msg
@@ -92,10 +90,6 @@ function main()
 
     modelParams     = ModelParams()
     run_id          = get_param("run_id")
-    # modelParams.l_A = copy(get_param("L_a"))      # always throws segmentation faults *after* execution!!! ??
-    # modelParams.l_B = copy(get_param("L_a"))
-    # modelParams.m   = copy(get_param("m"))
-    # modelParams.I_z = copy(get_param("I_z"))
 
     modelParams.l_A = 0.125
     modelParams.l_B = 0.125
@@ -123,10 +117,6 @@ function main()
     while ! is_shutdown()
         t_ros   = get_rostime()
         t       = to_sec(t_ros)
-        # if sizeof(cmd_log.z[t.>cmd_log.t+0.2,2]) >= 1
-        #    u_current[2] = cmd_log.z[t.>=cmd_log.t+0.2,2][end]       # artificial steering input delay
-        # end
-        # update current state with a new row vector
         z_current[i,:],slip_ang[i,:]  = simDynModel_exact_xy(z_current[i-1,:], u_current', dt, modelParams)
 
         z_real.t_msg[i] = t
@@ -215,11 +205,6 @@ function main()
     slip_a.i = i
     clean_up(z_real)
     clean_up(slip_a)
-
-    # Save simulation data to file
-    log_path = "$(homedir())/simulations/output-SIM-$(run_id[1:4]).jld"
-    save(log_path,"gps_meas",gps_meas,"z",z_real,"imu_meas",imu_meas,"cmd_log",cmd_log,"slip_a",slip_a)
-    println("Exiting node... Saving data to $log_path. Simulated $((i-1)*dt) seconds.")
 
 end
 

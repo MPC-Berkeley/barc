@@ -11,13 +11,11 @@ Position info (/pos_info)
 
 using RobotOS
 @rosimport barc.msg: ECU, pos_info, Vel_est
-@rosimport data_service.msg: TimeData
 @rosimport geometry_msgs.msg: Vector3
 @rosimport sensor_msgs.msg: Imu
 @rosimport marvelmind_nav.msg: hedge_pos
 rostypegen()
 using barc.msg
-using data_service.msg
 using geometry_msgs.msg
 using sensor_msgs.msg
 using std_msgs.msg

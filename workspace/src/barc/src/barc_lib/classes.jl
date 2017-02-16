@@ -26,19 +26,6 @@ type MpcCoeff           # coefficients for trajectory approximation
     MpcCoeff(coeffCost=Float64[], coeffConst=Float64[], order=4, pLength=0,c_Vx=Float64[],c_Vy=Float64[],c_Psi=Float64[]) = new(coeffCost, coeffConst, order, pLength, c_Vx, c_Vy, c_Psi)
 end
 
-type OldTrajectory      # information about previous trajectories
-    oldTraj::Array{Float64}             # contains all states over all laps
-    oldInput::Array{Float64}            # contains all inputs
-    oldTimes::Array{Float64}            # contains times related to states and inputs
-    oldCost::Array{Int64}               # contains costs of laps
-    count::Array{Int64}                 # contains the counter for each lap
-    prebuf::Int64
-    postbuf::Int64
-    idx_start::Array{Int64}             # index of the first measurement with s > 0
-    idx_end::Array{Int64}               # index of the last measurement with s < s_target
-    OldTrajectory(oldTraj=Float64[],oldInput=Float64[],oldTimes=Float64[],oldCost=Float64[],count=Int64[],prebuf=50,postbuf=50,idx_start=Int64[],idx_end=Int64[]) = new(oldTraj,oldInput,oldTimes,oldCost,count,prebuf,postbuf,idx_start,idx_end)
-end
-
 type MpcParams          # parameters for MPC solver
     N::Int64
     nz::Int64
