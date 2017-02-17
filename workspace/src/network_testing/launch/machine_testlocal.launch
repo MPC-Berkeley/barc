@@ -1,0 +1,8 @@
+<launch>
+
+    <arg name="remotecar" default="odroid.local"/>
+    <machine name="master" address="odroid_10.local" env-loader="$HOME/barc/scripts/env_master.sh"/>
+
+    <node machine="master" pkg="rosserial_python" type="serial_node.py" name="masterserial"/>
+
+</launch>
