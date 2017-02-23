@@ -8,6 +8,8 @@
     <param name="I_z" type="double" value="0.24" />
     <param name="L_a" type="double" value="0.125" />
     <param name="L_b" type="double" value="0.125" />
+    <!-- control parameters -->
+    <param name="input_gain" type="double" value="0.3" />
 
 
    	<!-- IMU -->
@@ -16,7 +18,7 @@
         <param name="baud_rate" value="115200" />
     </node>
 
-   	<!-- LiDAR -->
+   	<!-- LiDAR 
     <node machine="odroid" name="rplidarNode"    pkg="rplidar_ros"  type="rplidarNode" >
 	  <param name="serial_port"         type="string" value="/dev/ttyUSB1"/>  
 	  <param name="serial_baudrate"     type="int"    value="115200"/>
@@ -24,18 +26,19 @@
 	  <param name="inverted"            type="bool"   value="false"/>
 	  <param name="angle_compensate"    type="bool"   value="true"/>
   </node>
+  -->
 
-   	<!-- GPS 
+   	<!-- GPS -->
   	<node machine="odroid" pkg="marvelmind_nav" type="hedge_rcv_bin" name="hedge_pos" >
   		<param name="port" value="dev/ttyACM0" />
   	</node>
-  -->
 
    	<!-- ARDUINO -->
 	<node machine="odroid" pkg="rosserial_python" type="serial_node.py" name="arduino_node" >
 		<param name="port" value="/dev/ttyUSB0" />
 	</node>
 
+  
   <!-- OBSERVER-->
     <node machine="pc" pkg="barc" type="state_estimation_KinBkMdl.py" name="state_estimation" output="screen">
         <!-- v_x estimation sample time-->
@@ -49,5 +52,10 @@
    	<!-- Controller -->
   	<node machine="pc" pkg="barc" type="NNMPC_controller.jl" name="NN_MPC" output="screen" >
   	</node>
+    
+
+    <!-- LOW LEVEL CONTROLLER -->
+    <node machine="pc" pkg="barc" type="controller_low_level.py" name="low_level_controller" />
+    
 
   </launch>

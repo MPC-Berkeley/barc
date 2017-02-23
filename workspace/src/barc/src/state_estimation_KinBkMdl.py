@@ -23,6 +23,8 @@ from ekf import ekf
 from system_models import f_KinBkMdl, h_KinBkMdl
 from tf import transformations
 from numpy import unwrap
+import scipy.io as sio
+import numpy as np
 
 # input variables [default values]
 d_f         = 0         # steering angle [deg]
@@ -52,9 +54,23 @@ n_BR_prev   = 0
 r_tire      = 0.036                  # radius from tire center to perimeter along magnets [m]
 dx_qrt      = 2.0*pi*r_tire/4.0     # distance along quarter tire edge [m]
 
+message_kin = {}
+index_imu = 0
+index_est = 0
+index_ecu = 0
+index_enc = 0
+message_kin["ecu"] = {}
+message_kin["imu"] = {}
+message_kin["enc"] = {}
+message_kin["est"] = {}
+
 # ecu command update
 def ecu_callback(data):
     global acc, d_f
+    global message_kin, index_ecu
+
+    index_ecu += 1
+    message_kin["ecu"][index_ecu] = data
     acc         = data.motor        # input acceleration
     d_f         = data.servo        # input steering angle
 
@@ -63,6 +79,7 @@ def imu_callback(data):
     # units: [rad] and [rad/s]
     global roll, pitch, yaw, a_x, a_y, a_z, w_x, w_y, w_z
     global yaw_prev, yaw0, read_yaw0, yaw_local, psi_meas
+    global message_kin, index_imu
 
     # get orientation from quaternion data, and convert to roll, pitch, yaw
     # extract angular velocity and linear acceleration data
@@ -89,12 +106,18 @@ def imu_callback(data):
     a_x = data.linear_acceleration.x
     a_y = data.linear_acceleration.y
     a_z = data.linear_acceleration.z
+    index_imu += 1
+    message_kin["imu"][index_imu] = data
 
 # encoder measurement update
 def enc_callback(data):
     global v, t0, dt_v_enc, v_meas
     global n_FL, n_FR, n_FL_prev, n_FR_prev
     global n_BL, n_BR, n_BL_prev, n_BR_prev
+    global message_kin, index_enc
+
+    index_enc += 1
+    message_kin["enc"][index_enc] = data
 
     n_FL = data.FL
     n_FR = data.FR
@@ -132,6 +155,8 @@ def enc_callback(data):
 def state_estimation():
     global dt_v_enc
     global v_meas, psi_meas
+    global message_kin, index_est
+
     # initialize node
     rospy.init_node('state_estimation', anonymous=True)
 
@@ -177,12 +202,16 @@ def state_estimation():
 
         # collect measurements, inputs, system properties
         # collect inputs
-        y   = array([psi_meas, v_meas])
-        u   = array([ d_f, acc ])
-        args = (u,vhMdl,dt)
+        y_ekf   = array([psi_meas, v_meas])
+        u_ekf   = array([ d_f, acc ])
+        args = (u_ekf,vhMdl,dt)
 
         # apply EKF and get each state estimate
-        (z_EKF,P) = ekf(f_KinBkMdl, z_EKF, P, h_KinBkMdl, y, Q, R, args )
+        (z_EKF,P) = ekf(f_KinBkMdl, z_EKF, P, h_KinBkMdl, y_ekf, Q, R, args )
+        index_est += 1
+        message_kin["est"][index_est] = np.array([psi_meas, v_meas, d_f, acc, x, y, psi, v])
+        if (index_est>0) and (index_est%50 == 0):
+            sio.savemat('./message_kin_st.mat', message_kin)
 
         # wait
         rate.sleep()

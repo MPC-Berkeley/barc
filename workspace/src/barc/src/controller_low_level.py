@@ -38,7 +38,9 @@ def pwm_converter_callback(msg):
 
     # convert desired steering angle to degrees, saturate based on input limits
     str_ang     = max( min( 180.0/pi*msg.servo, str_ang_max), str_ang_min)
-    servo_pwm   = 92.0558 + 1.8194*str_ang  - 0.0104*str_ang**2
+    # 82 is straight
+    #servo_pwm   = 92.0558 + 1.8194*str_ang  - 0.0104*str_ang**2 - 10.0558
+    servo_pwm = str_ang + 90
 
     # compute motor command
     FxR         =  float(msg.motor) 
@@ -79,6 +81,7 @@ def arduino_interface():
 
 #############################################################
 if __name__ == '__main__':
+    print("low level")
     try:
         arduino_interface()
     except ROSInterruptException:
