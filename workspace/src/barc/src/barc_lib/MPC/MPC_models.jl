@@ -1,4 +1,4 @@
-type MpcModel_pF
+type MpcModel
     mdl::JuMP.Model
 
     z0::Array{JuMP.NonlinearParameter,1}
@@ -13,7 +13,7 @@ type MpcModel_pF
 
     uPrev::Array{JuMP.NonlinearParameter,2}
 
-    function MpcModel_pF(mpcParams::MpcParams, modelParams::ModelParams, trackCoeff::TrackCoeff)
+    function MpcModel(mpcParams::MpcParams, modelParams::ModelParams, trackCoeff::TrackCoeff)
         println("Starting creation of pf model")
         m = new()
         dt          = modelParams.dt
@@ -113,10 +113,10 @@ type MpcModel_pF
 
         # create first artificial solution (for warm start)
         for i=1:N+1
-            setvalue(z_Ol[i,:],[(i-1)*dt*v_ref, 0, 0, v_ref, 0])
+            setvalue(z_Ol[i,:],[(i-1)*dt*v_ref 0 0 v_ref 0])
         end
         for i=1:N
-            setvalue(u_Ol[i,:],[0.15, 0])
+            setvalue(u_Ol[i,:],[0.15 0])
         end
         # First solve
         sol_stat=solve(mdl)
