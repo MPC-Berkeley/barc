@@ -998,7 +998,7 @@ u_result RPlidarDriverSerialImpl::setMotorPWM(_u16 pwm)
 u_result RPlidarDriverSerialImpl::startMotor()
 {
     if (_isSupportingMotorCtrl) { // RPLIDAR A2
-        setMotorPWM(DEFAULT_MOTOR_PWM);
+        setMotorPWM(MAX_MOTOR_PWM);
         delay(500);
         return RESULT_OK;
     } else { // RPLIDAR A1
