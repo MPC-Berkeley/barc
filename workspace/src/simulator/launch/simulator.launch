@@ -1,0 +1,23 @@
+<launch>
+    <!-- SYSTEM MODEL -->
+    <!-- vehicle parameters -->
+    <param name="m" type="double" value="1.98" />
+    <param name="I_z" type="double" value="0.24" />
+    <param name="L_a" type="double" value="0.125" />
+    <param name="L_b" type="double" value="0.125" />
+    <!-- control parameters -->
+    <param name="input_gain" type="double" value="0.3" />
+    <param name="air_drag_coeff" type="double" value="0.01308" />
+    <param name="friction" type="double" value="0.01711" />
+    <!-- tire parameters -->
+    <param name="tire_model/B" type="double" value="0.3" />
+    <param name="tire_model/C" type="double" value="1.25" />
+    <param name="tire_model/mu" type="double" value="0.234" />
+
+
+    <!-- SIMULATOR -->
+    <node pkg="simulator" type="vehicle_simulator.py" name="simulator" />
+    
+    <!-- Record the experiment data -->
+    <node pkg="rosbag" type="record" name="rosbag_record" args=" --all" />
+</launch>

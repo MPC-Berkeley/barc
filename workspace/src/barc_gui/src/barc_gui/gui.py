@@ -116,12 +116,11 @@ class MyGUI(Plugin):
 
 
     def setup_topics_list(self):
-        topics = ['imu', 'encoder', 'ecu', 'ultrasound', 'video']
+        topics = ['imu', 'encoder', 'ecu', 'ecu_pwm', 'ultrasound', 'video']
 
         for t in topics:
             item = QListWidgetItem(t)
-            item.setCheckState(True)
-
+            item.setCheckState(False)
             self._widget.listview_topics.addItem(item)
 
 
@@ -148,14 +147,15 @@ class MyGUI(Plugin):
                 ps = subprocess.Popen(command_kill, stdin=subprocess.PIPE, shell=True)
                 ps.communicate()
 
+        print "naming video file ..."
         command = 'mv output.avi %s.avi' % experiment
         subprocess.Popen(command, stdin=subprocess.PIPE, shell=True, cwd=video_dir)
 
         self.p_video = None
 
+        print "registering video ..."
         rospy.wait_for_service('register_video')
         self.register_video = rospy.ServiceProxy('register_video', RegisterVideo)
-
         try:
             self.register_video(experiment, video_dir + '/%s.avi' % experiment)
         except Exception as e:
@@ -172,13 +172,17 @@ class MyGUI(Plugin):
         record_topics = []
         for index in range(self._widget.listview_topics.count()):
             item = self._widget.listview_topics.item(index)
+            print item
+            print item.checkState()
             if item.checkState():
                 record_topics.append(item.text())
 
         if self.record_started:
             self.stop_record_data(self.current_experiment)
-            self.stop_record_video(self.current_experiment)
+            if 'video' in record_topics:
+                self.stop_record_video(self.current_experiment)
 
+            "finished registering video ????"
             self.record_started = False
 
             self._widget.label_experiment.setText('Experiment name')
@@ -293,7 +297,7 @@ class MyGUI(Plugin):
                       'roll_rate', 'pitch_rate', 'yaw_rate',
                      'acc_x', 'acc_y', 'acc_z',
                      'encoder_FL', 'encoder_FR','encoder_BL','encoder_BR',
-                     'motor', 'servo',
+                     'motor', 'servo','motor_pwm','servo_pwm',
                      'ultrasound_front','ultrasound_back','ultrasound_left','ultrasound_right']
 
         signal_dict = dict()
@@ -313,16 +317,22 @@ class MyGUI(Plugin):
                 encoder_BL = msg.BL
                 encoder_BR = msg.BR
 
+            # Ultrasound
             if topic == 'ultrasound':
                 ultrasound_front = msg.front
                 ultrasound_back = msg.back
                 ultrasound_left = msg.left
                 ultrasound_right = msg.right
 
-            # Electronic control unit
+            # Electronic control unit (high level commands)
             if topic == 'ecu':
                 motor = msg.motor
                 servo = msg.servo
+
+            # Electronic control unit (low level commands)
+            if topic == 'ecu_pwm':
+                motor_pwm = msg.motor
+                servo_pwm = msg.servo
 
             # Python introspection from list 'vars_list'
             for v in vars_list:
