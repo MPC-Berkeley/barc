@@ -2,7 +2,7 @@
 
 The Berkeley Autonomous Race Car is a development platform for autonomous driving to achieve complex maneuvers such as drifting, lane changes, and obstacle avoidance. A 1/10 scale RC car and an embedded Linux computer make up the hardware platform of the project. This project aims to be fully open-source. The data collection process is cloud-based and brings new dimensions to the Vehicle Dynamics and Control Theory teaching and research world.
 
-This site is home to the repository. The main site for the project is [here](http://www.barc-project.com/).
+This site is home to the repository. The main site for the project is [here](http://www.barc-project.com/). Although several directories contain their own README files, all of this information has been consolidated in the Github [Wiki](https://github.com/MPC-Berkeley/barc/wiki).
 
 ## Organization
 The primary folders in this repository include
