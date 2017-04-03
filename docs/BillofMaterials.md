@@ -23,7 +23,7 @@ The items are sorted by category
 | Generic USB WiFi adapter                                          | 1 |[AmeriDroid](http://ameridroid.com/products/wifi-module-3)                  | 
 | Generic power cable (barrel jack to bare leads)                   | 1 |[AmeriDroid](http://ameridroid.com/products/dc-plug-and-cable-assembly-5-5mm)                  | 
 | Arduino Nano w/ micro USB to USB cable                            | 1 |[Amazon](https://www.amazon.com/SainSmart-Nano-black-Cable-Arduino/dp/B00CJ7EARG/ref=sr_1_1?ie=UTF8&qid=1460665174&sr=8-1&keywords=arduino%2Bnano%2Bblack&th=1)                      | 
-| Arduino Nano shield                                          | 1 |[Amazon](https://www.amazon.com/Arduino-Nano-I-O-Shield/dp/B00BD6KEYC/ref=sr_1_sc_1?s=pc&ie=UTF8&qid=1473727162&sr=1-1-spell&keywords=arduino+nano+sheild)                      | 
+| Arduino Nano shield                                          | 1 |[Amazon](https://www.amazon.com/XINY-Expansion-Sensor-Arduino-Compatible/dp/B01J4T7EQK/ref=sr_1_3?s=electronics&ie=UTF8&qid=1491252231&sr=1-3&keywords=arduino+nano+shield)                      | 
 | micro USB to USB cable                                            | 1 |[Amazon](https://www.amazon.com/StarTech-com-Inch-Micro-USB-Cable/dp/B003YKX6WM?ie=UTF8&keywords=usb%20to%20micro%20usb%20cable%206%20in&qid=1452628187&ref_=sr_1_1&sr=8-1)                      | 
 | Sabrent 4-port USB hub                                            | 1 |[Amazon](https://www.amazon.com/Sabrent-4-Port-Individual-Switches-HB-UMLS/dp/B00BWF5U0M/ref=sr_1_1?ie=UTF8&qid=1456792062&sr=8-1&keywords=usb+hub)                      | 
 
