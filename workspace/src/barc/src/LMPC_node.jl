@@ -247,7 +247,8 @@ function main()
                 solveMpcProblem_pathFollow(mdl_pF,mpcSol,mpcParams_pF,trackCoeff,posInfo,modelParams,z_pf,uPrev)
                 acc_f[1] = mpcSol.z[1,5]
                 acc0 = mpcSol.z[2,5]
-            else                        # otherwise: use system-ID-model
+            else
+                # otherwise: use system-ID-model
                 #mpcCoeff.c_Vx[3] = max(mpcCoeff.c_Vx[3],0.1)
                 zCurr[i,7] = acc0
                 solveMpcProblem(mdl,mpcSol,mpcCoeff,mpcParams,trackCoeff,lapStatus,posInfo,modelParams,zCurr[i,:]',uPrev)

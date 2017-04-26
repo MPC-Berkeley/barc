@@ -83,7 +83,7 @@ class Car {
 
     // Motor limits
     // TODO are these the real limits?
-    const float MOTOR_MAX = 120.0;
+    const float MOTOR_MAX = 150.0;
     const float MOTOR_MIN = 40.0;
     const float MOTOR_NEUTRAL = 90.0;
     // Optional: smaller values for testing safety
