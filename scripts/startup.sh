@@ -19,9 +19,18 @@ source $HOME/team_name.sh
 # define commands
 #   * nanorst           - resets the arduino nano from the command line (assuming the device is connected and on port /dev/ttyUSB0
 #   * rebuild_system    - rebuild all the ROS packages 
-alias nanorst='cd ~/barc/arduino/.arduino_nano328_node; cp ../arduino_nano328_node/arduino_nano328_node.ino src/; ano clean; ano build -m nano328; ano upload -m nano328 -p /dev/ttyUSB0; roscd barc'
+alias flash_nano='cd ~/barc/arduino/.arduino_nano328_node; cp ../arduino_nano328_node/arduino_nano328_node.ino src/; ano clean; ano build -m nano328; ano upload -m nano328 -p /dev/ttyUSB0; roscd barc'
 alias rebuild_system='source ~/barc/scripts/rebuild_system.sh'
 alias tmux='tmux -2'
+alias reset_wifi_rules='sudo rm /etc/udev/rules.d/70-persistent-net.rules'
+alias set_init_ap='sudo cp $HOME/barc/scripts/accesspoint.conf /etc/init/accesspoint.conf'
 
 # set configuration script for vim text editor
 cp ~/barc/scripts/vimrc ~/.vimrc
+
+
+# added git branch listing (michael)
+parse_git_branch() {
+     git branch 2> /dev/null | sed -e '/^[^*]/d' -e 's/* \(.*\)/ (\1)/'
+}
+export PS1="\u@\h \[\033[32m\]\w\[\033[33m\]\$(parse_git_branch)\[\033[00m\] $ "
