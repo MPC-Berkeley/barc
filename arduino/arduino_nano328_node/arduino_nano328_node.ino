@@ -21,6 +21,7 @@ WARNING:
 
 // include libraries
 #include <ros.h>
+#include <std_msgs/Float64.h>
 #include <barc/Ultrasound.h>
 #include <barc/Encoder.h>
 #include <barc/ECU.h>
@@ -48,6 +49,7 @@ class Car {
     int getEncoderFR();
     int getEncoderBL();
     int getEncoderBR();
+    
     // Interrupt service routines
     void incFR();
     void incFL();
@@ -84,7 +86,7 @@ class Car {
     // 120] judging from the sound of the servo pushing beyond a mechanical limit
     // outside that range. The offset may be 2 or 3 deg and the d_theta_max is then
     // ~31.
-    const int D_THETA_MAX = 30;
+    const int D_THETA_MAX = 45;
     const int THETA_CENTER = 90;
     const int THETA_MAX = THETA_CENTER + D_THETA_MAX;
     const int THETA_MIN = THETA_CENTER - D_THETA_MAX;
@@ -161,12 +163,16 @@ void calcThrottleCallback() {
 volatile unsigned long dt;
 volatile unsigned long t0;
 
+// Experimental Servo feedback
+const int SRV_FBK_PIN = A0;
+    
 // Global message variables
 // Encoder, RC Inputs, Electronic Control Unit, Ultrasound
 barc::ECU ecu;
 barc::ECU rc_inputs;
 barc::Encoder encoder;
 barc::Ultrasound ultrasound;
+std_msgs::Float64 srv_fbk;
 
 ros::NodeHandle nh;
 
@@ -174,6 +180,7 @@ ros::Publisher pub_encoder("encoder", &encoder);
 ros::Publisher pub_rc_inputs("rc_inputs", &rc_inputs);
 ros::Publisher pub_ultrasound("ultrasound", &ultrasound);
 ros::Subscriber<barc::ECU> sub_ecu("ecu_pwm", ecuCallback);
+ros::Publisher pub_srv_fbk("srv_fbk", &srv_fbk);
 
 
 // Set up ultrasound sensors
@@ -201,6 +208,7 @@ void setup()
   nh.advertise(pub_encoder);
   nh.advertise(pub_rc_inputs);
   nh.advertise(pub_ultrasound);
+  nh.advertise(pub_srv_fbk);
   nh.subscribe(sub_ecu);
 
   // Arming ESC, 1 sec delay for arming and ROS
@@ -231,17 +239,23 @@ void loop() {
     rc_inputs.motor = car.getRCThrottle();
     rc_inputs.servo = car.getRCSteering();
     pub_rc_inputs.publish(&rc_inputs);
+    
+    // get servo analog feedback
+    srv_fbk.data = analogRead(SRV_FBK_PIN);
+    pub_srv_fbk.publish( &srv_fbk );
 
     // publish ultra-sound measurement
     /*
-    ultrasound.front = us_fr.getRange();
+    ultrasound.front = us_fr.getRange(); 
     ultrasound.back = us_bk.getRange();
     ultrasound.right = us_rt.getRange();
     ultrasound.left = us_lt.getRange();
     pub_ultrasound.publish(&ultrasound);
     */
     t0 = millis();
-  }
+  } 
+  
+
 
   nh.spinOnce();
 }
@@ -295,6 +309,7 @@ void Car::initRCInput() {
 void Car::initActuators() {
   motor.attach(MOTOR_PIN);
   steering.attach(SERVO_PIN);
+  pinMode(SRV_FBK_PIN, INPUT);
 }
 
 void Car::armActuators() {
@@ -307,6 +322,7 @@ void Car::writeToActuators(const barc::ECU& ecu) {
   float motorCMD = saturateMotor(ecu.motor);
   float servoCMD = saturateServo(ecu.servo);
   motor.writeMicroseconds( (uint16_t) (1500.0 + (motorCMD-90.0)*1000.0/180.0) );
+  //steering.writeMicroseconds( (uint16_t) (1500.0 + (servoCMD-90.0)*1000.0/180.0) );
   steering.write(servoCMD);
 }
 
