@@ -1,8 +1,8 @@
-# Troubleshooting blinking red LED on ESC
+# Troubleshooting the ESC
 
 Thanks to Vince Viola for writing this troubleshooting guide
 
-#### Calibrating ESC
+#### Blinking red LED: ESC calibration issue 
 If the ESC blinks red and fails to respond to any command, do the following:
  
 1. Check Arduino for burnt out ports
@@ -35,6 +35,18 @@ If the ESC blinks red and fails to respond to any command, do the following:
 2. Turn on ESC, and hold down set button until you see both the green LED and the red LED blinking many times.  The red LED should then start to blink again on its own to show that the ESC is not calibrated.
 3. Perform the steps in "Calibrating ESC"
 4. ESC should now have default settings 
+
+#### Blinking green LED: Low battery issue
+
+If there is a blinking green LED, then most likely the issue is with a low battery.  In addition, alert tones are used to diagnose the problem.  
+
+ALERT TONES:
+
+1. “beep-beep-, beep-beep-, beep-beep-” with a 1s time interval between "beep-beep-" tones. 
+  * This is an input voltage abnormal alert tone. This tone will be sounded when the input voltage of the ESC is not in the normal range.
+
+2. "beep-, beep-, beep-" with a 2s time interval between "beep-" tones.
+  * This is a throttle signal abnormal alert tone. This tone will be sounded whenever the normal throttle signal cannot be detected by the ESC.  
  
 #### Summary
 If you can control the car with the remote control, but cannot send commands to the ESC with ROS, then the Arduino may be damaged.  Try reflashing or replacing the Arduino.
