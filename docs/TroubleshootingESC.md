@@ -43,10 +43,10 @@ If there is a blinking green LED, then most likely the issue is with a low batte
 ALERT TONES:
 
 1. “beep-beep-, beep-beep-, beep-beep-” with a 1s time interval between "beep-beep-" tones. 
-  * This is an input voltage abnormal alert tone. This tone will be sounded when the input voltage of the ESC is not in the normal range.
+   * This is an input voltage abnormal alert tone. This tone will be sounded when the input voltage of the ESC is not in the normal range.
 
 2. "beep-, beep-, beep-" with a 2s time interval between "beep-" tones.
-  * This is a throttle signal abnormal alert tone. This tone will be sounded whenever the normal throttle signal cannot be detected by the ESC.  
+   * This is a throttle signal abnormal alert tone. This tone will be sounded whenever the normal throttle signal cannot be detected by the ESC.  
  
 #### Summary
 If you can control the car with the remote control, but cannot send commands to the ESC with ROS, then the Arduino may be damaged.  Try reflashing or replacing the Arduino.
