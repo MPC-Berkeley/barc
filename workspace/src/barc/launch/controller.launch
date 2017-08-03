@@ -1,6 +1,6 @@
 <launch>
-    <machine name="odroid" address="192.168.100.100" user="odroid" timeout="20.0" env-loader="$HOME/barc/scripts/remote-machines/env_loader_odroid.sh"/>
-    <machine name="pc" address="192.168.100.102" timeout="20.0" />
+    <machine name="odroid" address="10.0.0.1" user="odroid" timeout="20.0" env-loader="$HOME/barc/scripts/remote-machines/env_loader_odroid.sh"/>
+    <machine name="pc" address="10.0.0.14" timeout="20.0" />
 
     <!-- SYSTEM MODEL -->
     <!-- vehicle parameters -->
@@ -32,6 +32,7 @@
   	<node machine="odroid" pkg="marvelmind_nav" type="hedge_rcv_bin" name="hedge_pos" >
   		<param name="port" value="dev/ttyACM0" />
   	</node>
+    
 
    	<!-- ARDUINO -->
 	<node machine="odroid" pkg="rosserial_python" type="serial_node.py" name="arduino_node" >
@@ -40,7 +41,7 @@
 
   
   <!-- OBSERVER-->
-    <node machine="pc" pkg="barc" type="state_estimation_KinBkMdl.py" name="state_estimation" output="screen">
+    <node machine="pc" pkg="barc" type="state_estimation_KinBkMdl_CT.py" name="state_estimation" output="screen">
         <!-- v_x estimation sample time-->
         <param name="dt_v_enc" type="double" value="0.2" />
 
@@ -49,13 +50,17 @@
         <param name="r_std" type="double" value="0.1" />
     </node>
 
-   	<!-- Controller -->
+   	<!-- Controller 
   	<node machine="pc" pkg="barc" type="NNMPC_controller.jl" name="NN_MPC" output="screen" >
   	</node>
+    -->
     
 
     <!-- LOW LEVEL CONTROLLER -->
-    <node machine="pc" pkg="barc" type="controller_low_level.py" name="low_level_controller" />
+    <node machine="pc" pkg="barc" type="controller_low_level_2.py" name="low_level_controller" />
+
+    <!-- send command -->
+    <node machine="pc" pkg="barc" type="send_command.py" name="send_command" />
     
 
   </launch>

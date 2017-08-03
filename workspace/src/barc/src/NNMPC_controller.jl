@@ -31,7 +31,7 @@ end
 print("enteriing julia file..... ")
 
 # define the model and environment parameters
-width=0.19/2 # haL_b of car's width
+width=0.19/2 # L_b of car's width
 L_a=0.21
 L_b=0.19
 L = L_a + L_b
@@ -374,9 +374,11 @@ function main()
             d_f_opt = u_vec[2]
         end
         """
-        a_opt   = 0
-        d_f_opt = 0
-        print(d_f_opt/pi*180, "\n")
+        a_opt   = -1
+        d_f_opt = -5*pi/180
+        
+        #print(d_f_opt/pi*180, "\n")
+        
 
         cmd = ECU(a_opt, d_f_opt)
         u_pre[1] = a_opt
@@ -394,9 +396,11 @@ function main()
         var_save = Dict()
         var_save["gps"] = message_jl_gps
         var_save["imu"] = message_jl_imu
+    
         if run_index>0 && run_index%100 == 0
-            matwrite("./message_jl_st.mat", var_save)
+            matwrite("./message_jl_df_30.mat", var_save)
         end
+        
         rossleep(loop_rate)
     end
 end

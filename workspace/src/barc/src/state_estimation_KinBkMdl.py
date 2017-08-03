@@ -18,6 +18,7 @@ import time
 import os
 from sensor_msgs.msg import Imu
 from barc.msg import ECU, Encoder, Z_KinBkMdl
+from marvelmind_nav.msg import hedge_pos
 from numpy import pi, cos, sin, eye, array, zeros, unwrap
 from ekf import ekf
 from system_models import f_KinBkMdl, h_KinBkMdl
@@ -39,10 +40,13 @@ read_yaw0   = False
 psi         = 0
 psi_meas    = 0
 
+move_started   = False
+
 # from encoder
 v           = 0
 v_meas      = 0
 t0          = time.time()
+t0_enc      = time.time()
 n_FL        = 0                     # counts in the front left tire
 n_FR        = 0                     # counts in the front right tire
 n_BL        = 0                     # counts in the back left tire
@@ -59,27 +63,44 @@ index_imu = 0
 index_est = 0
 index_ecu = 0
 index_enc = 0
-message_kin["ecu"] = {}
-message_kin["imu"] = {}
-message_kin["enc"] = {}
-message_kin["est"] = {}
+index_gps = 0
+message_ecu = {}
+message_imu = {}
+message_enc = {}
+message_est = {}
+message_gps = {}
+
+
+def gps_callback(msg):
+    global index_gps, message_gps, t0
+    t_gps = time.time() - t0
+    index_gps +=1
+    message_gps['index'+str(index_gps)] = np.array([t_gps, msg.x_m, msg.y_m])
+
 
 # ecu command update
 def ecu_callback(data):
-    global acc, d_f
-    global message_kin, index_ecu
+    global acc, d_f, t0
+    global message_ecu, index_ecu
+    global move_started, yaw_prev, yaw0
+    t_ecu = time.time() - t0
 
     index_ecu += 1
-    message_kin["ecu"][index_ecu] = data
+    
     acc         = data.motor        # input acceleration
     d_f         = data.servo        # input steering angle
+    message_ecu[('index'+str(index_ecu))] = np.array([t_ecu, acc, d_f])
+    if not move_started:
+        move_started = True
+        yaw0        = yaw_prev
 
 # imu measurement update
 def imu_callback(data):
     # units: [rad] and [rad/s]
     global roll, pitch, yaw, a_x, a_y, a_z, w_x, w_y, w_z
     global yaw_prev, yaw0, read_yaw0, yaw_local, psi_meas
-    global message_kin, index_imu
+    global message_imu, index_imu, t0
+    t_imu = time.time() - t0
 
     # get orientation from quaternion data, and convert to roll, pitch, yaw
     # extract angular velocity and linear acceleration data
@@ -107,17 +128,18 @@ def imu_callback(data):
     a_y = data.linear_acceleration.y
     a_z = data.linear_acceleration.z
     index_imu += 1
-    message_kin["imu"][index_imu] = data
+    message_imu[('index'+str(index_imu))] = np.array([t_imu, roll, pitch, yaw, w_x, w_y, w_z, a_x, a_y, a_z])
+
 
 # encoder measurement update
 def enc_callback(data):
-    global v, t0, dt_v_enc, v_meas
+    global v, t0, dt_v_enc, v_meas, t0_enc
     global n_FL, n_FR, n_FL_prev, n_FR_prev
     global n_BL, n_BR, n_BL_prev, n_BR_prev
-    global message_kin, index_enc
+    global message_enc, index_enc
+    t_enc = time.time() - t0
 
-    index_enc += 1
-    message_kin["enc"][index_enc] = data
+    
 
     n_FL = data.FL
     n_FR = data.FR
@@ -126,7 +148,7 @@ def enc_callback(data):
 
     # compute time elapsed
     tf = time.time()
-    dt = tf - t0
+    dt = tf - t0_enc
 
     # if enough time elapse has elapsed, estimate v_x
     if dt >= dt_v_enc:
@@ -137,9 +159,9 @@ def enc_callback(data):
         v_BR = float(n_BR - n_BR_prev)*dx_qrt/dt
 
         # Uncomment/modify according to your encoder setup
-        # v_meas    = (v_FL + v_FR)/2.0
+        # v_meas    = (v_FL + v_FR)/2.0dt_v_enc
         # Modification for 3 working encoders
-        v_meas = (v_FL + v_FR)/2.0
+        v_meas = (v_FL + v_FR + v_BL)/3.0
         # Modification for bench testing (driven wheels only)
         # v = (v_BL + v_BR)/2.0
 
@@ -148,14 +170,17 @@ def enc_callback(data):
         n_FR_prev   = n_FR
         n_BL_prev   = n_BL
         n_BR_prev   = n_BR
-        t0          = time.time()
+        t0_enc          = time.time()
+
+        index_enc += 1
+        message_enc[('index'+str(index_enc))] = np.array([t_enc, v_FL, v_FR, v_BL])
 
 
 # state estimation node
 def state_estimation():
-    global dt_v_enc
+    global dt_v_enc, t0
     global v_meas, psi_meas
-    global message_kin, index_est
+    global message_est, index_est
 
     # initialize node
     rospy.init_node('state_estimation', anonymous=True)
@@ -164,6 +189,7 @@ def state_estimation():
     rospy.Subscriber('imu/data', Imu, imu_callback)
     rospy.Subscriber('encoder', Encoder, enc_callback)
     rospy.Subscriber('ecu', ECU, ecu_callback)
+    rospy.Subscriber('hedge_pos', hedge_pos, gps_callback)
     state_pub   = rospy.Publisher('state_estimate', Z_KinBkMdl, queue_size = 10)
 
     # get vehicle dimension parameters
@@ -182,7 +208,7 @@ def state_estimation():
     loop_rate   = 50
     dt          = 1.0 / loop_rate
     rate        = rospy.Rate(loop_rate)
-    t0          = time.time()
+    #t0          = time.time()
 
     # estimation variables for Luemberger observer
     z_EKF       = zeros(4)
@@ -209,9 +235,28 @@ def state_estimation():
         # apply EKF and get each state estimate
         (z_EKF,P) = ekf(f_KinBkMdl, z_EKF, P, h_KinBkMdl, y_ekf, Q, R, args )
         index_est += 1
-        message_kin["est"][index_est] = np.array([psi_meas, v_meas, d_f, acc, x, y, psi, v])
+        # message_est[index_est] = np.array([psi_meas, v_meas, d_f, acc, x, y, psi, v])
+        t_est = time.time() - t0
+        message_est[('index'+str(index_est))] = np.array([t_est, psi_meas, v_meas, d_f, acc, x, y, psi, v])
+        # print(message_est)
         if (index_est>0) and (index_est%50 == 0):
-            sio.savemat('./message_kin_st.mat', message_kin)
+            message_kin["est"]=message_est
+            message_kin["enc"]=message_enc
+            message_kin["imu"]=message_imu
+            message_kin["ecu"]=message_ecu
+            message_kin["gps"]=message_gps
+            
+
+            sio.savemat('./message_kin_a5df175_CT.mat', {'message_kin':message_kin})
+            # sio.savemat('./message_est.mat', {'message_est':message_est})
+            # sio.savemat('./message_enc.mat', {'message_enc':message_enc})
+            # sio.savemat('./message_ecu.mat', {'message_ecu':message_ecu})
+            # sio.savemat('./message_imu.mat', {'message_imu':message_imu})
+
+            
+
+        # wait
+
 
         # wait
         rate.sleep()
