@@ -24,6 +24,7 @@ alias rebuild_system='source ~/barc/scripts/rebuild_system.sh'
 alias tmux='tmux -2'
 alias reset_wifi_rules='sudo rm /etc/udev/rules.d/70-persistent-net.rules'
 alias set_init_ap='sudo cp $HOME/barc/scripts/accesspoint.conf /etc/init/accesspoint.conf'
+alias rebuild_arduino_ROS_lib='cd $HOME/sketchbook/libraries; rm -rf ros_lib; rosrun rosserial_arduino make_libraries.py .'
 
 # set configuration script for vim text editor
 cp ~/barc/scripts/vimrc ~/.vimrc

@@ -25,8 +25,10 @@ WARNING:
 #include <barc/Encoder.h>
 #include <barc/ECU.h>
 #include <Servo.h>
-#include "Maxbotix.h"
+//#include "Maxbotix.h"
 #include <EnableInterrupt.h>
+//#include "PinChangeInterrupt.h"
+// /home/ubuntu/barc/arduino/arduino_nano328_node/PinChangeInterrupt/src/
 
 /**************************************************************************
 CAR CLASS DEFINITION (would like to refactor into car.cpp and car.h but can't figure out arduino build process so far)
@@ -55,6 +57,7 @@ class Car {
     void incBL();
     void calcThrottle();
     void calcSteering();
+    void killMotor();
   private:
     // Pin assignments
     const int ENC_FL_PIN = 2;
@@ -72,9 +75,10 @@ class Car {
 
     // Motor limits
     // TODO are these the real limits?
-    const int MOTOR_MAX = 120;
+    const int MOTOR_MAX = 165;
     const int MOTOR_MIN = 40;
     const int MOTOR_NEUTRAL = 90;
+    const int SERVO_OFFSET = 0;
     // Optional: smaller values for testing safety
     /* const int MOTOR_MAX = 100; */
     /* const int MOTOR_MIN = 75; */
@@ -128,6 +132,10 @@ class Car {
     float saturateServo(float x);
 };
 
+//Boolean keeping track of whether the Arduino has received a signal from the ECU recently
+
+int received_ecu_signal = 0;
+
 // Initialize an instance of the Car class as car
 Car car;
 
@@ -160,17 +168,20 @@ void calcThrottleCallback() {
 // Variables for time step
 volatile unsigned long dt;
 volatile unsigned long t0;
+volatile unsigned long ecu_t0;
 
 // Global message variables
 // Encoder, RC Inputs, Electronic Control Unit, Ultrasound
 barc::ECU ecu;
 barc::ECU rc_inputs;
 barc::Encoder encoder;
+//barc::Encoder servo;
 barc::Ultrasound ultrasound;
 
 ros::NodeHandle nh;
 
 ros::Publisher pub_encoder("encoder", &encoder);
+// ros::Publisher pub_servo("servo", &servo);
 ros::Publisher pub_rc_inputs("rc_inputs", &rc_inputs);
 ros::Publisher pub_ultrasound("ultrasound", &ultrasound);
 ros::Subscriber<barc::ECU> sub_ecu("ecu_pwm", ecuCallback);
@@ -199,6 +210,7 @@ void setup()
 
   // Publish and subscribe to topics
   nh.advertise(pub_encoder);
+  //nh.advertise(pub_servo);
   nh.advertise(pub_rc_inputs);
   nh.advertise(pub_ultrasound);
   nh.subscribe(sub_ecu);
@@ -206,6 +218,7 @@ void setup()
   // Arming ESC, 1 sec delay for arming and ROS
   car.armActuators();
   t0 = millis();
+  ecu_t0 = millis();
 
 }
 
@@ -216,6 +229,16 @@ ARDUINO MAIN lOOP
 void loop() {
   // compute time elapsed (in ms)
   dt = millis() - t0;
+
+  // Kill the motor if there is non ECU signal within the last 1s.
+  if ((millis() - ecu_t0) >= 1000) {
+      if (!received_ecu_signal) {
+          car.killMotor();
+      } else {
+          received_ecu_signal = 0;
+      }
+      ecu_t0 = millis();
+  }
 
   if (dt > 50) {
     car.readAndCopyInputs();
@@ -242,6 +265,9 @@ void loop() {
     */
     t0 = millis();
   }
+
+  //servo.FL = analogRead(A0);
+  //pub_servo.publish(&servo);
 
   nh.spinOnce();
 }
@@ -299,13 +325,13 @@ void Car::initActuators() {
 
 void Car::armActuators() {
   motor.write(MOTOR_NEUTRAL);
-  steering.write(THETA_CENTER);
+  steering.write(THETA_CENTER + SERVO_OFFSET);
   delay(1000);
 }
 
 void Car::writeToActuators(const barc::ECU& ecu) {
   float motorCMD = saturateMotor(ecu.motor);
-  float servoCMD = saturateServo(ecu.servo);
+  float servoCMD = saturateServo(ecu.servo + SERVO_OFFSET);
   motor.writeMicroseconds( (uint16_t) (1500.0 + (motorCMD-90.0)*1000.0/180.0) );
   steering.write(servoCMD);
 }
@@ -336,6 +362,12 @@ void Car::calcSteering() {
     updateFlagsShared |= STEERING_FLAG;
   }
 }
+
+void Car::killMotor() {
+    motor.write(90);
+}
+
+
 
 void Car::incFL() {
   FL_count_shared++;
