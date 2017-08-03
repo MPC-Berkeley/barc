@@ -52,7 +52,8 @@ add_message_files(
    ECU.msg
    Z_KinBkMdl.msg
    Vel.msg
-   Encoder_Sensor_Reading.msg
+   pos_info.msg
+   Vel_est.msg
 )
 
 ## Generate services in the 'srv' folder

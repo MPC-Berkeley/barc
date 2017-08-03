@@ -1,0 +1,30 @@
+
+# This is a message to hold data with position and trajectory information
+Header header
+float64 s
+float64 ey
+float64 epsi
+float64 v
+float64 s_start
+float64 x
+float64 y
+float64 v_x
+float64 v_y
+float64 psi
+float64 psiDot
+float64 x_raw
+float64 y_raw
+float64 psi_raw
+float64 v_raw
+float64 psiDot_raw
+float64 psi_drift
+float64 a_x
+float64 a_y
+float64 a_x_raw
+float64 a_y_raw
+float64 u_a
+float64 u_df
+float64[] coeffX
+float64[] coeffY
+float64[] coeffTheta
+float64[] coeffCurvature
