@@ -1,0 +1,38 @@
+<launch>
+
+    <!-- run sweep_node node -->
+    <node name="sweep_node"          pkg="sweep_ros"  type="sweep_node" output="screen">
+            <param name="serial_port"         type="string" value="/dev/ttyUSB0"/>
+            <param name="serial_baudrate"     type="int"    value="115200"/>
+            <param name="frame_id"            type="string" value="laser_frame"/>
+    </node>
+
+    <!-- run pointcloud_to_laserscan node -->
+    <node pkg="pointcloud_to_laserscan" type="pointcloud_to_laserscan_node" name="pointcloud_to_laserscan">
+
+        <remap from="cloud_in" to="pc2"/>
+        <rosparam>
+            target_frame: laser_frame # Leave disabled to output scan in pointcloud frame
+            transform_tolerance: 0.001
+            min_height: -1.0
+            max_height: 1.0
+
+            angle_min: -3.14 # -M_PI/2
+            angle_max: 3.14 # M_PI/2
+            angle_increment: 0.001 # M_PI/360.0
+            scan_time: 0.1
+            range_min: 0.0
+            range_max: 40.0
+            use_inf: true
+
+            # Concurrency level, affects number of pointclouds queued for processing and number of threads used
+            # 0 : Detect number of cores
+            # 1 : Single threaded
+            # 2->inf : Parallelism level
+            concurrency_level: 1
+        </rosparam>
+
+    </node>
+
+</launch>
+

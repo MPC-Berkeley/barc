@@ -82,7 +82,7 @@ def straight(t_i, pid, time_params,FxR_target):
     # start moving
     elif (t_i < t_f):
         d_f         = pid.update(yaw_local, dt)
-        step_up     = float(t_i - t_0) / 50.0
+        step_up     = float(t_i - t_0) 
         FxR         = np.min([ step_up, FxR_target])
 
     # stop experiment
@@ -118,7 +118,6 @@ def main_auto():
     t_f             = get_param("controller/t_f")     # time to end test
     FxR_target      = get_param("controller/FxR_target")
     t_params        = (t_0, t_f, dt)
-
     while not is_shutdown():
 
         # OPEN LOOP 

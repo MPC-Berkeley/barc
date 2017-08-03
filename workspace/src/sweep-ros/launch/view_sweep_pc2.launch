@@ -1,0 +1,5 @@
+<launch>
+  <include file="$(find sweep_ros)/launch/sweep.launch" />
+
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find sweep_ros)/rviz/sweep_pc2.rviz" />
+</launch>
