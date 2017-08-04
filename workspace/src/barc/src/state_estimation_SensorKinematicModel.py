@@ -15,7 +15,7 @@
 
 import rospy
 from Localization_helpers import Localization
-from barc.msg import ECU, pos_info, Vel_est
+from barc.msg import ECU, pos_info, Vel
 from sensor_msgs.msg import Imu
 from marvelmind_nav.msg import hedge_pos
 from std_msgs.msg import Header
@@ -50,8 +50,6 @@ class StateEst(object):
     # Velocity
     vel_meas = 0.0
     vel_updated = False
-    vel_prev = 0.0
-    vel_count = 0.0               # this counts how often the same vel measurement has been received
 
     # GPS
     x_meas = 0.0
@@ -85,26 +83,49 @@ class StateEst(object):
     def gps_callback(self, data):
         """This function is called when a new GPS signal is received."""
         # units: [rad] and [rad/s]
+        # get current time stamp
         t_now = rospy.get_rostime().to_sec()-self.t0
-        t_msg = data.header.stamp.to_sec()-self.t0
+        t_msg = data.timestamp_ms/1000.0 - self.t0
+        #t_msg = t_now - 0.0001
+
         # if abs(t_now - t_msg) > 0.1:
         #    print "GPS: Bad synchronization - dt = %f"%(t_now-t_msg)
+
+        # get current gps measurement 
         self.x_meas = data.x_m
         self.y_meas = data.y_m
+
+        # check if we have good measurement
+        # compute distance we have travelled from previous estimate to current measurement
+        # if we've travelled more than 1 m, the GPS measurement is probably junk, so ignore it
+        # otherwise, store measurement, and then perform interpolation
         dist = (self.x_est-data.x_m)**2 + (self.y_est-data.y_m)**2
         if dist < 1.0:
             self.x_hist = append(self.x_hist, data.x_m)
             self.y_hist = append(self.y_hist, data.y_m)
             self.t_gps = append(self.t_gps, t_msg)
+
         # self.x_hist = delete(self.x_hist,0)
         # self.y_hist = delete(self.y_hist,0)
         # self.t_gps  = delete(self.t_gps,0)
+
+        # Keep only the last second worth of coordinate data in the x_hist and y_hist buffer
+        # These buffers are used for interpolation
+        # without overwriting old data, the arrays would grow unbounded
         self.x_hist = self.x_hist[self.t_gps > t_now-1.0]
         self.y_hist = self.y_hist[self.t_gps > t_now-1.0]
         self.t_gps = self.t_gps[self.t_gps > t_now-1.0]
         sz = size(self.t_gps, 0)
+
+        # perform interpolation for (x,y) as a function of time t
+        # getting two function approximations x(t) and y(t)
+        # 1) x(t) ~ c0x + c1x * t + c2x * t^2
+        # 2) y(t) ~ c0y + c1y * t + c2y * t^2
+        # c_X = [c0x c1x c2x] and c_Y = [c0y c1y c2y] 
+        # use least squares to get the coefficients for this function approximation 
+        # using (x,y) coordinate data from the past second (time)
         if sz > 4:
-            t_matrix = vstack([self.t_gps**2, self.t_gps, ones(sz)]).T
+            t_matrix = vstack([self.t_gps**2, self.t_gps, ones(sz)]).T      # input matrix: [ t^2   t   1 ] 
             self.c_X = linalg.lstsq(t_matrix, self.x_hist)[0]
             self.c_Y = linalg.lstsq(t_matrix, self.y_hist)[0]
         self.gps_updated = True
@@ -146,18 +167,9 @@ class StateEst(object):
         self.att = (roll_raw,pitch_raw,yaw_raw)
         self.imu_updated = True
 
-    def vel_est_callback(self, data):
-        self.vel_meas = (data.vel_fl+data.vel_fr)/2.0     #data.vel_est
-        if data.vel_est != self.vel_prev:
-            self.vel_meas = data.vel_est
-            self.vel_updated = True
-            self.vel_prev = data.vel_est
-            self.vel_count = 0
-        else:
-            self.vel_count = self.vel_count + 1
-            if self.vel_count > 10:     # if 10 times in a row the same measurement
-                self.vel_meas = 0       # set velocity measurement to zero
-                self.vel_updated = True
+    def encoder_vel_callback(self, data):
+        self.vel_meas = data.v
+        self.vel_updated = True
 
 # state estimation node
 def state_estimation():
@@ -167,7 +179,7 @@ def state_estimation():
 
     # topic subscriptions / publications
     rospy.Subscriber('imu/data', Imu, se.imu_callback)
-    rospy.Subscriber('vel_est', Vel_est, se.vel_est_callback)
+    rospy.Subscriber('encoder_vel', Vel, se.encoder_vel_callback)
     rospy.Subscriber('ecu', ECU, se.ecu_callback)
     rospy.Subscriber('hedge_pos', hedge_pos, se.gps_callback, queue_size=1)
     state_pub_pos = rospy.Publisher('pos_info', pos_info, queue_size=1)
