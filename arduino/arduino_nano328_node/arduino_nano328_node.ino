@@ -64,6 +64,7 @@ class Car {
     void incBL();
     void calcThrottle();
     void calcSteering();
+    float getVelocityEstimate();
     void killMotor();
     float vel_FL = 0;
     float vel_FR = 0;
