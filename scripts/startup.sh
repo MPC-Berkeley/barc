@@ -25,6 +25,7 @@ alias tmux='tmux -2'
 alias reset_wifi_rules='sudo rm /etc/udev/rules.d/70-persistent-net.rules'
 alias set_init_ap='sudo cp $HOME/barc/scripts/accesspoint.conf /etc/init/accesspoint.conf'
 alias rebuild_arduino_ROS_lib='cd $HOME/sketchbook/libraries; rm -rf ros_lib; rosrun rosserial_arduino make_libraries.py .'
+alias set_remote_env='source $HOME/barc/scripts/remote-machines/env_loader_pc.sh'
 
 # set configuration script for vim text editor
 cp ~/barc/scripts/vimrc ~/.vimrc
