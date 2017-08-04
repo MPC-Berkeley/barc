@@ -1,7 +1,7 @@
 <launch>
     <!-- Machines -->
     <machine name="odroid" address="10.0.0.1" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/scripts/remote-machines/env_loader_odroid.sh"/>
-    <machine name="this-pc" address="10.0.0.14" timeout="20.0" env-loader="/home/mpcubuntu/barc/scripts/remote-machines/env_loader_pc.sh"/>
+    <machine name="this-pc" address="10.0.0.14" timeout="20.0"/>
 
     <!-- IMU -->
     <node machine="odroid" pkg="myahrs_driver" type="myahrs_driver" name="myahrs_driver">
