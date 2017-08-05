@@ -1,3 +1,5 @@
+# Run this file using Julia 0.4.7
+
 type MpcModel
     mdl::JuMP.Model
 
@@ -113,10 +115,10 @@ type MpcModel
 
         # create first artificial solution (for warm start)
         for i=1:N+1
-            setvalue(z_Ol[i,:],[(i-1)*dt*v_ref 0 0 v_ref 0])
+            setvalue(z_Ol[i,:],[(i-1)*dt*v_ref, 0, 0, v_ref, 0])
         end
         for i=1:N
-            setvalue(u_Ol[i,:],[0.15 0])
+            setvalue(u_Ol[i,:],[0.15, 0])
         end
         # First solve
         sol_stat=solve(mdl)
