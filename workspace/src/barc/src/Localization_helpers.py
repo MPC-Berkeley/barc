@@ -39,8 +39,8 @@ class Localization(object):
     pos                 = 0                     # current position
     psi                 = 0                     # current orientation
     nodes               = array([0])            # all nodes are saved in a matrix
-    N_nodes_poly_back   = 30                    # number of nodes behind current position
-    N_nodes_poly_front  = 100                    # number of nodes in front
+    N_nodes_poly_back   = 5                    # number of nodes behind current position
+    N_nodes_poly_front  = 10                    # number of nodes in front
     ds                  = 0                     # distance between nodes
     nPoints             = N_nodes_poly_front+N_nodes_poly_back+1    # number of points for interpolation in total
     OrderXY             = 10                     # order of x-y-polynomial interpolation
@@ -68,9 +68,9 @@ class Localization(object):
         self.nodes  = array([x,y])
         self.n      = n
         self.c      = c
-        self.rad    = rad
-        #self.ds    = rad*2*pi/n
-        self.ds     = 2*rad*tan(2*pi/n/2)
+        #self.rad    = rad
+        self.ds    = rad*2*pi/n
+        #self.ds     = 2*rad*tan(2*pi/n/2)
 
     def create_track2(self):
         p0 = array([[0,0],
@@ -114,6 +114,8 @@ class Localization(object):
         y = array([0])
         ds = 0.03
         theta = array([0])
+        print 'theta: ', theta
+
 
         # Sophisticated racetrack: length = 25.62m
         # theta = add_curve(theta,30,0)
@@ -176,12 +178,16 @@ class Localization(object):
         #theta = add_curve(theta,80,-pi/2)
         #theta = add_curve(theta,75,0)
 
+        # Straight-Curve-Straight
+        #theta = add_curve(theta, 20, 0)
+        #theta = add_curve(theta, 80, -pi)
+        #theta = add_curve(theta, 20, 0)
         # SHORT SIMPLE RACETRACK (smooth curves): 12.0m
-        theta = add_curve(theta,10,0)
-        theta = add_curve(theta,80,-pi)
-        theta = add_curve(theta,20,0)
-        theta = add_curve(theta,80,-pi)
-        theta = add_curve(theta,9,0)
+        theta = add_curve(theta,15,0)
+        theta = add_curve(theta,110,-pi)
+        theta = add_curve(theta,30,0)
+        theta = add_curve(theta,110,-pi)
+        theta = add_curve(theta,14,0)
 
         # SIMPLER RACETRACK (half circles as curves):
 
@@ -194,6 +200,7 @@ class Localization(object):
         self.n = size(x)
         print "number of nodes: %i"%self.n
         print "length : %f"%((self.n)*ds)
+        print self.nodes
 
     def create_racetrack(self,L=1.0,b=1.0,ds=0.5,c=array([0,0]),ang=0):     # problem: points are not equidistant at connecing points
         x = linspace(0,L/2.0,5)#arange(0,L/2.0,ds)                                          # otherwise: would create a racetrack with parallel lines
@@ -274,6 +281,9 @@ class Localization(object):
         self.psiDot = psiDot
 
     def find_s(self):
+        # s := amount of distance travelled
+
+        # project position onto track, use Euclidean norm to measure distance between current vehicle position and every node on the track
         dist        = sum((self.pos*ones([self.n,2])-self.nodes.transpose())**2,1)**0.5 # distance of current position to all nodes
         idx_min     = argmin(dist)              # index of minimum distance
 
@@ -331,6 +341,10 @@ class Localization(object):
         for i in range(0,self.nPoints):
             for k in range(0,self.OrderThetaCurv+1):
                 Matrix3rd[i,self.OrderThetaCurv-k] = (s_start + i*self.ds)**k
+   
+        #print "matrix shape: ", Matrix.shape
+        #print "nodes_X shape: ", nodes_X.shape
+        #print "nodes_Y shape: ", nodes_Y.shape
 
         # Solve system of equations to find polynomial coefficients (for x-y)
         coeffX = linalg.lstsq(Matrix,nodes_X)[0]

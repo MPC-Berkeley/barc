@@ -56,8 +56,11 @@ type MpcModel
         # Set bounds
         z_lb_4s = ones(mpcParams.N+1,1)*[-Inf -Inf -Inf -0.5]                  # lower bounds on states
         z_ub_4s = ones(mpcParams.N+1,1)*[ Inf  Inf  Inf  1.5]                  # upper bounds
-        u_lb_4s = ones(mpcParams.N,1) * [0.0  -0.3]                            # lower bounds on steering
-        u_ub_4s = ones(mpcParams.N,1) * [1.2   0.3]                            # upper bounds
+        
+        # Steering range: 33 <= steering angle <= 150 (values are PWM signals).  This corresponds to 0.749 >= steering angle >= -0.592 in radians
+
+        u_lb_4s = ones(mpcParams.N,1) * [0.0  -0.592]                            # lower bounds on acceleration and steering
+        u_ub_4s = ones(mpcParams.N,1) * [1.2   0.749]                            # upper bounds on acceleration and steering
 
         for i=1:2
             for j=1:N
@@ -76,22 +79,25 @@ type MpcModel
         setvalue(z0[4],v_ref)
         @NLconstraint(mdl, [i=1:5], z_Ol[1,i] == z0[i])         # initial condition
         for i=1:N
+            
             if i<=delay_df
                 @NLexpression(mdl, bta[i],  atan( L_a / (L_a + L_b) * tan( uPrev[delay_df+1-i,2] ) ) )
             else
                 @NLexpression(mdl, bta[i],  atan( L_a / (L_a + L_b) * tan( u_Ol[i-delay_df,2] ) ) )
             end
+            
             if i<=delay_a
                 @NLconstraint(mdl, z_Ol[i+1,5] == z_Ol[i,5] + dt*(uPrev[delay_a+1-i,1] - z_Ol[i,5])*acc_f)  # v
             else
                 @NLconstraint(mdl, z_Ol[i+1,5] == z_Ol[i,5] + dt*(u_Ol[i-delay_a,1] - z_Ol[i,5])*acc_f)     # v
-            end
+            end  
+
 
             @NLexpression(mdl, dsdt[i], z_Ol[i,4]*cos(z_Ol[i,3]+bta[i])/(1-z_Ol[i,2]*c[i]))
-            @NLconstraint(mdl, z_Ol[i+1,1] == z_Ol[i,1] + dt*dsdt[i]  )                                                # s
+            @NLconstraint(mdl, z_Ol[i+1,1] == z_Ol[i,1] + dt*dsdt[i]  )                                                # s/acc)
             @NLconstraint(mdl, z_Ol[i+1,2] == z_Ol[i,2] + dt*z_Ol[i,4]*sin(z_Ol[i,3]+bta[i])  )                        # ey
             @NLconstraint(mdl, z_Ol[i+1,3] == z_Ol[i,3] + dt*(z_Ol[i,4]/L_a*sin(bta[i])-dsdt[i]*c[i])  )               # epsi
-            @NLconstraint(mdl, z_Ol[i+1,4] == z_Ol[i,4] + dt*(z_Ol[i,5] - 0.5*z_Ol[i,4]))  # v
+            @NLconstraint(mdl, z_Ol[i+1,4] == z_Ol[i,4] + dt*(z_Ol[i,5] - 0.5*z_Ol[i,4]))                              # v
         end
 
         # Cost definitions

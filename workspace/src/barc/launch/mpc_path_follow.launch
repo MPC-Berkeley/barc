@@ -1,4 +1,9 @@
 <launch>
+    <!-- Machines -->
+    <machine name="odroid" address="10.0.0.1" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/scripts/remote-machines/env_loader_odroid.sh"/>
+    <machine name="this-pc" address="10.0.0.14" timeout="20.0"/>
+
+
     <!-- DEFINE PARAMETERS -->
     <!-- Vehicle -->
     <param name="L_a" type="double" value="0.125" />
@@ -6,55 +11,54 @@
     <param name="m" type="double" value="1.98" />
     <param name="I_z" type="double" value="0.24" />
 
-    <!-- CAMERA -->
-    <machine name="odroid" address="192.168.100.100" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid.sh"/>
-    <node pkg="uvc_camera" type="uvc_camera_node" name="barc_cam">
-        <param name="index" value="0"/>
-        <param name="device" value="/dev/video0"/>
-        <param name="width" value="640"/>
-        <param name="height" value="480"/>
+    <!-- Encoder Velocity -->
+    <node machine="odroid" pkg="barc" type="encoder_velocity_broadcast.py" name="enc_vel_node">
+        <param name="dt_v_enc" type="double" value="0.2" />
     </node>
 
-    <!-- Machines -->
-    <machine name="odroid" address="192.168.100.100" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid.sh"/>
-    <machine name="this-pc" address="192.168.100.72" timeout="20.0" env-loader="/home/max/barc/env_loader_pc.sh"/>
-
     <!-- Estimator -->
-    <!--node machine="this-pc" pkg="barc" type="state_estimation_KinBkMdl_mixed.py" name="state_estimation_dynamic" output="screen"-->
     <node machine="this-pc" pkg="barc" type="state_estimation_SensorKinematicModel.py" name="state_estimation_dynamic" output="screen">
         <!-- ekf properties -->
         <param name="q_std" type="double" value="0.1" />
-
         <param name="psi_std" type="double" value="0.5" />
         <param name="v_std" type="double" value="1.0" />
         <param name="gps_std" type="double" value="2.0" />
         <param name="ang_v_std" type="double" value="0.8" />
-
         <param name="est_mode" type="double" value="1" />
     </node>
+
+
 
     <!-- MPC CONTROL -->
     <node machine="this-pc" pkg="barc" type="MPC_node.jl" name="MPC" output="screen" />
 
     <!-- LOW LEVEL CONTROLLER -->
-    <node machine="this-pc" pkg="barc" type="controller_low_level.py" name="low_level_controller" />
+    <node machine="this-pc" pkg="barc" type="controller_low_level.py" name="low_level_controller" output="screen">
+        <param name="motor_c0" value="0.0061" />
+        <param name="motor_c1" value="0.071" />
+        <param name="servo_c0" value="90.1" />
+        <param name="servo_c1" value="-94.1" />
+    </node>
 
     <!-- IMU -->
     <node machine="odroid" pkg="myahrs_driver" type="myahrs_driver" name="myahrs_driver">
-        <param name="port" value="/dev/ttyACM0" />
+        <param name="port" value="/dev/ttyACM1" />
         <param name="baud_rate" value="115200" />
     </node>
 
+
     <!-- GPS -->
-    <node machine="odroid" pkg="marvelmind_nav" type="hedge_rcv_bin" name="indoor_gps" args="/dev/ttyACM1"/>
-    
+    <node machine="odroid" pkg="marvelmind_nav" type="hedge_rcv_bin" name="indoor_gps" args="/dev/ttyACM0"/> 
+
     <!-- ARDUINO -->
     <!--  * encoders and ultrasound sensors -->
     <node machine="odroid" pkg="rosserial_python" type="serial_node.py" name="arduino_node" >
         <param name="port" value="/dev/ttyUSB0" />
     </node>
 
-    <!-- RECORD --> 
-    <node pkg="rosbag" type="record" name="rosbag_record" args="/imu/data /hedge_pos /image_raw/compressed /rc_inputs" />
+
+    <!-- Car Trajectory Visualization -->
+    <node machine="this-pc" pkg="barc" type="view_car_trajectory.py" name="view_car_trajectory" output="screen"/>
+
 
 </launch>

@@ -80,7 +80,7 @@ function main()
     # Specific initializations:
     lapStatus.currentLap    = 1
     lapStatus.currentIt     = 1
-    posInfo.s_target        = 19.11  #19.14#17.94#17.76#24.0
+    posInfo.s_target        = 7.24     # distance of track
     
     mpcSol.z = zeros(11,4)
     mpcSol.u = zeros(10,2) 
@@ -88,14 +88,11 @@ function main()
     uPrev = zeros(10,2)     # saves the last 10 inputs (1 being the most recent one)
 
     acc0 = 0.0
+    u_opt = [0.0 0.0]
 
     # Start node
     while ! is_shutdown()
         if z_est[6] > 0         # check if data has been received (s > 0)
-
-            # ============================= PUBLISH COMMANDS =============================
-            cmd.header.stamp = get_rostime()
-            publish(pub, cmd)
 
             # ============================= UPDATE STATE ESTIMATE =============================
             n_mpc                       = lapStatus.currentIt           # current iteration number, just to make notation shorter
@@ -110,7 +107,7 @@ function main()
                 lapStatus.nextLap       = false
                 setvalue(mdl.z_Ol[:,1], mpcSol.z[:,1]-posInfo.s_target)
             end
-            println("Current Lap: ", lapStatus.currentLap, ", It: ", lapStatus.currentIt)
+            #println("Current Lap: ", lapStatus.currentLap, ", It: ", lapStatus.currentIt)
            
             #  ======================================= COMPUTE CONTROL =======================================
             z_pf = [zCurr[6],zCurr[5],zCurr[4],norm(zCurr[1:2]),acc0]        # use kinematic model and its states
@@ -125,6 +122,11 @@ function main()
             uPrev = circshift(uPrev,1)
             uPrev[1,:] = u_opt
             lapStatus.currentIt += 1
+
+            # ============================= PUBLISH COMMANDS =============================
+            cmd.header.stamp = get_rostime()
+            publish(pub, cmd)
+            println("steering angle: ", u_opt[2])
         else
             println("No estimation data received!")
         end

@@ -1,0 +1,21 @@
+<launch>
+    <!-- Machines -->
+    <machine name="odroid" address="10.0.0.1" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/scripts/remote-machines/env_loader_odroid.sh"/>
+    <machine name="this-pc" address="10.0.0.14" timeout="20.0"/>
+
+    <!-- Estimator -->
+    <node machine="this-pc" pkg="barc" type="state_estimation_test.py" name="state_estimation_dynamic" output="screen">
+        <!-- ekf properties -->
+        <param name="q_std" type="double" value="0.1" />
+
+        <param name="psi_std" type="double" value="0.5" />
+        <param name="v_std" type="double" value="1.0" />
+        <param name="gps_std" type="double" value="2.0" />
+        <param name="ang_v_std" type="double" value="0.8" />
+
+        <param name="est_mode" type="double" value="1" />
+    </node>
+
+    <!-- GPS -->
+    <node machine="odroid" pkg="marvelmind_nav" type="hedge_rcv_bin" name="indoor_gps" args="/dev/ttyACM0"/> 
+</launch>

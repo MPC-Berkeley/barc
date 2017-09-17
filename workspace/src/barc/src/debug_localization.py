@@ -5,6 +5,7 @@ import math
 import matplotlib.pyplot as plt
 
 l = Localization()
+#l.create_circle(rad=1.1, c=array([0.0, -0.5]))
 l.create_track()
 
 plt.plot(l.nodes[0,:],l.nodes[1,:],"r-o")
@@ -22,10 +23,10 @@ for i in range(0,n):
     s = linspace(l.s,l.s+2.0,5)
     ss[i] = l.s
     #c[i,:] = polyval(l.coeffCurvature,s)
-    c = polyval(l.coeffCurvature,s)
-    plt.plot(s,c)
+    #c = polyval(l.coeffCurvature,s)
+    #plt.plot(s,c)
     #print l.s
     #print c
-
+print l.s
 #plt.plot(c)
 plt.show()

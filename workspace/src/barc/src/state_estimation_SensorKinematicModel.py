@@ -19,7 +19,7 @@ from barc.msg import ECU, pos_info, Vel
 from sensor_msgs.msg import Imu
 from marvelmind_nav.msg import hedge_pos
 from std_msgs.msg import Header
-from numpy import eye, array, zeros, diag, unwrap, tan, cos, sin, vstack, linalg, append
+from numpy import eye, array, zeros, diag, unwrap, tan, cos, sin, vstack, linalg, append, pi
 from numpy import ones, polyval, delete, size
 from observers import ekf
 from system_models import f_SensorKinematicModel, h_SensorKinematicModel
@@ -85,8 +85,8 @@ class StateEst(object):
         # units: [rad] and [rad/s]
         # get current time stamp
         t_now = rospy.get_rostime().to_sec()-self.t0
-        t_msg = data.timestamp_ms/1000.0 - self.t0
-        #t_msg = t_now - 0.0001
+        #t_msg = data.timestamp_ms/1000.0 - self.t0
+        t_msg = t_now 
 
         # if abs(t_now - t_msg) > 0.1:
         #    print "GPS: Bad synchronization - dt = %f"%(t_now-t_msg)
@@ -211,7 +211,8 @@ def state_estimation():
     # Set up track parameters
     l = Localization()
     l.create_track()
-    #l.prepare_trajectory(0.06)
+    #l.create_circle(rad=0.8, c=array([0.0, -0.5]))
+    # l.prepare_trajectory(0.8 * 2 * pi / 100)
 
     d_f_hist = [0.0]*10       # assuming that we are running at 50Hz, array of 10 means 0.2s lag
     d_f_lp = 0.0
@@ -232,6 +233,7 @@ def state_estimation():
     while not rospy.is_shutdown():
         t_now = rospy.get_rostime().to_sec()-se.t0
 
+        # estimate current position based on fitted polyinomial from the GPS callback
         se.x_meas = polyval(se.c_X, t_now)
         se.y_meas = polyval(se.c_Y, t_now)
         se.gps_updated = False
@@ -255,6 +257,7 @@ def state_estimation():
         args = (u, vhMdl, dt, 0)
 
         # apply EKF and get each state estimate
+        # f_SensorKinematicModel stacks both the vehicle kinematic model and a rigid body kinematic body
         (z_EKF, P) = ekf(f_SensorKinematicModel, z_EKF, P, h_SensorKinematicModel, y, Q, R, args)
         # Read values
         (x_est, y_est, v_x_est, v_y_est, a_x_est, a_y_est, psi_est, psi_dot_est, psi_drift_est,
@@ -264,6 +267,7 @@ def state_estimation():
         se.y_est = y_est_2
 
         # Update track position
+        # these estimation come from the vehicle kinematic model
         l.set_pos(x_est_2, y_est_2, psi_est_2, v_x_est, v_y_est, psi_dot_est)
 
         # Calculate new s, ey, epsi (only 12.5 Hz, enough for controller that runs at 10 Hz)

@@ -1,12 +1,12 @@
 function InitializeParameters(mpcParams::MpcParams,trackCoeff::TrackCoeff,modelParams::ModelParams,
                                 posInfo::PosInfo,lapStatus::LapStatus)
-    mpcParams.N              = 15
-    mpcParams.Q              = [0.0,50.0,0.1,10.0]
-    mpcParams.R              = 0*[1.0,1.0]               # put weights on a and d_f
+    mpcParams.N              = 10                         # prediction horizon (how far into the future should i predict?)
+    mpcParams.Q              = [0.0,100.0,10,50.0]        # state penalty (what states do i care about)
+    mpcParams.R              = 0*[0.1,10.0]               # put weights on a and d_f
     mpcParams.QderivZ        = 0.0*[0,0,0.1,0]           # cost matrix for derivative cost of states
     mpcParams.QderivU        = 1.0*[10,10]                # cost matrix for derivative cost of inputs
-    mpcParams.vPathFollowing = 0.9                       # reference speed for first lap of path following
-    mpcParams.delay_df       = 3                         # steering delay (number of steps)
+    mpcParams.vPathFollowing = 1.2                       # reference speed for first lap of path following
+    mpcParams.delay_df       = 3 #3                         # steering delay (number of steps)
     mpcParams.delay_a        = 1                         # acceleration delay
 
     trackCoeff.nPolyCurvature   = 8                         # 4th order polynomial for curvature approximation
@@ -20,7 +20,7 @@ function InitializeParameters(mpcParams::MpcParams,trackCoeff::TrackCoeff,modelP
     modelParams.I_z             = 0.03
     modelParams.c_f             = 0.5                   # friction coefficient: xDot = - c_f*xDot (aerodynamic+tire)
 
-    posInfo.s_target            = 5.0
+    posInfo.s_target            = 7.2
 
     lapStatus.currentLap        = 1         # initialize lap number
     lapStatus.currentIt         = 0         # current iteration in lap
