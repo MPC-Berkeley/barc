@@ -52,36 +52,24 @@ def measurements_error_frame_callback(data):
 # is essentially longitudinal acceleration acc.
 # ===================================PID longitudinal controller================================#
 class PID():
-    def __init__(self, kp=1, ki=1, kd=1, integrator=0, derivator=0):
+    def __init__(self, kp=1, ki=1, kd=1, integrator=0, derivator=0, integrator_max=10, integrator_min=-10):
         self.kp = kp
         self.ki = ki
         self.kd = kd
         self.integrator = integrator
         self.derivator = derivator
-        self.integrator_max = 10
-        self.integrator_min = -10
+        self.integrator_max = integrator_max
+        self.integrator_min = integrator_min
 
-    def acc_calculate(self, speed_reference, speed_current):
-        self.error = speed_reference - speed_current
+    def acc_calculate(self, speed_reference, speed_current): 
         
-        # Propotional control
-        self.P_effect = self.kp*self.error
-        
-        # Integral control
-        self.integrator = self.integrator + self.error
-        ## Anti windup
-        if self.integrator >= self.integrator_max:
-            self.integrator = self.integrator_max
-        if self.integrator <= self.integrator_min:
-            self.integrator = self.integrator_min
-        self.I_effect = self.ki*self.integrator
-        
-        # Derivative control
-        self.derivator = self.error - self.derivator
-        self.D_effect = self.kd*self.derivator
-        self.derivator = self.error
+        # Hint: Integral control with anti windup(there are upper bound and lower bound for the integrator.)
+        # if self.integrator >= self.integrator_max:
+        #     self.integrator = self.integrator_max
+        # if self.integrator <= self.integrator_min:
+        #     self.integrator = self.integrator_min
 
-        acc = self.P_effect + self.I_effect + self.D_effect
+        acc = TODO
         return acc
 
 # =====================================end of the controller====================================#
@@ -112,8 +100,10 @@ def controller():
     v_ref = 8 # reference speed is 8 m/s
 
     # Initialize the PID controller
-    PID_control = PID(kp=0.5, ki=0.5, kd=0.5)
-
+    # =====================================tune the gains for PID controller=================================#    
+    PID_control = PID(kp=TODO, ki=TODO, kd=TODO)
+    # =======================================================================================================#
+    
     while not rospy.is_shutdown():
         # acceleration calculated from PID controller.
         acc = PID_control.acc_calculate(v_ref, v_x)

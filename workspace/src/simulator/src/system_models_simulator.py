@@ -20,25 +20,20 @@ import rospy
 def bikeFE(x, y, psi, v, a, d_f, a0, Ff, theta, ts):
     """
     process model
-    input: state z at time k, z[k] := [x[k], y[k], psi[k], v[k]]
-    output: state at next time step z[k+1]
     """
     # external parameters
-    L_a                    = 1.738
-    L_b                    = 1.738
-    g                      = 9.81
+    L_a                    = TODO
+    L_b                    = TODO
+    g                      = TODO
 
     # compute slip angle
-    beta         = arctan( L_a / (L_a + L_b) * tan(d_f) )
+    beta         = TODO
 
     # compute next state
-    x_next      = x + ts*( v*cos(psi + beta) ) 
-    y_next      = y + ts*( v*sin(psi + beta) ) 
-    psi_next    = psi + ts*v/L_b*sin(beta)
-    v_next      = v + ts*(a  - (a0*v**2 + Ff)*sign(v) - g*sin(theta))
-
-    if abs(v_next) < 0.0005:
-        v_next = 0
+    x_next      = TODO 
+    y_next      = TODO
+    psi_next    = TODO
+    v_next      = TODO
 
     return array([x_next, y_next, psi_next, v_next])
 

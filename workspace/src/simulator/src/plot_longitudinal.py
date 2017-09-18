@@ -26,6 +26,7 @@ for i in range(0,len(bag.get_type_and_topic_info()[1].values())):
     print "Dim hedge_pos msg:", dimxy
 
 print types
+
 # x_list is the list of state x 
 x_list     = np.array([0, 20, 20, 40,    40,    60,    60,    80,   80,   100,    100,    120,    120,   140,   140,    160, 160, 180])
 theta_list = np.array([0, 0,  10, 10,    0,     0,     -10,   -10,  0,    0,      30,     30,     0,     0,     -30,    -30, 0,   0])
