@@ -19,12 +19,13 @@ from barc.msg import ECU
 from sensor_msgs.msg import Imu
 from std_msgs.msg import Header
 from numpy import eye, array, zeros, diag, unwrap, tan, cos, sin, vstack, linalg, append, ones, polyval, delete, size, empty, linspace
-from numpy import ones, polyval, delete, size
+from numpy import ones, polyval, delete, size, pi, sqrt
 from tf import transformations
 import math
 import matplotlib.pyplot as plt
 import numpy as np
 import pylab
+import matplotlib.patches as patches
 
 global pos_info_x_vals, pos_info_y_vals
 global v_vals, t_vals, psi_vals
@@ -66,7 +67,7 @@ def view_trajectory():
 
     vmax_ref = 1.0
 
-    loop_rate = 50
+    loop_rate = 100
     rate = rospy.Rate(loop_rate)
 
     car_dx = 0.306
@@ -77,14 +78,12 @@ def view_trajectory():
 
     car_frame = np.vstack((np.array(car_xs_origin), np.array(car_ys_origin)))
     while not rospy.is_shutdown():
-        ax1 = fig.add_subplot(2, 1, 1)
-        ax2 = fig.add_subplot(2, 1, 2)
-        ax1.grid('on')
+        ax1 = fig.add_subplot(1, 1, 1)
         ax1.axis('equal')
         
        
         if (pos_info_x_vals and pos_info_y_vals):
-            ax1.plot(pos_info_x_vals[:len(pos_info_x_vals)-1], pos_info_y_vals[:len(pos_info_y_vals)-1], 'g-', label="Car path")
+            # ax1.plot(pos_info_x_vals[:len(pos_info_x_vals)-1], pos_info_y_vals[:len(pos_info_y_vals)-1], 'g-', label="Car path")
             
             x = pos_info_x_vals[len(pos_info_x_vals)-1]
             y = pos_info_y_vals[len(pos_info_y_vals)-1]
@@ -102,20 +101,16 @@ def view_trajectory():
 
             ax1.plot(car_xs[1:] + x, car_ys[1:] + y, 'k-')
             ax1.plot(front_car_segment_x, front_car_segment_y, 'y-')
-            #plt.plot(np.array(car_xs_origin) + x, np.array(car_ys_origin) + y, 'k-')
+            ax1.add_patch(patches.Rectangle((x+rotated_car_frame[0,2], y+rotated_car_frame[1,2]),0.612,0.354,psi_curr*180/3.14))
 
-        if (v_vals):
-            t_vals_zeroed = [t - t_vals[0] for t in t_vals]
-            ax2.plot(t_vals_zeroed, v_vals, 'm-')
-            ax2.set_ylim([min(0, min(v_vals)), max(vmax_ref, max(v_vals))])
+            ax1.set_xlim([x -car_dx - 2, x -car_dx + 2])
+            ax1.set_ylim([y-car_dy - 2, y-car_dy + 2])
 
+        ax1.set_title("Vehicle simulation")
+        ax1.set_xlabel('x coordinate')
+        ax1.set_ylabel('y coordinate')
 
-        ax1.set_title("Green = Data from POS_INFO")
-
-        ax2.set_xlabel("Time (s)")
-        ax2.set_ylabel("Velocity (m/s)")
-
-        pylab.pause(0.001)
+        pylab.pause(0.0000001)
         pylab.gcf().clear()
 
     
