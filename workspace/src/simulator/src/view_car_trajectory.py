@@ -70,13 +70,15 @@ def view_trajectory():
     loop_rate = 100
     rate = rospy.Rate(loop_rate)
 
-    car_dx = 0.306
-    car_dy = 0.177
+    car_dx = 1.738
+    car_dy = 0.75
 
     car_xs_origin = [car_dx, car_dx, -car_dx, -car_dx, car_dx]
     car_ys_origin = [car_dy, -car_dy, -car_dy, car_dy, car_dy]
 
     car_frame = np.vstack((np.array(car_xs_origin), np.array(car_ys_origin)))
+    
+    edges = {'x_edge':[-10, 10], 'y_edge':[-10, 10]}
     while not rospy.is_shutdown():
         ax1 = fig.add_subplot(1, 1, 1)
         ax1.axis('equal')
@@ -101,10 +103,16 @@ def view_trajectory():
 
             ax1.plot(car_xs[1:] + x, car_ys[1:] + y, 'k-')
             ax1.plot(front_car_segment_x, front_car_segment_y, 'y-')
-            ax1.add_patch(patches.Rectangle((x+rotated_car_frame[0,2], y+rotated_car_frame[1,2]),0.612,0.354,psi_curr*180/3.14))
+            ax1.add_patch(patches.Rectangle((x+rotated_car_frame[0,2], y+rotated_car_frame[1,2]),2*car_dx,2*car_dy,psi_curr*180/3.14))
 
-            ax1.set_xlim([x -car_dx - 2, x -car_dx + 2])
-            ax1.set_ylim([y-car_dy - 2, y-car_dy + 2])
+            if x -car_dx <= edges['x_edge'][0] or x -car_dx >= edges['x_edge'][1] or y -car_dy <= edges['y_edge'][0] or y -car_dy >= edges['y_edge'][1]:
+                ax1.set_xlim([x -car_dx - 10, x -car_dx + 10])
+                ax1.set_ylim([y-car_dy - 10, y-car_dy + 10])
+                edges['x_edge'] = [x -car_dx - 10, x -car_dx + 10]
+                edges['y_edge'] = [y-car_dy - 10, y-car_dy + 10]
+            else:
+                ax1.set_xlim(edges['x_edge'])
+                ax1.set_ylim(edges['y_edge'])
 
         ax1.set_title("Vehicle simulation")
         ax1.set_xlabel('x coordinate')
