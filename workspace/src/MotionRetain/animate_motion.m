@@ -1,7 +1,7 @@
 %  Daniel Kawano, Rose-Hulman Institute of Technology
 %  Last modified:  Mar 30, 2016
 
-function animate_head_motion(x1, x2, x3, e1, e2, e3)
+function animate_motion(x1, x2, x3, e1, e2, e3)
 
 %  For simplicity, represent the head as a sphere:
 

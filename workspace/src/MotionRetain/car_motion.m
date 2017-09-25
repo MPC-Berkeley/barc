@@ -145,4 +145,4 @@ ylabel('\itx\rm_{3} (m)')
 
 %  Animate the head's motion:
 
-animate_head_motion(x1, x2, x3, e1, e2, e3);
+animate_motion(x1, x2, x3, e1, e2, e3);
