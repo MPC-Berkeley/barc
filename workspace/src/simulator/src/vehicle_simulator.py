@@ -69,15 +69,12 @@ def vehicle_simulator():
     while not rospy.is_shutdown():
         theta = interp(x, x_list, theta_list)/180*pi
 
-        if x < 180:
-            (x, y, psi, v_x) = bikeFE(x, y, psi, v_x, acc, d_f, a0, Ff, theta, ts)
-            v_y = 0
-            r = 0
-            # publish information
-            state_pub.publish(Z_DynBkMdl(x, y, psi, v_x, v_y, r) )
-
-        else:
-            break
+        (x, y, psi, v_x) = bikeFE(x, y, psi, v_x, acc, d_f, a0, Ff, theta, ts)
+        v_y = 0
+        r = 0
+        # publish information
+        state_pub.publish(Z_DynBkMdl(x, y, psi, v_x, v_y, r) )
+        
         # wait
         rate.sleep()
 
