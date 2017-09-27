@@ -3,7 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 
-bag = rosbag.Bag(os.path.expanduser("~/rosbag/2017-01-31-21-27-32.bag"))
+bag = rosbag.Bag(os.path.expanduser("~/2017-09-17-15-35-47.bag"))
 
 
 topics = bag.get_type_and_topic_info()[1].keys()
@@ -37,7 +37,7 @@ counter = 0
 for counter, (topic, msg, t) in enumerate( bag.read_messages(topics=['/z_vhcl']) ) :  
   x_raw[counter] = msg.x
   y_raw[counter] = msg.y
-  v_raw[counter] = np.sqrt( np.power(msg.v_x,2) + np.power(msg.v_x,2) )
+  v_raw[counter] = msg.v_x
 
 
 counter = 0
@@ -49,24 +49,24 @@ for (topic, msg, t) in bag.read_messages(topics=['/ecu']) :
 
 # print counter
 
-plt.figure(1)
-plt.plot(x_raw, y_raw)
-plt.ylabel('Position along Y-axis [m]')
-plt.xlabel('Position along X-axis [m]')
+# plt.figure(1)
+# plt.plot(x_raw, y_raw)
+# plt.ylabel('Position along Y-axis [m]')
+# plt.xlabel('Position along X-axis [m]')
 
-plt.figure(2)
+plt.figure(1)
 plt.plot(v_raw)
 plt.ylabel('Velocity [m/s]')
 
 
-plt.figure(3)
-plt.plot(d_f)
-plt.ylabel('Steering [rad]')
+# plt.figure(3)
+# plt.plot(d_f)
+# plt.ylabel('Steering [rad]')
 
 
-plt.figure(4)
-plt.plot(acc)
-plt.ylabel('Acceleration [m/s^2]')
+# plt.figure(4)
+# plt.plot(acc)
+# plt.ylabel('Acceleration [m/s^2]')
 
 plt.show()
 

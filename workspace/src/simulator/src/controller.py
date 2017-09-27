@@ -16,7 +16,7 @@
 import rospy
 import time
 from barc.msg import ECU
-from simulator.msg import Z_DynBkMdl, Z_DynBkMdlErrorFrame 
+from simulator.msg import Z_DynBkMdl, eZ_DynBkMdl 
 
 # from encoder
 x        = 0
@@ -47,6 +47,33 @@ def measurements_error_frame_callback(data):
     v_y      = data.v_y        # input steering angle
     psi_dot  = data.psi_dot    # input steering angle
 
+# Insert your PID longitudinal controller here: since you are asked to do longitudinal control, 
+# the steering angle d_f can always be set to zero. Therefore, the control output of your controller 
+# is essentially longitudinal acceleration acc.
+# ===================================PID longitudinal controller================================#
+class PID():
+    def __init__(self, kp=1, ki=1, kd=1, integrator=0, derivator=0, integrator_max=10, integrator_min=-10):
+        self.kp = kp
+        self.ki = ki
+        self.kd = kd
+        self.integrator = integrator
+        self.derivator = derivator
+        self.integrator_max = integrator_max
+        self.integrator_min = integrator_min
+
+    def acc_calculate(self, speed_reference, speed_current): 
+        
+        # Hint: Integral control with anti windup(there are upper bound and lower bound for the integrator.)
+        # if self.integrator >= self.integrator_max:
+        #     self.integrator = self.integrator_max
+        # if self.integrator <= self.integrator_min:
+        #     self.integrator = self.integrator_min
+
+        acc = TODO
+        return acc
+
+# =====================================end of the controller====================================#
+
 # state estimation node
 def controller():
 
@@ -54,8 +81,8 @@ def controller():
     rospy.init_node('vehicle_simulator', anonymous=True)
 
     # topic subscriptions / publications
-    rospy.Subscriber('state_vehicle_simulator', Z_DynBkMdl, measurements_callback)
-    rospy.Subscriber('state_vehicle_error_frame_simulator', Z_DynBkMdlErrorFrame, measurements_error_frame_callback)
+    rospy.Subscriber('z_vhcl', Z_DynBkMdl, measurements_callback)
+    rospy.Subscriber('ez_vhcl', eZ_DynBkMdl, measurements_error_frame_callback)
 
     state_pub   = rospy.Publisher('ecu', ECU, queue_size = 10)
 
@@ -69,11 +96,19 @@ def controller():
     d_f = 0
     acc = 0
 
+    # reference speed 
+    v_ref = 8 # reference speed is 8 m/s
+
+    # Initialize the PID controller
+    # =====================================tune the gains for PID controller=================================#    
+    PID_control = PID(kp=TODO, ki=TODO, kd=TODO)
+    # =======================================================================================================#
+    
     while not rospy.is_shutdown():
-
-        # publish state estimate
-
-        acc = 0.0
+        # acceleration calculated from PID controller.
+        acc = PID_control.acc_calculate(v_ref, v_x)
+        
+        # steering angle
         d_f = 0.0
 
         # publish information

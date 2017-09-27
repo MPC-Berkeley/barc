@@ -1,4 +1,4 @@
-# 1. Install wifi utilities
+# 1. remove wifi dongles
 
 # install create_ap
 if ! hash create_ap 2>/dev/null; then
@@ -14,45 +14,38 @@ fi
 # install all necessary utilities
 sudo apt-get install libnl-dev
 sudo apt-get install iptables
+sudo apt-get install wicd
+sudo apt-get --purge autoremove network-manager
 
 # install modified binaries for hostapd and hostapd_cli
-wget w1.fi/releases/hostapd-2.6.tar.gz                                  # get hostapd
-git clone https://github.com/pritambaral/hostapd-rtl871xdrv.git         # get hostapd patch
-tar xzvf hostapd-2.6.tar.gz                                             # unzip
-cd hostapd-2.6/hostapd                                                  # move into build directory
-cp defconfig .config                                                    # copy configuration file
-make                                                                    # build
-cd ..                                                                   # go to previous directory
-patch -Np1 -i ../hostapd-rtl871xdrv/rtlxdrv.patch                       # apply patch
+wget w1.fi/releases/hostapd-2.6.tar.gzi                     # get hostapd
+git clone https://pitambaral/hostapd-rtl871dxrv.git         # get hostapd patch
+tar xzvf hostapd-2.6.tar.gz                                 # unzip
+cd hostapd-2.6/hostapd                                      # move into build directory
+cp defconfig .config                                        # copy configuration file
+make                                                        # build
+cd ..                                                       # go to previous directory
+patch -Np1 -i ../hostapd-rtl871xdrv/rtlxdrv.patch           # apply patch
 echo CONFIG_DRIVER_RTW=y >> hostapd/.config                 # add configuration command
-cd hostapd
-make
 
 # install binaries on system
 if ! hash hostapd_orig 2>/dev/null; then
     sudo mv /usr/sbin/hostapd /usr/sbin/hostapd_orig
-    sudo cp hostapd /usr/sbin/hostapd
+    sudo cp hostapd/hostapd /usr/sbin/hostapd
 else
     echo "modified hostapd binary already installed"
 fi
 
 if ! hash hostapd_cli_orig 2>/dev/null; then
     sudo mv /usr/sbin/hostapd_cli /usr/sbin/hostapd_cli_orig
-    sudo cp hostapd_cli /usr/sbin/hostapd_cli
+    sudo cp hostapd/hostapd_cli /usr/sbin/hostapd_cli
 else
     echo "modified hostapd_cli binary already installed"
 fi
 
 # clean up 
-cd ../..
+cd ..
 rm -rf hostapd-2.6 hostapd-2.6.tar.gz hostapd-rtl871xdrv
-
-# go to barc folder
-roscd barc
-
-# remove current network manager
-#sudo apt-get install wicd
-#sudo apt-get --purge autoremove network-manager
 
 # install boot time configuration file
 #sudo cp accesspoint.conf /etc/init/accesspoint.conf
