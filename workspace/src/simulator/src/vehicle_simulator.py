@@ -75,8 +75,8 @@ def vehicle_simulator():
 	        r = 0
 	        # publish information
 	        state_pub.publish(Z_DynBkMdl(x, y, psi, v_x, v_y, r) )
-	    else:
-	    	break
+        else:
+            break
         # wait
         rate.sleep()
 
