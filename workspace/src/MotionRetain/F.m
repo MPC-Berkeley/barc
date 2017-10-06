@@ -1,4 +1,7 @@
-function dY = F(t, omega1, omega2, omega3, tdata)
+%  Daniel Kawano, Rose-Hulman Institute of Technology
+%  Last modified:  Mar 30, 2016
+
+function dY = F(t, Y, omega1, omega2, omega3, tdata)
 
 %  Interpolate the angular velocity data to obtain the values needed to
 %  evaluate the state equations at the current integration step:
