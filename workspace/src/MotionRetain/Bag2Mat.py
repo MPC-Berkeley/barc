@@ -3,7 +3,7 @@ import numpy as np
 import scipy.io
 import os
 
-bag = rosbag.Bag(os.path.expanduser("~/Desktop/2017-10-05-16-23-35.bag"))
+bag = rosbag.Bag(os.path.expanduser("~/Desktop/2017-10-06-18-21-06.bag"))
 
 
 topics = bag.get_type_and_topic_info()[1].keys()
@@ -41,6 +41,6 @@ for counter, (topic, msg, t) in enumerate( bag.read_messages(topics=['/imu/data'
 
   time[counter] = float(msg.header.stamp.secs) + float(msg.header.stamp.nsecs)/1e9
 
-scipy.io.savemat('imu.mat', mdict={'states': states, 'time':time})
+scipy.io.savemat('rldu.mat', mdict={'states': states, 'time':time})
 
 bag.close()

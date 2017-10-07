@@ -9,8 +9,9 @@ psi = Y(1);
 theta = Y(2);
 phi = Y(3);
 
-%  Construct the mass matrix, M(t,Y):
+%  Construct the mass matrix M based on the equation(5) in the 
+%  lab instruction.
 
-mass = [-sin(theta), 0, 1;
-        cos(theta)*sin(phi), cos(phi), 0;
-        cos(theta)*cos(phi), -sin(phi), 0];
+%  =========================Your Code Begins=========================
+mass = TODO
+%  =========================Your Code Ends===========================
