@@ -41,6 +41,6 @@ for counter, (topic, msg, t) in enumerate( bag.read_messages(topics=['/imu/data'
 
   time[counter] = float(msg.header.stamp.secs) + float(msg.header.stamp.nsecs)/1e9
 
-scipy.io.savemat('rldu.mat', mdict={'states': states, 'time':time})
+scipy.io.savemat('imu.mat', mdict={'states': states, 'time':time})
 
 bag.close()
