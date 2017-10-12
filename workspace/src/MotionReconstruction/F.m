@@ -1,5 +1,5 @@
-%  Daniel Kawano, Rose-Hulman Institute of Technology
-%  Last modified:  Mar 30, 2016
+%  Adapted from: Daniel Kawano, Rose-Hulman Institute of Technology
+%  Modified by Galaxy Yin
 
 function dY = F(t, Y, omega1, omega2, omega3, tdata)
 
