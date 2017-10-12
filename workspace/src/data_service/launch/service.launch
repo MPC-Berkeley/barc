@@ -1,0 +1,3 @@
+<launch>
+    <node pkg="data_service" type="service.py" name="data_service" output="screen"/>
+</launch>
