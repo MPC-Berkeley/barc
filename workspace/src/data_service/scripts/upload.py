@@ -16,12 +16,12 @@
 import os, sys
 import time
 
-os.chdir('/home/odroid/barc/workspace/src/data_service/scripts')
+os.chdir( os.path.expanduser("~") + '/barc/workspace/src/data_service/scripts')
 
 from data_connection import *
 from base import *
 
-proj_path = '/home/odroid/barc/Dator'
+proj_path = os.path.expanduser("~") + '/barc/Dator'
 
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'dator.settings')
 sys.path.append(proj_path)
@@ -34,7 +34,7 @@ from data_api.models import *
 
 import boto3
 
-CLOUD_CONFIG_LOCATION = '/home/odroid/cloud.cfg'
+CLOUD_CONFIG_LOCATION = os.path.expanduser("~") + '/cloud.cfg'
 
 
 S3_VIDEOS_BUCKET = 'datorvideos'
