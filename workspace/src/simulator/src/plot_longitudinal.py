@@ -7,7 +7,7 @@ from matplotlib import animation
 
 length = 1.738*2
 height = 1.5
-bag = rosbag.Bag(os.path.expanduser("~/Rosbag/2017-09-17-15-35-47.bag"))
+bag = rosbag.Bag(os.path.expanduser("~/_2017-09-17-15-35-47.bag"))
 
 
 topics = bag.get_type_and_topic_info()[1].keys()
