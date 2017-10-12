@@ -23,6 +23,7 @@ alias flash_nano='cd ~/barc/arduino/.arduino_nano328_node; cp ../arduino_nano328
 alias rebuild_system='source ~/barc/scripts/rebuild_system.sh'
 alias tmux='tmux -2'
 alias reset_wifi_rules='sudo rm /etc/udev/rules.d/70-persistent-net.rules'
+alias reset_database='source ~/barc/scripts/reset_database.sh'
 alias set_init_ap='sudo cp $HOME/barc/scripts/accesspoint.conf /etc/init/accesspoint.conf'
 
 # set configuration script for vim text editor
