@@ -88,10 +88,10 @@ class Car {
     // 120] judging from the sound of the servo pushing beyond a mechanical limit
     // outside that range. The offset may be 2 or 3 deg and the d_theta_max is then
     // ~31.
-    const int D_THETA_MAX = 30;
+    //const int D_THETA_MAX = 30;
     const int THETA_CENTER = 90;
-    const int THETA_MAX = THETA_CENTER + D_THETA_MAX;
-    const int THETA_MIN = THETA_CENTER - D_THETA_MAX;
+    const int THETA_MAX = 150; //THETA_CENTER + D_THETA_MAX;
+    const int THETA_MIN = 33; //THETA_CENTER - D_THETA_MAX;
 
     // Interfaces to motor and steering actuators
     Servo motor;

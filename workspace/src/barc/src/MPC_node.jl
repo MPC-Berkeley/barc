@@ -51,7 +51,6 @@ function main()
     # ---------------------------------------------------------------
     # General MPC variables
     posInfo                     = PosInfo()
-    mpcCoeff                    = MpcCoeff()
     lapStatus                   = LapStatus(1,1,false,false,0.3)
     mpcSol                      = MpcSol()
     trackCoeff                  = TrackCoeff()      # info about track (at current position, approximated)
@@ -80,10 +79,11 @@ function main()
     # Specific initializations:
     lapStatus.currentLap    = 1
     lapStatus.currentIt     = 1
-    posInfo.s_target        = 7.24     # distance of track
+    posInfo.s_target        = 7.24     # [meters] total length of track
     
-    mpcSol.z = zeros(11,4)
-    mpcSol.u = zeros(10,2) 
+    # storage variables
+    mpcSol.z = zeros(11,4)   # optimal state sequence from mpc over horizon
+    mpcSol.u = zeros(10,2)   # optimal input sequence over horizon
 
     uPrev = zeros(10,2)     # saves the last 10 inputs (1 being the most recent one)
 
@@ -97,7 +97,7 @@ function main()
             # ============================= UPDATE STATE ESTIMATE =============================
             n_mpc                       = lapStatus.currentIt           # current iteration number, just to make notation shorter
             zCurr                       = copy(z_est)                   # update state information
-            posInfo.s                   = z_est[6]                    # update position info
+            posInfo.s                   = z_est[6]                    # update position info  (s = distance travelled so far [meters])
 
             # ======================================= DISPLAY PROGRESS =======================================
             if lapStatus.nextLap                
