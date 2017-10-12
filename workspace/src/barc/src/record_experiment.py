@@ -38,11 +38,18 @@ class RecordExperiment():
         rospy.wait_for_service('send_data')
         rospy.wait_for_service('register_video')
 
-        # Resigter proxy service
+        # resigter proxy service
         self.send_data = rospy.ServiceProxy('send_data', DataForward, persistent=True)
         if self.camera_on:
             self.start_record_video()
             self.register_video = rospy.ServiceProxy('register_video', RegisterVideo)
+         
+        # ensure data storage directories exist
+        if not os.path.isdir(video_dir):
+            os.makedirs(video_dir)
+
+        if not os.path.isdir(rosbag_dir):
+            os.makedirs(rosbag_dir)
          
         # start rosrecord for following topics
         self.topics = ['/imu/data', '/encoder', '/ecu', '/ecu_pwm', '/ultrasound']
