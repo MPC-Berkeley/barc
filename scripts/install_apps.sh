@@ -35,10 +35,11 @@ cd .vim
 git init
 git remote add origin https://github.com/sickill/vim-monokai.git
 git pull origin master
+cd 
 
 # install apps
 # * vim     - text editor
 # * chrony  - time synchronization utility
 # * tree    - file directory visualization utility
 # * htop    - interactive process viewer
-sudo apt-get install vim chrony tree htop tmux
+sudo apt-get install vim chrony tree htop tmux exfat-fuse exfat-utils
