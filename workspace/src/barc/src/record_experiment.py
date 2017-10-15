@@ -73,7 +73,7 @@ class RecordExperiment():
         self.proc_bag = subprocess.Popen(command, stdin=subprocess.PIPE, shell=True, cwd=rosbag_dir)
 
     def start_record_video(self):
-        command = 'rosrun image_view video_recorder image:=/image_raw _max_depth_range:=0'
+        command = 'rosrun image_view video_recorder image:=/image_raw _max_depth_range:=0 _fps=31'
         self.proc_vid = subprocess.Popen(command, stdin=subprocess.PIPE, shell=True, cwd=video_dir)
 
     def process_data(self):
