@@ -43,7 +43,11 @@ class RecordExperiment():
         if self.camera_on:
             self.start_record_video()
             self.register_video = rospy.ServiceProxy('register_video', RegisterVideo)
-         
+            try:
+                self.register_video(self.experiment_name, video_dir + '/%s.avi' % self.experiment_name)
+            except Exception as e:
+                pass
+ 
         # ensure data storage directories exist
         if not os.path.isdir(video_dir):
             os.makedirs(video_dir)
@@ -161,26 +165,26 @@ class RecordExperiment():
                 linear_acceleration_z = msg.linear_acceleration.z
 
             # Encoder
-            if topic == 'encoder':
+            if topic == '/encoder':
                 encoder_FL = msg.FL
                 encoder_FR = msg.FR
                 encoder_BL = msg.BL
                 encoder_BR = msg.BR
 
             # Ultrasound
-            if topic == 'ultrasound':
+            if topic == '/ultrasound':
                 ultrasound_front = msg.front
                 ultrasound_back = msg.back
                 ultrasound_left = msg.left
                 ultrasound_right = msg.right
 
             # Electronic control unit (high level commands)
-            if topic == 'ecu':
+            if topic == '/ecu':
                 motor = msg.motor
                 servo = msg.servo
 
             # Electronic control unit (low level commands)
-            if topic == 'ecu_pwm':
+            if topic == '/ecu_pwm':
                 motor_pwm = msg.motor
                 servo_pwm = msg.servo
 
