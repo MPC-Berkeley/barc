@@ -101,7 +101,6 @@ class RecordExperiment():
             return
 
         bag = rosbag.Bag(rosbag_file)
-        convert_to_time = 1/(10.0**(9))
 
         chunk_size = 50
         chunk_dict = dict()
@@ -109,10 +108,8 @@ class RecordExperiment():
         chunk_ts = dict()
         
         for topic, msg, t in bag.read_messages():
-            ts = t.nsecs * convert_to_time
-            ts += (t.secs - self.time)
+            ts = t.secs + t.nsecs/(10.0**9)
 
-            ts = t.nsecs / (10.0**9) 
             if topic not in chunk_dict:
                 chunk_dict[topic] = 1
 
