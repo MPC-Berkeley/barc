@@ -37,7 +37,7 @@ import boto3
 CLOUD_CONFIG_LOCATION = os.path.expanduser("~") + '/cloud.cfg'
 
 
-S3_VIDEOS_BUCKET = 'datorvideos'
+S3_VIDEOS_BUCKET = 'datorvideos2'
 
 rosbag_dir = os.path.expanduser("~") + '/rosbag'
 video_dir = os.path.expanduser("~") + '/video'
