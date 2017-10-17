@@ -1,6 +1,0 @@
-/**
-\mainpage
-\htmlinclude manifest.html
-
-\b rqt_logger_level provides a GUI plugin for configuring the logger level of ROS nodes.
-*/

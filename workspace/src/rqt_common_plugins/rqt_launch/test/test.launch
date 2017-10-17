@@ -1,7 +1,0 @@
-<launch>
-  <param name="x" value="1" />
-  <node pkg="rospy_tutorials" type="talker" name="talker" />
-  
-  <node launch-prefix="xterm -e " pkg="rospy_tutorials" type="listener" 
-  name="listener" />
-</launch>
