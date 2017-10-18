@@ -28,12 +28,6 @@ import time
 motor_pwm = 90
 servo_pwm = 90
 
-def neutralize():
-    global motor_pwm
-    motor_pwm = 90
-    servo_pwm = 90
-    update_arduino()
-
 def arduino_interface():
     global ecu_pub, motor_pwm, servo_pwm
 
@@ -47,9 +41,6 @@ def arduino_interface():
     ecu_pub = Publisher('ecu_pwm', ECU, queue_size = 10)
 
     while not rospy.is_shutdown():
-        print "time_prev", time_prev
-        print time.time()
-        print motor_pwm
         if time.time() >= time_prev and time.time() < time_prev + 2: 
             motor_pwm = 94.0
         if time.time() >= time_prev + 2 and time.time() < time_prev + 4: 
@@ -58,18 +49,16 @@ def arduino_interface():
             motor_pwm = 98.0
         if time.time() >= time_prev + 7 and time.time() < time_prev + 9: 
             motor_pwm = 94.0
+        if time.time() >= time_prev + 9 and time.time() < time_prev + 11:
+            motor_pwm = 90.0
+        if time.time() >= time_prev + 11:
+            break
 
         ecu_cmd = ECU(motor_pwm, servo_pwm)
         ecu_pub.publish(ecu_cmd)
 
         # wait
         rate.sleep()
-
-    # Set motor to neutral on shutdown
-    on_shutdown(neutralize)
-
-    # process callbacks and keep alive
-    spin()
 
 #############################################################
 if __name__ == '__main__':
