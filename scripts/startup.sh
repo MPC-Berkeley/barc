@@ -19,7 +19,7 @@ source $HOME/team_name.sh
 # define commands
 #   * nanorst           - resets the arduino nano from the command line (assuming the device is connected and on port /dev/ttyUSB0
 #   * rebuild_system    - rebuild all the ROS packages 
-alias flash_nano='cd ~/barc/arduino/.arduino_nano328_node; cp ../arduino_nano328_node/arduino_nano328_node.ino src/; ano clean; ano build -m nano328; ano upload -m nano328 -p /dev/ttyUSB0; roscd barc'
+alias flash_nano='source ~/barc/scripts/flash_nano.sh'
 alias rebuild_system='source ~/barc/scripts/rebuild_system.sh'
 alias tmux='tmux -2'
 alias reset_wifi_rules='sudo rm /etc/udev/rules.d/70-persistent-net.rules'
@@ -27,6 +27,7 @@ alias reset_database='source ~/barc/scripts/reset_database.sh'
 alias set_init_ap='sudo cp $HOME/barc/scripts/accesspoint.conf /etc/init/accesspoint.conf'
 alias register_cloud='source ~/barc/scripts/register_cloud.sh'
 alias upload_to_cloud='python ~/barc/workspace/src/data_service/scripts/upload.py'
+alias rebuild_arduino_lib='cd $HOME/sketchbook/libraries; rm -rf ros_lib; rosrun rosserial_arduino make_libraries.py .; cd -'
 
 # set configuration script for vim text editor
 cp ~/barc/scripts/vimrc ~/.vimrc
