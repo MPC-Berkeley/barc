@@ -26,6 +26,7 @@ alias reset_wifi_rules='sudo rm /etc/udev/rules.d/70-persistent-net.rules'
 alias reset_database='source ~/barc/scripts/reset_database.sh'
 alias set_init_ap='sudo cp $HOME/barc/scripts/accesspoint.conf /etc/init/accesspoint.conf'
 alias register_cloud='source ~/barc/scripts/register_cloud.sh'
+alias upload_to_cloud='python ~/barc/workspace/src/data_service/scripts/upload.py'
 
 # set configuration script for vim text editor
 cp ~/barc/scripts/vimrc ~/.vimrc
