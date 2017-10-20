@@ -42,16 +42,16 @@ def arduino_interface():
 
     while not rospy.is_shutdown():
         if time.time() >= time_prev and time.time() < time_prev + 2: 
-            motor_pwm = 94.0
+            motor_pwm = 105.0
         if time.time() >= time_prev + 2 and time.time() < time_prev + 4: 
-            motor_pwm = 97.0
-        if time.time() >= time_prev + 4 and time.time() < time_prev + 7: 
-            motor_pwm = 98.0
-        if time.time() >= time_prev + 7 and time.time() < time_prev + 9: 
-            motor_pwm = 94.0
-        if time.time() >= time_prev + 9 and time.time() < time_prev + 11:
-            motor_pwm = 90.0
-        if time.time() >= time_prev + 11:
+            motor_pwm = 110.0
+        if time.time() >= time_prev + 4 and time.time() < time_prev + 6: 
+            motor_pwm = 108.0
+        if time.time() >= time_prev + 6 and time.time() < time_prev + 8: 
+            motor_pwm = 106.0
+        if time.time() >= time_prev + 8 and time.time() < time_prev + 10:
+            motor_pwm = 90
+        if time.time() >= time_prev + 10:
             break
 
         ecu_cmd = ECU(motor_pwm, servo_pwm)
