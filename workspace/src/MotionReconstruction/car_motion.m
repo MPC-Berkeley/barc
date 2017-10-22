@@ -106,15 +106,15 @@ set(gcf, 'color', 'w')
 subplot(311)
 plot(t, psi*(180/pi), '-b', 'linewidth', 2)
 xlabel('Time (s)')
-ylabel('\it\psi\rm (deg)')
+ylabel('\it\psi\rm: yaw (deg)')
 subplot(312)
 plot(t, theta*(180/pi), '-r', 'linewidth', 2)
 xlabel('Time (s)')
-ylabel('\it\theta\rm (deg)')
+ylabel('\it\theta\rm: pitch (deg)')
 subplot(313)
 plot(t, phi*(180/pi), '-k', 'linewidth', 2)
 xlabel('Time (s)')
-ylabel('\it\phi\rm (deg)')
+ylabel('\it\phi\rm: roll (deg)')
 
 %  Plot the displacement of the BARC vehicle's mass center over time:
 
