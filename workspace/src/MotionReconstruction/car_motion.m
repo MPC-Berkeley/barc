@@ -19,7 +19,7 @@ omegaY = sig{1,5}.Data;                 % rad/s
 omegaZ = sig{1,6}.Data;                 % rad/s
 aX = sig{1,7}.Data;                     % m/s^2
 aY = sig{1,8}.Data;                     % m/s^2
-aZ = sig{1,9}.Data;                     % m/s^2
+aZ = sig{1,9}.Data - sig{1,9}.Data(1);  % m/s^2
 
 tdata = sig{1,1}.Time;
 
