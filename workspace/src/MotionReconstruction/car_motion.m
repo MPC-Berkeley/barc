@@ -5,23 +5,23 @@ clear all
 close all
 clc
 
-%%  (1)  Load and process the crash test data:
+%%  (1)  Load and process the test data:
 
-load imu
+load MotionReconstr
 
-% Load the data from the rosbag
+%%
 % Store the data into the vectors omegaX, omegaY, omegaZ, aX, aY, aZ and
 % tdata, which represent the angular velocities, accelerations and
 % experiment time sequence from from the IMU topic.
 
-omegaX = states(:,1);                   % rad/s
-omegaY = states(:,2);                   % rad/s
-omegaZ = states(:,3);                   % rad/s
-aX = states(:,4);                       % m/s^2
-aY = states(:,5);                       % m/s^2
-aZ = states(:,6) - mean(states(1:5,6)); % m/s^2
+omegaX = sig{1,4}.Data;                 % rad/s
+omegaY = sig{1,5}.Data;                 % rad/s
+omegaZ = sig{1,6}.Data;                 % rad/s
+aX = sig{1,7}.Data;                     % m/s^2
+aY = sig{1,8}.Data;                     % m/s^2
+aZ = sig{1,9}.Data;                     % m/s^2
 
-tdata = time;
+tdata = sig{1,1}.Time;
 
 %%  (2)  Use ode45 to numerically integrate the coupled differential
 %       equations governing the BARC vehicle's orientation.
