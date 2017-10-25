@@ -5,23 +5,23 @@ clear all
 close all
 clc
 
-%%  (1)  Load and process the crash test data:
+%%  (1)  Load and process the test data:
 
-load imu
+load MotionReconstr
 
-% Load the data from the rosbag
+%%
 % Store the data into the vectors omegaX, omegaY, omegaZ, aX, aY, aZ and
 % tdata, which represent the angular velocities, accelerations and
 % experiment time sequence from from the IMU topic.
 
-omegaX = states(:,1);                   % rad/s
-omegaY = states(:,2);                   % rad/s
-omegaZ = states(:,3);                   % rad/s
-aX = states(:,4);                       % m/s^2
-aY = states(:,5);                       % m/s^2
-aZ = states(:,6) - mean(states(1:5,6)); % m/s^2
+omegaX = sig{1,4}.Data;                 % rad/s
+omegaY = sig{1,5}.Data;                 % rad/s
+omegaZ = sig{1,6}.Data;                 % rad/s
+aX = sig{1,7}.Data;                     % m/s^2
+aY = sig{1,8}.Data;                     % m/s^2
+aZ = sig{1,9}.Data - sig{1,9}.Data(1);  % m/s^2
 
-tdata = time;
+tdata = sig{1,1}.Time;
 
 %%  (2)  Use ode45 to numerically integrate the coupled differential
 %       equations governing the BARC vehicle's orientation.
@@ -106,15 +106,15 @@ set(gcf, 'color', 'w')
 subplot(311)
 plot(t, psi*(180/pi), '-b', 'linewidth', 2)
 xlabel('Time (s)')
-ylabel('\it\psi\rm (deg)')
+ylabel('\it\psi\rm: yaw (deg)')
 subplot(312)
 plot(t, theta*(180/pi), '-r', 'linewidth', 2)
 xlabel('Time (s)')
-ylabel('\it\theta\rm (deg)')
+ylabel('\it\theta\rm: pitch (deg)')
 subplot(313)
 plot(t, phi*(180/pi), '-k', 'linewidth', 2)
 xlabel('Time (s)')
-ylabel('\it\phi\rm (deg)')
+ylabel('\it\phi\rm: roll (deg)')
 
 %  Plot the displacement of the BARC vehicle's mass center over time:
 
