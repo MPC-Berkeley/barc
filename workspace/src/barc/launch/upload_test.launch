@@ -21,8 +21,12 @@
     </node>
 
     <node pkg="barc" type="record_experiment.py" name="record_experiment" output="screen">
-        <param name="experiment_name" value="traxxas-barc-test-001" />
+        <param name="experiment_name" value="traxxas-barc-accleration22" />
         <param name="camera_on" value="true" />
     </node>
+
+    <node pkg="lab4" type="AccelerationModelID.py" name="model_id">
+    </node>
+
 
 </launch>

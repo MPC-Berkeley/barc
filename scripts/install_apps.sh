@@ -42,4 +42,4 @@ cd
 # * chrony  - time synchronization utility
 # * tree    - file directory visualization utility
 # * htop    - interactive process viewer
-sudo apt-get install vim chrony tree htop tmux exfat-fuse exfat-utils
+sudo apt-get install vim chrony tree htop tmux exfat-fuse exfat-utils nmap

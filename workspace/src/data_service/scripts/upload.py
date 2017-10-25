@@ -61,28 +61,36 @@ if __name__ == '__main__':
                 if setting.key == 'video':
                     if setting.value.startswith(video_dir):
                         key_name = '%s_%s.avi' % (os.environ['TEAM_NAME'], sig.experiment.name)
+			video_path = '%s/%s.avi' %(video_dir, sig.experiment.name)
 
-                        bucket = s3.Bucket(S3_VIDEOS_BUCKET)
-                        bucket.Acl().put(ACL='public-read')
+                        if os.path.isfile(video_path):
+                           bucket = s3.Bucket(S3_VIDEOS_BUCKET)
+                           bucket.Acl().put(ACL='public-read')
 
-                        obj = s3.Object(S3_VIDEOS_BUCKET, key_name)
-                        print 'Uploading video'
-                        video_path = '%s/%s.avi' %(video_dir, sig.experiment.name)
-                        obj.put(Body=open(video_path, 'rb'))
-                        obj.Acl().put(ACL='public-read')
+                           obj = s3.Object(S3_VIDEOS_BUCKET, key_name)
+                           print 'Uploading video'
+                           # video_path = '%s/%s.avi' %(video_dir, sig.experiment.name)
+                           obj.put(Body=open(video_path, 'rb'))
+                           obj.Acl().put(ACL='public-read')
 
-                        print 'Finished uploading video'
-                        url = '{}/{}/{}'.format(s3_client.meta.endpoint_url,
-                                                S3_VIDEOS_BUCKET, key_name)
-                        setting.value = url
-                        setting.save()
+                           print 'Finished uploading video'
+                           url = '{}/{}/{}'.format(s3_client.meta.endpoint_url,
+                                                     S3_VIDEOS_BUCKET, key_name)
+                           setting.value = url
+                           setting.save()
+                           os.remove(video_path)
+	
+		        else:
+                           print 'WARNING: Video no longer available. You will have an unlinked video in your S3 storage at:'
+                           
+                           print setting.value
+                           setting.value = ''
+                           setting.save()
 
-                        os.remove(video_path)
 
                 data_connection.write_setting(setting.value, setting_remote['id'])
 
-            signal = data_connection.get_or_create_signal(sig.name, experiment)
-
+            signal = data_connection.get_or_create_signal(sig.name, experiment) 
             try:
                 lst = LocalSignalTag.objects.filter(signal__name=sig.name, signal__experiment__name=sig.experiment.name)[0]
             except (LocalSignalTag.DoesNotExist, IndexError) as e:
