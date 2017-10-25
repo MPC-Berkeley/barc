@@ -1,2 +1,3 @@
 /robots/static/bower_components
 *.pyc
+db.sqlite3
