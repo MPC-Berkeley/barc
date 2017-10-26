@@ -42,8 +42,8 @@ class Car {
     // conflicts later
     void readAndCopyInputs();
     // Getters
-    uint8_t getRCThrottle();
-    uint8_t getRCSteering();
+    uint16_t getRCThrottle();
+    uint16_t getRCSteering();
     int getEncoderFL();
     int getEncoderFR();
     int getEncoderBL();
@@ -64,30 +64,20 @@ class Car {
     const int THROTTLE_PIN = 7;
     const int STEERING_PIN = 8;
     const int MOTOR_PIN = 10;
-    const int SERVO_PIN= 11;
+    const int SERVO_PIN= 9;
 
     // Car properties
     // unclear what this is for
     const int noAction = 0;
 
     // Motor limits
-    // TODO are these the real limits?
-    const int MOTOR_MAX = 120;
-    const int MOTOR_MIN = 40;
-    const int MOTOR_NEUTRAL = 90;
-    // Optional: smaller values for testing safety
-    /* const int MOTOR_MAX = 100; */
-    /* const int MOTOR_MIN = 75; */
-
-    // Steering limits
-    // TODO seems to me that the permissible steering range is really about [58,
-    // 120] judging from the sound of the servo pushing beyond a mechanical limit
-    // outside that range. The offset may be 2 or 3 deg and the d_theta_max is then
-    // ~31.
-    const int D_THETA_MAX = 30;
-    const int THETA_CENTER = 90;
-    const int THETA_MAX = THETA_CENTER + D_THETA_MAX;
-    const int THETA_MIN = THETA_CENTER - D_THETA_MAX;
+    // TODO  fix limits?
+    const int MOTOR_MAX = 1900;
+    const int MOTOR_MIN = 1100;
+    const int MOTOR_NEUTRAL = 1500;
+    const int THETA_CENTER = 1500;
+    const int THETA_MAX = 1900;
+    const int THETA_MIN = 1100;
 
     // Interfaces to motor and steering actuators
     Servo motor;
@@ -103,12 +93,17 @@ class Car {
     const int BL_FLAG = 5;
     const int BR_FLAG = 6;
 
+    // RC joystick control variables
     uint32_t throttleStart;
     uint32_t steeringStart;
     volatile uint16_t throttleInShared;
     volatile uint16_t steeringInShared;
     uint16_t throttleIn = 1500;
     uint16_t steeringIn = 1500;
+ 
+    // motor / servo neutral state (milliseconds)
+    float throttle_neutral_ms = 1500.0;
+    float servo_neutral_ms = 1500.0;
 
     // Number of encoder counts on tires
     // count tick on {FL, FR, BL, BR}
@@ -123,7 +118,7 @@ class Car {
     int BR_count = 0;
 
     // Utility functions
-    uint8_t microseconds2PWM(uint16_t microseconds);
+    uint16_t microseconds2PWM(uint16_t microseconds);
     float saturateMotor(float x);
     float saturateServo(float x);
 };
@@ -175,15 +170,6 @@ ros::Publisher pub_rc_inputs("rc_inputs", &rc_inputs);
 ros::Publisher pub_ultrasound("ultrasound", &ultrasound);
 ros::Subscriber<barc::ECU> sub_ecu("ecu_pwm", ecuCallback);
 
-
-// Set up ultrasound sensors
-/*
-Maxbotix us_fr(14, Maxbotix::PW, Maxbotix::LV); // front
-Maxbotix us_bk(15, Maxbotix::PW, Maxbotix::LV); // back
-Maxbotix us_rt(16, Maxbotix::PW, Maxbotix::LV); // right
-Maxbotix us_lt(17, Maxbotix::PW, Maxbotix::LV); // left
-*/
-
 /**************************************************************************
 ARDUINO INITIALIZATION
 **************************************************************************/
@@ -219,9 +205,6 @@ void loop() {
 
   if (dt > 50) {
     car.readAndCopyInputs();
-
-    // TODO make encoder and rc_inputs private properties on car? Then
-    // car.publishEncoder(); and car.publishRCInputs();
     encoder.FL = car.getEncoderFL();
     encoder.FR = car.getEncoderFR();
     encoder.BL = car.getEncoderBL();
@@ -232,14 +215,6 @@ void loop() {
     rc_inputs.servo = car.getRCSteering();
     pub_rc_inputs.publish(&rc_inputs);
 
-    // publish ultra-sound measurement
-    /*
-    ultrasound.front = us_fr.getRange();
-    ultrasound.back = us_bk.getRange();
-    ultrasound.right = us_rt.getRange();
-    ultrasound.left = us_lt.getRange();
-    pub_ultrasound.publish(&ultrasound);
-    */
     t0 = millis();
   }
 
@@ -250,27 +225,14 @@ void loop() {
 CAR CLASS IMPLEMENTATION
 **************************************************************************/
 float Car::saturateMotor(float x) {
-  if (x  == noAction ){ return MOTOR_NEUTRAL; }
-
-  if (x  >  MOTOR_MAX) {
-    x = MOTOR_MAX;
-  } else if (x < MOTOR_MIN) {
-    x = MOTOR_MIN;
-  }
+  if (x > MOTOR_MAX) { x = MOTOR_MAX; }
+  if (x < MOTOR_MIN) { x = MOTOR_MIN; }
   return x;
 }
 
 float Car::saturateServo(float x) {
-  if (x  == noAction ) {
-    return THETA_CENTER;
-  }
-
-  if (x  >  THETA_MAX) {
-    x = THETA_MAX;
-  }
-  else if (x < THETA_MIN) {
-    x = THETA_MIN;
-  }
+  if (x > THETA_MAX) { x = THETA_MAX; }
+  if (x < THETA_MIN) { x = THETA_MIN; }
   return x;
 }
 
@@ -298,20 +260,27 @@ void Car::initActuators() {
 }
 
 void Car::armActuators() {
-  motor.write(MOTOR_NEUTRAL);
-  steering.write(THETA_CENTER);
+  motor.writeMicroseconds( (uint16_t) throttle_neutral_ms );
+  steering.writeMicroseconds( (uint16_t) servo_neutral_ms );
   delay(1000);
 }
 
 void Car::writeToActuators(const barc::ECU& ecu) {
-  float motorCMD = saturateMotor(ecu.motor);
-  float servoCMD = saturateServo(ecu.servo);
-  motor.writeMicroseconds( (uint16_t) (1500.0 + (motorCMD-90.0)*1000.0/180.0) );
-  steering.write(servoCMD);
+  motor.writeMicroseconds( (uint16_t) saturateMotor( ecu.motor ) );
+  steering.writeMicroseconds( (uint16_t) saturateServo( ecu.servo ) );
 }
 
-uint8_t Car::microseconds2PWM(uint16_t microseconds) {
+uint16_t Car::microseconds2PWM(uint16_t microseconds) {
   // Scales RC pulses from 1000 - 2000 microseconds to 0 - 180 PWM angles
+  // Mapping from microseconds to pwm angle
+  // 0 deg -> 1000 us , 90 deg -> 1500 us , 180 deg -> 2000 us
+  // ref: camelsoftware.com/2015/12/25/reading-pwm-signals-from-an-rc-receiver-with-arduino
+
+  // saturate signal
+  if(microseconds > 2000 ){ microseconds = 2000; }
+  if(microseconds < 1000 ){ microseconds = 1000; }
+
+  // map signal from microseconds to pwm angle
   uint16_t pwm = (microseconds - 1000.0)/1000.0*180;
   return static_cast<uint8_t>(pwm);
 }
@@ -391,11 +360,11 @@ void Car::readAndCopyInputs() {
   }
 }
 
-uint8_t Car::getRCThrottle() {
-  return microseconds2PWM(throttleIn);
+uint16_t Car::getRCThrottle() {
+  return throttleIn;
 }
-uint8_t Car::getRCSteering() {
-  return microseconds2PWM(steeringIn);
+uint16_t Car::getRCSteering() {
+  return steeringIn;
 }
 
 int Car::getEncoderFL() {

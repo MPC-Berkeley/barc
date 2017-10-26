@@ -20,6 +20,7 @@
         <param name="height" value="480"/>
     </node>
 
+    
     <node pkg="barc" type="record_experiment.py" name="record_experiment" output="screen">
         <param name="experiment_name" value="traxxas-barc-accleration22" />
         <param name="camera_on" value="true" />
