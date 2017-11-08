@@ -178,7 +178,7 @@ def state_estimation():
     vhMdl = (L_f, L_r)
 
     # set node rate
-    loop_rate = 50
+    loop_rate = 40
     dt = 1.0 / loop_rate
     rate = rospy.Rate(loop_rate)
     se.t0 = rospy.get_rostime().to_sec()                    # set initial time

@@ -146,18 +146,19 @@ function coeffConstraintCost(oldTraj::OldTrajectory, mpcCoeff::MpcCoeff, posInfo
     n_sys_ID_post = 60              # steps of sysID after current point in previous laps
     n_sys_ID_prev_c = 30            # steps of sysID before current point in current lap
 
+    freq_ratio = 4                  # ratio between the frequency at which the informations about the position are updated in the topic and the frequency at which the controller calculates and updates the control input
     # vec_range_ID    = ()
     # for i=1:n_laps_sysID
     #     vec_range_ID    = tuple(vec_range_ID...,idx_s[i]-n_prev:idx_s[i]+n_ahead)     # related index range
     # end
 
-    sysID_idx_diff = idx_s[1]-n_sys_ID_prev*5-1 + (1:5:(n_sys_ID_prev+n_sys_ID_post+1)*5)         # these are the indices that are used for differences
+    sysID_idx_diff = idx_s[1]-n_sys_ID_prev*freq_ratio-1 + (1:freq_ratio:(n_sys_ID_prev+n_sys_ID_post+1)*freq_ratio)         # these are the indices that are used for differences
     sysID_idx = sysID_idx_diff[1:end-1]
 
-    sysID_idx_diff2 = idx_s[2]-n_sys_ID_prev*5-1 + (1:5:(n_sys_ID_prev+n_sys_ID_post+1)*5)         # these are the indices that are used for differences
+    sysID_idx_diff2 = idx_s[2]-n_sys_ID_prev*freq_ratio-1 + (1:freq_ratio:(n_sys_ID_prev+n_sys_ID_post+1)*freq_ratio)         # these are the indices that are used for differences
     sysID_idx2 = sysID_idx_diff2[1:end-1]
 
-    sysID_idx_diff_c = cC - (n_sys_ID_prev_c+1)*5-1 + (1:5:(n_sys_ID_prev_c+1)*5)
+    sysID_idx_diff_c = cC - (n_sys_ID_prev_c+1)*freq_ratio-1 + (1:freq_ratio:(n_sys_ID_prev_c+1)*freq_ratio)
     sysID_idx_c = sysID_idx_diff_c[1:end-1]
 
     sz1 = size(sysID_idx,1)
@@ -166,39 +167,39 @@ function coeffConstraintCost(oldTraj::OldTrajectory, mpcCoeff::MpcCoeff, posInfo
     sz = sz1 + sz2
 
     # psiDot
-    y_psi = zeros((2*sz1+sz2)*5)
-    A_psi = zeros((2*sz1+sz2)*5,3)
-    for i=0:4
+    y_psi = zeros((2*sz1+sz2)*freq_ratio)
+    A_psi = zeros((2*sz1+sz2)*freq_ratio,3)
+    for i=0:freq_ratio-1
         y_psi[(1:sz1)+i*sz1]            = diff(oldpsiDot[sysID_idx_diff+i])
         A_psi[(1:sz1)+i*sz1,:]          = [oldpsiDot[sysID_idx+i]./oldxDot[sysID_idx+i] oldyDot[sysID_idx+i]./oldxDot[sysID_idx+i] olddF[sysID_idx+i]]
-        #y_psi[(1:sz2)+i*sz2+5*sz1]      = diff(oldTraj.oldTraj[sysID_idx_diff_c+i,3,cL])
-        #A_psi[(1:sz2)+i*sz2+5*sz1,:]    = [oldTraj.oldTraj[sysID_idx_c+i,3,cL]./oldTraj.oldTraj[sysID_idx_c+i,1,cL] oldTraj.oldTraj[sysID_idx_c+i,2,cL]./oldTraj.oldTraj[sysID_idx_c+i,1,cL] oldTraj.oldInput[sysID_idx_c+i-delay_df*5,2,cL]]
-        y_psi[(1:sz1)+i*sz1+5*sz1+5*sz2]   = diff(oldpsiDot[sysID_idx_diff2+i])
-        A_psi[(1:sz1)+i*sz1+5*sz1+5*sz2,:] = [oldpsiDot[sysID_idx2+i]./oldxDot[sysID_idx2+i] oldyDot[sysID_idx2+i]./oldxDot[sysID_idx2+i] olddF[sysID_idx2+i]]
+        #y_psi[(1:sz2)+i*sz2+freq_ratio*sz1]      = diff(oldTraj.oldTraj[sysID_idx_diff_c+i,3,cL])
+        #A_psi[(1:sz2)+i*sz2+freq_ratio*sz1,:]    = [oldTraj.oldTraj[sysID_idx_c+i,3,cL]./oldTraj.oldTraj[sysID_idx_c+i,1,cL] oldTraj.oldTraj[sysID_idx_c+i,2,cL]./oldTraj.oldTraj[sysID_idx_c+i,1,cL] oldTraj.oldInput[sysID_idx_c+i-delay_df*freq_ratio,2,cL]]
+        y_psi[(1:sz1)+i*sz1+freq_ratio*sz1+freq_ratio*sz2]   = diff(oldpsiDot[sysID_idx_diff2+i])
+        A_psi[(1:sz1)+i*sz1+freq_ratio*sz1+freq_ratio*sz2,:] = [oldpsiDot[sysID_idx2+i]./oldxDot[sysID_idx2+i] oldyDot[sysID_idx2+i]./oldxDot[sysID_idx2+i] olddF[sysID_idx2+i]]
     end
 
     # xDot
-    y_xDot = zeros((2*sz1+sz2)*5)
-    A_xDot = zeros((2*sz1+sz2)*5,3)
-    for i=0:4
+    y_xDot = zeros((2*sz1+sz2)*freq_ratio)
+    A_xDot = zeros((2*sz1+sz2)*freq_ratio,3)
+    for i=0:freq_ratio-1
         y_xDot[(1:sz1)+i*sz1]            = diff(oldxDot[sysID_idx_diff+i])
         A_xDot[(1:sz1)+i*sz1,:]          = [oldyDot[sysID_idx+i].*oldpsiDot[sysID_idx+i] oldxDot[sysID_idx+i] oldacc[sysID_idx+i]]
-        #y_xDot[(1:sz2)+i*sz2+5*sz1]      = diff(oldTraj.oldTraj[sysID_idx_diff_c+i,1,cL])
-        #A_xDot[(1:sz2)+i*sz2+5*sz1,:]    = [oldTraj.oldTraj[sysID_idx_c+i,2,cL].*oldTraj.oldTraj[sysID_idx_c+i,3,cL] oldTraj.oldTraj[sysID_idx_c+i,1,cL]  oldTraj.oldTraj[sysID_idx_c+i,7,cL]]
-        y_xDot[(1:sz1)+i*sz1+5*(sz1+sz2)]   = diff(oldxDot[sysID_idx_diff2+i])
-        A_xDot[(1:sz1)+i*sz1+5*(sz1+sz2),:] = [oldyDot[sysID_idx2+i].*oldpsiDot[sysID_idx2+i] oldxDot[sysID_idx2+i] oldacc[sysID_idx2+i]]
+        #y_xDot[(1:sz2)+i*sz2+freq_ratio*sz1]      = diff(oldTraj.oldTraj[sysID_idx_diff_c+i,1,cL])
+        #A_xDot[(1:sz2)+i*sz2+freq_ratio*sz1,:]    = [oldTraj.oldTraj[sysID_idx_c+i,2,cL].*oldTraj.oldTraj[sysID_idx_c+i,3,cL] oldTraj.oldTraj[sysID_idx_c+i,1,cL]  oldTraj.oldTraj[sysID_idx_c+i,7,cL]]
+        y_xDot[(1:sz1)+i*sz1+freq_ratio*(sz1+sz2)]   = diff(oldxDot[sysID_idx_diff2+i])
+        A_xDot[(1:sz1)+i*sz1+freq_ratio*(sz1+sz2),:] = [oldyDot[sysID_idx2+i].*oldpsiDot[sysID_idx2+i] oldxDot[sysID_idx2+i] oldacc[sysID_idx2+i]]
     end
 
     # yDot
-    y_yDot = zeros((2*sz1+sz2)*5)
-    A_yDot = zeros((2*sz1+sz2)*5,4)
-    for i=0:4
+    y_yDot = zeros((2*sz1+sz2)*freq_ratio)
+    A_yDot = zeros((2*sz1+sz2)*freq_ratio,4)
+    for i=0:freq_ratio-1
         y_yDot[(1:sz1)+i*sz1]            = diff(oldyDot[sysID_idx_diff+i])
-        A_yDot[(1:sz1)+i*sz1,:]          = [oldyDot[sysID_idx+i]./oldxDot[sysID_idx+i] oldpsiDot[sysID_idx+i].*oldxDot[sysID_idx+i] oldpsiDot[sysID_idx+i]./oldxDot[sysID_idx+i] olddF[sysID_idx+i-delay_df*5]]
-        #y_yDot[(1:sz2)+i*sz2+5*sz1]      = diff(oldTraj.oldTraj[sysID_idx_diff_c+i,2,cL])
-        #A_yDot[(1:sz2)+i*sz2+5*sz1,:]    = [oldTraj.oldTraj[sysID_idx_c+i,2,cL]./oldTraj.oldTraj[sysID_idx_c+i,1,cL] oldTraj.oldTraj[sysID_idx_c+i,3,cL].*oldTraj.oldTraj[sysID_idx_c+i,1,cL] oldTraj.oldTraj[sysID_idx_c+i,3,cL]./oldTraj.oldTraj[sysID_idx_c+i,1,cL] oldTraj.oldInput[sysID_idx_c+i-delay_df*5,2]]
-        y_yDot[(1:sz1)+i*sz1+5*(sz1+sz2)]   = diff(oldyDot[sysID_idx_diff2+i])
-        A_yDot[(1:sz1)+i*sz1+5*(sz1+sz2),:] = [oldyDot[sysID_idx2+i]./oldxDot[sysID_idx2+i] oldpsiDot[sysID_idx2+i].*oldxDot[sysID_idx2+i] oldpsiDot[sysID_idx2+i]./oldxDot[sysID_idx2+i] olddF[sysID_idx2+i-delay_df*5]]
+        A_yDot[(1:sz1)+i*sz1,:]          = [oldyDot[sysID_idx+i]./oldxDot[sysID_idx+i] oldpsiDot[sysID_idx+i].*oldxDot[sysID_idx+i] oldpsiDot[sysID_idx+i]./oldxDot[sysID_idx+i] olddF[sysID_idx+i-delay_df*freq_ratio]]
+        #y_yDot[(1:sz2)+i*sz2+freq_ratio*sz1]      = diff(oldTraj.oldTraj[sysID_idx_diff_c+i,2,cL])
+        #A_yDot[(1:sz2)+i*sz2+freq_ratio*sz1,:]    = [oldTraj.oldTraj[sysID_idx_c+i,2,cL]./oldTraj.oldTraj[sysID_idx_c+i,1,cL] oldTraj.oldTraj[sysID_idx_c+i,3,cL].*oldTraj.oldTraj[sysID_idx_c+i,1,cL] oldTraj.oldTraj[sysID_idx_c+i,3,cL]./oldTraj.oldTraj[sysID_idx_c+i,1,cL] oldTraj.oldInput[sysID_idx_c+i-delay_df*freq_ratio,2]]
+        y_yDot[(1:sz1)+i*sz1+freq_ratio*(sz1+sz2)]   = diff(oldyDot[sysID_idx_diff2+i])
+        A_yDot[(1:sz1)+i*sz1+freq_ratio*(sz1+sz2),:] = [oldyDot[sysID_idx2+i]./oldxDot[sysID_idx2+i] oldpsiDot[sysID_idx2+i].*oldxDot[sysID_idx2+i] oldpsiDot[sysID_idx2+i]./oldxDot[sysID_idx2+i] olddF[sysID_idx2+i-delay_df*5]]
     end
 
     # if any(isnan,y_yDot)            # check if any value in the y_yDot value is NaN

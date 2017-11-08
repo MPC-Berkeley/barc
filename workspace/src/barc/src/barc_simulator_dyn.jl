@@ -137,8 +137,22 @@ function main()
         # IMU measurements
         if i%2 == 0                 # 50 Hz
             imu_drift   = 1+(t-t0)/100#sin(t/100*pi/2)     # drifts to 1 in 100 seconds (and add random start value 1)
-            yaw         = z_current[i,5] + 0.002*randn()* + imu_drift
-            psiDot      = z_current[i,6] + 0.001*randn()
+            rand_yaw = 0.01*randn()
+            if rand_yaw > 0.1
+                rand_yaw = 0.1
+            elseif rand_yaw<-0.1
+                rand_yaw=-0.1
+            end
+
+            yaw         = z_current[i,5] + imu_drift + rand_yaw#+ 0.002*randn() 
+
+            rand_psiDot = 0.01*randn()
+            if rand_psiDot > 0.1
+                rand_psiDot = 0.1
+            elseif rand_psiDot<-0.1
+                rand_psiDot=-0.1
+            end
+            psiDot      = z_current[i,6] +rand_psiDot#+ 0.001*randn()
             imu_meas.t_msg[imu_meas.i] = t
             imu_meas.t[imu_meas.i] = t
             imu_meas.z[imu_meas.i,:] = [yaw psiDot]
@@ -146,8 +160,24 @@ function main()
             imu_data.orientation = geometry_msgs.msg.Quaternion(cos(yaw/2), sin(yaw/2), 0, 0)
             imu_data.angular_velocity = Vector3(0,0,psiDot)
             imu_data.header.stamp = t_ros
-            imu_data.linear_acceleration.x = diff(z_current[i-1:i,3])[1]/dt - z_current[i,6]*z_current[i,4] + randn()*0.3*0.0
-            imu_data.linear_acceleration.y = diff(z_current[i-1:i,4])[1]/dt + z_current[i,6]*z_current[i,3] + randn()*0.3*0.0
+
+            rand_accX = 0.001*randn()
+            if rand_accX > 0.1
+                rand_accX = 0.1
+            elseif rand_accX<-0.1
+                rand_accX=-0.1
+            end
+
+            imu_data.linear_acceleration.x = diff(z_current[i-1:i,3])[1]/dt - z_current[i,6]*z_current[i,4] #+rand_accX#+ randn()*0.3*1.0
+
+            rand_accY = 0.001*randn()
+            if rand_accY > 0.1
+                rand_accY = 0.1
+            elseif rand_accY<-0.1
+                rand_accY=-0.1
+            end
+
+            imu_data.linear_acceleration.y = diff(z_current[i-1:i,4])[1]/dt + z_current[i,6]*z_current[i,3] #+rand_accY#+ randn()*0.3*1.0
             publish(pub_imu, imu_data)      # Imu format is defined by ROS, you can look it up by google "rosmsg Imu"
                                             # It's sufficient to only fill the orientation part of the Imu-type (with one quaternion)
         end
@@ -180,8 +210,25 @@ function main()
 
         # GPS measurements
         if i%6 == 0               # 16 Hz
-            x = round(z_current[i,1] + 0.002*randn(),2)       # Indoor gps measures, rounded on cm
-            y = round(z_current[i,2] + 0.002*randn(),2)
+
+            rand_x = 0.01*randn()
+            if rand_x > 0.1
+                rand_x = 0.1
+            elseif rand_x<-0.1
+                rand_x=-0.1
+            end
+
+            x = round(z_current[i,1] +  rand_x,2)#0.002*randn(),2)       # Indoor gps measures, rounded on cm
+
+            rand_y = 0.01*randn()
+            if rand_y > 0.1
+                rand_y = 0.1
+            elseif rand_y<-0.1
+                rand_y=-0.1
+            end
+
+            y = round(z_current[i,2] + rand_y,2)#0.002*randn(),2)
+
             if randn()>10            # simulate gps-outlier (probability about 0.13% for randn()>3, 0.62% for randn()>2.5, 2.3% for randn()>2.0 )
                 x += 1#randn()        # add random value to x and y
                 y -= 1#randn()
