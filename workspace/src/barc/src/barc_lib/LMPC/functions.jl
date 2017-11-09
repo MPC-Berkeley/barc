@@ -44,7 +44,15 @@ function saveOldTraj(oldTraj::OldTrajectory,zCurr::Array{Float64},uCurr::Array{F
 end
 
 function InitializeParameters(mpcParams::MpcParams,mpcParams_pF::MpcParams,trackCoeff::TrackCoeff,modelParams::ModelParams,
-                                posInfo::PosInfo,oldTraj::OldTrajectory,mpcCoeff::MpcCoeff,lapStatus::LapStatus,buffersize::Int64)
+                              posInfo::PosInfo,oldTraj::OldTrajectory,mpcCoeff::MpcCoeff,lapStatus::LapStatus,buffersize::Int64,
+                              obstacle::Obstacle,selectedStates::SelectedStates,oldSS::SafeSetData)
+
+    selectedStates.Np           = 20                            # Number of points to take from each previous trajectory to build the convex hull
+    selectedStates.Nl           = 2                             # Number of previous laps to include in the convex hull
+    Nl                          = selectedStates.Nl
+    selectedStates.selStates    = zeros(Nl*selectedStates.Np,6)  
+    selectedStates.statesCost   = zeros(Nl*selectedStates.Np)
+
     mpcParams.N                 = 7
     mpcParams.Q                 = [5.0,0.0,0.0,1.0,10.0,0.0]   # Q (only for path following mode)
     mpcParams.vPathFollowing    = 0.9                           # reference speed for first lap of path following
@@ -88,6 +96,16 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_pF::MpcParams,track
     oldTraj.idx_start           = zeros(30)
     oldTraj.idx_end             = zeros(30)
 
+    oldSS.oldSS                 = NaN*ones(buffersize,7,30)          # contains data from previous laps usefull to build the safe set
+    oldSS.oldSS_xy              = NaN*ones(buffersize,4,30)
+    oldSS.cost2target           = zeros(buffersize,30)     # cost to arrive at the target, i.e. how many iterations from the start to the end of the lap
+    oldSS.oldCost               = ones(Int64,30)              # contains costs of laps
+    oldSS.count                 = ones(30)*2               # contains the counter for each lap
+    oldSS.prebuff                = 30
+    oldSS.postbuff               = 40
+    oldSS.idx_start             = ones(30)            # index of the first measurement with s > 0
+    oldSS.idx_end               = zeros(30)              # index of the last measurement with s < s_target
+
     mpcCoeff.order              = 5
     mpcCoeff.coeffCost          = zeros(mpcCoeff.order+1,2)
     mpcCoeff.coeffConst         = zeros(mpcCoeff.order+1,2,5)
@@ -98,6 +116,17 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_pF::MpcParams,track
 
     lapStatus.currentLap        = 1         # initialize lap number
     lapStatus.currentIt         = 0         # current iteration in lap
+
+    obstacle.obstacle_active    = false     # true if we have t consider the obstacles in the optimization problem
+    obstacle.lap_active         = 20         # number of the first lap in which the obstacles are used
+    obstacle.obs_detect         = 10         # maximum distance at which we can detect obstacles (in terms of s!!)
+    obstacle.n_obs              = 1         # number of obstacles
+    obstacle.s_obs_init         = [20]    # initial s coordinate of each obstacle
+    obstacle.ey_obs_init        = [-0.8]       # initial ey coordinate of each obstacle
+    obstacle.v_obs_init         = [1.5]       # initial velocity of each obstacles
+    obstacle.r_s                = 0.5
+    obstacle.r_ey               = 0.2
+    obstacle.inv_step           = 3         # number of step of invariance required for the safe set
 end
 
 # Use this function to smooth data (moving average)

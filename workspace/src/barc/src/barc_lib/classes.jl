@@ -39,6 +39,29 @@ type OldTrajectory      # information about previous trajectories
     OldTrajectory(oldTraj=Float64[],oldInput=Float64[],oldTimes=Float64[],oldCost=Float64[],count=Int64[],prebuf=50,postbuf=50,idx_start=Int64[],idx_end=Int64[]) = new(oldTraj,oldInput,oldTimes,oldCost,count,prebuf,postbuf,idx_start,idx_end)
 end
 
+type SafeSetData
+    oldSS::Array{Float64}           # contains data from previous laps usefull to build the safe set
+    cost2target::Array{Float64}     # cost to arrive at the target, i.e. how many iterations from the start to the end of the lap
+    oldCost::Array{Int64}               # contains costs of laps
+    count::Array{Int64}                 # contains the counter for each lap
+    prebuff::Int64
+    postbuff::Int64
+    idx_start::Array{Int64}             # index of the first measurement with s > 0
+    idx_end::Array{Int64}               # index of the last measurement with s < s_target
+    oldSS_xy::Array{Float64}
+
+    SafeSetData(oldSS=Float64[],cost2target=Float64[],oldCost=Int64[],count=Int64[],prebuf=50,postbuf=50,idx_start=Int64[],idx_end=Int64[],oldSS_xy=Float64[]) =
+    new(oldSS,cost2target,oldCost,count,prebuf,postbuf,idx_start,idx_end,oldSS_xy)
+end
+
+type SelectedStates                 # Values needed for the convex hull formulation
+    selStates::Array{Float64}       # selected states from previous laps ...
+    statesCost::Array{Float64}      # ... and their related costs
+    Np::Int64                       # number of states to select from each previous lap
+    Nl::Int64                       # number of previous laps to include in the convex hull
+    SelectedStates(selStates=Float64[],statesCost=Float64[],Np=6,Nl=2) = new(selStates,statesCost,Np,Nl)
+end
+
 type MpcParams          # parameters for MPC solver
     N::Int64
     nz::Int64
@@ -92,4 +115,19 @@ type ModelParams
     c0::Array{Float64}
     c_f::Float64
     ModelParams(l_A=0.25,l_B=0.25,m=1.98,I_z=0.24,dt=0.1,u_lb=Float64[],u_ub=Float64[],z_lb=Float64[],z_ub=Float64[],c0=Float64[],c_f=0.0) = new(l_A,l_B,m,I_z,dt,u_lb,u_ub,z_lb,z_ub,c0,c_f)
+end
+
+type Obstacle
+    obstacle_active::Bool       # true if we have to consider the obstacles in the optimization problem
+    lap_active::Int64           # number of the first lap in which the obstacles are used
+    obs_detect::Float64         # maximum distance at which we can detect obstacles (in terms of s!!)
+    n_obs::Int64                # number of obstacles in the track
+    s_obs_init::Array{Float64}  # initial s coordinate of each obstacle
+    ey_obs_init::Array{Float64} # initial ey coordinate of each obstacle
+    v_obs_init::Array{Float64}  # initial velocity of each obstacles
+    r_s::Float64                # radius on the s coordinate of the ellipse describing the obstacles
+    r_ey::Float64               # radius on the ey coordinate of the ellipse describing the obstacle 
+    inv_step::Int64             # number of step of invariance required for the safe set
+
+    Obstacle(obstacle_active=false,lap_active=10,obs_detect=1.0,n_obs=1,s_obs_init=Float64[],ey_obs_init=Float64[],v_obs_init=Float64[],r_s=0.5,r_ey=0.3,inv_step=1) = new(obstacle_active,lap_active,obs_detect,n_obs,s_obs_init,ey_obs_init,v_obs_init,r_s,r_ey,inv_step)
 end

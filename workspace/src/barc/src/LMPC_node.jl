@@ -87,9 +87,13 @@ function main()
     modelParams                 = ModelParams()
     mpcParams                   = MpcParams()
     mpcParams_pF                = MpcParams()       # for 1st lap (path following)
+    obstacle                    = Obstacle()
+    selectedStates              = SelectedStates()
+    oldSS                       = SafeSetData()
 
-    InitializeParameters(mpcParams,mpcParams_pF,trackCoeff,modelParams,posInfo,oldTraj,mpcCoeff,lapStatus,buffersize)
-    mdl    = MpcModel(mpcParams,mpcCoeff,modelParams,trackCoeff)
+    InitializeParameters(mpcParams,mpcParams_pF,trackCoeff,modelParams,posInfo,oldTraj,mpcCoeff,lapStatus,buffersize,obstacle,selectedStates,oldSS)
+
+    mdl    = MpcModel(mpcParams,mpcCoeff,modelParams,trackCoeff)  # CHANGE THIS!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     mdl_pF = MpcModel_pF(mpcParams_pF,modelParams,trackCoeff)
 
     max_N = max(mpcParams.N,mpcParams_pF.N)
@@ -102,8 +106,8 @@ function main()
     coeffCurvature_update       = zeros(trackCoeff.nPolyCurvature+1)
 
     # Logging variables
-    log_coeff_Cost              = NaN*ones(mpcCoeff.order+1,2,10000)
-    log_coeff_Const             = NaN*ones(mpcCoeff.order+1,2,5,10000)
+    log_coeff_Cost              = NaN*ones(mpcCoeff.order+1,2,10000)        # DONT NEED THIS
+    log_coeff_Const             = NaN*ones(mpcCoeff.order+1,2,5,10000)      # DONT NEED THIS
     log_sol_z                   = NaN*ones(max_N+1,7,10000)
     log_sol_u                   = NaN*ones(max_N,2,10000)
     log_curv                    = zeros(10000,trackCoeff.nPolyCurvature+1)
@@ -120,6 +124,11 @@ function main()
     log_step_diff               = zeros(10000,5)
     log_t_solv                  = zeros(10000)
     log_sol_status              = Array(Symbol,10000)
+
+    selStates_log               = zeros(selectedStates.Nl*selectedStates.Np,6,buffersize,30)   #array to log the selected states in every iteration of every lap
+    statesCost_log              = zeros(selectedStates.Nl*selectedStates.Np,buffersize,30)     #array to log the selected states' costs in every iteration of every lap
+    log_predicted_sol           = zeros(mpcParams.N+1,7,buffersize,30)
+    log_onestep                 = zeros(buffersize,6,30)
     
     acc_f = [0.0]
 
@@ -138,6 +147,9 @@ function main()
     zCurr                       = zeros(10000,7)    # contains state information in current lap (max. 10'000 steps)
     uCurr                       = zeros(10000,2)    # contains input information
     step_diff                   = zeros(5)
+
+    obs_curr                    = zeros(buffersize,3,obstacle.n_obs)::Array{Float64,3}      # info about the obstacle in the current lap
+
 
     # Specific initializations:
     lapStatus.currentLap    = 1
@@ -175,6 +187,15 @@ function main()
     acc0 = 0.0
     opt_count = 0
 
+    same_sPF   = 0
+    same_sLMPC = 0
+
+    # #### Set initial conditions on the obstacles
+
+    # obs_curr[1,1,:] = obstacle.s_obs_init
+    # obs_curr[1,2,:] = obstacle.ey_obs_init
+    # obs_curr[1,3,:] = obstacle.v_obs_init
+
     # Start node
     while ! is_shutdown()
         if z_est[6] > 0         # check if data has been received (s > 0)
@@ -188,8 +209,20 @@ function main()
             publish(pub, cmd)
             # ============================= Initialize iteration parameters =============================
             i                           = lapStatus.currentIt           # current iteration number, just to make notation shorter
+
+            # Check if and how many times the states are repeated 
+            if i>1
+                if z_est[6] == zCurr[i-1,6] && lapStatus.currentLap <= n_pf
+                    same_sPF +=1
+                elseif z_est[6] == zCurr[i-1,6] && lapStatus.currentLap > n_pf
+                    same_sLMPC +=1
+                end
+            end
+
             zCurr[i,:]                  = copy(z_est)                   # update state information
             posInfo.s                   = zCurr[i,6]                    # update position info
+            lap_now                     = lapStatus.currentLap
+
             #trackCoeff.coeffCurvature   = copy(coeffCurvature_update)
 
             # ============================= Pre-Logging (before solving) ================================
@@ -201,10 +234,34 @@ function main()
             end
             log_step_diff[k+1,:]          = step_diff
 
+            if lapStatus.currentLap > n_pf
+                if lapStatus.currentIt>1
+                    log_onestep[lapStatus.currentIt,:,lapStatus.currentLap] = abs(mpcSol.z[1:6] - zCurr[1:6])
+                end
+            end
+
             # ======================================= Lap trigger =======================================
             if lapStatus.nextLap                # if we are switching to the next lap...
                 println("Finishing one lap at iteration ",i)
                 # Important: lapStatus.currentIt is now the number of points up to s > s_target -> -1 in saveOldTraj
+
+                oldSS.oldCost[lapStatus.currentLap-1] = lapStatus.currentIt
+                cost2target     = zeros(buffersize) # array containing the cost to arrive from each point of the old trajectory to the target
+                #save the terminal cost
+                for j = 1:buffersize
+                    cost2target[j] = (lapStatus.currentIt-j+1)  # why do i need Q_cost?
+                end
+                oldSS.cost2target[:,lapStatus.currentLap-1] = cost2target
+                                
+
+                # if lapStatus.currentLap == obstacle.lap_active            # if its time to put the obstacles in the track
+                #     obstacle.obstacle_active = true    # tell the system to put the obstacles on the track
+                # end
+                # if lapStatus.currentLap > obstacle.lap_active             # initialize current obstacle states with final states from the previous lap
+                #     obs_curr[1,:,:] = obs_curr[i,:,:]
+                # end
+
+
                 zCurr[1,:] = zCurr[i,:]         # copy current state
                 i                     = 1
                 lapStatus.currentIt   = 1       # reset current iteration
@@ -224,12 +281,26 @@ function main()
                 end
             end
 
+            oldSS.oldSS[lapStatus.currentIt,:,lapStatus.currentLap]      = z_est
+
+
             #  ======================================= Calculate input =======================================
             #println("*** NEW ITERATION # ",i," ***")
             println("Current Lap: ", lapStatus.currentLap, ", It: ", lapStatus.currentIt)
             #println("State Nr. ", i, "    = ", z_est)
             #println("s               = $(posInfo.s)")
             #println("s_total         = $(posInfo.s%posInfo.s_target)")
+
+            #mpcParams.Q_obs = ones(selectedStates.Nl*selectedStates.Np)
+
+
+
+            if lapStatus.currentLap > 1
+                if lapStatus.currentIt == (oldSS.postbuff+2)
+                    oldSS.oldSS[oldSS.oldCost[lapStatus.currentLap-1]:oldSS.oldCost[lapStatus.currentLap-1]+oldSS.postbuff+1,1:5,lapStatus.currentLap-1] = zCurr[1:oldSS.postbuff+2,1:5]
+                    oldSS.oldSS[oldSS.oldCost[lapStatus.currentLap-1]:oldSS.oldCost[lapStatus.currentLap-1]+oldSS.postbuff+1,6,lapStatus.currentLap-1] = zCurr[1:oldSS.postbuff+2,6] + posInfo.s_target
+                end
+            end
 
             # Find coefficients for cost and constraints
             if lapStatus.currentLap > n_pf
@@ -288,8 +359,8 @@ function main()
             log_sol_status[k]       = mpcSol.solverStatus
             log_state[k,:]          = zCurr[i,:]
             log_cmd[k+1,:]          = uCurr[i,:]                    # the command is going to be pubished in the next iteration
-            log_coeff_Cost[:,:,k]   = mpcCoeff.coeffCost
-            log_coeff_Const[:,:,:,k] = mpcCoeff.coeffConst
+            log_coeff_Cost[:,:,k]   = mpcCoeff.coeffCost      # DONT NEED THIS
+            log_coeff_Const[:,:,:,k] = mpcCoeff.coeffConst    # DONT NEED THIS
             log_cost[k,:]           = mpcSol.cost
             log_curv[k,:]           = trackCoeff.coeffCurvature
             log_state_x[k,:]        = x_est
@@ -302,6 +373,10 @@ function main()
             else
                 log_sol_z[1:mpcParams.N+1,1:7,k]        = mpcSol.z
                 log_sol_u[1:mpcParams.N,:,k]            = mpcSol.u
+            end
+
+            if lapStatus.currentLap > n_pf
+                log_predicted_sol[:,:,lapStatus.currentIt,lapStatus.currentLap] = mpcSol.z
             end
 
             # Count one up:
@@ -324,6 +399,9 @@ function main()
                     "c_Vy",log_c_Vy[1:k,:],"c_Psi",log_c_Psi[1:k,:],"cmd",log_cmd[1:k,:],"step_diff",log_step_diff[1:k,:],
                     "t_solv",log_t_solv[1:k],"sol_status",log_sol_status[1:k])
     println("Exiting LMPC node. Saved data to $log_path.")
+
+    println("number of same s in path following = ",same_sPF)
+    println("number of same s in learning MPC = ",same_sLMPC)
 
 end
 
