@@ -51,8 +51,8 @@ def arduino_interface():
             ecu_cmd = ECU(motor_pwm, servo_pwm)
             ecu_pub.publish(ecu_cmd)
             break
-        elif time.time()-time_prev >=7
-            servo_pwm = 1450; #send new steering angle command: [1450, 1500, 1575, 1625, 1700,1750]
+        elif time.time()-time_prev >=7:
+            servo_pwm = 1625; #send new steering angle command: [1450, 1500, 1575, 1625, 1700,1750]
 
 
         ecu_cmd = ECU(motor_pwm, servo_pwm)

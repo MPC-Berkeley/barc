@@ -55,6 +55,7 @@ class Car {
     void incBL();
     void calcThrottle();
     void calcSteering();
+    void killMotor();
   private:
     // Pin assignments
     const int ENC_FL_PIN = 2;
@@ -123,6 +124,9 @@ class Car {
     float saturateServo(float x);
 };
 
+// Boolean keeping track of whether the Arduino has received a signal from the ECU recently
+int received_ecu_signal = 0;
+
 // Initialize an instance of the Car class as car
 Car car;
 
@@ -132,6 +136,7 @@ Car car;
 // figure it out, please atone for my sins.
 void ecuCallback(const barc::ECU& ecu) {
   car.writeToActuators(ecu);
+  received_ecu_signal = 1;
 }
 void incFLCallback() {
   car.incFL();
@@ -155,6 +160,7 @@ void calcThrottleCallback() {
 // Variables for time step
 volatile unsigned long dt;
 volatile unsigned long t0;
+volatile unsigned long ecu_t0;
 
 // Global message variables
 // Encoder, RC Inputs, Electronic Control Unit, Ultrasound
@@ -192,6 +198,7 @@ void setup()
   // Arming ESC, 1 sec delay for arming and ROS
   car.armActuators();
   t0 = millis();
+  ecu_t0 = millis();
 
 }
 
@@ -202,6 +209,16 @@ ARDUINO MAIN lOOP
 void loop() {
   // compute time elapsed (in ms)
   dt = millis() - t0;
+
+  // kill the motor if there is no ECU signal within the last 1s
+  if( (millis() - ecu_t0) >= 1000){
+    if(!received_ecu_signal){
+        car.killMotor();
+    } else{
+        received_ecu_signal = 0;
+    }
+    ecu_t0 = millis();
+  }
 
   if (dt > 50) {
     car.readAndCopyInputs();
@@ -304,6 +321,11 @@ void Car::calcSteering() {
     steeringInShared = (uint16_t)(micros() - steeringStart);
     updateFlagsShared |= STEERING_FLAG;
   }
+}
+
+void Car::killMotor(){
+  motor.writeMicroseconds( (uint16_t) throttle_neutral_ms );
+  steering.writeMicroseconds( (uint16_t) servo_neutral_ms );
 }
 
 void Car::incFL() {

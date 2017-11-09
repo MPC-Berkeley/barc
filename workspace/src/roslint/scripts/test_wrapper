@@ -1,0 +1,33 @@
+#!/bin/bash
+
+RESULTS_FILE=$1
+TARGET_NAME=${@: -1}
+shift
+
+# Run remain args as test command, capturing the output.
+LINTER_OUTPUT=$( $@ 2>&1 )
+LINTER_RESULT=$?
+
+mkdir -p `dirname $RESULTS_FILE`
+if [[ "$LINTER_RESULT" == "0" ]]; then
+  # Lint pass
+cat <<ENDXML > $RESULTS_FILE
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="roslint" tests="1" failures="0" errors="0">
+  <testcase name="$TARGET_NAME" status="run" classname="roslint.LintCheck" />
+</testsuite>
+ENDXML
+  exit 0
+else
+  # Lint failed
+  # TODO: This output could be more helpful; really just a first cut.
+ cat <<ENDXML > $RESULTS_FILE
+<?xml version="1.0" encoding="UTF-8"?>
+<testsuite name="roslint" tests="1" failures="1" errors="0">
+  <testcase name="$TARGET_NAME" classname="roslint.LintCheck">
+    <failure message="One or more linter errors was reported." type=""><![CDATA[$LINTER_OUTPUT]]></failure>
+  </testcase>
+</testsuite>
+ENDXML
+  exit 1
+fi

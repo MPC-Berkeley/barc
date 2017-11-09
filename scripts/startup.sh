@@ -10,8 +10,10 @@ source /usr/local/bin/virtualenvwrapper.sh
 workon barc
 
 # set environment variables for ROS
-source $HOME/barc/workspace/devel/setup.bash
 export ROS_HOME=$HOME/barc/workspace/src/barc/rosbag/
+
+# set path to julia
+export PATH=$PATH:/home/odroid/julia
 
 # set environment variables for Amazon Web Server
 source $HOME/team_name.sh

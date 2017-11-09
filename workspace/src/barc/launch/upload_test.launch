@@ -19,15 +19,18 @@
         <param name="width" value="640"/>
         <param name="height" value="480"/>
     </node>
+    <node pkg="image_transport" type="republish" name="compressed_transformation"
+        args="in:=/image_raw compressed out:=/image_transformed" />
 
     
+    <!-- RECORD -->
     <node pkg="barc" type="record_experiment.py" name="record_experiment" output="screen">
-        <param name="experiment_name" value="traxxas-barc-accleration22" />
+        <param name="experiment_name" value="redone_steering2-1575" />
         <param name="camera_on" value="true" />
     </node>
 
-    <node pkg="lab4" type="AccelerationModelID.py" name="model_id">
+    <!-- EXPERIMENT-->
+    <node pkg="lab4" type="SteeringMapping.py" name="Model_ID">
     </node>
-
 
 </launch>

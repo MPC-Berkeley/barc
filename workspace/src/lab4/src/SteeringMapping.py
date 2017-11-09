@@ -46,7 +46,7 @@ def arduino_interface():
 
     while not rospy.is_shutdown():
         if time.time()-time_prev>=3:
-            servo_pwm = 1800
+            servo_pwm = 1575
         if time.time()-time_prev >= 8:
             motor_pwm = 1500
             ecu_cmd = ECU(motor_pwm, servo_pwm)

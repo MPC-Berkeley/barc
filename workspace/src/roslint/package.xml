@@ -1,0 +1,30 @@
+<?xml version="1.0"?>
+<package>
+  <name>roslint</name>
+  <version>0.11.1</version>
+  <description>
+    CMake lint commands for ROS packages.
+
+    The lint commands perform static checking of Python or C++ source
+    code for errors and standards compliance.
+  </description>
+  <license>BSD</license>
+  <maintainer email="mpurvis@clearpathrobotics.com">Mike Purvis</maintainer>
+  <maintainer email="ahenning@fetchrobotics.com">Alex Henning</maintainer>
+  <author>Mike Purvis</author>
+  <author>Jack O'Quin</author>
+
+  <url type="website">http://ros.org/wiki/roslint</url>
+  <url type="repository">https://github.com/ros/roslint.git</url>
+  <url type="bugtracker">https://github.com/ros/roslint/issues</url>
+
+  <!-- It would be nicer not to require catkin. -->
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <!-- For now, there is no cpplint or pep8 releases in Ubuntu debs, so
+       these files are simply included with the package.
+  <run_depend>python-pylint</run_depend>
+  <run_depend>python-cpplint</run_depend>
+  -->
+
+</package>

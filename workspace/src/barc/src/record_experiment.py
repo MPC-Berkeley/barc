@@ -61,7 +61,7 @@ class RecordExperiment():
             os.makedirs(image_dir)
          
         # start rosrecord for following topics
-        self.topics = ['/imu/data', '/encoder', '/ecu', '/ecu_pwm', '/image_transformed/compressed/']
+        self.topics = ['/imu/data', '/encoder', '/ecu', '/ecu_pwm', '/image_transformed/compressed/', '/fix']
         self.rosbag_file_path = os.path.abspath(rosbag_dir + '/' + self.experiment_name + '.bag')
         self.start_record_data()
         
@@ -131,7 +131,7 @@ class RecordExperiment():
         chunk_msg = dict()
         chunk_ts = dict()
         
-        img_idx = 0
+        img_idx = 0.0
         for topic, msg, t in self.bag.read_messages( topics= self.topics):
             ts = t.secs + t.nsecs/(10.0**9)
 
@@ -172,7 +172,8 @@ class RecordExperiment():
                      'linear_acceleration_x', 'linear_acceleration_y', 'linear_acceleration_z',
                      'encoder_FL', 'encoder_FR','encoder_BL','encoder_BR',
                      'motor', 'servo','motor_pwm','servo_pwm',
-                     'image_id']
+                     'image_id',
+                     'longitude','latitude','altitude','gps_status','gps_service']
 
         signal_dict = dict()
 
@@ -219,6 +220,14 @@ class RecordExperiment():
             # Camera ID
             if topic =='/image_transformed/compressed/':
                 image_id = msg  
+
+            # GPS
+            if topic == '/fix':
+                longitude = msg.longitude
+                latitude = msg.latitude
+                altitude = msg.altitude
+                gps_status = msg.status.status
+                gps_service = msg.status.service
 
             # Python introspection from list 'vars_list'
             for v in vars_list:
