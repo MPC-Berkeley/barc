@@ -31,7 +31,7 @@ double w_x=0,  w_y=0,   w_z=0;
 
 // from encoder
 double v_x_enc = 0;
-double t0 = ros::Time::now().toSec();
+double t0;
 double n_FL = 0;   // counts in the front left tire
 double n_FR = 0;   // counts in the front right tire
 double n_FL_prev = 0;
