@@ -1,3 +1,0 @@
-<launch>
-  <test test-name="transform_twist_test" pkg="tf" type="test_transform_twist"/>
-</launch>
