@@ -9,8 +9,13 @@ if ! hash ano 2>/dev/null; then
     sudo make install; cd; sudo rm -rf Arturo
 
     # link to arduino libraries
-    rm -r lib
-    ln -s ~/sketchbook/libraries lib
+    if [ ! -d ~/barc/arduino/.arduino_nano328_node ]; then
+        mkdir -p ~/barc/arduino/.arduino_nano328_node/src
+    fi
+
+    if [ ! -L ~/barc/arduino/.arduino_nano328_node/lib ]; then
+        ln -s ~/sketchbook/libraries ~/barc/arduino/.arduino_nano328_node/lib
+    fi
 
     # set avrdude configuration file
     sudo mkdir /etc/avrdude
@@ -22,9 +27,7 @@ fi
 if [ ! -d $HOME/sketchbook/libraries/EnableInterrupt ]; then
     mkdir -p $HOME/sketchbook/libraries
     cd $HOME/sketchbook/libraries
-    wget -O enableinterrupt.zip "https://bintray.com/greygnome/generic/download_file?file_path=enableinterrupt-0.9.5.zip"
-    unzip enableinterrupt.zip
-    rm enableinterrupt.zip
+    git clone https://github.com/GreyGnome/EnableInterrupt.git
 fi
 
 # install monokai colors for vim
@@ -32,9 +35,9 @@ cd
 rm -rf .vim
 mkdir -p .vim
 cd .vim
-git init
-git remote add origin https://github.com/sickill/vim-monokai.git
-git pull origin master
+git clone https://github.com/sickill/vim-monokai.git
+mv vim-monokai/* .
+rm -rf vim-monokai/
 cd 
 
 # install apps

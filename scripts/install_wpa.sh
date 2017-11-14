@@ -18,33 +18,43 @@ sudo apt-get install wicd
 sudo apt-get --purge autoremove network-manager
 
 # install modified binaries for hostapd and hostapd_cli
-wget w1.fi/releases/hostapd-2.6.tar.gzi                     # get hostapd
-git clone https://pitambaral/hostapd-rtl871dxrv.git         # get hostapd patch
+sudo apt-get install libnl-3-dev
+sudo apt-get install libnl-genl-3-dev
+cd Downloads
+wget w1.fi/releases/hostapd-2.6.tar.gz                     # get hostapd
+git clone https://github.com/pritambaral/hostapd-rtl871xdrv # get hostapd patch
 tar xzvf hostapd-2.6.tar.gz                                 # unzip
 cd hostapd-2.6/hostapd                                      # move into build directory
 cp defconfig .config                                        # copy configuration file
-make                                                        # build
-cd ..                                                       # go to previous directory
-patch -Np1 -i ../hostapd-rtl871xdrv/rtlxdrv.patch           # apply patch
+patch -Np1 -i ../../hostapd-rtl871xdrv/rtlxdrv.patch           # apply patch
 echo CONFIG_DRIVER_RTW=y >> hostapd/.config                 # add configuration command
+make
 
 # install binaries on system
-if ! hash hostapd_orig 2>/dev/null; then
-    sudo mv /usr/sbin/hostapd /usr/sbin/hostapd_orig
-    sudo cp hostapd/hostapd /usr/sbin/hostapd
+if ! hash hostapd 2>/dev/null; then
+    sudo cp hostapd /usr/sbin/hostapd
 else
-    echo "modified hostapd binary already installed"
+	if ! hash hostapd_orig 2>/dev/null; then
+		sudo mv /usr/sbin/hostapd /usr/sbin/hostapd_orig
+		sudo cp hostapd/hostapd /usr/sbin/hostapd
+	else
+		echo "modified hostapd binary already installed"
+	fi
 fi
 
-if ! hash hostapd_cli_orig 2>/dev/null; then
-    sudo mv /usr/sbin/hostapd_cli /usr/sbin/hostapd_cli_orig
-    sudo cp hostapd/hostapd_cli /usr/sbin/hostapd_cli
+if ! hash hostapd_cli 2>/dev/null; then
+    sudo cp hostapd_cli /usr/sbin/hostapd_cli
 else
-    echo "modified hostapd_cli binary already installed"
+	if ! hash hostapd_orig 2>/dev/null; then
+		sudo mv /usr/sbin/hostapd_cli /usr/sbin/hostapd_cli_orig
+		sudo cp hostapd_cli /usr/sbin/hostapd_cli
+	else
+		echo "modified hostapd binary already installed"
+	fi
 fi
 
 # clean up 
-cd ..
+cd ../..
 rm -rf hostapd-2.6 hostapd-2.6.tar.gz hostapd-rtl871xdrv
 
 # install boot time configuration file
