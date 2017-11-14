@@ -93,8 +93,10 @@ function main()
 
     InitializeParameters(mpcParams,mpcParams_pF,trackCoeff,modelParams,posInfo,oldTraj,mpcCoeff,lapStatus,buffersize,obstacle,selectedStates,oldSS)
 
-    mdl    = MpcModel(mpcParams,mpcCoeff,modelParams,trackCoeff)  # CHANGE THIS!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    mdl_pF = MpcModel_pF(mpcParams_pF,modelParams,trackCoeff)
+    mdl          = MpcModel(mpcParams,mpcCoeff,modelParams,trackCoeff)  
+    mdl_pF       = MpcModel_pF(mpcParams_pF,modelParams,trackCoeff)
+    mdl_convhull =  MpcModel_convhull(mpcParams,mpcCoeff,modelParams,trackCoeff,selectedStates)
+
 
     max_N = max(mpcParams.N,mpcParams_pF.N)
     # ROS-specific variables
@@ -129,7 +131,11 @@ function main()
     statesCost_log              = zeros(selectedStates.Nl*selectedStates.Np,buffersize,30)     #array to log the selected states' costs in every iteration of every lap
     log_predicted_sol           = zeros(mpcParams.N+1,7,buffersize,30)
     log_onestep                 = zeros(buffersize,6,30)
-    
+    log_epsalpha                = zeros(6,buffersize,30)
+    log_cvx                     = zeros(buffersize,3,30)
+    log_cvy                     = zeros(buffersize,4,30)
+    log_cpsi                    = zeros(buffersize,3,30)
+
     acc_f = [0.0]
 
     # Initialize ROS node and topics
@@ -170,15 +176,29 @@ function main()
     # Precompile coeffConstraintCost:
     oldTraj.oldTraj[1:buffersize,6,1] = linspace(0,posInfo.s_target,buffersize)
     oldTraj.oldTraj[1:buffersize,6,2] = linspace(0,posInfo.s_target,buffersize)
+    oldTraj.oldTraj[1:buffersize,6,3] = linspace(0,posInfo.s_target,buffersize)
+
+
+    oldSS.oldSS[1:buffersize,6,1]     = linspace(0.1,posInfo.s_target,buffersize)
+    oldSS.oldSS[1:buffersize,6,2]     = linspace(0.1,posInfo.s_target,buffersize)
+    oldSS.oldSS[1:buffersize,6,3]     = linspace(0.1,posInfo.s_target,buffersize)
+
     posInfo.s = posInfo.s_target/2
-    lapStatus.currentLap = 3
-    oldTraj.count[3] = 500
-    coeffConstraintCost(oldTraj,mpcCoeff,posInfo,mpcParams,lapStatus)
-    oldTraj.count[3] = 1
+    lapStatus.currentLap = 4
+    oldTraj.count[4] = 500
+    coeffConstraintCost(oldTraj,mpcCoeff,posInfo,mpcParams,lapStatus,selectedStates,oldSS)
+    oldTraj.count[4] = 1
     lapStatus.currentLap = 1
     oldTraj.oldTraj[1:buffersize,6,1] = NaN*ones(buffersize,1)
     oldTraj.oldTraj[1:buffersize,6,2] = NaN*ones(buffersize,1)
+    oldTraj.oldTraj[1:buffersize,6,3] = NaN*ones(buffersize,1)
+
     posInfo.s = 0
+
+    selectedStates.selStates    = zeros(selectedStates.Nl*selectedStates.Np,6)  
+    selectedStates.statesCost   = zeros(selectedStates.Nl*selectedStates.Np)
+    oldSS.oldSS                 = NaN*ones(buffersize,7,30)
+
 
     uPrev = zeros(10,2)     # saves the last 10 inputs (1 being the most recent one)
 
@@ -271,22 +291,33 @@ function main()
                 if lapStatus.currentLap <= n_pf
                     setvalue(mdl_pF.z_Ol[:,1],mpcSol.z[:,1]-posInfo.s_target)
                 elseif lapStatus.currentLap == n_pf+1
-                    setvalue(mdl.z_Ol[:,1],mpcSol.z[1:mpcParams.N+1,4])
-                    setvalue(mdl.z_Ol[:,6],mpcSol.z[1:mpcParams.N+1,1]-posInfo.s_target)
-                    setvalue(mdl.z_Ol[:,5],mpcSol.z[1:mpcParams.N+1,2])
-                    setvalue(mdl.z_Ol[:,4],mpcSol.z[1:mpcParams.N+1,3])
+                    setvalue(mdl.z_Ol[1:mpcParams.N,1],mpcSol.z[1:mpcParams.N,4])
+                    setvalue(mdl.z_Ol[1:mpcParams.N,6],mpcSol.z[1:mpcParams.N,1]-posInfo.s_target)
+                    setvalue(mdl.z_Ol[1:mpcParams.N,5],mpcSol.z[1:mpcParams.N,2])
+                    setvalue(mdl.z_Ol[1:mpcParams.N,4],mpcSol.z[1:mpcParams.N,3])
                     setvalue(mdl.u_Ol,mpcSol.u[1:mpcParams.N,:])
+
+                    setvalue(mdl_convhull.z_Ol[1:mpcParams.N+1,1],mpcSol.z[1:mpcParams.N+1,4])
+                    setvalue(mdl_convhull.z_Ol[1:mpcParams.N+1,6],mpcSol.z[1:mpcParams.N+1,1]-posInfo.s_target)
+                    setvalue(mdl_convhull.z_Ol[1:mpcParams.N+1,5],mpcSol.z[1:mpcParams.N+1,2])
+                    setvalue(mdl_convhull.z_Ol[1:mpcParams.N+1,4],mpcSol.z[1:mpcParams.N+1,3])
+                    setvalue(mdl_convhull.u_Ol,mpcSol.u[1:mpcParams.N,:])
+                    setvalue(mdl_convhull.alpha[:],(1/(selectedStates.Nl*selectedStates.Np))*ones(selectedStates.Nl*selectedStates.Np))
                 elseif lapStatus.currentLap > n_pf+1
                     setvalue(mdl.z_Ol[:,6],mpcSol.z[:,6]-posInfo.s_target)
+                    setvalue(mdl_convhull.z_Ol[:,6],mpcSol.z[:,6]-posInfo.s_target)
+                    #setvalue(mdl_convhull.alpha[1:selectedStates.Nl*selectedStates.Np],1/(selectedStates.Nl*selectedStates.Np))
+
                 end
             end
 
             oldSS.oldSS[lapStatus.currentIt,:,lapStatus.currentLap]      = z_est
+            oldSS.oldSS_xy[lapStatus.currentIt,:,lapStatus.currentLap]   = x_est
 
 
             #  ======================================= Calculate input =======================================
             #println("*** NEW ITERATION # ",i," ***")
-            println("Current Lap: ", lapStatus.currentLap, ", It: ", lapStatus.currentIt)
+            println("Current Lap: ", lapStatus.currentLap, ", It: ", lapStatus.currentIt, ", s: ",posInfo.s)
             #println("State Nr. ", i, "    = ", z_est)
             #println("s               = $(posInfo.s)")
             #println("s_total         = $(posInfo.s%posInfo.s_target)")
@@ -302,12 +333,13 @@ function main()
                 end
             end
 
+
             # Find coefficients for cost and constraints
             if lapStatus.currentLap > n_pf
                 tic()
-                coeffConstraintCost(oldTraj,mpcCoeff,posInfo,mpcParams,lapStatus)
+                coeffConstraintCost(oldTraj,mpcCoeff,posInfo,mpcParams,lapStatus,selectedStates,oldSS)
                 tt = toq()
-                println("Finished coefficients, t = ",tt," s")
+                #println("Finished coefficients, t = ",tt," s")
             end
 
             #println("Starting solving.")
@@ -315,17 +347,28 @@ function main()
             tic()
             if lapStatus.currentLap <= n_pf
                 z_pf = [zCurr[i,6],zCurr[i,5],zCurr[i,4],norm(zCurr[i,1:2]),acc0]        # use kinematic model and its states
-                solveMpcProblem_pathFollow(mdl_pF,mpcSol,mpcParams_pF,trackCoeff,posInfo,modelParams,z_pf,uPrev)
+                solveMpcProblem_pathFollow(mdl_pF,mpcSol,mpcParams_pF,trackCoeff,posInfo,modelParams,z_pf,uPrev,lapStatus)
                 acc_f[1] = mpcSol.z[1,5]
                 acc0 = mpcSol.z[2,5]
             else
                 # otherwise: use system-ID-model
                 #mpcCoeff.c_Vx[3] = max(mpcCoeff.c_Vx[3],0.1)
                 zCurr[i,7] = acc0
-                solveMpcProblem(mdl,mpcSol,mpcCoeff,mpcParams,trackCoeff,lapStatus,posInfo,modelParams,zCurr[i,:]',uPrev)
+                #solveMpcProblem(mdl,mpcSol,mpcCoeff,mpcParams,trackCoeff,lapStatus,posInfo,modelParams,zCurr[i,:]',uPrev)
+                solveMpcProblem_convhull(mdl_convhull,mpcSol,mpcCoeff,mpcParams,trackCoeff,lapStatus,posInfo,modelParams,zCurr[i,:]',uPrev,selectedStates)
+                
                 acc0 = mpcSol.z[2,7]
                 acc_f[1] = mpcSol.z[1,7]
             end
+            if lapStatus.currentLap>n_pf
+            #     println("current s= ",posInfo.s)
+            #     println("current lap= ",lapStatus.currentLap)
+            #     println("selected states= ",selectedStates.selStates)
+            #     println("states cost= ",selectedStates.statesCost)
+            #     println("old safe set= ",oldSS.oldSS[lapStatus.currentIt:lapStatus.currentIt+10,6,lapStatus.currentLap-1])
+            #     println("current control= ", [mpcSol.a_x,mpcSol.d_f])
+            end
+
             log_t_solv[k+1] = toq()
 
             # Send command immediately, only if it is optimal!
@@ -355,6 +398,13 @@ function main()
 
             # Logging
             # ---------------------------
+
+            selStates_log[:,:,lapStatus.currentIt,lapStatus.currentLap] = selectedStates.selStates  # array to log the selected states in every iteration of every lap
+            statesCost_log[:,lapStatus.currentIt,lapStatus.currentLap]  = selectedStates.statesCost # array to log the selected states' costs in every iteration of every lap
+            log_cvx[lapStatus.currentIt,:,lapStatus.currentLap]         = mpcCoeff.c_Vx       
+            log_cvy[lapStatus.currentIt,:,lapStatus.currentLap]         = mpcCoeff.c_Vy       
+            log_cpsi[lapStatus.currentIt,:,lapStatus.currentLap]        = mpcCoeff.c_Psi
+
             k = k + 1       # counter
             log_sol_status[k]       = mpcSol.solverStatus
             log_state[k,:]          = zCurr[i,:]
@@ -377,6 +427,7 @@ function main()
 
             if lapStatus.currentLap > n_pf
                 log_predicted_sol[:,:,lapStatus.currentIt,lapStatus.currentLap] = mpcSol.z
+                #log_epsalpha[:,lapStatus.currentIt,lapStatus.currentLap]    = mpcSol.eps_alpha
             end
 
             # Count one up:
@@ -397,11 +448,17 @@ function main()
                     "cost",log_cost[1:k,:],"curv",log_curv[1:k,:],"coeffCost",log_coeff_Cost,"coeffConst",log_coeff_Const,
                     "x_est",log_state_x[1:k,:],"coeffX",log_coeffX[1:k,:],"coeffY",log_coeffY[1:k,:],"c_Vx",log_c_Vx[1:k,:],
                     "c_Vy",log_c_Vy[1:k,:],"c_Psi",log_c_Psi[1:k,:],"cmd",log_cmd[1:k,:],"step_diff",log_step_diff[1:k,:],
-                    "t_solv",log_t_solv[1:k],"sol_status",log_sol_status[1:k])
+                    "t_solv",log_t_solv[1:k],"sol_status",log_sol_status[1:k],"selectedStates",selectedStates,"one_step_error",log_onestep,
+                    "oldSS",oldSS,"selStates",selStates_log,"statesCost",statesCost_log,"pred_sol",log_predicted_sol,"lapStatus",lapStatus,
+                    "posInfo",posInfo,"eps_alpha",log_epsalpha,"cvx",log_cvx,"cvy",log_cvy,"cpsi",log_cpsi,"oldSS_xy",oldSS.oldSS_xy)
     println("Exiting LMPC node. Saved data to $log_path.")
 
     println("number of same s in path following = ",same_sPF)
     println("number of same s in learning MPC = ",same_sLMPC)
+    # println("one step prediction error= ",log_onestep[1:20,:,lapStatus.currentLap])
+    # println("postions= ",oldSS.oldSS[1:20,6,lapStatus.currentLap])
+    # println("selected States= ",selStates_log[:,6,1:20,lapStatus.currentLap] )
+    # println("states cost= ",statesCost_log[:,1:20,lapStatus.currentLap])
 
 end
 

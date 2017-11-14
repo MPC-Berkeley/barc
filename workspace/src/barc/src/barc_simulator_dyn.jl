@@ -137,7 +137,7 @@ function main()
         # IMU measurements
         if i%2 == 0                 # 50 Hz
             imu_drift   = 1+(t-t0)/100#sin(t/100*pi/2)     # drifts to 1 in 100 seconds (and add random start value 1)
-            rand_yaw = 0.01*randn()
+            rand_yaw = 0.05*randn()
             if rand_yaw > 0.1
                 rand_yaw = 0.1
             elseif rand_yaw<-0.1
@@ -161,7 +161,7 @@ function main()
             imu_data.angular_velocity = Vector3(0,0,psiDot)
             imu_data.header.stamp = t_ros
 
-            rand_accX = 0.001*randn()
+            rand_accX = 0.01*randn()
             if rand_accX > 0.1
                 rand_accX = 0.1
             elseif rand_accX<-0.1
@@ -170,7 +170,7 @@ function main()
 
             imu_data.linear_acceleration.x = diff(z_current[i-1:i,3])[1]/dt - z_current[i,6]*z_current[i,4] #+rand_accX#+ randn()*0.3*1.0
 
-            rand_accY = 0.001*randn()
+            rand_accY = 0.01*randn()
             if rand_accY > 0.1
                 rand_accY = 0.1
             elseif rand_accY<-0.1

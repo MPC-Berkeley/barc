@@ -95,6 +95,263 @@ function eval_sim(code::AbstractString)
     grid()
 end
 
+function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
+
+    log_path_LMPC   = "$(homedir())/simulations/output-LMPC-$(code).jld"
+    
+    Data      = load(log_path_LMPC)
+
+    oldSS_xy       = Data["oldSS_xy"]
+    oldSS          = Data["oldSS"]
+    selectedStates = Data["selectedStates"]
+    selStates      = Data["selStates"]
+    statesCost     = Data["statesCost"]
+    pred_sol       = Data["pred_sol"]
+    one_step_error = Data["one_step_error"]
+    lapStatus      = Data["lapStatus"]
+    posInfo        = Data["posInfo"]
+    eps_alpha      = Data["eps_alpha"]
+    cvx            = Data["cvx"]
+    cvy            = Data["cvy"]
+    cpsi           = Data["cpsi"]
+
+    Nl  = selectedStates.Nl
+    Np  = selectedStates.Np
+
+
+    track = create_track(0.4)
+
+        
+
+    for i = laps
+
+        vx_alpha     = eps_alpha[1,1:200,i]
+        vy_alpha     = eps_alpha[2,1:200,i]
+        psiDot_alpha = eps_alpha[3,1:200,i]
+        ePsi_alpha   = eps_alpha[4,1:200,i]
+        eY_alpha     = eps_alpha[5,1:200,i]
+        s_alpha      = eps_alpha[6,1:200,i]
+
+        cvx1         = cvx[1:200,1,i]
+        cvx2         = cvx[1:200,2,i]
+        cvx3         = cvx[1:200,3,i]
+        cvy1         = cvy[1:200,1,i]
+        cvy2         = cvy[1:200,2,i]
+        cvy3         = cvy[1:200,3,i]
+        cvy4         = cvy[1:200,4,i]
+        cpsi1        = cpsi[1:200,1,i]
+        cpsi2        = cpsi[1:200,2,i]
+        cpsi3        = cpsi[1:200,3,i]
+
+        figure(1)
+        plot(oldSS_xy[:,1,i],oldSS_xy[:,2,i],"og") 
+        plot(oldSS_xy[:,1,i-1],oldSS_xy[:,2,i-1],"ob") 
+        plot(track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")#,track[:,1],track[:,2],"b.")
+        grid("on")
+
+
+
+        t = linspace(1,200,200)
+
+        figure(2)
+
+        subplot(221)
+        plot(t,one_step_error[1:200,1,i])
+        title("One step prediction error for v_x in lap $i")
+        ylim(-0.0001,findmax(one_step_error[1:200,1,i])[1])
+        grid("on")
+
+        subplot(222)
+        plot(t,one_step_error[1:200,2,i])
+        ylim(-0.0001,findmax(one_step_error[1:200,2,i])[1])
+        title("One step prediction error for v_y in lap $i")
+        grid("on")
+
+        subplot(223)
+        plot(t,one_step_error[1:200,3,i])
+        ylim(-0.0001,findmax(one_step_error[1:200,3,i])[1])
+        title("One step prediction error for psiDot in lap $i")
+        grid("on")
+
+        subplot(224)
+        plot(t,one_step_error[1:200,4,i])
+        ylim(-0.0001,findmax(one_step_error[1:200,4,i])[1])
+        title("One step prediction error for ePsi in lap $i")
+        grid("on")
+
+
+        figure(3)
+
+        subplot(221)
+        plot(t,one_step_error[1:200,5,i])
+        ylim(-0.0001,findmax(one_step_error[1:200,5,i])[1])
+        title("One step prediction error for eY in lap $i")
+        grid("on")
+
+        subplot(222)
+        plot(t,one_step_error[1:200,6,i])
+        ylim(-0.0001,findmax(one_step_error[1:200,6,i])[1])
+        title("One step prediction error for s in lap $i")
+        grid("on")
+
+        figure(4)
+
+        subplot(221)
+        plot(t,vx_alpha')
+        #ylim(-0.0001,findmax(one_step_error[1:200,6,i])[1])
+        title("Slack variable for vx in lap $i")
+        grid("on")
+
+        subplot(222)
+        plot(t,vy_alpha')
+        #ylim(-0.0001,findmax(one_step_error[1:200,6,i])[1])
+        title("Slack variable for vy in lap $i")
+        grid("on")
+
+        subplot(223)
+        plot(t,psiDot_alpha')
+        #ylim(-0.0001,findmax(one_step_error[1:200,6,i])[1])
+        title("Slack variable for psiDot in lap $i")
+        grid("on")
+
+        subplot(224)
+        plot(t,ePsi_alpha')
+        #ylim(-0.0001,findmax(one_step_error[1:200,6,i])[1])
+        title("Slack variable for ePsi in lap $i")
+        grid("on")
+
+        figure(5)
+        subplot(221)
+        plot(t,eY_alpha')
+        #ylim(-0.0001,findmax(one_step_error[1:200,6,i])[1])
+        title("Slack variable for eY in lap $i")
+        grid("on")
+
+        subplot(222)
+        plot(t,s_alpha')
+        #ylim(-0.0001,findmax(one_step_error[1:200,6,i])[1])
+        title("Slack variable for s in lap $i")
+        grid("on")
+
+        figure(6)
+
+        subplot(221)
+        plot(t,cvx1,t,cvx2,t,cvx3)
+        legend(["cvx1","cvx2","cvx3"])
+        title("C_Vx in lap $i")
+        grid("on")
+
+        subplot(222)
+        plot(t,cvy1,t,cvy2,t,cvy3,t,cvy4)
+        legend(["cvx1","cvx2","cvx3","cvy4"])
+        title("C_Vy in lap $i")
+        grid("on")
+
+        subplot(223)
+        plot(t,cpsi1,t,cpsi2,t,cpsi3)
+        legend(["cpsi1","cpsi2","cpsi3"])
+        title("C_Psi in lap $i")
+        grid("on")
+
+        if switch == true
+
+
+
+            for j = 2:2000
+
+
+
+                vx_pred     = pred_sol[:,1,j,i]
+                vy_pred     = pred_sol[:,2,j,i]
+                psiDot_pred = pred_sol[:,3,j,i]
+                ePsi_pred   = pred_sol[:,4,j,i]
+                eY_pred     = pred_sol[:,5,j,i]
+                s_pred      = pred_sol[:,6,j,i]
+
+            
+                oldvx       = selStates[1:Np,1,j,i]
+                oldvx2      = selStates[Np+1:2*Np,1,j,i]
+                oldvx3      = selStates[2*Np+1:3*Np,1,j,i]
+                oldvy       = selStates[1:Np,2,j,i]
+                oldvy2      = selStates[Np+1:2*Np,2,j,i]
+                oldvy3      = selStates[2*Np+1:3*Np,2,j,i]
+                oldpsiDot   = selStates[1:Np,3,j,i]
+                oldpsiDot2  = selStates[Np+1:2*Np,3,j,i]
+                oldpsiDot3  = selStates[2*Np+1:3*Np,3,j,i]
+                oldePsi     = selStates[1:Np,4,j,i]
+                oldePsi2    = selStates[Np+1:2*Np,4,j,i]
+                oldePsi3    = selStates[2*Np+1:3*Np,4,j,i]
+                oldeY       = selStates[1:Np,5,j,i]
+                oldeY2      = selStates[Np+1:2*Np,5,j,i]
+                oldeY3      = selStates[2*Np+1:3*Np,5,j,i]
+                olds        = selStates[1:Np,6,j,i]
+                olds2       = selStates[Np+1:2*Np,6,j,i]
+                olds3       = selStates[2*Np+1:3*Np,6,j,i]
+
+
+
+                
+                
+                figure(7)
+                clf()
+                subplot(221)
+                plot(s_pred,vx_pred,"or")
+                plot(olds,oldvx,"b")
+                plot(olds2,oldvx2,"b")
+                plot(olds3,oldvx3,"b")
+                #ylim(findmin(oldTraj.z_pred_sol[:,2,:,i])[1],findmax(oldTraj.z_pred_sol[:,2,:,i])[1])
+                title("State vx in lap $i, iteration $j")
+                grid("on")
+
+                subplot(222)
+                plot(s_pred,vy_pred,"or")
+                plot(olds,oldvy,"b")
+                plot(olds2,oldvy2,"b")
+                plot(olds3,oldvy3,"b")
+                #ylim(findmin(oldTraj.z_pred_sol[:,3,:,i])[1],findmax(oldTraj.z_pred_sol[:,3,:,i])[1])
+                title("State vy in lap $i, iteration $j ")
+                grid("on")
+
+                subplot(223)
+                plot(s_pred,psiDot_pred,"or")
+                plot(olds,oldpsiDot,"b")
+                plot(olds2,oldpsiDot2,"b")
+                plot(olds3,oldpsiDot3,"b")
+                #ylim(findmin(oldTraj.z_pred_sol[:,4,:,i])[1],findmax(oldTraj.z_pred_sol[:,4,:,i])[1])
+                title("State psiDot in lap $i , iteration $j")
+                grid("on")
+
+                subplot(224)
+                plot(s_pred,ePsi_pred,"or")
+                plot(olds,oldePsi,"b")
+                plot(olds2,oldePsi2,"b")
+                plot(olds3,oldePsi3,"b")
+                #ylim(findmin(oldTraj.z_pred_sol[:,4,:,i])[1],findmax(oldTraj.z_pred_sol[:,4,:,i])[1])
+                title("State ePsi in lap $i, iteration $j ")
+                grid("on")
+
+
+                figure(8)
+                clf()
+                subplot(221)
+                plot(s_pred,eY_pred,"or")
+                plot(olds,oldeY,"b")
+                plot(olds2,oldeY2,"b")
+                plot(olds3,oldeY3,"b")
+                #ylim(findmin(oldTraj.z_pred_sol[:,2,:,i])[1],findmax(oldTraj.z_pred_sol[:,2,:,i])[1])
+                title("State eY in lap $i, iteration $j ")
+                grid("on")
+
+
+                
+
+                sleep(3)
+            end
+        end
+    end
+
+end
+
 # THIS FUNCTION EVALUATES DATA THAT WAS RECORDED BY BARC_RECORD.JL
 # ****************************************************************
 function eval_run(code::AbstractString)

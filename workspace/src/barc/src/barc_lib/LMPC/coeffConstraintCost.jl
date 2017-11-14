@@ -16,7 +16,8 @@
 # z[5] = eY
 # z[6] = s
 
-function coeffConstraintCost(oldTraj::OldTrajectory, mpcCoeff::MpcCoeff, posInfo::PosInfo, mpcParams::MpcParams,lapStatus::LapStatus)
+function coeffConstraintCost(oldTraj::OldTrajectory, mpcCoeff::MpcCoeff, posInfo::PosInfo, mpcParams::MpcParams,lapStatus::LapStatus,
+                             selectedStates::SelectedStates,oldSS::SafeSetData)
     # this computes the coefficients for the cost and constraints
 
     # Outputs: 
@@ -26,6 +27,9 @@ function coeffConstraintCost(oldTraj::OldTrajectory, mpcCoeff::MpcCoeff, posInfo
     # Read Inputs
     s               = posInfo.s
     s_target        = posInfo.s_target
+
+    Np              = selectedStates.Np
+    Nl              = selectedStates.Nl
 
     # Parameters
     Order           = mpcCoeff.order                # interpolation order for cost and constraints
@@ -38,11 +42,15 @@ function coeffConstraintCost(oldTraj::OldTrajectory, mpcCoeff::MpcCoeff, posInfo
 
     n_laps_sysID    = 2                             # number of previous laps that are used for sysID
 
-    selected_laps = zeros(Int64,2)
-    selected_laps[1] = lapStatus.currentLap-1                                   # use previous lap
-    selected_laps[2] = lapStatus.currentLap-2                                   # and the one before
-    if lapStatus.currentLap >= 5
-        selected_laps[2] = indmin(oldTraj.oldCost[2:lapStatus.currentLap-2])+1      # and the best from all previous laps
+    selected_laps = zeros(Int64,Nl)
+    # selected_laps[1] = lapStatus.currentLap-1                                   # use previous lap
+    # selected_laps[2] = lapStatus.currentLap-2                                   # and the one before
+    # if lapStatus.currentLap >= 5
+    #     selected_laps[2] = indmin(oldTraj.oldCost[2:lapStatus.currentLap-2])+1      # and the best from all previous laps
+    # end
+
+    for i = 1:Nl
+        selected_laps[i] = lapStatus.currentLap-i    # use previous lap
     end
 
     # Select the old data
@@ -57,7 +65,12 @@ function coeffConstraintCost(oldTraj::OldTrajectory, mpcCoeff::MpcCoeff, posInfo
     olddF           = oldTraj.oldInput[:,2,selected_laps]::Array{Float64,3}
     #olddF           = smooth(olddF,5)
 
+    oldS_safeSet    = oldSS.oldSS[:,6,selected_laps]::Array{Float64,3}
+    #println("safe set= ",oldS_safeSet[1:20,:,:])
+
     N_points        = size(oldTraj.oldTraj,1)     # second dimension = length (=buffersize)
+    N_points2       = size(oldSS.oldSS,1)
+
 
     s_total::Float64        # initialize
     DistS::Array{Float64}   # initialize
@@ -74,8 +87,41 @@ function coeffConstraintCost(oldTraj::OldTrajectory, mpcCoeff::MpcCoeff, posInfo
 
     # Compute the index
     DistS = ( s_total - oldS ).^2
+    DistS2 = ( s_total - oldS_safeSet ).^2
+
 
     idx_s = findmin(DistS,1)[2]              # contains both indices for the closest distances for both oldS !!
+    idx_s2= findmin(DistS2,1)[2]
+
+    off = 1
+    idx_s2 = idx_s2 + off
+
+
+    #######################################################################
+
+    for j = 0:(Nl-1)
+
+        selectedStates.selStates[i=(j*Np)+1:(j+1)*Np,m=1:6] = oldSS.oldSS[i=idx_s2[j+1]-(j*N_points2):idx_s2[j+1]+Np-(j*N_points2)-1,i=1:6,selected_laps[j+1]]  # select the states from lap j...
+        
+        selectedStates.statesCost[i=(j*Np)+1:(j+1)*Np] = 0.7 * oldSS.cost2target[i=idx_s2[j+1]-(j*N_points2):idx_s2[j+1]-(j*N_points2)+Np-1,selected_laps[j+1]]  # and their cost
+
+        # if obstacle.lap_active == true   # if the obstacles are on the track, check if any of the selected states interferes with the propagated obstacle
+
+        #     for n=1:obstacle.n_obs
+        #         ellipse_check = (((selectedStates.selStates[i=(j*Np)+1:(j+1)*Np,6]-obs_prop_s[n])/r_s)^2) + (((selectedStates.selStates[i=(j*Np)+1:(j+1)*Np,5]-obs_prop_ey[n])/r_ey)^2)
+                
+        #         if any(x->x<=1, ellipse_check) == true  # if any of the selected states is in the ellipse
+
+        #             index = find(ellipse_check.<=1)     # find all the states in the ellipse 
+
+        #             mpcParams.Q_obs[i=(j*Np)+(index[1]-obstacle.inv_step)+1:(j+1)*Np] =  10   # and set the values of the weight to 10, so that they are excluded from optimization
+        #         end
+        #     end
+        # end     
+        
+    end
+
+    ##########################################################################
 
     vec_range = (idx_s[1]:idx_s[1]+pLength,idx_s[2]:idx_s[2]+pLength)
 

@@ -55,7 +55,7 @@ function solveMpcProblem(mdl::MpcModel,mpcSol::MpcSol,mpcCoeff::MpcCoeff,mpcPara
     # println("c_Vx           = $(mpcCoeff.c_Vx)")
     # println("c_Vy           = $(mpcCoeff.c_Vy)")
     # println("c_Psi          = $(getvalue(mdl.c_Psi))")
-    # println("ParInt         = $(getvalue(mdl.ParInt))")
+     println("ParInt         = $(getvalue(mdl.ParInt))")
     # #println("u_prev         = $(getvalue(mdl.uPrev))")
     println("Solved, status = $sol_status")
     # println("Predict. to s  = $(sol_z[end,6])")
@@ -72,10 +72,17 @@ function solveMpcProblem(mdl::MpcModel,mpcSol::MpcSol,mpcCoeff::MpcCoeff,mpcPara
     nothing
 end
 
-function solveMpcProblem_pathFollow(mdl::MpcModel_pF,mpcSol::MpcSol,mpcParams::MpcParams,trackCoeff::TrackCoeff,posInfo::PosInfo,modelParams::ModelParams,zCurr::Array{Float64},uPrev::Array{Float64})
+function solveMpcProblem_pathFollow(mdl::MpcModel_pF,mpcSol::MpcSol,mpcParams::MpcParams,trackCoeff::TrackCoeff,posInfo::PosInfo,
+                                    modelParams::ModelParams,zCurr::Array{Float64},uPrev::Array{Float64},lapStatus::LapStatus)
 
     # Load Parameters
     coeffCurvature  = trackCoeff.coeffCurvature::Array{Float64,1}
+    v_ref       = mpcParams.vPathFollowing
+
+
+    z_ref1 = cat(2,zeros(mpcParams.N+1,3),v_ref*ones(mpcParams.N+1,1))
+    z_ref2 = cat(2,zeros(mpcParams.N+1,1),0.2*ones(mpcParams.N+1,1),zeros(mpcParams.N+1,1),v_ref*ones(mpcParams.N+1,1))
+    z_ref3 = cat(2,zeros(mpcParams.N+1,1),-0.2*ones(mpcParams.N+1,1),zeros(mpcParams.N+1,1),v_ref*ones(mpcParams.N+1,1))
 
     sol_status::Symbol
     sol_u::Array{Float64,2}
@@ -85,6 +92,13 @@ function solveMpcProblem_pathFollow(mdl::MpcModel_pF,mpcSol::MpcSol,mpcParams::M
     setvalue(mdl.z0,zCurr)
     setvalue(mdl.uPrev,uPrev)
     setvalue(mdl.coeff,coeffCurvature)
+    if lapStatus.currentLap == 1
+        setvalue(mdl.z_Ref,z_ref1)
+    elseif lapStatus.currentLap == 2
+        setvalue(mdl.z_Ref,z_ref2)
+    elseif lapStatus.currentLap == 3
+        setvalue(mdl.z_Ref,z_ref3)
+    end
 
     # Solve Problem and return solution
     sol_status  = solve(mdl.mdl)
@@ -109,4 +123,45 @@ function solveMpcProblem_pathFollow(mdl::MpcModel_pF,mpcSol::MpcSol,mpcParams::M
     nothing
 end
 
-# Cost structure: costZ, costZTerm, constZTerm, derivCost, controlCost, laneCost
+function solveMpcProblem_convhull(m::MpcModel_convhull,mpcSol::MpcSol,mpcCoeff::MpcCoeff,mpcParams::MpcParams,trackCoeff::TrackCoeff,lapStatus::LapStatus,
+                                  posInfo::PosInfo,modelParams::ModelParams,zCurr::Array{Float64},uPrev::Array{Float64},selectedStates::SelectedStates)
+
+ # Load Parameters
+    sol_status::Symbol
+    sol_u::Array{Float64,2}
+    sol_z::Array{Float64,2}
+
+    selStates       = selectedStates.selStates::Array{Float64,2}
+    statesCost      = selectedStates.statesCost::Array{Float64,1}
+
+    # Update current initial condition, curvature and System ID coefficients
+    setvalue(m.z0,zCurr)
+    setvalue(m.uPrev,uPrev)
+    setvalue(m.c_Vx,mpcCoeff.c_Vx)            # System ID coefficients
+    setvalue(m.c_Vy,mpcCoeff.c_Vy)
+    setvalue(m.c_Psi,mpcCoeff.c_Psi)
+    setvalue(m.coeff,trackCoeff.coeffCurvature)       # Track curvature
+    setvalue(m.selStates,selStates)
+    setvalue(m.statesCost,statesCost)
+
+     # Solve Problem and return solution
+    sol_status  = solve(m.mdl)
+    sol_u       = getvalue(m.u_Ol)
+    sol_z       = getvalue(m.z_Ol)
+
+    # export data
+    mpcSol.a_x = sol_u[1,1]
+    mpcSol.d_f = sol_u[1,2]
+    mpcSol.u   = sol_u
+    mpcSol.z   = sol_z
+    #mpcSol.eps_alpha = getvalue(m.eps_alpha)
+    mpcSol.solverStatus = sol_status
+    mpcSol.cost = zeros(6)
+    mpcSol.cost = [0,getvalue(m.terminalCost),getvalue(m.controlCost),getvalue(m.derivCost),0,getvalue(m.laneCost)]
+    #println("o,terminal,control,deriv,0,lane= ",mpcSol.cost)
+
+    println("Solved, status = $sol_status")
+
+    nothing
+end
+

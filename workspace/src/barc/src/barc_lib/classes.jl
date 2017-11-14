@@ -75,7 +75,11 @@ type MpcParams          # parameters for MPC solver
     Q_term_cost::Float64
     delay_df::Int64
     delay_a::Int64
-    MpcParams(N=0,nz=0,OrderCostCons=0,Q=Float64[],Q_term=Float64[],R=Float64[],vPathFollowing=1.0,QderivZ=Float64[],QderivU=Float64[],Q_term_cost=1.0,delay_df=0,delay_a=0) = new(N,nz,OrderCostCons,Q,Q_term,R,vPathFollowing,QderivZ,QderivU,Q_term_cost,delay_df,delay_a)
+    Q_lane::Float64                # weight on the soft constraint for the lane
+    Q_vel::Float64                 # weight on the soft constraint for the maximum velocity
+
+
+    MpcParams(N=0,nz=0,OrderCostCons=0,Q=Float64[],Q_term=Float64[],R=Float64[],vPathFollowing=1.0,QderivZ=Float64[],QderivU=Float64[],Q_term_cost=1.0,delay_df=0,delay_a=0,Q_lane=1.0,Q_vel=1.0) = new(N,nz,OrderCostCons,Q,Q_term,R,vPathFollowing,QderivZ,QderivU,Q_term_cost,delay_df,delay_a,Q_lane,Q_vel)
 end
 
 type PosInfo            # current position information
@@ -91,7 +95,8 @@ type MpcSol             # MPC solution output
     u::Array{Float64}
     z::Array{Float64}
     cost::Array{Float64}
-    MpcSol(a_x=0.0,d_f=0.0,solverStatus=Symbol(),u=Float64[],z=Float64[],cost=Float64[]) = new(a_x,d_f,solverStatus,u,z,cost)
+    eps_alpha::Array{Float64}
+    MpcSol(a_x=0.0,d_f=0.0,solverStatus=Symbol(),u=Float64[],z=Float64[],cost=Float64[],eps_alpha=Float64[]) = new(a_x,d_f,solverStatus,u,z,cost,eps_alpha)
 end
 
 type TrackCoeff         # coefficients of track
