@@ -1,4 +1,6 @@
 <launch>
+    <arg name="id" />
+
     <!-- ARDUINO -->
     <!--  * encoders and ultrasound sensors -->
     <node pkg="rosserial_python" type="serial_node.py" name="arduino_node" >
@@ -15,17 +17,14 @@
     <!-- CAMERA -->
     <node pkg="uvc_camera" type="uvc_camera_node" name="barc_cam">
         <param name="index" value="0"/>
-        <param name="device" value="/dev/video0"/>
+        <param name="device" value="/dev/video6"/>
         <param name="width" value="640"/>
         <param name="height" value="480"/>
     </node>
-    <node pkg="image_transport" type="republish" name="compressed_transformation"
-        args="in:=/image_raw compressed out:=/image_transformed" />
-
     
     <!-- RECORD -->
     <node pkg="barc" type="record_experiment.py" name="record_experiment" output="screen">
-        <param name="experiment_name" value="redone_steering2-1575" />
+        <param name="experiment_name" value="$(arg id)" />
         <param name="camera_on" value="true" />
     </node>
 

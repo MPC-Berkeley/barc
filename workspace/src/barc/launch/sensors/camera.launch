@@ -6,8 +6,4 @@
         <param name="width" value="640"/>
         <param name="height" value="480"/>
     </node>
-
-    <node pkg="image_transport" type="republish" name="compressed_transformation"
-        args="in:=/image_raw compressed out:=/image_transformed" />
-
 </launch>
