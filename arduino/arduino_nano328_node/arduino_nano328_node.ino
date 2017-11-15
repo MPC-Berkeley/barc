@@ -13,19 +13,11 @@
 # --------------------------------------------------------------------------- */
 
 
-/* ---------------------------------------------------------------------------
-WARNING:
-* Be sure to have all ultrasound sensors plugged in, otherwise the pins may get stuck in
-  some float voltage
-# --------------------------------------------------------------------------- */
-
 // include libraries
 #include <ros.h>
-#include <barc/Ultrasound.h>
 #include <barc/Encoder.h>
 #include <barc/ECU.h>
 #include <Servo.h>
-//#include "Maxbotix.h"
 #include <EnableInterrupt.h>
 
 /**************************************************************************
@@ -167,13 +159,11 @@ volatile unsigned long ecu_t0;
 barc::ECU ecu;
 barc::ECU rc_inputs;
 barc::Encoder encoder;
-barc::Ultrasound ultrasound;
 
 ros::NodeHandle nh;
 
 ros::Publisher pub_encoder("encoder", &encoder);
 ros::Publisher pub_rc_inputs("rc_inputs", &rc_inputs);
-ros::Publisher pub_ultrasound("ultrasound", &ultrasound);
 ros::Subscriber<barc::ECU> sub_ecu("ecu_pwm", ecuCallback);
 
 /**************************************************************************
@@ -192,7 +182,6 @@ void setup()
   // Publish and subscribe to topics
   nh.advertise(pub_encoder);
   nh.advertise(pub_rc_inputs);
-  nh.advertise(pub_ultrasound);
   nh.subscribe(sub_ecu);
 
   // Arming ESC, 1 sec delay for arming and ROS

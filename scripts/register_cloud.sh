@@ -1,6 +1,5 @@
 #!/bin/bash
 
-
 export DATOR_SERVER='http://dator.forge9.com';
 sudo service cron stop;
 rm -f $HOME/cloud.cfg;

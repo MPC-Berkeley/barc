@@ -11,6 +11,7 @@ set shiftwidth=4
 " on pressing tab, insert 4 spaces
 set expandtab 
 set mouse=a
+set listchars=tab:>-
 
 autocmd BufNewFile,BufReadPost *.ino,*.pde set filetype=cpp
 autocmd BufNewFile,BufReadPost *.launch set filetype=xml

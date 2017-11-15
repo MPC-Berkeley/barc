@@ -29,9 +29,9 @@ alias reset_wifi_rules='sudo rm /etc/udev/rules.d/70-persistent-net.rules'
 alias reset_database='source ~/barc/scripts/reset_database.sh'
 alias set_init_ap='sudo cp $HOME/barc/scripts/accesspoint.conf /etc/init/accesspoint.conf'
 alias register_to_cloud='source ~/barc/scripts/register_cloud.sh'
-alias upload_to_cloud='python ~/barc/workspace/src/data_service/scripts/upload.py'
+alias upload_to_cloud='sudo chown -R odroid:odroid $HOME/data_rep; python ~/barc/workspace/src/data_service/scripts/upload.py'
 alias rebuild_arduino_lib='cd $HOME/sketchbook/libraries; rm -rf ros_lib; rosrun rosserial_arduino make_libraries.py .; cd -'
-alias register_user_locally='reset_database; roslaunch data_service service.launch'
+alias register_user_locally='source $HOME/barc/scripts/team_name.sh; roslaunch data_service service.launch'
 
 # set configuration script for vim text editor
 cp ~/barc/scripts/vimrc ~/.vimrc
