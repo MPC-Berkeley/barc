@@ -1,0 +1,27 @@
+#!/bin/sh -e
+#
+# rc.local
+#
+# This script is executed at the end of each multiuser runlevel.
+# Make sure that the script will "" on success or any other
+# value on error.
+#
+# In order to enable or disable this script just change the execution
+# bits.
+#
+# By default this script does nothing.
+
+
+if [ -f /aafirstboot ]; then /aafirstboot start ; fi
+
+/home/odroid/.virtualenvs/barc/bin/supervisord -c /home/odroid/barc/Dator/supervisor.conf
+
+sleep 15
+/usr/bin/create_ap -g 10.0.0.1 wlan1 wlan0 barc-traxxas-01 1234567890
+
+#sudo iptables -t nat -A POSTROUTING -o eth0 -j MASQUERADE
+#sudo iptables -A FORWARD -i eth0 -o wlan0 -m state --state RELATED,ESTABLISHED -j ACCEPT
+#sudo iptables -A FORWARD -i wlan0 -o eth0 -j ACCEPT
+
+exit 0
+
