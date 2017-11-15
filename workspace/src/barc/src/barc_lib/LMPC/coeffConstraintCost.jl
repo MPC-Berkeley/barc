@@ -103,7 +103,7 @@ function coeffConstraintCost(oldTraj::OldTrajectory, mpcCoeff::MpcCoeff, posInfo
 
         selectedStates.selStates[i=(j*Np)+1:(j+1)*Np,m=1:6] = oldSS.oldSS[i=idx_s2[j+1]-(j*N_points2):idx_s2[j+1]+Np-(j*N_points2)-1,i=1:6,selected_laps[j+1]]  # select the states from lap j...
         
-        selectedStates.statesCost[i=(j*Np)+1:(j+1)*Np] = 0.7 * oldSS.cost2target[i=idx_s2[j+1]-(j*N_points2):idx_s2[j+1]-(j*N_points2)+Np-1,selected_laps[j+1]]  # and their cost
+        selectedStates.statesCost[i=(j*Np)+1:(j+1)*Np] = 0.6 * oldSS.cost2target[i=idx_s2[j+1]-(j*N_points2):idx_s2[j+1]-(j*N_points2)+Np-1,selected_laps[j+1]]  # and their cost
 
         # if obstacle.lap_active == true   # if the obstacles are on the track, check if any of the selected states interferes with the propagated obstacle
 
@@ -192,7 +192,7 @@ function coeffConstraintCost(oldTraj::OldTrajectory, mpcCoeff::MpcCoeff, posInfo
     n_sys_ID_post = 60              # steps of sysID after current point in previous laps
     n_sys_ID_prev_c = 30            # steps of sysID before current point in current lap
 
-    freq_ratio = 4                  # ratio between the frequency at which the informations about the position are updated in the topic and the frequency at which the controller calculates and updates the control input
+    freq_ratio = 5                  # ratio between the frequency at which the informations about the position are updated in the topic and the frequency at which the controller calculates and updates the control input
     # vec_range_ID    = ()
     # for i=1:n_laps_sysID
     #     vec_range_ID    = tuple(vec_range_ID...,idx_s[i]-n_prev:idx_s[i]+n_ahead)     # related index range

@@ -114,34 +114,50 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
     cvx            = Data["cvx"]
     cvy            = Data["cvy"]
     cpsi           = Data["cpsi"]
+    input          = Data["input"]
+    cost           = Data["mpcCost"]
+    #status         = Data["status"]
 
-    Nl  = selectedStates.Nl
-    Np  = selectedStates.Np
+    Nl         = selectedStates.Nl
+    Np         = selectedStates.Np
+    buffersize = 5000
+    currentIt  = lapStatus.currentIt
+
+    flag = zeros(2)
 
 
     track = create_track(0.4)
 
-        
-
+    
     for i = laps
 
-        vx_alpha     = eps_alpha[1,1:200,i]
-        vy_alpha     = eps_alpha[2,1:200,i]
-        psiDot_alpha = eps_alpha[3,1:200,i]
-        ePsi_alpha   = eps_alpha[4,1:200,i]
-        eY_alpha     = eps_alpha[5,1:200,i]
-        s_alpha      = eps_alpha[6,1:200,i]
+        # for index=1:buffersize
+        #     if status[index,i] == :UserLimit
+        #         flag[1]=index
+        #         flag[2]= i
 
-        cvx1         = cvx[1:200,1,i]
-        cvx2         = cvx[1:200,2,i]
-        cvx3         = cvx[1:200,3,i]
-        cvy1         = cvy[1:200,1,i]
-        cvy2         = cvy[1:200,2,i]
-        cvy3         = cvy[1:200,3,i]
-        cvy4         = cvy[1:200,4,i]
-        cpsi1        = cpsi[1:200,1,i]
-        cpsi2        = cpsi[1:200,2,i]
-        cpsi3        = cpsi[1:200,3,i]
+        #         break
+        #     end
+        # end
+
+
+        vx_alpha     = eps_alpha[1,1:currentIt,i]
+        vy_alpha     = eps_alpha[2,1:currentIt,i]
+        psiDot_alpha = eps_alpha[3,1:currentIt,i]
+        ePsi_alpha   = eps_alpha[4,1:currentIt,i]
+        eY_alpha     = eps_alpha[5,1:currentIt,i]
+        s_alpha      = eps_alpha[6,1:currentIt,i]
+
+        cvx1         = cvx[1:currentIt,1,i]
+        cvx2         = cvx[1:currentIt,2,i]
+        cvx3         = cvx[1:currentIt,3,i]
+        cvy1         = cvy[1:currentIt,1,i]
+        cvy2         = cvy[1:currentIt,2,i]
+        cvy3         = cvy[1:currentIt,3,i]
+        cvy4         = cvy[1:currentIt,4,i]
+        cpsi1        = cpsi[1:currentIt,1,i]
+        cpsi2        = cpsi[1:currentIt,2,i]
+        cpsi3        = cpsi[1:currentIt,3,i]
 
         figure(1)
         plot(oldSS_xy[:,1,i],oldSS_xy[:,2,i],"og") 
@@ -151,31 +167,36 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
 
 
 
-        t = linspace(1,200,200)
+        t = linspace(1,currentIt,currentIt)
 
         figure(2)
 
         subplot(221)
-        plot(t,one_step_error[1:200,1,i])
+        plot(t,one_step_error[1:currentIt,1,i],t,input[1:currentIt,1,i],"-*",t,input[1:currentIt,2,i],"-+")
+        # annotate("UserLimit",xy=[flag[1],one_step_error[flag[1],1,flag[2]]],xytext=[flag[1]+0.1,one_step_error[flag[1],1,flag[2]]+0.1],xycoords="data",arrowprops=["facecolor"=>"black"])
         title("One step prediction error for v_x in lap $i")
-        ylim(-0.0001,findmax(one_step_error[1:200,1,i])[1])
+        #ylim(-0.0001,findmax(one_step_error[1:currentIt,1,i])[1])
+        legend(["ospe","a_x","d_f"])
         grid("on")
 
         subplot(222)
-        plot(t,one_step_error[1:200,2,i])
-        ylim(-0.0001,findmax(one_step_error[1:200,2,i])[1])
+        plot(t,one_step_error[1:currentIt,2,i],t,input[1:currentIt,1,i],"-*",t,input[1:currentIt,2,i],"-+")
+        #ylim(-0.0001,findmax(one_step_error[1:currentIt,2,i])[1])
+        legend(["ospe","a_x","d_f"])
         title("One step prediction error for v_y in lap $i")
         grid("on")
 
         subplot(223)
-        plot(t,one_step_error[1:200,3,i])
-        ylim(-0.0001,findmax(one_step_error[1:200,3,i])[1])
+        plot(t,one_step_error[1:currentIt,3,i],t,input[1:currentIt,1,i],"-*",t,input[1:currentIt,2,i],"-+")
+        #ylim(-0.0001,findmax(one_step_error[1:currentIt,3,i])[1])
+        legend(["ospe","a_x","d_f"])
         title("One step prediction error for psiDot in lap $i")
         grid("on")
 
         subplot(224)
-        plot(t,one_step_error[1:200,4,i])
-        ylim(-0.0001,findmax(one_step_error[1:200,4,i])[1])
+        plot(t,one_step_error[1:currentIt,4,i],t,input[1:currentIt,1,i],"-*",t,input[1:currentIt,2,i],"-+")
+        #ylim(-0.0001,findmax(one_step_error[1:currentIt,4,i])[1])
+        legend(["ospe","a_x","d_f"])
         title("One step prediction error for ePsi in lap $i")
         grid("on")
 
@@ -183,53 +204,60 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
         figure(3)
 
         subplot(221)
-        plot(t,one_step_error[1:200,5,i])
-        ylim(-0.0001,findmax(one_step_error[1:200,5,i])[1])
+        plot(t,one_step_error[1:currentIt,5,i],t,input[1:currentIt,1,i],"-*",t,input[1:currentIt,2,i],"-+")
+        #ylim(-0.0001,findmax(one_step_error[1:currentIt,5,i])[1])
+        legend(["ospe","a_x","d_f"])
         title("One step prediction error for eY in lap $i")
         grid("on")
 
         subplot(222)
-        plot(t,one_step_error[1:200,6,i])
-        ylim(-0.0001,findmax(one_step_error[1:200,6,i])[1])
+        plot(t,one_step_error[1:currentIt,6,i],t,input[1:currentIt,1,i],"-*",t,input[1:currentIt,2,i],"-+")
+        #ylim(-0.0001,findmax(one_step_error[1:currentIt,6,i])[1])
+        legend(["ospe","a_x","d_f"])
         title("One step prediction error for s in lap $i")
+        grid("on")
+
+        subplot(223)
+        plot(t,oldSS.oldSS[1:currentIt,6,i],"-*")
+        title("s in curren lap (to check repetitions)")
         grid("on")
 
         figure(4)
 
         subplot(221)
         plot(t,vx_alpha')
-        #ylim(-0.0001,findmax(one_step_error[1:200,6,i])[1])
+        #ylim(-0.0001,findmax(one_step_error[1:currentIt,6,i])[1])
         title("Slack variable for vx in lap $i")
         grid("on")
 
         subplot(222)
         plot(t,vy_alpha')
-        #ylim(-0.0001,findmax(one_step_error[1:200,6,i])[1])
+        #ylim(-0.0001,findmax(one_step_error[1:currentIt,6,i])[1])
         title("Slack variable for vy in lap $i")
         grid("on")
 
         subplot(223)
         plot(t,psiDot_alpha')
-        #ylim(-0.0001,findmax(one_step_error[1:200,6,i])[1])
+        #ylim(-0.0001,findmax(one_step_error[1:currentIt,6,i])[1])
         title("Slack variable for psiDot in lap $i")
         grid("on")
 
         subplot(224)
         plot(t,ePsi_alpha')
-        #ylim(-0.0001,findmax(one_step_error[1:200,6,i])[1])
+        #ylim(-0.0001,findmax(one_step_error[1:currentIt,6,i])[1])
         title("Slack variable for ePsi in lap $i")
         grid("on")
 
         figure(5)
         subplot(221)
         plot(t,eY_alpha')
-        #ylim(-0.0001,findmax(one_step_error[1:200,6,i])[1])
+        #ylim(-0.0001,findmax(one_step_error[1:currentIt,6,i])[1])
         title("Slack variable for eY in lap $i")
         grid("on")
 
         subplot(222)
         plot(t,s_alpha')
-        #ylim(-0.0001,findmax(one_step_error[1:200,6,i])[1])
+        #ylim(-0.0001,findmax(one_step_error[1:currentIt,6,i])[1])
         title("Slack variable for s in lap $i")
         grid("on")
 
@@ -253,6 +281,13 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
         title("C_Psi in lap $i")
         grid("on")
 
+        figure(7)
+        plot(t,cost[1:currentIt,2,i],t,cost[1:currentIt,3,i],t,cost[1:currentIt,4,i],t,cost[1:currentIt,6,i])
+        legend(["terminal Cost","control Cost","derivative Cost","lane Cost"])
+        title("Costs of the Mpc")
+        grid("on")
+
+
         if switch == true
 
 
@@ -271,34 +306,34 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
             
                 oldvx       = selStates[1:Np,1,j,i]
                 oldvx2      = selStates[Np+1:2*Np,1,j,i]
-                oldvx3      = selStates[2*Np+1:3*Np,1,j,i]
+                #oldvx3      = selStates[2*Np+1:3*Np,1,j,i]
                 oldvy       = selStates[1:Np,2,j,i]
                 oldvy2      = selStates[Np+1:2*Np,2,j,i]
-                oldvy3      = selStates[2*Np+1:3*Np,2,j,i]
+                #oldvy3      = selStates[2*Np+1:3*Np,2,j,i]
                 oldpsiDot   = selStates[1:Np,3,j,i]
                 oldpsiDot2  = selStates[Np+1:2*Np,3,j,i]
-                oldpsiDot3  = selStates[2*Np+1:3*Np,3,j,i]
+                #oldpsiDot3  = selStates[2*Np+1:3*Np,3,j,i]
                 oldePsi     = selStates[1:Np,4,j,i]
                 oldePsi2    = selStates[Np+1:2*Np,4,j,i]
-                oldePsi3    = selStates[2*Np+1:3*Np,4,j,i]
+                #oldePsi3    = selStates[2*Np+1:3*Np,4,j,i]
                 oldeY       = selStates[1:Np,5,j,i]
                 oldeY2      = selStates[Np+1:2*Np,5,j,i]
-                oldeY3      = selStates[2*Np+1:3*Np,5,j,i]
+                #oldeY3      = selStates[2*Np+1:3*Np,5,j,i]
                 olds        = selStates[1:Np,6,j,i]
                 olds2       = selStates[Np+1:2*Np,6,j,i]
-                olds3       = selStates[2*Np+1:3*Np,6,j,i]
+                #olds3       = selStates[2*Np+1:3*Np,6,j,i]
 
 
 
                 
                 
-                figure(7)
+                figure(8)
                 clf()
                 subplot(221)
                 plot(s_pred,vx_pred,"or")
                 plot(olds,oldvx,"b")
                 plot(olds2,oldvx2,"b")
-                plot(olds3,oldvx3,"b")
+                #plot(olds3,oldvx3,"b")
                 #ylim(findmin(oldTraj.z_pred_sol[:,2,:,i])[1],findmax(oldTraj.z_pred_sol[:,2,:,i])[1])
                 title("State vx in lap $i, iteration $j")
                 grid("on")
@@ -307,7 +342,7 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
                 plot(s_pred,vy_pred,"or")
                 plot(olds,oldvy,"b")
                 plot(olds2,oldvy2,"b")
-                plot(olds3,oldvy3,"b")
+                #plot(olds3,oldvy3,"b")
                 #ylim(findmin(oldTraj.z_pred_sol[:,3,:,i])[1],findmax(oldTraj.z_pred_sol[:,3,:,i])[1])
                 title("State vy in lap $i, iteration $j ")
                 grid("on")
@@ -316,7 +351,7 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
                 plot(s_pred,psiDot_pred,"or")
                 plot(olds,oldpsiDot,"b")
                 plot(olds2,oldpsiDot2,"b")
-                plot(olds3,oldpsiDot3,"b")
+                #plot(olds3,oldpsiDot3,"b")
                 #ylim(findmin(oldTraj.z_pred_sol[:,4,:,i])[1],findmax(oldTraj.z_pred_sol[:,4,:,i])[1])
                 title("State psiDot in lap $i , iteration $j")
                 grid("on")
@@ -325,19 +360,19 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
                 plot(s_pred,ePsi_pred,"or")
                 plot(olds,oldePsi,"b")
                 plot(olds2,oldePsi2,"b")
-                plot(olds3,oldePsi3,"b")
+                #plot(olds3,oldePsi3,"b")
                 #ylim(findmin(oldTraj.z_pred_sol[:,4,:,i])[1],findmax(oldTraj.z_pred_sol[:,4,:,i])[1])
                 title("State ePsi in lap $i, iteration $j ")
                 grid("on")
 
 
-                figure(8)
+                figure(9)
                 clf()
                 subplot(221)
                 plot(s_pred,eY_pred,"or")
                 plot(olds,oldeY,"b")
                 plot(olds2,oldeY2,"b")
-                plot(olds3,oldeY3,"b")
+                #plot(olds3,oldeY3,"b")
                 #ylim(findmin(oldTraj.z_pred_sol[:,2,:,i])[1],findmax(oldTraj.z_pred_sol[:,2,:,i])[1])
                 title("State eY in lap $i, iteration $j ")
                 grid("on")

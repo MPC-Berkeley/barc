@@ -95,7 +95,8 @@ function main()
 
     mdl          = MpcModel(mpcParams,mpcCoeff,modelParams,trackCoeff)  
     mdl_pF       = MpcModel_pF(mpcParams_pF,modelParams,trackCoeff)
-    mdl_convhull =  MpcModel_convhull(mpcParams,mpcCoeff,modelParams,trackCoeff,selectedStates)
+    mdl_convhull = MpcModel_convhull(mpcParams,mpcCoeff,modelParams,trackCoeff,selectedStates)
+    mdl_test     = MpcModel_test(mpcParams,mpcCoeff,modelParams,trackCoeff,selectedStates)
 
 
     max_N = max(mpcParams.N,mpcParams_pF.N)
@@ -135,6 +136,9 @@ function main()
     log_cvx                     = zeros(buffersize,3,30)
     log_cvy                     = zeros(buffersize,4,30)
     log_cpsi                    = zeros(buffersize,3,30)
+    log_input                   = zeros(buffersize,2,30)
+    log_status                  = Array(Symbol,buffersize,30)
+    log_mpcCost                 = zeros(buffersize,6,30)
 
     acc_f = [0.0]
 
@@ -302,7 +306,7 @@ function main()
                     setvalue(mdl_convhull.z_Ol[1:mpcParams.N+1,5],mpcSol.z[1:mpcParams.N+1,2])
                     setvalue(mdl_convhull.z_Ol[1:mpcParams.N+1,4],mpcSol.z[1:mpcParams.N+1,3])
                     setvalue(mdl_convhull.u_Ol,mpcSol.u[1:mpcParams.N,:])
-                    setvalue(mdl_convhull.alpha[:],(1/(selectedStates.Nl*selectedStates.Np))*ones(selectedStates.Nl*selectedStates.Np))
+                    setvalue(mdl_convhull.alpha[:],1*ones(selectedStates.Nl*selectedStates.Np))#(1/(selectedStates.Nl*selectedStates.Np))*ones(selectedStates.Nl*selectedStates.Np))
                 elseif lapStatus.currentLap > n_pf+1
                     setvalue(mdl.z_Ol[:,6],mpcSol.z[:,6]-posInfo.s_target)
                     setvalue(mdl_convhull.z_Ol[:,6],mpcSol.z[:,6]-posInfo.s_target)
@@ -317,7 +321,7 @@ function main()
 
             #  ======================================= Calculate input =======================================
             #println("*** NEW ITERATION # ",i," ***")
-            println("Current Lap: ", lapStatus.currentLap, ", It: ", lapStatus.currentIt, ", s: ",posInfo.s)
+            println("Current Lap: ", lapStatus.currentLap, ", It: ", lapStatus.currentIt)#, ", s: ",posInfo.s)
             #println("State Nr. ", i, "    = ", z_est)
             #println("s               = $(posInfo.s)")
             #println("s_total         = $(posInfo.s%posInfo.s_target)")
@@ -355,8 +359,9 @@ function main()
                 #mpcCoeff.c_Vx[3] = max(mpcCoeff.c_Vx[3],0.1)
                 zCurr[i,7] = acc0
                 #solveMpcProblem(mdl,mpcSol,mpcCoeff,mpcParams,trackCoeff,lapStatus,posInfo,modelParams,zCurr[i,:]',uPrev)
-                solveMpcProblem_convhull(mdl_convhull,mpcSol,mpcCoeff,mpcParams,trackCoeff,lapStatus,posInfo,modelParams,zCurr[i,:]',uPrev,selectedStates)
-                
+                #solveMpcProblem_convhull(mdl_convhull,mpcSol,mpcCoeff,mpcParams,trackCoeff,lapStatus,posInfo,modelParams,zCurr[i,:]',uPrev,selectedStates)
+                solveMpcProblem_test(mdl_test,mpcSol,mpcCoeff,mpcParams,trackCoeff,lapStatus,posInfo,modelParams,zCurr[i,:]',uPrev,selectedStates)
+
                 acc0 = mpcSol.z[2,7]
                 acc_f[1] = mpcSol.z[1,7]
             end
@@ -370,6 +375,7 @@ function main()
             end
 
             log_t_solv[k+1] = toq()
+            #println("time= ",log_t_solv[k+1])
 
             # Send command immediately, only if it is optimal!
             #if mpcSol.solverStatus == :Optimal
@@ -404,6 +410,9 @@ function main()
             log_cvx[lapStatus.currentIt,:,lapStatus.currentLap]         = mpcCoeff.c_Vx       
             log_cvy[lapStatus.currentIt,:,lapStatus.currentLap]         = mpcCoeff.c_Vy       
             log_cpsi[lapStatus.currentIt,:,lapStatus.currentLap]        = mpcCoeff.c_Psi
+            log_input[lapStatus.currentIt,:,lapStatus.currentLap]       = uCurr[i,:] 
+            log_mpcCost[lapStatus.currentIt,:,lapStatus.currentLap]     = mpcSol.cost
+            #log_status[lapStatus.currentIt,lapStatus.currentLap]        = mpcSol.solverStatus
 
             k = k + 1       # counter
             log_sol_status[k]       = mpcSol.solverStatus
@@ -450,7 +459,9 @@ function main()
                     "c_Vy",log_c_Vy[1:k,:],"c_Psi",log_c_Psi[1:k,:],"cmd",log_cmd[1:k,:],"step_diff",log_step_diff[1:k,:],
                     "t_solv",log_t_solv[1:k],"sol_status",log_sol_status[1:k],"selectedStates",selectedStates,"one_step_error",log_onestep,
                     "oldSS",oldSS,"selStates",selStates_log,"statesCost",statesCost_log,"pred_sol",log_predicted_sol,"lapStatus",lapStatus,
-                    "posInfo",posInfo,"eps_alpha",log_epsalpha,"cvx",log_cvx,"cvy",log_cvy,"cpsi",log_cpsi,"oldSS_xy",oldSS.oldSS_xy)
+                    "posInfo",posInfo,"eps_alpha",log_epsalpha,"cvx",log_cvx,"cvy",log_cvy,"cpsi",log_cpsi,"oldSS_xy",oldSS.oldSS_xy,"input",log_input,
+                    "mpcCost",log_mpcCost)
+                    #,"status",log_status)
     println("Exiting LMPC node. Saved data to $log_path.")
 
     println("number of same s in path following = ",same_sPF)
