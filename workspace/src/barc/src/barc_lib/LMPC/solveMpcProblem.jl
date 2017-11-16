@@ -158,7 +158,10 @@ function solveMpcProblem_convhull(m::MpcModel_convhull,mpcSol::MpcSol,mpcCoeff::
     mpcSol.solverStatus = sol_status
     mpcSol.cost = zeros(6)
     mpcSol.cost = [0,getvalue(m.terminalCost),getvalue(m.controlCost),getvalue(m.derivCost),0,getvalue(m.laneCost)]
-    #println("o,terminal,control,deriv,0,lane= ",mpcSol.cost)
+
+    mpcSol.costSlack = zeros(6)
+    mpcSol.costSlack = [getvalue(m.slackVx),getvalue(m.slackVy),getvalue(m.slackPsidot),getvalue(m.slackEpsi),getvalue(m.slackEy),getvalue(m.slackS)]
+
 
     println("Solved, status = $sol_status")
 

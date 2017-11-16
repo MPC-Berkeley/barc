@@ -47,13 +47,14 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_pF::MpcParams,track
                               posInfo::PosInfo,oldTraj::OldTrajectory,mpcCoeff::MpcCoeff,lapStatus::LapStatus,buffersize::Int64,
                               obstacle::Obstacle,selectedStates::SelectedStates,oldSS::SafeSetData)
 
-    selectedStates.Np           = 30                            # Number of points to take from each previous trajectory to build the convex hull
+    selectedStates.Np           = 16                            # Number of points to take from each previous trajectory to build the convex hull
     selectedStates.Nl           = 2                             # Number of previous laps to include in the convex hull
     Nl                          = selectedStates.Nl
     selectedStates.selStates    = zeros(Nl*selectedStates.Np,6)  
     selectedStates.statesCost   = zeros(Nl*selectedStates.Np)
+    selectedStates.version      = false
 
-    mpcParams.N                 = 16
+    mpcParams.N                 = 12
     mpcParams.Q                 = [5.0,0.0,0.0,0.1,50.0,0.0]   # Q (only for path following mode)
     mpcParams.vPathFollowing    = 0.9                           # reference speed for first lap of path following
     mpcParams.Q_term            = 1.0*[20.0,1.0,10.0,20.0,50.0]   # weights for terminal constraints (LMPC, for xDot,yDot,psiDot,ePsi,eY)
@@ -65,6 +66,7 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_pF::MpcParams,track
     mpcParams.delay_a           = 1                             # acceleration delay
     mpcParams.Q_lane            = 1                      # weight on the soft constraint for the lane
     mpcParams.Q_vel             = 1                 # weight on the soft constraint for the maximum velocity
+    mpcParams.Q_slack           = 10.0*[2.0,2.0,1.0,2.0,5.0,5.0]  #vx,vy,psiDot,ePsi,eY,s
 
 
 

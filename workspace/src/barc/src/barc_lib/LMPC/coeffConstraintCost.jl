@@ -93,7 +93,7 @@ function coeffConstraintCost(oldTraj::OldTrajectory, mpcCoeff::MpcCoeff, posInfo
     idx_s = findmin(DistS,1)[2]              # contains both indices for the closest distances for both oldS !!
     idx_s2= findmin(DistS2,1)[2]
 
-    off = 1
+    off = 3
     idx_s2 = idx_s2 + off
 
 
@@ -103,7 +103,7 @@ function coeffConstraintCost(oldTraj::OldTrajectory, mpcCoeff::MpcCoeff, posInfo
 
         selectedStates.selStates[i=(j*Np)+1:(j+1)*Np,m=1:6] = oldSS.oldSS[i=idx_s2[j+1]-(j*N_points2):idx_s2[j+1]+Np-(j*N_points2)-1,i=1:6,selected_laps[j+1]]  # select the states from lap j...
         
-        selectedStates.statesCost[i=(j*Np)+1:(j+1)*Np] = 0.6 * oldSS.cost2target[i=idx_s2[j+1]-(j*N_points2):idx_s2[j+1]-(j*N_points2)+Np-1,selected_laps[j+1]]  # and their cost
+        selectedStates.statesCost[i=(j*Np)+1:(j+1)*Np] = oldSS.cost2target[i=idx_s2[j+1]-(j*N_points2):idx_s2[j+1]-(j*N_points2)+Np-1,selected_laps[j+1]]  # and their cost
 
         # if obstacle.lap_active == true   # if the obstacles are on the track, check if any of the selected states interferes with the propagated obstacle
 
@@ -122,58 +122,59 @@ function coeffConstraintCost(oldTraj::OldTrajectory, mpcCoeff::MpcCoeff, posInfo
     end
 
     ##########################################################################
+    if selectedStates.version == true
+        vec_range = (idx_s[1]:idx_s[1]+pLength,idx_s[2]:idx_s[2]+pLength)
 
-    vec_range = (idx_s[1]:idx_s[1]+pLength,idx_s[2]:idx_s[2]+pLength)
+        # Create the vectors used for the interpolation
+        # bS_vector contains the s-values for later interpolation
+        bS_Vector       = zeros(pLength+1,2)
+        for i=1:pLength+1
+            bS_Vector[i,1] = oldS[vec_range[1][i]]
+            bS_Vector[i,2] = oldS[vec_range[2][i]]
+        end
+        # if norm(bS_Vector[1,1]-s_total) > 0.3 || norm(bS_Vector[1,2]-s_total) > 0.3
+        #     warn("Couldn't find a close point to current s.")
+        # end
 
-    # Create the vectors used for the interpolation
-    # bS_vector contains the s-values for later interpolation
-    bS_Vector       = zeros(pLength+1,2)
-    for i=1:pLength+1
-        bS_Vector[i,1] = oldS[vec_range[1][i]]
-        bS_Vector[i,2] = oldS[vec_range[2][i]]
-    end
-    # if norm(bS_Vector[1,1]-s_total) > 0.3 || norm(bS_Vector[1,2]-s_total) > 0.3
-    #     warn("Couldn't find a close point to current s.")
-    # end
+        # The states are parametrized with resprect to the curvilinear abscissa,
+        # so we select the point used for the interpolation. Need to subtract an
+        # offset to be coherent with the MPC formulation
+        s_forinterpy   = bS_Vector
+        if s_total < 0
+            s_forinterpy += s_target
+        end
 
-    # The states are parametrized with resprect to the curvilinear abscissa,
-    # so we select the point used for the interpolation. Need to subtract an
-    # offset to be coherent with the MPC formulation
-    s_forinterpy   = bS_Vector
-    if s_total < 0
-        s_forinterpy += s_target
-    end
+        # Create the Matrices for the interpolation
+        MatrixInterp = zeros(pLength+1,Order+1,2)
 
-    # Create the Matrices for the interpolation
-    MatrixInterp = zeros(pLength+1,Order+1,2)
+        for k = 0:Order
+            MatrixInterp[:,Order+1-k,:] = s_forinterpy[:,:].^k
+        end
+        
+        # Compute the coefficients
+        #coeffConst = zeros(Order+1,2,5)
+        for i=1:2
+            mpcCoeff.coeffConst[:,i,1]    = MatrixInterp[:,:,i]\oldxDot[vec_range[i]]
+            mpcCoeff.coeffConst[:,i,2]    = MatrixInterp[:,:,i]\oldyDot[vec_range[i]]
+            mpcCoeff.coeffConst[:,i,3]    = MatrixInterp[:,:,i]\oldpsiDot[vec_range[i]]
+            mpcCoeff.coeffConst[:,i,4]    = MatrixInterp[:,:,i]\oldePsi[vec_range[i]]
+            mpcCoeff.coeffConst[:,i,5]    = MatrixInterp[:,:,i]\oldeY[vec_range[i]]
+        end
 
-    for k = 0:Order
-        MatrixInterp[:,Order+1-k,:] = s_forinterpy[:,:].^k
-    end
-    
-    # Compute the coefficients
-    #coeffConst = zeros(Order+1,2,5)
-    for i=1:2
-        mpcCoeff.coeffConst[:,i,1]    = MatrixInterp[:,:,i]\oldxDot[vec_range[i]]
-        mpcCoeff.coeffConst[:,i,2]    = MatrixInterp[:,:,i]\oldyDot[vec_range[i]]
-        mpcCoeff.coeffConst[:,i,3]    = MatrixInterp[:,:,i]\oldpsiDot[vec_range[i]]
-        mpcCoeff.coeffConst[:,i,4]    = MatrixInterp[:,:,i]\oldePsi[vec_range[i]]
-        mpcCoeff.coeffConst[:,i,5]    = MatrixInterp[:,:,i]\oldeY[vec_range[i]]
-    end
+        # Finished with calculating the constraint coefficients
+        
+        # Now compute the final cost coefficients
 
-    # Finished with calculating the constraint coefficients
-    
-    # Now compute the final cost coefficients
-
-    # The Q-function contains for every point in the sampled safe set the minimum cost-to-go-value
-    # These values are calculated for both old trajectories
-    # The vector bQfunction_Vector contains the cost at each point in the interpolated area to reach the finish line
-    # From this vector, polynomial coefficients coeffCost are calculated to approximate this cost
-    for i=1:2   
-            dist_to_s_target  = oldTraj.oldCost[selected_laps[i]] + oldTraj.idx_start[selected_laps[i]] - (idx_s[i]-N_points*(i-1))  # number of iterations from idx_s to s_target
-            bQfunction_Vector = collect(linspace(dist_to_s_target,dist_to_s_target-pLength,pLength+1))    # build a vector that starts at the distance and
-                                                                                                    # decreases in equal steps
-            mpcCoeff.coeffCost[:,i]    = MatrixInterp[:,:,i]\bQfunction_Vector           # interpolate this vector with the given s
+        # The Q-function contains for every point in the sampled safe set the minimum cost-to-go-value
+        # These values are calculated for both old trajectories
+        # The vector bQfunction_Vector contains the cost at each point in the interpolated area to reach the finish line
+        # From this vector, polynomial coefficients coeffCost are calculated to approximate this cost
+        for i=1:2   
+                dist_to_s_target  = oldTraj.oldCost[selected_laps[i]] + oldTraj.idx_start[selected_laps[i]] - (idx_s[i]-N_points*(i-1))  # number of iterations from idx_s to s_target
+                bQfunction_Vector = collect(linspace(dist_to_s_target,dist_to_s_target-pLength,pLength+1))    # build a vector that starts at the distance and
+                                                                                                        # decreases in equal steps
+                mpcCoeff.coeffCost[:,i]    = MatrixInterp[:,:,i]\bQfunction_Vector           # interpolate this vector with the given s
+        end
     end
 
     # --------------- SYSTEM IDENTIFICATION --------------- #

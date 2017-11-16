@@ -395,6 +395,12 @@ type MpcModel_convhull
     controlCost::JuMP.NonlinearExpression
     laneCost::JuMP.NonlinearExpression
     terminalCost::JuMP.NonlinearExpression
+    slackVx::JuMP.NonlinearExpression
+    slackVy::JuMP.NonlinearExpression
+    slackPsidot::JuMP.NonlinearExpression
+    slackEpsi::JuMP.NonlinearExpression
+    slackEy::JuMP.NonlinearExpression
+    slackS::JuMP.NonlinearExpression
     #slackCost::JuMP.NonlinearExpression
     #velocityCost::JuMP.NonlinearExpression
 
@@ -429,6 +435,7 @@ type MpcModel_convhull
         #Q_vel      = mpcParams.Q_vel::Float64              # weight on the soft constraint for the max velocity
         delay_df   = mpcParams.delay_df
         delay_a    = mpcParams.delay_a
+        Q_slack    = mpcParams.Q_slack
 
       
         Np         = selectedStates.Np::Int64              # how many states to select
@@ -487,11 +494,11 @@ type MpcModel_convhull
         #@NLconstraint(mdl,[i = 1:(N+1)], z_Ol[i,4] <= v_max + eps_vel[i] )      # sof constraint on maximum velocity
         @NLconstraint(mdl, sum{alpha[i],i=1:Nl*Np} == 1)                        # constraint on the coefficients of the convex hull
 
-        for n = 1:6
-            @NLconstraint(mdl,z_Ol[N+1,n] == sum{alpha[j]*selStates[j,n],j=1:Nl*Np})  # terminal constraint
+        #for n = 1:6
+            #@NLconstraint(mdl,z_Ol[N+1,n] == sum{alpha[j]*selStates[j,n],j=1:Nl*Np})  # terminal constraint
             #@NLconstraint(mdl,z_Ol[N+1,n] >= sum{alpha[j]*selStates[j,n],j=1:Nl*Np}-eps_alpha[n])  
             #@NLconstraint(mdl,z_Ol[N+1,n] <= sum{alpha[j]*selStates[j,n],j=1:Nl*Np}+eps_alpha[n])
-        end  
+        #end  
 
         @NLexpression(mdl, c[i = 1:N], sum{coeff[j]*z_Ol[i,6]^(n_poly_curv-j+1),j=1:n_poly_curv} + coeff[n_poly_curv+1])
         @NLexpression(mdl, dsdt[i = 1:N], (z_Ol[i,1]*cos(z_Ol[i,4]) - z_Ol[i,2]*sin(z_Ol[i,4]))/(1-z_Ol[i,5]*c[i]))
@@ -522,19 +529,19 @@ type MpcModel_convhull
             @NLconstraint(mdl, z_Ol[i+1,5]  == z_Ol[i,5] + dt*(z_Ol[i,1]*sin(z_Ol[i,4])+z_Ol[i,2]*cos(z_Ol[i,4])))                                                      # eY
             @NLconstraint(mdl, z_Ol[i+1,6]  == z_Ol[i,6] + dt*dsdt[i]  )                                                                                                # s
         end
-        @NLconstraint(mdl, u_Ol[1,1]-uPrev[1,1] <= 0.05)
-        @NLconstraint(mdl, u_Ol[1,1]-uPrev[1,1] >= -0.2)
-        for i=1:N-1 # Constraints on u:
-            @NLconstraint(mdl, u_Ol[i+1,1]-u_Ol[i,1] <= 0.05)
-            @NLconstraint(mdl, u_Ol[i+1,1]-u_Ol[i,1] >= -0.2)
-        end
+        # @NLconstraint(mdl, u_Ol[1,1]-uPrev[1,1] <= 0.05)
+        # @NLconstraint(mdl, u_Ol[1,1]-uPrev[1,1] >= -0.2)
+        # for i=1:N-1 # Constraints on u:
+        #     @NLconstraint(mdl, u_Ol[i+1,1]-u_Ol[i,1] <= 0.05)
+        #     @NLconstraint(mdl, u_Ol[i+1,1]-u_Ol[i,1] >= -0.2)
+        # end
 
-        @NLconstraint(mdl, u_Ol[1,2]-uPrev[1,2] <= 0.06)
-        @NLconstraint(mdl, u_Ol[1,2]-uPrev[1,2] >= -0.06)
-        for i=1:N-1 # Constraints on u:
-            @NLconstraint(mdl, u_Ol[i+1,2]-u_Ol[i,2] <= 0.06)
-            @NLconstraint(mdl, u_Ol[i+1,2]-u_Ol[i,2] >= -0.06)
-        end
+        # @NLconstraint(mdl, u_Ol[1,2]-uPrev[1,2] <= 0.06)
+        # @NLconstraint(mdl, u_Ol[1,2]-uPrev[1,2] >= -0.06)
+        # for i=1:N-1 # Constraints on u:
+        #     @NLconstraint(mdl, u_Ol[i+1,2]-u_Ol[i,2] <= 0.06)
+        #     @NLconstraint(mdl, u_Ol[i+1,2]-u_Ol[i,2] >= -0.06)
+        # end
 
        
    
@@ -563,6 +570,30 @@ type MpcModel_convhull
         # ---------------------------------
         #@NLexpression(mdl, slackCost, sum{50*eps_alpha[i]+500*eps_alpha[i]^2,i=1:6})
 
+        # Slack cost on vx
+        #----------------------------------
+        @NLexpression(mdl, slackVx, (z_Ol[N+1,1] - sum{alpha[j]*selStates[j,1],j=1:Nl*Np})^2)
+
+        # Slack cost on vy
+        #----------------------------------
+        @NLexpression(mdl, slackVy, (z_Ol[N+1,2] - sum{alpha[j]*selStates[j,2],j=1:Nl*Np})^2)
+
+        # Slack cost on Psi dot
+        #----------------------------------
+        @NLexpression(mdl, slackPsidot, (z_Ol[N+1,3] - sum{alpha[j]*selStates[j,3],j=1:Nl*Np})^2)
+
+        # Slack cost on ePsi
+        #----------------------------------
+        @NLexpression(mdl, slackEpsi, (z_Ol[N+1,4] - sum{alpha[j]*selStates[j,4],j=1:Nl*Np})^2)
+
+        # Slack cost on ey
+        #----------------------------------
+        @NLexpression(mdl, slackEy, (z_Ol[N+1,5] - sum{alpha[j]*selStates[j,5],j=1:Nl*Np})^2)
+
+        # Slack cost on s
+        #----------------------------------
+        @NLexpression(mdl, slackS, (z_Ol[N+1,6] - sum{alpha[j]*selStates[j,6],j=1:Nl*Np})^2)
+
         # Velocity Cost
         #----------------------------------
         #@NLexpression(mdl, velocityCost , Q_vel*sum{10.0*eps_vel[i]+100.0*eps_vel[i]^2 ,i=2:N+1})
@@ -570,14 +601,16 @@ type MpcModel_convhull
         # Overall Cost function (objective of the minimization)
         # -----------------------------------------------------
 
-        @NLobjective(mdl, Min, derivCost + laneCost + controlCost + terminalCost )#+ slackCost)#+ velocityCost)
+        #@NLobjective(mdl, Min, derivCost + laneCost + controlCost + terminalCost )#+ slackCost)#+ velocityCost)
+
+        @NLobjective(mdl, Min, derivCost + laneCost + controlCost + terminalCost + Q_slack[1]*slackVx + Q_slack[2]*slackVy + Q_slack[3]*slackPsidot + Q_slack[4]*slackEpsi + Q_slack[5]*slackEy + Q_slack[6]*slackS)
 
 
 
         sol_stat=solve(mdl)
-        println("Finished solve 1: $sol_stat")
+        println("Finished solve 1 convhull mpc: $sol_stat")
         sol_stat=solve(mdl)
-        println("Finished solve 2: $sol_stat")
+        println("Finished solve 2 convhull mpc: $sol_stat")
 
 
         m.mdl = mdl
@@ -599,6 +632,13 @@ type MpcModel_convhull
         m.selStates   = selStates    # selected states
         m.statesCost  = statesCost   # cost of the selected states
         m.alpha       = alpha        # parameters of the convex hull
+
+        m.slackVx     = slackVx
+        m.slackVy     = slackVy
+        m.slackPsidot = slackPsidot
+        m.slackEpsi   = slackEpsi
+        m.slackEy     = slackEy
+        m.slackS      = slackS
 
 
         return m

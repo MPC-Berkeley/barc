@@ -2,11 +2,9 @@
 
 using RobotOS
 @rosimport barc.msg: ECU, pos_info
-@rosimport data_service.msg: TimeData
 @rosimport geometry_msgs.msg: Vector3
 rostypegen()
 using barc.msg
-using data_service.msg
 using geometry_msgs.msg
 using JuMP
 using Ipopt
@@ -96,7 +94,7 @@ function main()
     mdl          = MpcModel(mpcParams,mpcCoeff,modelParams,trackCoeff)  
     mdl_pF       = MpcModel_pF(mpcParams_pF,modelParams,trackCoeff)
     mdl_convhull = MpcModel_convhull(mpcParams,mpcCoeff,modelParams,trackCoeff,selectedStates)
-    mdl_test     = MpcModel_test(mpcParams,mpcCoeff,modelParams,trackCoeff,selectedStates)
+    #mdl_test     = MpcModel_test(mpcParams,mpcCoeff,modelParams,trackCoeff,selectedStates)
 
 
     max_N = max(mpcParams.N,mpcParams_pF.N)
@@ -139,6 +137,8 @@ function main()
     log_input                   = zeros(buffersize,2,30)
     log_status                  = Array(Symbol,buffersize,30)
     log_mpcCost                 = zeros(buffersize,6,30)
+    log_mpcCostSlack            = zeros(buffersize,6,30)
+
 
     acc_f = [0.0]
 
@@ -199,8 +199,8 @@ function main()
 
     posInfo.s = 0
 
-    selectedStates.selStates    = zeros(selectedStates.Nl*selectedStates.Np,6)  
-    selectedStates.statesCost   = zeros(selectedStates.Nl*selectedStates.Np)
+    #selectedStates.selStates    = zeros(selectedStates.Nl*selectedStates.Np,6)  
+    #selectedStates.statesCost   = zeros(selectedStates.Nl*selectedStates.Np)
     oldSS.oldSS                 = NaN*ones(buffersize,7,30)
 
 
@@ -251,12 +251,12 @@ function main()
 
             # ============================= Pre-Logging (before solving) ================================
             log_t[k+1]                  = to_sec(get_rostime())         # time is measured *before* solving (more consistent that way)
-            if size(mpcSol.z,2) == 4                                    # find 1-step-error
-                step_diff = ([mpcSol.z[2,4], 0, 0, mpcSol.z[2,3], mpcSol.z[2,2]]-[norm(zCurr[i,1:2]), 0, 0, zCurr[i,4], zCurr[i,5]])
-            else
-                step_diff = (mpcSol.z[2,1:5][:]-zCurr[i,1:5][:])
-            end
-            log_step_diff[k+1,:]          = step_diff
+            # if size(mpcSol.z,2) == 4                                    # find 1-step-error
+            #     step_diff = ([mpcSol.z[2,4], 0, 0, mpcSol.z[2,3], mpcSol.z[2,2]]-[norm(zCurr[i,1:2]), 0, 0, zCurr[i,4], zCurr[i,5]])
+            # else
+            #     step_diff = (mpcSol.z[2,1:5][:]-zCurr[i,1:5][:])
+            # end
+            # log_step_diff[k+1,:]          = step_diff
 
             if lapStatus.currentLap > n_pf
                 if lapStatus.currentIt>1
@@ -273,7 +273,7 @@ function main()
                 cost2target     = zeros(buffersize) # array containing the cost to arrive from each point of the old trajectory to the target
                 #save the terminal cost
                 for j = 1:buffersize
-                    cost2target[j] = (lapStatus.currentIt-j+1)  # why do i need Q_cost?
+                    cost2target[j] = 0.7*(lapStatus.currentIt-j+1)  
                 end
                 oldSS.cost2target[:,lapStatus.currentLap-1] = cost2target
                                 
@@ -295,22 +295,28 @@ function main()
                 if lapStatus.currentLap <= n_pf
                     setvalue(mdl_pF.z_Ol[:,1],mpcSol.z[:,1]-posInfo.s_target)
                 elseif lapStatus.currentLap == n_pf+1
-                    setvalue(mdl.z_Ol[1:mpcParams.N,1],mpcSol.z[1:mpcParams.N,4])
-                    setvalue(mdl.z_Ol[1:mpcParams.N,6],mpcSol.z[1:mpcParams.N,1]-posInfo.s_target)
-                    setvalue(mdl.z_Ol[1:mpcParams.N,5],mpcSol.z[1:mpcParams.N,2])
-                    setvalue(mdl.z_Ol[1:mpcParams.N,4],mpcSol.z[1:mpcParams.N,3])
-                    setvalue(mdl.u_Ol,mpcSol.u[1:mpcParams.N,:])
+                    if selectedStates.version == true
+                        setvalue(mdl.z_Ol[1:mpcParams.N,1],mpcSol.z[1:mpcParams.N,4])
+                        setvalue(mdl.z_Ol[1:mpcParams.N,6],mpcSol.z[1:mpcParams.N,1]-posInfo.s_target)
+                        setvalue(mdl.z_Ol[1:mpcParams.N,5],mpcSol.z[1:mpcParams.N,2])
+                        setvalue(mdl.z_Ol[1:mpcParams.N,4],mpcSol.z[1:mpcParams.N,3])
+                        setvalue(mdl.u_Ol,mpcSol.u[1:mpcParams.N,:])
+                    end
 
-                    setvalue(mdl_convhull.z_Ol[1:mpcParams.N+1,1],mpcSol.z[1:mpcParams.N+1,4])
-                    setvalue(mdl_convhull.z_Ol[1:mpcParams.N+1,6],mpcSol.z[1:mpcParams.N+1,1]-posInfo.s_target)
-                    setvalue(mdl_convhull.z_Ol[1:mpcParams.N+1,5],mpcSol.z[1:mpcParams.N+1,2])
-                    setvalue(mdl_convhull.z_Ol[1:mpcParams.N+1,4],mpcSol.z[1:mpcParams.N+1,3])
-                    setvalue(mdl_convhull.u_Ol,mpcSol.u[1:mpcParams.N,:])
-                    setvalue(mdl_convhull.alpha[:],1*ones(selectedStates.Nl*selectedStates.Np))#(1/(selectedStates.Nl*selectedStates.Np))*ones(selectedStates.Nl*selectedStates.Np))
+                    setvalue(mdl_convhull.z_Ol[:,1],zCurr[1,1]*ones(mpcParams.N+1))#mpcSol.z[:,4])
+                    setvalue(mdl_convhull.z_Ol[:,6],zCurr[1,6]*ones(mpcParams.N+1))#mpcSol.z[:,1]-posInfo.s_target)
+                    setvalue(mdl_convhull.z_Ol[:,5],zCurr[1,5]*ones(mpcParams.N+1))#mpcSol.z[:,2])
+                    setvalue(mdl_convhull.z_Ol[:,4],zCurr[1,4]*ones(mpcParams.N+1))#mpcSol.z[:,3])
+                    setvalue(mdl_convhull.z_Ol[:,2],zCurr[1,2]*ones(mpcParams.N+1))
+                    setvalue(mdl_convhull.z_Ol[:,3],zCurr[1,3]*ones(mpcParams.N+1))
+                    #setvalue(mdl_convhull.u_Ol,mpcSol.u[1:mpcParams.N,:])
+                    setvalue(mdl_convhull.alpha[:],(1/(selectedStates.Nl*selectedStates.Np))*ones(selectedStates.Nl*selectedStates.Np))
                 elseif lapStatus.currentLap > n_pf+1
-                    setvalue(mdl.z_Ol[:,6],mpcSol.z[:,6]-posInfo.s_target)
+                    if selectedStates.version == true
+                        setvalue(mdl.z_Ol[:,6],mpcSol.z[:,6]-posInfo.s_target)
+                    end
                     setvalue(mdl_convhull.z_Ol[:,6],mpcSol.z[:,6]-posInfo.s_target)
-                    #setvalue(mdl_convhull.alpha[1:selectedStates.Nl*selectedStates.Np],1/(selectedStates.Nl*selectedStates.Np))
+                    setvalue(mdl_convhull.alpha[:],(1/(selectedStates.Nl*selectedStates.Np))*ones(selectedStates.Nl*selectedStates.Np))
 
                 end
             end
@@ -358,21 +364,24 @@ function main()
                 # otherwise: use system-ID-model
                 #mpcCoeff.c_Vx[3] = max(mpcCoeff.c_Vx[3],0.1)
                 zCurr[i,7] = acc0
-                #solveMpcProblem(mdl,mpcSol,mpcCoeff,mpcParams,trackCoeff,lapStatus,posInfo,modelParams,zCurr[i,:]',uPrev)
-                #solveMpcProblem_convhull(mdl_convhull,mpcSol,mpcCoeff,mpcParams,trackCoeff,lapStatus,posInfo,modelParams,zCurr[i,:]',uPrev,selectedStates)
-                solveMpcProblem_test(mdl_test,mpcSol,mpcCoeff,mpcParams,trackCoeff,lapStatus,posInfo,modelParams,zCurr[i,:]',uPrev,selectedStates)
+                if selectedStates.version == true
+                    solveMpcProblem(mdl,mpcSol,mpcCoeff,mpcParams,trackCoeff,lapStatus,posInfo,modelParams,zCurr[i,:]',uPrev)
+                else
+                    solveMpcProblem_convhull(mdl_convhull,mpcSol,mpcCoeff,mpcParams,trackCoeff,lapStatus,posInfo,modelParams,zCurr[i,:]',uPrev,selectedStates)
+                    #solveMpcProblem_test(mdl_test,mpcSol,mpcCoeff,mpcParams,trackCoeff,lapStatus,posInfo,modelParams,zCurr[i,:]',uPrev,selectedStates)
+                end
 
                 acc0 = mpcSol.z[2,7]
                 acc_f[1] = mpcSol.z[1,7]
             end
-            if lapStatus.currentLap>n_pf
+            #if lapStatus.currentLap>n_pf
             #     println("current s= ",posInfo.s)
             #     println("current lap= ",lapStatus.currentLap)
             #     println("selected states= ",selectedStates.selStates)
             #     println("states cost= ",selectedStates.statesCost)
             #     println("old safe set= ",oldSS.oldSS[lapStatus.currentIt:lapStatus.currentIt+10,6,lapStatus.currentLap-1])
             #     println("current control= ", [mpcSol.a_x,mpcSol.d_f])
-            end
+            #end
 
             log_t_solv[k+1] = toq()
             #println("time= ",log_t_solv[k+1])
@@ -384,9 +393,9 @@ function main()
                 #mpcSol.a_x = uPrev[1,1]
                 #mpcSol.d_f = uPrev[1,2]
                 #opt_count += 1
-                if opt_count >= 5
-                    warn("No optimal solution for $opt_count iterations.")
-                end
+                # if opt_count >= 5
+                #     warn("No optimal solution for $opt_count iterations.")
+                # end
             #end
 
             #cmd.header.stamp = get_rostime()
@@ -412,6 +421,10 @@ function main()
             log_cpsi[lapStatus.currentIt,:,lapStatus.currentLap]        = mpcCoeff.c_Psi
             log_input[lapStatus.currentIt,:,lapStatus.currentLap]       = uCurr[i,:] 
             log_mpcCost[lapStatus.currentIt,:,lapStatus.currentLap]     = mpcSol.cost
+            if lapStatus.currentLap > n_pf
+                log_mpcCostSlack[lapStatus.currentIt,:,lapStatus.currentLap]= mpcSol.costSlack
+            end
+
             #log_status[lapStatus.currentIt,lapStatus.currentLap]        = mpcSol.solverStatus
 
             k = k + 1       # counter
@@ -460,7 +473,7 @@ function main()
                     "t_solv",log_t_solv[1:k],"sol_status",log_sol_status[1:k],"selectedStates",selectedStates,"one_step_error",log_onestep,
                     "oldSS",oldSS,"selStates",selStates_log,"statesCost",statesCost_log,"pred_sol",log_predicted_sol,"lapStatus",lapStatus,
                     "posInfo",posInfo,"eps_alpha",log_epsalpha,"cvx",log_cvx,"cvy",log_cvy,"cpsi",log_cpsi,"oldSS_xy",oldSS.oldSS_xy,"input",log_input,
-                    "mpcCost",log_mpcCost)
+                    "mpcCost",log_mpcCost,"mpcCostSlack",log_mpcCostSlack)
                     #,"status",log_status)
     println("Exiting LMPC node. Saved data to $log_path.")
 

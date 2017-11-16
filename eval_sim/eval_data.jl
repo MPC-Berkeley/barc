@@ -116,12 +116,13 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
     cpsi           = Data["cpsi"]
     input          = Data["input"]
     cost           = Data["mpcCost"]
+    costSlack      = Data["mpcCostSlack"]
     #status         = Data["status"]
 
     Nl         = selectedStates.Nl
     Np         = selectedStates.Np
     buffersize = 5000
-    currentIt  = lapStatus.currentIt
+    currentIt  = 200#lapStatus.currentIt
 
     flag = zeros(2)
 
@@ -222,44 +223,44 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
         title("s in curren lap (to check repetitions)")
         grid("on")
 
-        figure(4)
+        # figure(4)
 
-        subplot(221)
-        plot(t,vx_alpha')
-        #ylim(-0.0001,findmax(one_step_error[1:currentIt,6,i])[1])
-        title("Slack variable for vx in lap $i")
-        grid("on")
+        # subplot(221)
+        # plot(t,vx_alpha')
+        # #ylim(-0.0001,findmax(one_step_error[1:currentIt,6,i])[1])
+        # title("Slack variable for vx in lap $i")
+        # grid("on")
 
-        subplot(222)
-        plot(t,vy_alpha')
-        #ylim(-0.0001,findmax(one_step_error[1:currentIt,6,i])[1])
-        title("Slack variable for vy in lap $i")
-        grid("on")
+        # subplot(222)
+        # plot(t,vy_alpha')
+        # #ylim(-0.0001,findmax(one_step_error[1:currentIt,6,i])[1])
+        # title("Slack variable for vy in lap $i")
+        # grid("on")
 
-        subplot(223)
-        plot(t,psiDot_alpha')
-        #ylim(-0.0001,findmax(one_step_error[1:currentIt,6,i])[1])
-        title("Slack variable for psiDot in lap $i")
-        grid("on")
+        # subplot(223)
+        # plot(t,psiDot_alpha')
+        # #ylim(-0.0001,findmax(one_step_error[1:currentIt,6,i])[1])
+        # title("Slack variable for psiDot in lap $i")
+        # grid("on")
 
-        subplot(224)
-        plot(t,ePsi_alpha')
-        #ylim(-0.0001,findmax(one_step_error[1:currentIt,6,i])[1])
-        title("Slack variable for ePsi in lap $i")
-        grid("on")
+        # subplot(224)
+        # plot(t,ePsi_alpha')
+        # #ylim(-0.0001,findmax(one_step_error[1:currentIt,6,i])[1])
+        # title("Slack variable for ePsi in lap $i")
+        # grid("on")
 
-        figure(5)
-        subplot(221)
-        plot(t,eY_alpha')
-        #ylim(-0.0001,findmax(one_step_error[1:currentIt,6,i])[1])
-        title("Slack variable for eY in lap $i")
-        grid("on")
+        # figure(5)
+        # subplot(221)
+        # plot(t,eY_alpha')
+        # #ylim(-0.0001,findmax(one_step_error[1:currentIt,6,i])[1])
+        # title("Slack variable for eY in lap $i")
+        # grid("on")
 
-        subplot(222)
-        plot(t,s_alpha')
-        #ylim(-0.0001,findmax(one_step_error[1:currentIt,6,i])[1])
-        title("Slack variable for s in lap $i")
-        grid("on")
+        # subplot(222)
+        # plot(t,s_alpha')
+        # #ylim(-0.0001,findmax(one_step_error[1:currentIt,6,i])[1])
+        # title("Slack variable for s in lap $i")
+        # grid("on")
 
         figure(6)
 
@@ -285,6 +286,12 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
         plot(t,cost[1:currentIt,2,i],t,cost[1:currentIt,3,i],t,cost[1:currentIt,4,i],t,cost[1:currentIt,6,i])
         legend(["terminal Cost","control Cost","derivative Cost","lane Cost"])
         title("Costs of the Mpc")
+        grid("on")
+
+        figure(8)
+        plot(t,costSlack[1:currentIt,1,i],t,costSlack[1:currentIt,2,i],t,costSlack[1:currentIt,3,i],t,costSlack[1:currentIt,4,i],t,costSlack[1:currentIt,5,i],t,costSlack[1:currentIt,6,i])
+        legend(["slack cost on vx","slack cost on vy","slack cost on psiDot","slack cost on ePsi","slack cost on eY","slack cost on s"])
+        title("Slack costs")
         grid("on")
 
 
@@ -327,7 +334,7 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
 
                 
                 
-                figure(8)
+                figure(9)
                 clf()
                 subplot(221)
                 plot(s_pred,vx_pred,"or")
@@ -366,7 +373,7 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
                 grid("on")
 
 
-                figure(9)
+                figure(10)
                 clf()
                 subplot(221)
                 plot(s_pred,eY_pred,"or")
