@@ -93,11 +93,11 @@ function solveMpcProblem_pathFollow(mdl::MpcModel_pF,mpcSol::MpcSol,mpcParams::M
     setvalue(mdl.uPrev,uPrev)
     setvalue(mdl.coeff,coeffCurvature)
     if lapStatus.currentLap == 1
-        setvalue(mdl.z_Ref,z_ref1)
+        setvalue(mdl.z_Ref,z_ref2)
     elseif lapStatus.currentLap == 2
-        setvalue(mdl.z_Ref,z_ref1)
+        setvalue(mdl.z_Ref,z_ref2)
     elseif lapStatus.currentLap == 3
-        setvalue(mdl.z_Ref,z_ref1)
+        setvalue(mdl.z_Ref,z_ref2)
     end
 
     # Solve Problem and return solution

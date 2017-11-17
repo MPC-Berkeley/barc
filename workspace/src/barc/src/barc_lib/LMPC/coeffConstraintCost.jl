@@ -93,7 +93,7 @@ function coeffConstraintCost(oldTraj::OldTrajectory, mpcCoeff::MpcCoeff, posInfo
     idx_s = findmin(DistS,1)[2]              # contains both indices for the closest distances for both oldS !!
     idx_s2= findmin(DistS2,1)[2]
 
-    off = 3
+    off = 2
     idx_s2 = idx_s2 + off
 
 

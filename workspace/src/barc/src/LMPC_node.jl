@@ -273,7 +273,7 @@ function main()
                 cost2target     = zeros(buffersize) # array containing the cost to arrive from each point of the old trajectory to the target
                 #save the terminal cost
                 for j = 1:buffersize
-                    cost2target[j] = 0.7*(lapStatus.currentIt-j+1)  
+                    cost2target[j] = 1.5*(lapStatus.currentIt-j+1)  
                 end
                 oldSS.cost2target[:,lapStatus.currentLap-1] = cost2target
                                 
