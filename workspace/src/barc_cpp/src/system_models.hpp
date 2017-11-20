@@ -83,7 +83,7 @@ Eigen::MatrixXf h_3s (Eigen::MatrixXf x)
     C : shape(3,2)
     return : shape(1,2)
 
-    a bit diffrent from original python code, it was C : shape(2,3)
+    python 코드와 약간 다르다. 파이썬은 C : shape(2,3)
   */
 
   Eigen::MatrixXf C(3,2);

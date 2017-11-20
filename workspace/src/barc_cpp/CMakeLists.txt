@@ -40,12 +40,20 @@ include_directories(
   ${Eigen_INCLUDE_DIRS}
 )
 
-add_executable(barc_cpp src/state_estimation_DynBkMdl.cpp src/ekf.hpp src/system_models.hpp)
 
-target_link_libraries(barc_cpp
+add_executable(state_estimation_DynBkMdl src/state_estimation_DynBkMdl.cpp src/ekf.hpp src/system_models.hpp)
+add_executable(state_estimation_DynBkMdl_6s src/state_estimation_DynBkMdl_6s.cpp src/ekf_6s.hpp src/system_models_6s.hpp)
+
+target_link_libraries(state_estimation_DynBkMdl
   ${catkin_LIBRARIES}
   ${Eigen_LIBRARIES}
 )
+
+target_link_libraries(state_estimation_DynBkMdl_6s
+  ${catkin_LIBRARIES}
+  ${Eigen_LIBRARIES}
+)
+
 
 
 
