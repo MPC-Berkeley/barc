@@ -78,14 +78,14 @@ std::tuple<Eigen::MatrixXf, Eigen::MatrixXf> ekf (
     double dt)
 {
   double xDim = mx_k.cols();
-  Eigen::MatrixXf mx_kp1 = f(mx_k, args, dt);              // [1x3] matrix
-  Eigen::MatrixXf A = numerical_jac(f, mx_k, args, dt);    // [3x3]
-  Eigen::MatrixXf P_kp1 = (A * P_k) * A.transpose() + Q;   // [3x3]
-  Eigen::MatrixXf my_kp1 = h(mx_kp1);                      // [1x2]
-  Eigen::MatrixXf H = numerical_jac2(h, mx_kp1);           // [2x3]
-  Eigen::MatrixXf P12 = P_kp1 * H.transpose();             // [3x2]
-  Eigen::MatrixXf K = P12 * (((H*P12) + R).inverse());     // [3x2]
-  mx_kp1 = mx_kp1 + K * (y_kp1 - my_kp1);                  // [1x3]
+  Eigen::MatrixXf mx_kp1 = f(mx_k, args, dt);              // [] matrix
+  Eigen::MatrixXf A = numerical_jac(f, mx_k, args, dt);    // [] 
+  Eigen::MatrixXf P_kp1 = (A * P_k) * A.transpose() + Q;   // [] 
+  Eigen::MatrixXf my_kp1 = h(mx_kp1);                      // [] 
+  Eigen::MatrixXf H = numerical_jac2(h, mx_kp1);           // [] 
+  Eigen::MatrixXf P12 = P_kp1 * H.transpose();             // [] 
+  Eigen::MatrixXf K = P12 * (((H*P12) + R).inverse());     // [] 
+  mx_kp1 = mx_kp1 + K * (y_kp1 - my_kp1);                  // [] 
 
   // create diagonal matrix 6x6
   Eigen::MatrixXf eye6(6,6);
@@ -96,9 +96,9 @@ std::tuple<Eigen::MatrixXf, Eigen::MatrixXf> ekf (
           0,0,0,0,1,0,
           0,0,0,0,0,1;
 
-  P_kp1 = (K*R)*K.transpose() + ((eye6 - (K*H)) * P_kp1) * (eye6 - (K*H).transpose());  // [3x3]
+  P_kp1 = (K*R)*K.transpose() + ((eye6 - (K*H)) * P_kp1) * (eye6 - (K*H).transpose());  // []
 
-  return std::make_tuple(mx_kp1, P_kp1);  // [1x3] , [3x3]
+  return std::make_tuple(mx_kp1, P_kp1);  // [] , []
 }
 
 

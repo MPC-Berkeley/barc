@@ -1,7 +1,7 @@
 #include <ros/ros.h>
 #include <barc_cpp/ECU.h>
 #include <barc_cpp/Encoder.h>
-// ed: msg added for 6 states
+// msg added for 6 states
 #include <barc_cpp/six_states.h>
 #include <sensor_msgs/Imu.h>
 #include <geometry_msgs/Quaternion.h>
@@ -11,7 +11,7 @@
 
 #include <tuple>               // for returning multiple values
 
-// ed: name change for 6 states
+// name change for 6 states
 #include "ekf_6s.hpp"
 #include "system_models_6s.hpp"
 
@@ -38,7 +38,6 @@ double w_x=0,  w_y=0,   w_z=0;
 
 // from encoder
 double v_x_enc = 0;
-//double t0 = ros::Time::now().toSec();
 double t0;
 double n_FL = 0;   // counts in the front left tire
 double n_FR = 0;   // counts in the front right tire
@@ -200,7 +199,7 @@ int main(int argc, char** argv){
     six_states.vy =  v_y;
     six_states.yr =  r;
 
-    // state_estimate로 퍼블리시
+    // publish to /state_estimate
     state_pub.publish(six_states);
 
     if (v_x_optic > v_x_min) {

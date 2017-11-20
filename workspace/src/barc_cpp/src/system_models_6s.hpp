@@ -90,11 +90,10 @@ Eigen::MatrixXf f_6s (Eigen::MatrixXf z,
 Eigen::MatrixXf h_6s (Eigen::MatrixXf x)
 {
   /*
-    x : shape(1,3)
-    C : shape(3,2)
-    return : shape(1,2)
+    x : shape()
+    C : shape()
+    return : shape()
 
-    python 코드와 약간 다르다. 파이썬은 C : shape(2,3)
   */
 
   Eigen::MatrixXf C(6,6);

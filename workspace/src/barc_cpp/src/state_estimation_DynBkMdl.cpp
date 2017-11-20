@@ -156,7 +156,7 @@ int main(int argc, char** argv){
     state_msg.y = v_y;
     state_msg.z = r;
 
-    // state_estimate로 퍼블리시
+    // publish to /state_estimate
     state_pub.publish(state_msg);
 
     if (v_x_enc > v_x_min) {
