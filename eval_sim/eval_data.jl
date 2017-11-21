@@ -2,6 +2,7 @@ using JLD
 using PyPlot
 using PyCall
 @pyimport matplotlib.animation as animation
+@pyimport matplotlib.patches as patch
 using JLD, ProfileView
 # pos_info[1]  = s
 # pos_info[2]  = eY
@@ -117,6 +118,7 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
     input          = Data["input"]
     cost           = Data["mpcCost"]
     costSlack      = Data["mpcCostSlack"]
+    obs_log        = Data["obs_log"]
     #status         = Data["status"]
 
     Nl         = selectedStates.Nl
@@ -129,9 +131,14 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
 
     track = create_track(0.4)
 
+  
+
+
     
     for i = laps
 
+        pred_sol_xy = xyObstacle(oldSS,obs_log,1,i,track)  
+        println("pred sol= ",pred_sol_xy[:,1])
         # for index=1:buffersize
         #     if status[index,i] == :UserLimit
         #         flag[1]=index
@@ -163,8 +170,26 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
         figure(1)
         plot(oldSS_xy[:,1,i],oldSS_xy[:,2,i],"og") 
         plot(oldSS_xy[:,1,i-1],oldSS_xy[:,2,i-1],"ob") 
+        plot(pred_sol_xy[1],pred_sol_xy[2],)
         plot(track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")#,track[:,1],track[:,2],"b.")
         grid("on")
+
+        ellfig = figure(1)
+        ax = ellfig[:add_subplot](1,1,1)
+        ax[:set_aspect]("equal")
+        plot(oldSS_xy[:,1,i],oldSS_xy[:,2,i],"og") 
+        plot(oldSS_xy[:,1,i-1],oldSS_xy[:,2,i-1],"ob") 
+        plot(track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")#,track[:,1],track[:,2],"b.")
+
+        angle_ell = atan2(pred_sol_xy[2,2]-(pred_sol_xy[2,1]),pred_sol_xy[1,2]-(pred_sol_xy[1,1]))
+        angle_deg = (angle_ell*180)/pi
+
+        ell1 = patch.Ellipse([pred_sol_xy[1,1],pred_sol_xy[2,1]], 0.4, 0.2, 90)#angle=angle_deg)
+        ax[:add_artist](ell1)
+
+
+        grid("on")
+        title("X-Y view of Lap $i")
 
 
 
@@ -1508,4 +1533,161 @@ function smooth(x,n)
         y[i,:] = mean(x[start:fin,:],1)
     end
     return y
+end
+
+function xyObstacle(oldSS,obs_log::Array{Float64},obstacle::Int64,lap::Int64,track::Array{Float64})
+
+    obs   = obs_log[:,:,obstacle,lap]
+
+    
+
+    buffersize = size(obs)[1]
+    
+
+  
+
+
+    OrderXY        = 6
+    OrderThetaCurv = 4
+
+    n_poly = 41
+
+    ds = 1//10
+
+    s_vec = zeros(OrderXY+1)
+
+    pred_sol_xy = zeros(2,buffersize,1)
+
+    x_track = track[:,1]
+
+    y_track = track[:,2]
+
+    #println("x_track= ",x_track)
+    # println("nodes= ",size([x_track'; y_track']))
+    for i = 1:buffersize
+
+
+        
+
+            nodes          = [x_track'; y_track']
+            n_nodes        = size(x_track)[1]
+            s_start   = (obs[i,1] - 1)
+            s_end     = (obs[i,1] + 3)
+            s_nearest = obs[i,1]
+
+            idx_start = 10*(floor(obs[i,1]) - 1) 
+            idx_end   = 10*(floor(obs[i,1]) + 3)
+
+            if idx_start>n_nodes
+              idx_start=idx_start%n_nodes
+              idx_end=idx_end%n_nodes
+            end
+
+            if idx_start<=0
+                 nodes_XY = hcat(nodes[:,n_nodes+idx_start:n_nodes],nodes[:,1:idx_end])       # then stack the end and beginning of a lap together
+            #     #nodes_Y = hcat(nodes[2,n_nodes+idx_start:n_nodes],nodes[2,1:idx_end])
+               
+                 #idx_start = n_nodes+idx_start
+            elseif idx_end>=n_nodes                   # if the end is behind the finish line
+                 nodes_XY = hcat(nodes[:,idx_start:n_nodes],nodes[:,1:idx_end-n_nodes])       # then stack the end and beginning of the lap together
+                 #nodes_Y = hcat(nodes[2,idx_start:n_nodes],nodes[2,1:idx_end-n_nodes])
+            else                               # if we are somewhere in the middle of the track
+                nodes_XY = nodes[:,idx_start:idx_end]     # then just use the nodes from idx_start to end for interpolation
+             #nodes_Y = nodes[2,idx_start:idx_end]
+            end
+
+
+            nodes_X = vec(nodes_XY[1,:])
+            nodes_Y = vec(nodes_XY[2,:])
+
+
+            itp_matrix = zeros(n_poly,OrderXY+1)
+
+            for ind=1:n_poly
+                for k=0:OrderXY
+
+                    itp_matrix[ind,OrderXY+1-k] = (s_start + (ind-1)*ds)^k
+                end
+            end
+
+            itp_matrix_curv = zeros(n_poly,OrderThetaCurv+1)
+
+            for ind=1:n_poly
+                for k=0:OrderThetaCurv
+
+                    itp_matrix_curv[ind,OrderThetaCurv+1-k] = (s_start + (ind-1)*ds)^k
+                end
+            end
+            
+           # println("size of nodes x= ",size(nodes_X))
+           # println("size of itpmatrix= ",size(itp_matrix))
+           # println("s start= ",s_start)
+           # println("s end= ",s_end)
+
+            coeffY = itp_matrix\nodes_Y
+            coeffX = itp_matrix\nodes_X
+           
+
+            b_curvature_vector = zeros(n_poly)
+
+            Counter = 1
+            
+
+            for ind = 0:n_poly-1
+                s_expression_der  = zeros(OrderXY+1)
+                s_expression_2der = zeros(OrderXY+1)
+                s_poly       = s_start + ind*ds
+                for k=0:OrderXY-1
+                    s_expression_der[OrderXY-k] = (k+1)*s_poly^k
+                end
+                for k=0:OrderXY-2
+                    s_expression_2der[OrderXY-1-k] = (2+k*(3+k))*s_poly^k
+                end
+
+                dX  = dot(coeffX,s_expression_der)
+                dY  = dot(coeffY,s_expression_der)
+                ddX = dot(coeffX,s_expression_2der)
+                ddY = dot(coeffY,s_expression_2der)
+
+                curvature = (dX*ddY-dY*ddX)/((dX^2+dY^2)^(3/2)) #standard curvature formula
+
+                b_curvature_vector[Counter] = curvature
+
+                Counter = Counter + 1
+            end
+
+
+            
+            coeffCurv  = itp_matrix_curv\b_curvature_vector
+
+            s0 =  obs[i,1]+0.001
+          
+            s_vec = zeros(OrderXY+1)::Array{Float64}
+            sdot_vec = zeros(OrderXY+1)::Array{Float64}
+
+            for k = 1:OrderXY+1
+                    s_vec[k] = obs[i,1]^(OrderXY-k+1)
+                    
+            end
+            for k = 1:OrderXY
+                    sdot_vec[k] = (OrderXY+1-k)* obs[i,1]^(OrderXY-k)
+            end
+
+
+            XCurve  = dot(coeffX,s_vec)
+            YCurve  = dot(coeffY,s_vec)
+
+            dX = dot(coeffX,sdot_vec)
+            dY = dot(coeffY,sdot_vec)      
+
+            
+            xyPathAngle = atan2(dY,dX)
+
+            pred_sol_xy[2,i] = YCurve + obs[i,2]*cos(xyPathAngle)
+            pred_sol_xy[1,i] = XCurve - obs[i,2]*sin(xyPathAngle)
+
+        
+    end
+
+    return pred_sol_xy
 end

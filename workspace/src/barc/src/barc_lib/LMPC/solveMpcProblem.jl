@@ -210,3 +210,68 @@ function solveMpcProblem_test(m::MpcModel_test,mpcSol::MpcSol,mpcCoeff::MpcCoeff
     nothing
 end
 
+function solveMpcProblem_obstacle(m::MpcModel_obstacle,mpcSol::MpcSol,mpcCoeff::MpcCoeff,mpcParams::MpcParams,trackCoeff::TrackCoeff,lapStatus::LapStatus,
+                                  posInfo::PosInfo,modelParams::ModelParams,zCurr::Array{Float64},uPrev::Array{Float64},selectedStates::SelectedStates,
+                                  obs_now::Array{Float64},obstacle::Obstacle)
+
+ # Load Parameters
+    sol_status::Symbol
+    sol_u::Array{Float64,2}
+    sol_z::Array{Float64,2}
+
+    selStates       = selectedStates.selStates::Array{Float64,2}
+    statesCost      = selectedStates.statesCost::Array{Float64,1}
+
+    Q_obs           = mpcParams.Q_obs::Array{Float64,1}
+
+#    println("Q_obs= ",Q_obs)
+
+    obs      = zeros(mpcParams.N+1,3)
+    obs[1,:] = obs_now
+
+    # Compute the position of the obstacle  in the whole prediction horizon
+
+    for i = 1:mpcParams.N
+        obs[i+1,1] = obs[i,1] + modelParams.dt*i*obs[i,3]
+        obs[i+1,2] = obs[i,2]
+        obs[i+1,3] = obs[i,3]
+    end
+
+   # println("obstacle= ",obs)
+
+    # Update current initial condition, curvature and System ID coefficients
+    setvalue(m.z0,zCurr)
+    setvalue(m.uPrev,uPrev)
+    setvalue(m.c_Vx,mpcCoeff.c_Vx)            # System ID coefficients
+    setvalue(m.c_Vy,mpcCoeff.c_Vy)
+    setvalue(m.c_Psi,mpcCoeff.c_Psi)
+    setvalue(m.coeff,trackCoeff.coeffCurvature)       # Track curvature
+    setvalue(m.selStates,selStates)
+    setvalue(m.statesCost,statesCost)
+    setvalue(m.Q_obs,Q_obs)
+    setvalue(m.obs,obs)
+
+     # Solve Problem and return solution
+    sol_status  = solve(m.mdl)
+    sol_u       = getvalue(m.u_Ol)
+    sol_z       = getvalue(m.z_Ol)
+
+    # export data
+    mpcSol.a_x = sol_u[1,1]
+    mpcSol.d_f = sol_u[1,2]
+    mpcSol.u   = sol_u
+    mpcSol.z   = sol_z
+    #mpcSol.eps_alpha = getvalue(m.eps_alpha)
+    mpcSol.solverStatus = sol_status
+    mpcSol.cost = zeros(6)
+    mpcSol.cost = [0,getvalue(m.terminalCost),getvalue(m.controlCost),getvalue(m.derivCost),0,getvalue(m.laneCost)]
+
+    mpcSol.costSlack = zeros(6)
+    mpcSol.costSlack = [getvalue(m.slackVx),getvalue(m.slackVy),getvalue(m.slackPsidot),getvalue(m.slackEpsi),getvalue(m.slackEy),getvalue(m.slackS)]
+
+    #println("cost for obstacle= ",getvalue(m.obstacleSlackCost))
+
+    println("Solved, status = $sol_status")
+
+    nothing
+end

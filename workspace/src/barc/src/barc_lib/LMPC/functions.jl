@@ -65,8 +65,9 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_pF::MpcParams,track
     mpcParams.delay_df          = 3                             # steering delay
     mpcParams.delay_a           = 1                             # acceleration delay
     mpcParams.Q_lane            = 10                      # weight on the soft constraint for the lane
-    mpcParams.Q_vel             = 1                 # weight on the soft constraint for the maximum velocity
+    mpcParams.Q_vel             = 1                    # weight on the soft constraint for the maximum velocity
     mpcParams.Q_slack           = [20.0,1.0,10.0,20.0,50.0,50.0]#20.0*[2.0,2.0,1.0,2.0,5.0,5.0]  #vx,vy,psiDot,ePsi,eY,s
+    mpcParams.Q_obs             = ones(Nl*selectedStates.Np)# weight to esclude some of the old trajectories
 
 
 
@@ -123,16 +124,16 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_pF::MpcParams,track
     lapStatus.currentLap        = 1         # initialize lap number
     lapStatus.currentIt         = 0         # current iteration in lap
 
-    obstacle.obstacle_active    = false     # true if we have t consider the obstacles in the optimization problem
-    obstacle.lap_active         = 20         # number of the first lap in which the obstacles are used
+    obstacle.obstacle_active    = false     # true if we have to consider the obstacles in the optimization problem
+    obstacle.lap_active         = 5         # number of the first lap in which the obstacles are used
     obstacle.obs_detect         = 10         # maximum distance at which we can detect obstacles (in terms of s!!)
     obstacle.n_obs              = 1         # number of obstacles
-    obstacle.s_obs_init         = [20]    # initial s coordinate of each obstacle
-    obstacle.ey_obs_init        = [-0.8]       # initial ey coordinate of each obstacle
-    obstacle.v_obs_init         = [1.5]       # initial velocity of each obstacles
-    obstacle.r_s                = 0.5
-    obstacle.r_ey               = 0.2
-    obstacle.inv_step           = 3         # number of step of invariance required for the safe set
+    obstacle.s_obs_init         = [19]    # initial s coordinate of each obstacle
+    obstacle.ey_obs_init        = [-0.2]       # initial ey coordinate of each obstacle
+    obstacle.v_obs_init         = [0]       # initial velocity of each obstacles
+    obstacle.r_s                = 0.2#0.5
+    obstacle.r_ey               = 0.1#0.2
+    obstacle.inv_step           = 0         # number of step of invariance required for the safe set
 end
 
 # Use this function to smooth data (moving average)

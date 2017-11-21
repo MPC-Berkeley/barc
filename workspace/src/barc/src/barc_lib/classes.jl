@@ -79,9 +79,11 @@ type MpcParams          # parameters for MPC solver
     Q_lane::Float64                # weight on the soft constraint for the lane
     Q_vel::Float64                 # weight on the soft constraint for the maximum velocity
     Q_slack::Array{Float64,1}               # weight on the slack variables for the terminal constraint
+    Q_obs::Array{Float64}          # weight used to esclude some of the old trajectories from the optimization problem
 
 
-    MpcParams(N=0,nz=0,OrderCostCons=0,Q=Float64[],Q_term=Float64[],R=Float64[],vPathFollowing=1.0,QderivZ=Float64[],QderivU=Float64[],Q_term_cost=1.0,delay_df=0,delay_a=0,Q_lane=1.0,Q_vel=1.0,Q_slack=Float64[]) = new(N,nz,OrderCostCons,Q,Q_term,R,vPathFollowing,QderivZ,QderivU,Q_term_cost,delay_df,delay_a,Q_lane,Q_vel,Q_slack)
+
+    MpcParams(N=0,nz=0,OrderCostCons=0,Q=Float64[],Q_term=Float64[],R=Float64[],vPathFollowing=1.0,QderivZ=Float64[],QderivU=Float64[],Q_term_cost=1.0,delay_df=0,delay_a=0,Q_lane=1.0,Q_vel=1.0,Q_slack=Float64[],Q_obs=Float64[]) = new(N,nz,OrderCostCons,Q,Q_term,R,vPathFollowing,QderivZ,QderivU,Q_term_cost,delay_df,delay_a,Q_lane,Q_vel,Q_slack,Q_obs)
 end
 
 type PosInfo            # current position information
