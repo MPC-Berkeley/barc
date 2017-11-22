@@ -2,7 +2,7 @@
     <!-- CAMERA -->
     <node pkg="uvc_camera" type="uvc_camera_node" name="barc_cam">
         <param name="index" value="0"/>
-        <param name="device" value="/dev/video0"/>
+        <param name="device" value="/dev/video6"/>
         <param name="width" value="640"/>
         <param name="height" value="480"/>
     </node>
