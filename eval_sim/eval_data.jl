@@ -184,7 +184,7 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
         angle_ell = atan2(pred_sol_xy[2,2]-(pred_sol_xy[2,1]),pred_sol_xy[1,2]-(pred_sol_xy[1,1]))
         angle_deg = (angle_ell*180)/pi
 
-        ell1 = patch.Ellipse([pred_sol_xy[1,1],pred_sol_xy[2,1]], 0.4, 0.2, 90)#angle=angle_deg)
+        ell1 = patch.Ellipse([pred_sol_xy[1,1],pred_sol_xy[2,1]], 0.4, 0.2, 0)#angle=angle_deg)
         ax[:add_artist](ell1)
 
 
@@ -1545,14 +1545,14 @@ function xyObstacle(oldSS,obs_log::Array{Float64},obstacle::Int64,lap::Int64,tra
     
 
   
+    # println("obs= ",obs)
 
+    OrderXY        = 18
+    OrderThetaCurv = 8
 
-    OrderXY        = 6
-    OrderThetaCurv = 4
+    
 
-    n_poly = 41
-
-    ds = 1//10
+    ds = 0.0625
 
     s_vec = zeros(OrderXY+1)
 
@@ -1572,16 +1572,19 @@ function xyObstacle(oldSS,obs_log::Array{Float64},obstacle::Int64,lap::Int64,tra
             nodes          = [x_track'; y_track']
             n_nodes        = size(x_track)[1]
             s_start   = (obs[i,1] - 1)
-            s_end     = (obs[i,1] + 3)
+            s_end     = (obs[i,1] + 6)
             s_nearest = obs[i,1]
 
-            idx_start = 10*(floor(obs[i,1]) - 1) 
-            idx_end   = 10*(floor(obs[i,1]) + 3)
+            idx_start = 16*(floor(obs[i,1]) - 1) 
+            idx_end   = 16*(floor(obs[i,1]) + 6)
 
-            if idx_start>n_nodes
-              idx_start=idx_start%n_nodes
-              idx_end=idx_end%n_nodes
-            end
+            n_poly = 113
+
+            # if idx_start>n_nodes
+            #   idx_start=idx_start%n_nodes
+            #   idx_end=idx_end%n_nodes
+            # end
+
 
             if idx_start<=0
                  nodes_XY = hcat(nodes[:,n_nodes+idx_start:n_nodes],nodes[:,1:idx_end])       # then stack the end and beginning of a lap together
@@ -1600,6 +1603,7 @@ function xyObstacle(oldSS,obs_log::Array{Float64},obstacle::Int64,lap::Int64,tra
             nodes_X = vec(nodes_XY[1,:])
             nodes_Y = vec(nodes_XY[2,:])
 
+            
 
             itp_matrix = zeros(n_poly,OrderXY+1)
 
