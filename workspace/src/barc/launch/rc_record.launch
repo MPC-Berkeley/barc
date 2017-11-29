@@ -15,15 +15,15 @@
     <!-- CAMERA -->
     <node pkg="uvc_camera" type="uvc_camera_node" name="barc_cam">
         <param name="index" value="0"/>
-        <param name="device" value="/dev/video0"/>
+        <param name="device" value="/dev/video6"/>
         <param name="width" value="640"/>
         <param name="height" value="480"/>
     </node>
     
     <!-- RECORD DATA TO DATOR -->
     <node pkg="barc" type="record_experiment.py" name="record_experiment" output="screen">
-        <param name="experiment_name" value="rc-record-test-01" />
-        <param name="camera_on" value="true" />
+        <param name="experiment_name" value="rc-record-test-zeno-01" />
+        <param name="camera_on" value="false" />
     </node>
 
     <!-- MANUAL RC JOYSTICK CONTROL -->

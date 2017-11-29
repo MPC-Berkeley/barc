@@ -25,11 +25,11 @@
     <!-- RECORD -->
     <node pkg="barc" type="record_experiment.py" name="record_experiment" output="screen">
         <param name="experiment_name" value="$(arg id)" />
-        <param name="camera_on" value="true" />
+        <param name="camera_on" value="false" />
     </node>
 
     <!-- EXPERIMENT-->
-    <node pkg="lab4" type="SteeringMapping.py" name="Model_ID">
+    <node pkg="lab4" type="controllerPID.py" name="simulationGain">
     </node>
 
 </launch>

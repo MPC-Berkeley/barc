@@ -22,7 +22,7 @@
         <param name="height" value="480"/>
     </node>
 
-	<!-- GPS -->
+    <!-- GPS -->
     <node pkg="nmea_navsat_driver" type="nmea_serial_driver" name="gps">
         <param name="port" value="/dev/ttyACM1" />
         <param name="baud_rate" value="115200" />
@@ -31,11 +31,13 @@
     <!-- RECORD -->
     <node pkg="barc" type="record_experiment.py" name="record_experiment" output="screen">
         <param name="experiment_name" value="$(arg id)" />
-        <param name="camera_on" value="true" />
+        <param name="camera_on" value="false" />
     </node>
 
-    <!-- EXPERIMENT-->
+    <!-- EXPERIMENT
     <node pkg="lab4" type="controllerPID.py" name="simulationGain">
-    </node>
+    </node>-->
 
+    <!-- MANUAL RC JOYSTICK CONTROL -->
+    <node pkg="barc" type="controller_rc.py" name="manual" output="screen" />
 </launch>
