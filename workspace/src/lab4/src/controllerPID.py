@@ -17,9 +17,9 @@ n_BR        = 0.0
 r_tire      = 0.05 # radius of the tire
 servo_pwm   = 1580.0
 motor_pwm   = 1500.0
-motor_pwm_offset = 1500.0
+motor_pwm_offset = 1580.0
 # reference speed 
-v_ref = 0.5 # reference speed is 3 m/s
+v_ref = 1.0 # reference speed is 3 m/s
 
 # encoder measurement update
 def enc_callback(data):
@@ -109,7 +109,7 @@ def controller():
     rate        = rospy.Rate(loop_rate)
 
     # Initialize the PID controller
-    PID_control = PID(kp=35, ki=35, kd=0.0)
+    PID_control = PID(kp=200, ki=0, kd=0.0)
 
     while not rospy.is_shutdown():
         # acceleration calculated from PID controller.

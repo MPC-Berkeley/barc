@@ -29,7 +29,7 @@
     </node>
 
     <!-- EXPERIMENT-->
-    <node pkg="lab4" type="controllerPID.py" name="simulationGain">
+    <node pkg="lab4" type="controllerPID.py" name="CorneringStiffnessTest">
     </node>
 
 </launch>

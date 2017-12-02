@@ -1,10 +1,10 @@
-
 #!/usr/bin/env python
 
 import rospy
 import time
 from barc.msg import ECU, Encoder
 from numpy import pi
+import numpy as np
 
 # from encoder
 v_meas      = 0.0
@@ -20,6 +20,7 @@ r_tire      = 0.05 # radius of the tire
 servo_pwm   = 1600.0
 motor_pwm   = 1500.0
 motor_pwm_offset = 1500.0
+servo_pwm_offset = 1600.0
 # reference speed 
 v_ref = 3 # reference speed is 3 m/s
 
@@ -94,7 +95,7 @@ class PID():
 
 # state estimation node
 def controller():
-    global motor_pwm, servo_pwm, motor_pwm_offset
+    global motor_pwm, servo_pwm, motor_pwm_offset, servo_pwm_offset
     global v_ref, v_meas, t_start
     # initialize node
     rospy.init_node('CorneringStiffnessTest', anonymous=True)
@@ -114,9 +115,10 @@ def controller():
     while not rospy.is_shutdown():
         # acceleration calculated from PID controller.
         motor_pwm = PID_control.acc_calculate(v_ref, v_meas) + motor_pwm_offset
-        rospy.logwarn("pwm = {}".format(motor_pwm))
+        # rospy.logwarn("pwm = {}".format(motor_pwm))
         t_now = time.time()
-        servo_pwm = 25*pi/180*sin(pi*(t_now - t_start))
+        servo_pwm = 200*np.sin(pi*(t_now - t_start)) + servo_pwm_offset
+        rospy.logwarn("pwm = {}".format(servo_pwm))
         # publish information
         ecu_pub.publish( ECU(motor_pwm, servo_pwm) )
 
