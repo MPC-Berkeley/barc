@@ -1,0 +1,12 @@
+<launch>
+    <!-- Machines -->
+    <machine name="odroid" address="10.0.0.1" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid.sh"/>
+    <machine name="this-pc" address="10.0.0.14" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc.sh"/>
+    
+       <!-- IMU -->
+    <node machine="odroid" pkg="myahrs_driver" type="myahrs_driver" name="myahrs_driver">
+        <param name="port" value="/dev/ttyACM0" />
+        <param name="baud_rate" value="115200" />
+    </node>
+   
+</launch>

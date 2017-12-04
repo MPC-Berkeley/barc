@@ -56,6 +56,10 @@ function coeffConstraintCost(oldTraj::OldTrajectory, mpcCoeff::MpcCoeff, posInfo
         selected_laps[i] = lapStatus.currentLap-i    # use previous lap
     end
 
+    if lapStatus.currentLap >= 5
+        selected_laps[Nl] = indmin(oldSS.oldCost[1:lapStatus.currentLap-2])      # and the best from all previous laps
+    end
+
     # Select the old data
     oldxDot         = oldTraj.oldTraj[:,1,selected_laps]::Array{Float64,3}
     oldyDot         = oldTraj.oldTraj[:,2,selected_laps]::Array{Float64,3}
@@ -96,7 +100,7 @@ function coeffConstraintCost(oldTraj::OldTrajectory, mpcCoeff::MpcCoeff, posInfo
     idx_s = findmin(DistS,1)[2]              # contains both indices for the closest distances for both oldS !!
     idx_s2= findmin(DistS2,1)[2]
 
-    off = 2
+    off = 1
     idx_s2 = idx_s2 + off
 
     # Propagate the obstacle for the prediction horizon
@@ -118,10 +122,11 @@ function coeffConstraintCost(oldTraj::OldTrajectory, mpcCoeff::MpcCoeff, posInfo
                 ellipse_check = (((selectedStates.selStates[i=(j*Np)+1:(j+1)*Np,6]-obs_prop_s[n])/obstacle.r_s).^2) + (((selectedStates.selStates[i=(j*Np)+1:(j+1)*Np,5]-obs_prop_ey[n])/obstacle.r_ey).^2)
                 
                 if any(x->x<=1, ellipse_check) == true  # if any of the selected states is in the ellipse
-
+                    #println("flag**************************************************************************************************************")
                     index = find(ellipse_check.<=1)     # find all the states in the ellipse 
-                    #println("index= ",index[1])
+                    
                     mpcParams.Q_obs[i=(j*Np)+(index[1]-obstacle.inv_step)+1:(j+1)*Np] =  10   # and set the values of the weight to 10, so that they are excluded from optimization
+                    println("Q_obs= ",mpcParams.Q_obs)
                 end
             end
         end     

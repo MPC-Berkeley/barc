@@ -28,7 +28,7 @@ function saveOldTraj(oldTraj::OldTrajectory,zCurr::Array{Float64},uCurr::Array{F
                 if lapStatus.currentLap <= 2                        # if it's the first or second lap
                     oldTraj.oldTraj[:,:,1]  = zCurr_export          # ... just save everything
                     oldTraj.oldInput[:,:,1] = uCurr_export
-                    oldTraj.oldTraj[:,:,2]  = zCurr_export
+                    oldTraj.oldTraj[:,:,2]  = zCurr_export  
                     oldTraj.oldInput[:,:,2] = uCurr_export
                     oldTraj.oldCost = [costLap,costLap]
                 else                                                # idea: always copy the new trajectory in the first array!
@@ -47,26 +47,26 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_pF::MpcParams,track
                               posInfo::PosInfo,oldTraj::OldTrajectory,mpcCoeff::MpcCoeff,lapStatus::LapStatus,buffersize::Int64,
                               obstacle::Obstacle,selectedStates::SelectedStates,oldSS::SafeSetData)
 
-    selectedStates.Np           = 18                            # Number of points to take from each previous trajectory to build the convex hull
+    selectedStates.Np           = 20                            # Number of points to take from each previous trajectory to build the convex hull
     selectedStates.Nl           = 2                             # Number of previous laps to include in the convex hull
     Nl                          = selectedStates.Nl
     selectedStates.selStates    = zeros(Nl*selectedStates.Np,6)  
     selectedStates.statesCost   = zeros(Nl*selectedStates.Np)
     selectedStates.version      = false
 
-    mpcParams.N                 = 12
+    mpcParams.N                 = 16
     mpcParams.Q                 = [5.0,0.0,0.0,0.1,50.0,0.0]   # Q (only for path following mode)
-    mpcParams.vPathFollowing    = 0.9                           # reference speed for first lap of path following
+    mpcParams.vPathFollowing    = 1                           # reference speed for first lap of path following
     mpcParams.Q_term            = 1.0*[20.0,1.0,10.0,20.0,50.0]   # weights for terminal constraints (LMPC, for xDot,yDot,psiDot,ePsi,eY)
     mpcParams.R                 = 0*[10.0,10.0]                 # put weights on a and d_f
     mpcParams.QderivZ           = 10.0*[1,1,1,1,1,1]             # cost matrix for derivative cost of states
-    mpcParams.QderivU           = 1.0*[5.0,100.0] #NOTE Set this to [5.0, 0/40.0]              # cost matrix for derivative cost of inputs
+    mpcParams.QderivU           = 1.0*[1.0,1.0] #NOTE Set this to [5.0, 0/40.0]              # cost matrix for derivative cost of inputs
     mpcParams.Q_term_cost       = 4.0                        # scaling of Q-function
     mpcParams.delay_df          = 3                             # steering delay
     mpcParams.delay_a           = 1                             # acceleration delay
     mpcParams.Q_lane            = 10                      # weight on the soft constraint for the lane
     mpcParams.Q_vel             = 1                    # weight on the soft constraint for the maximum velocity
-    mpcParams.Q_slack           = [20.0,1.0,10.0,20.0,50.0,50.0]#20.0*[2.0,2.0,1.0,2.0,5.0,5.0]  #vx,vy,psiDot,ePsi,eY,s
+    mpcParams.Q_slack           = [20.0,10.0,10.0,30.0,80.0,50.0]#20.0*[2.0,2.0,1.0,2.0,5.0,5.0]  #vx,vy,psiDot,ePsi,eY,s
     mpcParams.Q_obs             = ones(Nl*selectedStates.Np)# weight to esclude some of the old trajectories
 
 
@@ -76,7 +76,7 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_pF::MpcParams,track
     mpcParams_pF.R              = 0*[1.0,1.0]               # put weights on a and d_f
     mpcParams_pF.QderivZ        = 0.0*[0,0,0.1,0]           # cost matrix for derivative cost of states
     mpcParams_pF.QderivU        = 1.0*[10,10]                # cost matrix for derivative cost of inputs
-    mpcParams_pF.vPathFollowing = 0.9                       # reference speed for first lap of path following
+    mpcParams_pF.vPathFollowing = 1                       # reference speed for first lap of path following
     mpcParams_pF.delay_df       = 3                         # steering delay (number of steps)
     mpcParams_pF.delay_a        = 1                         # acceleration delay
 
@@ -125,11 +125,11 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_pF::MpcParams,track
     lapStatus.currentIt         = 0         # current iteration in lap
 
     obstacle.obstacle_active    = false     # true if we have to consider the obstacles in the optimization problem
-    obstacle.lap_active         = 5         # number of the first lap in which the obstacles are used
+    obstacle.lap_active         = 100         # number of the first lap in which the obstacles are used
     obstacle.obs_detect         = 10         # maximum distance at which we can detect obstacles (in terms of s!!)
     obstacle.n_obs              = 1         # number of obstacles
-    obstacle.s_obs_init         = [18]    # initial s coordinate of each obstacle
-    obstacle.ey_obs_init        = [0]       # initial ey coordinate of each obstacle
+    obstacle.s_obs_init         = [19]    # initial s coordinate of each obstacle
+    obstacle.ey_obs_init        = [-0.3]       # initial ey coordinate of each obstacle
     obstacle.v_obs_init         = [0]       # initial velocity of each obstacles
     obstacle.r_s                = 0.2#0.5
     obstacle.r_ey               = 0.1#0.2

@@ -536,12 +536,12 @@ type MpcModel_convhull
         #     @NLconstraint(mdl, u_Ol[i+1,1]-u_Ol[i,1] >= -0.2)
         # end
 
-        @NLconstraint(mdl, u_Ol[1,2]-uPrev[1,2] <= 0.06)
-        @NLconstraint(mdl, u_Ol[1,2]-uPrev[1,2] >= -0.06)
-        for i=1:N-1 # Constraints on u:
-            @NLconstraint(mdl, u_Ol[i+1,2]-u_Ol[i,2] <= 0.06)
-            @NLconstraint(mdl, u_Ol[i+1,2]-u_Ol[i,2] >= -0.06)
-        end
+        # @NLconstraint(mdl, u_Ol[1,2]-uPrev[1,2] <= 0.06)
+        # @NLconstraint(mdl, u_Ol[1,2]-uPrev[1,2] >= -0.06)
+        # for i=1:N-1 # Constraints on u:
+        #     @NLconstraint(mdl, u_Ol[i+1,2]-u_Ol[i,2] <= 0.06)
+        #     @NLconstraint(mdl, u_Ol[i+1,2]-u_Ol[i,2] >= -0.06)
+        # end
 
        
    
@@ -603,7 +603,7 @@ type MpcModel_convhull
 
         #@NLobjective(mdl, Min, derivCost + laneCost + controlCost + terminalCost )#+ slackCost)#+ velocityCost)
 
-        @NLobjective(mdl, Min, derivCost + laneCost + controlCost + terminalCost + Q_slack[1]*slackVx + Q_slack[2]*slackVy + Q_slack[3]*slackPsidot + Q_slack[4]*slackEpsi + Q_slack[5]*slackEy + Q_slack[6]*slackS)
+        @NLobjective(mdl, Min, derivCost + laneCost +  terminalCost + Q_slack[1]*slackVx + Q_slack[2]*slackVy + Q_slack[3]*slackPsidot + Q_slack[4]*slackEpsi + Q_slack[5]*slackEy + Q_slack[6]*slackS) #+ controlCost
 
 
 
@@ -661,7 +661,7 @@ type MpcModel_test
     uPrev::Array{JuMP.NonlinearParameter,2}
 
 
-    #eps_lane::Array{JuMP.Variable,1}
+    eps_lane::Array{JuMP.Variable,1}
     #eps_alpha::Array{JuMP.Variable,1}
     #eps_vel::Array{JuMP.Variable,1}
     alpha::Array{JuMP.Variable,1}
@@ -674,7 +674,7 @@ type MpcModel_test
 
     derivCost::JuMP.NonlinearExpression
     controlCost::JuMP.NonlinearExpression
-    #laneCost::JuMP.NonlinearExpression
+    laneCost::JuMP.NonlinearExpression
     terminalCost::JuMP.NonlinearExpression
     costPF::JuMP.NonlinearExpression
     #slackCost::JuMP.NonlinearExpression
@@ -728,7 +728,7 @@ type MpcModel_test
 
         @variable( mdl, z_Ol[1:(N+1),1:7])
         @variable( mdl, u_Ol[1:N,1:2])
-        #@variable( mdl, eps_lane[1:N+1] >= 0)   # eps for soft lane constraints
+        @variable( mdl, eps_lane[1:N+1] >= 0)   # eps for soft lane constraints
         @variable( mdl, alpha[1:Nl*Np] >= 0)    # coefficients of the convex hull
        # @variable( mdl, eps_alpha[1:6] >=0)     # eps for soft constraint on alpha
        #@variable( mdl, eps_vel[1:N+1]>=0)      # eps for soft constraint on velocity
@@ -769,8 +769,8 @@ type MpcModel_test
 
         @NLconstraint(mdl, [i=1:7], z_Ol[1,i] == z0[i])
 
-        #@NLconstraint(mdl, [i=2:N+1], z_Ol[i,5] <= ey_max + eps_lane[i])
-        #@NLconstraint(mdl, [i=2:N+1], z_Ol[i,5] >= -ey_max - eps_lane[i])
+        @NLconstraint(mdl, [i=2:N+1], z_Ol[i,5] <= ey_max + eps_lane[i])
+        @NLconstraint(mdl, [i=2:N+1], z_Ol[i,5] >= -ey_max - eps_lane[i])
         #@NLconstraint(mdl,[i = 1:(N+1)], z_Ol[i,4] <= v_max + eps_vel[i] )      # sof constraint on maximum velocity
         @NLconstraint(mdl, sum{alpha[i],i=1:Nl*Np} == 1)                        # constraint on the coefficients of the convex hull
 
@@ -809,19 +809,19 @@ type MpcModel_test
             @NLconstraint(mdl, z_Ol[i+1,5]  == z_Ol[i,5] + dt*(z_Ol[i,1]*sin(z_Ol[i,4])+z_Ol[i,2]*cos(z_Ol[i,4])))                                                      # eY
             @NLconstraint(mdl, z_Ol[i+1,6]  == z_Ol[i,6] + dt*dsdt[i]  )                                                                                                # s
         end
-        # @NLconstraint(mdl, u_Ol[1,1]-uPrev[1,1] <= 0.05)
-        # @NLconstraint(mdl, u_Ol[1,1]-uPrev[1,1] >= -0.2)
-        # for i=1:N-1 # Constraints on u:
-        #     @NLconstraint(mdl, u_Ol[i+1,1]-u_Ol[i,1] <= 0.05)
-        #     @NLconstraint(mdl, u_Ol[i+1,1]-u_Ol[i,1] >= -0.2)
-        # end
+        @NLconstraint(mdl, u_Ol[1,1]-uPrev[1,1] <= 0.05)
+        @NLconstraint(mdl, u_Ol[1,1]-uPrev[1,1] >= -0.2)
+        for i=1:N-1 # Constraints on u:
+            @NLconstraint(mdl, u_Ol[i+1,1]-u_Ol[i,1] <= 0.05)
+            @NLconstraint(mdl, u_Ol[i+1,1]-u_Ol[i,1] >= -0.2)
+        end
 
-        # @NLconstraint(mdl, u_Ol[1,2]-uPrev[1,2] <= 0.06)
-        # @NLconstraint(mdl, u_Ol[1,2]-uPrev[1,2] >= -0.06)
-        # for i=1:N-1 # Constraints on u:
-        #     @NLconstraint(mdl, u_Ol[i+1,2]-u_Ol[i,2] <= 0.06)
-        #     @NLconstraint(mdl, u_Ol[i+1,2]-u_Ol[i,2] >= -0.06)
-        # end
+        @NLconstraint(mdl, u_Ol[1,2]-uPrev[1,2] <= 0.06)
+        @NLconstraint(mdl, u_Ol[1,2]-uPrev[1,2] >= -0.06)
+        for i=1:N-1 # Constraints on u:
+            @NLconstraint(mdl, u_Ol[i+1,2]-u_Ol[i,2] <= 0.06)
+            @NLconstraint(mdl, u_Ol[i+1,2]-u_Ol[i,2] >= -0.06)
+        end
 
        
    
@@ -840,7 +840,7 @@ type MpcModel_test
 
         # Lane cost (soft)
         # ---------------------------------
-        #@NLexpression(mdl, laneCost, Q_lane*sum{10.0*eps_lane[i]+100.0*eps_lane[i]^2 ,i=2:N+1})
+        @NLexpression(mdl, laneCost, Q_lane*sum{10.0*eps_lane[i]+100.0*eps_lane[i]^2 ,i=2:N+1})
 
         # Terminal Cost
         # ---------------------------------
@@ -863,8 +863,8 @@ type MpcModel_test
         # Overall Cost function (objective of the minimization)
         # -----------------------------------------------------
 
-        #@NLobjective(mdl, Min, derivCost + laneCost + controlCost + terminalCost )#+ slackCost)#+ velocityCost)
-        @NLobjective(mdl, Min, derivCost + controlCost + costPF + terminalCost)
+        @NLobjective(mdl, Min, derivCost + laneCost + controlCost + terminalCost )#+ slackCost)#+ velocityCost)
+        #@NLobjective(mdl, Min, derivCost + controlCost + costPF + terminalCost)
 
 
         sol_stat=solve(mdl)
@@ -1136,7 +1136,7 @@ type MpcModel_obstacle
 
         # Soft Constraint on the Obstacle
         # --------------------------------
-        @NLexpression(mdl, obstacleSlackCost, 1*sum{-log(((z_Ol[i,6]-obs[i,1])/r_s)^2 + ((z_Ol[i,5]-obs[i,2])/r_ey)^2 -1),i=1:N+1})
+        @NLexpression(mdl, obstacleSlackCost, 0.1*sum{-log(((z_Ol[i,6]-obs[i,1])/r_s)^2 + ((z_Ol[i,5]-obs[i,2])/r_ey)^2 -1),i=1:N+1})
 
 
         # Velocity Cost

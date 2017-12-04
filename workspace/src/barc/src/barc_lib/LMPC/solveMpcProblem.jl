@@ -81,7 +81,7 @@ function solveMpcProblem_pathFollow(mdl::MpcModel_pF,mpcSol::MpcSol,mpcParams::M
 
 
     z_ref1 = cat(2,zeros(mpcParams.N+1,3),v_ref*ones(mpcParams.N+1,1))
-    z_ref2 = cat(2,zeros(mpcParams.N+1,1),0.1*ones(mpcParams.N+1,1),zeros(mpcParams.N+1,1),v_ref*ones(mpcParams.N+1,1))
+    z_ref2 = cat(2,zeros(mpcParams.N+1,1),0.2*ones(mpcParams.N+1,1),zeros(mpcParams.N+1,1),v_ref*ones(mpcParams.N+1,1))
     z_ref3 = cat(2,zeros(mpcParams.N+1,1),-0.1*ones(mpcParams.N+1,1),zeros(mpcParams.N+1,1),v_ref*ones(mpcParams.N+1,1))
 
     sol_status::Symbol

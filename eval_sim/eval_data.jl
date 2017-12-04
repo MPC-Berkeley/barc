@@ -167,12 +167,11 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
         cpsi2        = cpsi[1:currentIt,2,i]
         cpsi3        = cpsi[1:currentIt,3,i]
 
-        figure(1)
-        plot(oldSS_xy[:,1,i],oldSS_xy[:,2,i],"og") 
-        plot(oldSS_xy[:,1,i-1],oldSS_xy[:,2,i-1],"ob") 
-        plot(pred_sol_xy[1],pred_sol_xy[2],)
-        plot(track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")#,track[:,1],track[:,2],"b.")
-        grid("on")
+        # figure(1)
+        # plot(oldSS_xy[:,1,i],oldSS_xy[:,2,i],"og") 
+        # plot(oldSS_xy[:,1,i-1],oldSS_xy[:,2,i-1],"ob") 
+        # plot(track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")#,track[:,1],track[:,2],"b.")
+        # grid("on")
 
         ellfig = figure(1)
         ax = ellfig[:add_subplot](1,1,1)
@@ -289,6 +288,8 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
         plot(t,velocity,"-*")
         title("Overall velocity in lap $i")
         grid("on")
+
+        println("average velocity= ",mean(velocity))
 
 
         figure(6)
@@ -1548,7 +1549,7 @@ function xyObstacle(oldSS,obs_log::Array{Float64},obstacle::Int64,lap::Int64,tra
     # println("obs= ",obs)
 
     OrderXY        = 18
-    OrderThetaCurv = 8
+    OrderThetaCurv = 12
 
     
 

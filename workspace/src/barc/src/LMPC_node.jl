@@ -95,7 +95,7 @@ function main()
     mdl          = MpcModel(mpcParams,mpcCoeff,modelParams,trackCoeff)  
     mdl_pF       = MpcModel_pF(mpcParams_pF,modelParams,trackCoeff)
     mdl_convhull = MpcModel_convhull(mpcParams,mpcCoeff,modelParams,trackCoeff,selectedStates)
-    #mdl_test     = MpcModel_test(mpcParams,mpcCoeff,modelParams,trackCoeff,selectedStates)
+    mdl_test     = MpcModel_test(mpcParams,mpcCoeff,modelParams,trackCoeff,selectedStates)
     mdl_obstacle = MpcModel_obstacle(mpcParams,mpcCoeff,modelParams,trackCoeff,selectedStates,obstacle)
 
 
@@ -276,7 +276,7 @@ function main()
                 cost2target                           = zeros(buffersize) # array containing the cost to arrive from each point of the old trajectory to the target
                 #save the terminal cost
                 for j = 1:buffersize
-                    cost2target[j] = 1.5*(lapStatus.currentIt-j+1)  
+                    cost2target[j] = 1*(lapStatus.currentIt-j+1)  
                 end
                 oldSS.cost2target[:,lapStatus.currentLap-1] = cost2target
                                 
@@ -307,23 +307,34 @@ function main()
                     
                     elseif selectedStates.version == false && obstacle.obstacle_active == false
 
-                        setvalue(mdl_convhull.z_Ol[:,1],zCurr[1,1]*ones(mpcParams.N+1))#mpcSol.z[:,4])
-                        setvalue(mdl_convhull.z_Ol[:,6],zCurr[1,6]*ones(mpcParams.N+1))#mpcSol.z[:,1]-posInfo.s_target)
-                        setvalue(mdl_convhull.z_Ol[:,5],zCurr[1,5]*ones(mpcParams.N+1))#mpcSol.z[:,2])
-                        setvalue(mdl_convhull.z_Ol[:,4],zCurr[1,4]*ones(mpcParams.N+1))#mpcSol.z[:,3])
-                        setvalue(mdl_convhull.z_Ol[:,2],zCurr[1,2]*ones(mpcParams.N+1))
-                        setvalue(mdl_convhull.z_Ol[:,3],zCurr[1,3]*ones(mpcParams.N+1))
+                        setvalue(mdl_convhull.z_Ol[1:mpcParams.N,1],mpcSol.z[2:mpcParams.N+1,4])
+                        setvalue(mdl_convhull.z_Ol[mpcParams.N+1,1],mpcSol.z[mpcParams.N+1,4])
+                        setvalue(mdl_convhull.z_Ol[1:mpcParams.N,6],mpcSol.z[2:mpcParams.N+1,1]-posInfo.s_target)
+                        setvalue(mdl_convhull.z_Ol[mpcParams.N+1,6],mpcSol.z[mpcParams.N+1,1]-posInfo.s_target)
+                        setvalue(mdl_convhull.z_Ol[1:mpcParams.N,5],mpcSol.z[2:mpcParams.N+1,2])
+                        setvalue(mdl_convhull.z_Ol[mpcParams.N+1,5],mpcSol.z[mpcParams.N+1,2])
+                        setvalue(mdl_convhull.z_Ol[1:mpcParams.N,4],mpcSol.z[2:mpcParams.N+1,3])
+                        setvalue(mdl_convhull.z_Ol[mpcParams.N+1,4],mpcSol.z[mpcParams.N+1,3])
+
+                        #setvalue(mdl_convhull.z_Ol[:,2],zCurr[1,2]*ones(mpcParams.N+1))
+                        #setvalue(mdl_convhull.z_Ol[:,3],zCurr[1,3]*ones(mpcParams.N+1))
                         #setvalue(mdl_convhull.u_Ol,mpcSol.u[1:mpcParams.N,:])
                         setvalue(mdl_convhull.alpha[:],(1/(selectedStates.Nl*selectedStates.Np))*ones(selectedStates.Nl*selectedStates.Np))
 
                     elseif selectedStates.version == false && obstacle.obstacle_active == true
 
-                        setvalue(mdl_obstacle.z_Ol[:,1],zCurr[1,1]*ones(mpcParams.N+1))#mpcSol.z[:,4])
-                        setvalue(mdl_obstacle.z_Ol[:,6],zCurr[1,6]*ones(mpcParams.N+1))#mpcSol.z[:,1]-posInfo.s_target)
-                        setvalue(mdl_obstacle.z_Ol[:,5],zCurr[1,5]*ones(mpcParams.N+1))#mpcSol.z[:,2])
-                        setvalue(mdl_obstacle.z_Ol[:,4],zCurr[1,4]*ones(mpcParams.N+1))#mpcSol.z[:,3])
-                        setvalue(mdl_obstacle.z_Ol[:,2],zCurr[1,2]*ones(mpcParams.N+1))
-                        setvalue(mdl_obstacle.z_Ol[:,3],zCurr[1,3]*ones(mpcParams.N+1))
+                        setvalue(mdl_obstacle.z_Ol[1:mpcParams.N,1],mpcSol.z[2:mpcParams.N+1,4])
+                        setvalue(mdl_obstacle.z_Ol[mpcParams.N+1,1],mpcSol.z[mpcParams.N+1,4])
+                        setvalue(mdl_obstacle.z_Ol[1:mpcParams.N,6],mpcSol.z[2:mpcParams.N+1,1]-posInfo.s_target)
+                        setvalue(mdl_obstacle.z_Ol[mpcParams.N+1,6],mpcSol.z[mpcParams.N+1,1]-posInfo.s_target)
+                        setvalue(mdl_obstacle.z_Ol[1:mpcParams.N,5],mpcSol.z[2:mpcParams.N+1,2])
+                        setvalue(mdl_obstacle.z_Ol[mpcParams.N+1,5],mpcSol.z[mpcParams.N+1,2])
+                        setvalue(mdl_obstacle.z_Ol[1:mpcParams.N,4],mpcSol.z[2:mpcParams.N+1,3])
+                        setvalue(mdl_obstacle.z_Ol[mpcParams.N+1,4],mpcSol.z[mpcParams.N+1,3])
+
+
+                        # setvalue(mdl_obstacle.z_Ol[:,2],zCurr[1,2]*ones(mpcParams.N+1))
+                        # setvalue(mdl_obstacle.z_Ol[:,3],zCurr[1,3]*ones(mpcParams.N+1))
                         #setvalue(mdl_obstacle.u_Ol,mpcSol.u[1:mpcParams.N,:])
                         setvalue(mdl_obstacle.alpha[:],(1/(selectedStates.Nl*selectedStates.Np))*ones(selectedStates.Nl*selectedStates.Np))
 
@@ -335,12 +346,38 @@ function main()
 
                     elseif selectedStates.version == false && obstacle.obstacle_active == false
 
-                        setvalue(mdl_convhull.z_Ol[:,6],mpcSol.z[:,6]-posInfo.s_target)
+                        setvalue(mdl_convhull.z_Ol[1:mpcParams.N,1],mpcSol.z[2:mpcParams.N+1,1])
+                        setvalue(mdl_convhull.z_Ol[mpcParams.N+1,1],mpcSol.z[mpcParams.N+1,1])
+                        setvalue(mdl_convhull.z_Ol[1:mpcParams.N,2],mpcSol.z[2:mpcParams.N+1,2])
+                        setvalue(mdl_convhull.z_Ol[mpcParams.N+1,2],mpcSol.z[mpcParams.N+1,2])
+                        setvalue(mdl_convhull.z_Ol[1:mpcParams.N,3],mpcSol.z[2:mpcParams.N+1,3])
+                        setvalue(mdl_convhull.z_Ol[mpcParams.N+1,3],mpcSol.z[mpcParams.N+1,3])
+                        setvalue(mdl_convhull.z_Ol[1:mpcParams.N,4],mpcSol.z[2:mpcParams.N+1,4])
+                        setvalue(mdl_convhull.z_Ol[mpcParams.N+1,4],mpcSol.z[mpcParams.N+1,4])
+                        setvalue(mdl_convhull.z_Ol[1:mpcParams.N,5],mpcSol.z[2:mpcParams.N+1,5])
+                        setvalue(mdl_convhull.z_Ol[mpcParams.N+1,5],mpcSol.z[mpcParams.N+1,5])
+                        setvalue(mdl_convhull.z_Ol[1:mpcParams.N,6],mpcSol.z[2:mpcParams.N+1,6]-posInfo.s_target)
+                        setvalue(mdl_convhull.z_Ol[mpcParams.N+1,6],mpcSol.z[mpcParams.N+1,6]-posInfo.s_target)
+
+                        #setvalue(mdl_convhull.z_Ol[:,6],mpcSol.z[:,6]-posInfo.s_target)
                         setvalue(mdl_convhull.alpha[:],(1/(selectedStates.Nl*selectedStates.Np))*ones(selectedStates.Nl*selectedStates.Np))
 
                     elseif selectedStates.version == false && obstacle.obstacle_active == true
 
-                        setvalue(mdl_obstacle.z_Ol[:,6],mpcSol.z[:,6]-posInfo.s_target)
+                        setvalue(mdl_obstacle.z_Ol[1:mpcParams.N,1],mpcSol.z[2:mpcParams.N+1,1])
+                        setvalue(mdl_obstacle.z_Ol[mpcParams.N+1,1],mpcSol.z[mpcParams.N+1,1])
+                        setvalue(mdl_obstacle.z_Ol[1:mpcParams.N,2],mpcSol.z[2:mpcParams.N+1,2])
+                        setvalue(mdl_obstacle.z_Ol[mpcParams.N+1,2],mpcSol.z[mpcParams.N+1,2])
+                        setvalue(mdl_obstacle.z_Ol[1:mpcParams.N,3],mpcSol.z[2:mpcParams.N+1,3])
+                        setvalue(mdl_obstacle.z_Ol[mpcParams.N+1,3],mpcSol.z[mpcParams.N+1,3])
+                        setvalue(mdl_obstacle.z_Ol[1:mpcParams.N,4],mpcSol.z[2:mpcParams.N+1,4])
+                        setvalue(mdl_obstacle.z_Ol[mpcParams.N+1,4],mpcSol.z[mpcParams.N+1,4])
+                        setvalue(mdl_obstacle.z_Ol[1:mpcParams.N,5],mpcSol.z[2:mpcParams.N+1,5])
+                        setvalue(mdl_obstacle.z_Ol[mpcParams.N+1,5],mpcSol.z[mpcParams.N+1,5])
+                        setvalue(mdl_obstacle.z_Ol[1:mpcParams.N,6],mpcSol.z[2:mpcParams.N+1,6]-posInfo.s_target)
+                        setvalue(mdl_obstacle.z_Ol[mpcParams.N+1,6],mpcSol.z[mpcParams.N+1,6]-posInfo.s_target)
+
+                        #setvalue(mdl_obstacle.z_Ol[:,6],mpcSol.z[:,6]-posInfo.s_target)
                         setvalue(mdl_obstacle.alpha[:],(1/(selectedStates.Nl*selectedStates.Np))*ones(selectedStates.Nl*selectedStates.Np))
                     end
                 end
@@ -359,6 +396,48 @@ function main()
 
             mpcParams.Q_obs = ones(selectedStates.Nl*selectedStates.Np)
 
+            ##############################################################
+            #SSet warm start
+            if lapStatus.currentLap > n_pf && lapStatus.currentIt > 1
+                if selectedStates.version == false && obstacle.obstacle_active == false
+
+                    setvalue(mdl_convhull.z_Ol[1:mpcParams.N,1],mpcSol.z[2:mpcParams.N+1,1])
+                    setvalue(mdl_convhull.z_Ol[mpcParams.N+1,1],mpcSol.z[mpcParams.N+1,1])
+                    setvalue(mdl_convhull.z_Ol[1:mpcParams.N,2],mpcSol.z[2:mpcParams.N+1,2])
+                    setvalue(mdl_convhull.z_Ol[mpcParams.N+1,2],mpcSol.z[mpcParams.N+1,2])
+                    setvalue(mdl_convhull.z_Ol[1:mpcParams.N,3],mpcSol.z[2:mpcParams.N+1,3])
+                    setvalue(mdl_convhull.z_Ol[mpcParams.N+1,3],mpcSol.z[mpcParams.N+1,3])
+                    setvalue(mdl_convhull.z_Ol[1:mpcParams.N,4],mpcSol.z[2:mpcParams.N+1,4])
+                    setvalue(mdl_convhull.z_Ol[mpcParams.N+1,4],mpcSol.z[mpcParams.N+1,4])
+                    setvalue(mdl_convhull.z_Ol[1:mpcParams.N,5],mpcSol.z[2:mpcParams.N+1,5])
+                    setvalue(mdl_convhull.z_Ol[mpcParams.N+1,5],mpcSol.z[mpcParams.N+1,5])
+                    setvalue(mdl_convhull.z_Ol[1:mpcParams.N,6],mpcSol.z[2:mpcParams.N+1,6])
+                    setvalue(mdl_convhull.z_Ol[mpcParams.N+1,6],mpcSol.z[mpcParams.N+1,6])
+
+                            #setvalue(mdl_convhull.z_Ol[:,6],mpcSol.z[:,6]-posInfo.s_target)
+                    setvalue(mdl_convhull.alpha[:],(1/(selectedStates.Nl*selectedStates.Np))*ones(selectedStates.Nl*selectedStates.Np))
+
+                elseif selectedStates.version == false && obstacle.obstacle_active == true
+
+                    setvalue(mdl_obstacle.z_Ol[1:mpcParams.N,1],mpcSol.z[2:mpcParams.N+1,1])
+                    setvalue(mdl_obstacle.z_Ol[mpcParams.N+1,1],mpcSol.z[mpcParams.N+1,1])
+                    setvalue(mdl_obstacle.z_Ol[1:mpcParams.N,2],mpcSol.z[2:mpcParams.N+1,2])
+                    setvalue(mdl_obstacle.z_Ol[mpcParams.N+1,2],mpcSol.z[mpcParams.N+1,2])
+                    setvalue(mdl_obstacle.z_Ol[1:mpcParams.N,3],mpcSol.z[2:mpcParams.N+1,3])
+                    setvalue(mdl_obstacle.z_Ol[mpcParams.N+1,3],mpcSol.z[mpcParams.N+1,3])
+                    setvalue(mdl_obstacle.z_Ol[1:mpcParams.N,4],mpcSol.z[2:mpcParams.N+1,4])
+                    setvalue(mdl_obstacle.z_Ol[mpcParams.N+1,4],mpcSol.z[mpcParams.N+1,4])
+                    setvalue(mdl_obstacle.z_Ol[1:mpcParams.N,5],mpcSol.z[2:mpcParams.N+1,5])
+                    setvalue(mdl_obstacle.z_Ol[mpcParams.N+1,5],mpcSol.z[mpcParams.N+1,5])
+                    setvalue(mdl_obstacle.z_Ol[1:mpcParams.N,6],mpcSol.z[2:mpcParams.N+1,6])
+                    setvalue(mdl_obstacle.z_Ol[mpcParams.N+1,6],mpcSol.z[mpcParams.N+1,6])
+
+                            #setvalue(mdl_obstacle.z_Ol[:,6],mpcSol.z[:,6]-posInfo.s_target)
+                    setvalue(mdl_obstacle.alpha[:],(1/(selectedStates.Nl*selectedStates.Np))*ones(selectedStates.Nl*selectedStates.Np))
+                end
+            end
+            ##############################################################
+
 
 
             if lapStatus.currentLap > 1
@@ -372,26 +451,26 @@ function main()
 
             if obstacle.obstacle_active == true
 
-            obs_temp = obs_curr[lapStatus.currentIt,:,:]
+                obs_temp = obs_curr[lapStatus.currentIt,:,:]
 
 
 
-            if posInfo.s_target-posInfo.s < obstacle.obs_detect  # meaning that I could possibly detect obstacles after the finish line
+                if posInfo.s_target-posInfo.s < obstacle.obs_detect  # meaning that I could possibly detect obstacles after the finish line
 
-                index1=find(obs_curr[lapStatus.currentIt,1,:].< obstacle.obs_detect+posInfo.s-posInfo.s_target)  # look for obstacles that could cause problems
+                    index1=find(obs_curr[lapStatus.currentIt,1,:].< obstacle.obs_detect+posInfo.s-posInfo.s_target)  # look for obstacles that could cause problems
 
-                obs_temp[1,1,index1] = posInfo.s_target + obs_curr[lapStatus.currentIt,1,index1]
+                    obs_temp[1,1,index1] = posInfo.s_target + obs_curr[lapStatus.currentIt,1,index1]
 
 
+                end
+
+
+                dist,index=findmin(sqrt((obs_temp[1,1,:]-zCurr[lapStatus.currentIt,6]).^2 + (obs_temp[1,2,:]-zCurr[lapStatus.currentIt,5]).^2))
+
+                # println("dist= ",dist)
+                # println("obstacle's position= ",obs_temp[1,1,:])
+                obs_near = obs_temp[1,:,index]
             end
-
-
-            dist,index=findmin(sqrt((obs_temp[1,1,:]-zCurr[lapStatus.currentIt,6]).^2 + (obs_temp[1,2,:]-zCurr[lapStatus.currentIt,5]).^2))
-
-            # println("dist= ",dist)
-            # println("obstacle's position= ",obs_temp[1,1,:])
-            obs_near = obs_temp[1,:,index]
-        end
 
 
 
