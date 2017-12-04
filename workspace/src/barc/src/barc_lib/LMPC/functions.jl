@@ -47,14 +47,14 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_pF::MpcParams,track
                               posInfo::PosInfo,oldTraj::OldTrajectory,mpcCoeff::MpcCoeff,lapStatus::LapStatus,buffersize::Int64,
                               obstacle::Obstacle,selectedStates::SelectedStates,oldSS::SafeSetData)
 
-    selectedStates.Np           = 20                            # Number of points to take from each previous trajectory to build the convex hull
-    selectedStates.Nl           = 2                             # Number of previous laps to include in the convex hull
+    selectedStates.Np           = 16                            # Number of points to take from each previous trajectory to build the convex hull
+    selectedStates.Nl           = 3                             # Number of previous laps to include in the convex hull
     Nl                          = selectedStates.Nl
     selectedStates.selStates    = zeros(Nl*selectedStates.Np,6)  
     selectedStates.statesCost   = zeros(Nl*selectedStates.Np)
     selectedStates.version      = false
 
-    mpcParams.N                 = 16
+    mpcParams.N                 = 11
     mpcParams.Q                 = [5.0,0.0,0.0,0.1,50.0,0.0]   # Q (only for path following mode)
     mpcParams.vPathFollowing    = 1                           # reference speed for first lap of path following
     mpcParams.Q_term            = 1.0*[20.0,1.0,10.0,20.0,50.0]   # weights for terminal constraints (LMPC, for xDot,yDot,psiDot,ePsi,eY)
