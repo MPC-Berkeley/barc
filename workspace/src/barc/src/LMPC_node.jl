@@ -2,11 +2,11 @@
 
 using RobotOS
 @rosimport barc.msg: ECU, pos_info
-@rosimport data_service.msg: TimeData
+#@rosimport data_service.msg: TimeData
 @rosimport geometry_msgs.msg: Vector3
 rostypegen()
 using barc.msg
-using data_service.msg
+#using data_service.msg
 using geometry_msgs.msg
 using JuMP
 using Ipopt
