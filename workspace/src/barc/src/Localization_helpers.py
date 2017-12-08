@@ -164,17 +164,27 @@ class Localization(object):
         # theta = add_curve(theta,37,0)
 
         # GOGGLE TRACK WITH STRAIGHT LINES, LENGTH = 19.11m (using ds = 0.03m)
-        theta = add_curve(theta,60,0)
-        theta = add_curve(theta,80,-pi/2)
-        theta = add_curve(theta,20,0)
-        theta = add_curve(theta,80,-pi/2)
-        theta = add_curve(theta,40,pi/10)
-        theta = add_curve(theta,60,-pi/5)
-        theta = add_curve(theta,40,pi/10)
-        theta = add_curve(theta,80,-pi/2)
-        theta = add_curve(theta,20,0)
-        theta = add_curve(theta,80,-pi/2)
-        theta = add_curve(theta,75,0)
+        # theta = add_curve(theta,60,0)
+        # theta = add_curve(theta,80,-pi/2)
+        # theta = add_curve(theta,20,0)
+        # theta = add_curve(theta,80,-pi/2)
+        # theta = add_curve(theta,40,pi/10)
+        # theta = add_curve(theta,60,-pi/5)
+        # theta = add_curve(theta,40,pi/10)
+        # theta = add_curve(theta,80,-pi/2)
+        # theta = add_curve(theta,20,0)
+        # theta = add_curve(theta,80,-pi/2)
+        # theta = add_curve(theta,75,0)
+
+        # OVAL TRACK FOR TESTS IN VSD
+
+        theta = add_curve(theta,43,0)
+        theta = add_curve(theta,146,-pi)
+        theta = add_curve(theta,86,0)
+        theta = add_curve(theta,146,-pi)
+        theta = add_curve(theta,43,0)
+
+        #theta = add_curve(theta,33,0)
 
         # SHORT SIMPLE RACETRACK (smooth curves): 12.0m
         # theta = add_curve(theta,10,0)

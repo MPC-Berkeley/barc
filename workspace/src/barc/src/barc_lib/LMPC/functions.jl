@@ -56,7 +56,7 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_pF::MpcParams,track
 
     mpcParams.N                 = 11
     mpcParams.Q                 = [5.0,0.0,0.0,0.1,50.0,0.0]   # Q (only for path following mode)
-    mpcParams.vPathFollowing    = 1                           # reference speed for first lap of path following
+    mpcParams.vPathFollowing    = 0.5#1                           # reference speed for first lap of path following
     mpcParams.Q_term            = 1.0*[20.0,1.0,10.0,20.0,50.0]   # weights for terminal constraints (LMPC, for xDot,yDot,psiDot,ePsi,eY)
     mpcParams.R                 = 0*[10.0,10.0]                 # put weights on a and d_f
     mpcParams.QderivZ           = 10.0*[1,1,1,1,1,1]             # cost matrix for derivative cost of states

@@ -2,7 +2,7 @@
 source ~/barc/scripts/startup.sh
 source /opt/ros/indigo/setup.bash
 source ~/barc/workspace/devel/setup.bash
-export PATH=$PATH:/home/odroid/julia
-export ROS_IP=192.168.100.100
-export ROS_MASTER_URI=http://192.168.100.152:11311
+#export PATH=$PATH:/home/odroid/julia
+export ROS_IP=10.0.0.1
+export ROS_MASTER_URI=http://10.0.0.14:11311
 exec "$@"
