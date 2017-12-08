@@ -14,7 +14,7 @@
 # ---------------------------------------------------------------------------
 
 from numpy import sin, cos, tan, arctan, array, dot
-from numpy import sign, argmin, sqrt
+from numpy import sign, argmin, sqrt, eye
 import rospy
 
 # discrete non-linear bicycle model dynamics
@@ -225,7 +225,6 @@ def h_KinBkMdl(x):
     """
     measurement model
     """
-    C = array([[0, 0, 1, 0],
-               [0, 0, 0, 1]])
+    C = eye(4)
     return dot(C, x)
  
