@@ -28,14 +28,30 @@ from tf import transformations
 import cv2
 import numpy as np
 
+from os import listdir
+from os.path import isfile, join
+
 rosbag_dir = os.path.expanduser("~") + '/rosbag'
 video_dir = os.path.expanduser("~") + '/video'
 image_dir = os.path.expanduser("~") + '/images'
 
 class RecordExperiment():
     def __init__(self):
+        # list all files
+        files = [f for f in listdir(rosbag_dir) if isfile(join(rosbag_dir, f))]
+        files.sort()
+        
+        for i,file in enumerate( files ):
+            print "%i - %s" % (i,file)
+
+        print "\nMake sure the data_service service.py node is running in the background"
+        idx = int( raw_input("Enter the bagfile # [integer] for the experiment you want to save to local dator :  ") )
+        bag_file = files[idx]
+        
+        print "Saving experiment : %s" % bag_file 
+        
         # get parameters
-        self.experiment_name     = "UpperHearstMapTwo"
+        self.experiment_name     = bag_file
         self.camera_on           = False
       
         # wait for ROS services
@@ -62,9 +78,6 @@ class RecordExperiment():
 
 
     def process_data(self):
-
-        
-
         # get bag file  
         self.bag = rosbag.Bag(self.rosbag_file_path)
 
