@@ -134,11 +134,13 @@ def gps_callback(data):
     gps_latitude = data.latitude
     gps_longitude = data.longitude
     gps_altitude = data.altitude
+
     (x_gps, y_gps, z_gps) = lla2flat((gps_latitude, gps_longitude, gps_altitude),(37.87459266,-122.260241555),0,100)
     x_local = x_gps + 14
     y_local = y_gps 
     z_gps = z_gps
     # rospy.logwarn("x = {}, y = {}".format(x_local,y_local))
+
 # imu measurement update
 def imu_callback(data):
     # units: [rad] and [rad/s]
