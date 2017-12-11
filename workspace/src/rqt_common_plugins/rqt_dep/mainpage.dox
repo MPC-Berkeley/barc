@@ -1,6 +1,0 @@
-/**
-\mainpage
-\htmlinclude manifest.html
-
-\b rqt_dep provides a GUI plugin for visualizing the ROS dependency graph.
-*/
