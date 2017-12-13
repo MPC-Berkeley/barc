@@ -28,6 +28,8 @@ function SE_callback(msg::pos_info,acc_f::Array{Float64},lapStatus::LapStatus,po
     x_est[:]                  = [msg.x,msg.y,msg.psi,msg.v]
     trackCoeff.coeffCurvature = msg.coeffCurvature
 
+    #println("z_est= ",z_est)
+
     # check if lap needs to be switched
     if z_est[6] <= lapStatus.s_lapTrigger && lapStatus.switchLap
         oldTraj.idx_end[lapStatus.currentLap] = oldTraj.count[lapStatus.currentLap]
@@ -307,6 +309,7 @@ function main()
             # Count one up:
             lapStatus.currentIt += 1
         else
+         
             println("No estimation data received!")
         end
         rossleep(loop_rate)
