@@ -112,7 +112,7 @@ class Localization(object):
     def create_track(self):
         x = array([0])           # starting point
         y = array([0])
-        ds = 0.06
+        ds = 0.03#0.06
         theta = array([0])
 
         # Sophisticated racetrack: length = 25.62m
@@ -192,6 +192,7 @@ class Localization(object):
 
 
         # SHORT SIMPLE RACETRACK (smooth curves): 12.0m
+
         # theta = add_curve(theta,5,0)
         # theta = add_curve(theta,40,-pi)
         # theta = add_curve(theta,10,0)

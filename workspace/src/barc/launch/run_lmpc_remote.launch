@@ -36,6 +36,9 @@
     <!-- LOW LEVEL CONTROLLER -->
     <node machine="this-pc" pkg="barc" type="controller_low_level.py" name="low_level_controller" />
 
+    <!-- VISUALIZATION -->
+    <node machine="this-pc" pkg="barc" type="view_car_trajectory.py" name="visualization" />
+
     <!-- IMU -->
     <node machine="odroid" pkg="myahrs_driver" type="myahrs_driver" name="myahrs_driver">
         <param name="port" value="/dev/ttyACM0" />
