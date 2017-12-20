@@ -121,8 +121,8 @@ function eval_run(code::AbstractString)
 
 
     figure()
-    plot(gps_meas.z[:,1],gps_meas.z[:,2],"-.",pos_info.z[:,6],pos_info.z[:,7],"-*")
-    plot(track[:,1],track[:,2],"b.",track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")
+    plot(gps_meas.z[:,1],gps_meas.z[:,2],"+",pos_info.z[:,6],pos_info.z[:,7],"-*")
+    #plot(track[:,1],track[:,2],"b.",track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")
     grid(1)
     title("x-y-view")
     axis("equal")
@@ -445,28 +445,28 @@ function eval_LMPC(code::AbstractString)
     track = create_track(0.4)
     figure()
     hold(1)
-    plot(x_est[:,1],x_est[:,2],"-*")
+    plot(x_est[:,1],x_est[:,2],"-+")
     title("Estimated position")
     plot(track[:,1],track[:,2],"b.",track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")
     axis("equal")
     grid(1)
     # HERE YOU CAN CHOOSE TO PLOT DIFFERENT DATA:
     # CURRENT HEADING (PLOTTED BY A LINE)
-    for i=1:10:size(pos_info.t,1)
-        dir = [cos(pos_info.z[i,10]) sin(pos_info.z[i,10])]
-        lin = [pos_info.z[i,6:7]; pos_info.z[i,6:7] + 0.1*dir]
-        plot(lin[:,1],lin[:,2],"-+")
-    end
+    # for i=1:10:size(pos_info.t,1)
+    #     dir = [cos(pos_info.z[i,10]) sin(pos_info.z[i,10])]
+    #     lin = [pos_info.z[i,6:7]; pos_info.z[i,6:7] + 0.1*dir]
+    #     plot(lin[:,1],lin[:,2],"-+")
+    # end
 
     # PREDICTED PATH
-    # for i=1:4:size(x_est,1)
-    #         z_pred = zeros(11,4)
-    #         z_pred[1,:] = x_est[i,:]
-    #         for j=2:11
-    #             z_pred[j,:] = simModel(z_pred[j-1,:],sol_u[j-1,:,i],0.1,0.125,0.125)
-    #         end
-    #         plot(z_pred[:,1],z_pred[:,2],"-*")
-    # end
+    for i=1:1:size(x_est,1)
+            z_pred = zeros(11,4)
+            z_pred[1,:] = x_est[i,:]
+            for j=2:11
+                z_pred[j,:] = simModel(z_pred[j-1,:],sol_u[j-1,:,i],0.1,0.125,0.125)
+            end
+            plot(z_pred[:,1],z_pred[:,2],"-*")
+    end
 
     # PREDICTED REFERENCE PATH (DEFINED BY POLYNOM)
     # for i=1:size(x_est,1)
@@ -1028,7 +1028,7 @@ function create_track(w)
     y_l = [w]
     x_r = [0.0]           # starting point
     y_r = [-w]
-    ds = 0.06
+    ds = 0.03
 
     theta = [0.0]
 
@@ -1067,7 +1067,21 @@ function create_track(w)
     # add_curve(theta,35,0)
 
     # SIMPLE GOGGLE TRACK
-    add_curve(theta,30,0)
+    # add_curve(theta,30,0)
+    # add_curve(theta,40,-pi/2)
+    # add_curve(theta,10,0)
+    # add_curve(theta,40,-pi/2)
+    # add_curve(theta,20,pi/10)
+    # add_curve(theta,30,-pi/5)
+    # add_curve(theta,20,pi/10)
+    # add_curve(theta,40,-pi/2)
+    # add_curve(theta,10,0)
+    # add_curve(theta,40,-pi/2)
+    # add_curve(theta,35,0)
+
+    # TEST TRACK
+
+    add_curve(theta,65,0)
     add_curve(theta,40,-pi/2)
     add_curve(theta,10,0)
     add_curve(theta,40,-pi/2)
@@ -1077,7 +1091,20 @@ function create_track(w)
     add_curve(theta,40,-pi/2)
     add_curve(theta,10,0)
     add_curve(theta,40,-pi/2)
-    add_curve(theta,35,0)
+    add_curve(theta,2,0)
+
+
+    # add_curve(theta,10,0)
+    # add_curve(theta,80,-pi/2)
+    # add_curve(theta,20,0)
+    # add_curve(theta,80,-pi/2)
+    # add_curve(theta,40,pi/10)
+    # add_curve(theta,60,-pi/5)
+    # add_curve(theta,40,pi/10)
+    # add_curve(theta,80,-pi/2)
+    # add_curve(theta,20,0)
+    # add_curve(theta,80,-pi/2)
+    # add_curve(theta,125,0)
 
     #  # SHORT SIMPLE track
     # add_curve(theta,10,0)

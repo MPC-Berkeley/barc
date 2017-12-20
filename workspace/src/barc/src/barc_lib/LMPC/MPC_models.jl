@@ -138,12 +138,12 @@ type MpcModel
         #     @NLconstraint(mdl, u_Ol[i+1,1]-u_Ol[i,1] >= -0.2)
         # end
 
-        @NLconstraint(mdl, u_Ol[1,2]-uPrev[1,2] <= 0.06)
-        @NLconstraint(mdl, u_Ol[1,2]-uPrev[1,2] >= -0.06)
-        for i=1:N-1 # Constraints on u:
-            @NLconstraint(mdl, u_Ol[i+1,2]-u_Ol[i,2] <= 0.06)
-            @NLconstraint(mdl, u_Ol[i+1,2]-u_Ol[i,2] >= -0.06)
-        end
+        # @NLconstraint(mdl, u_Ol[1,2]-uPrev[1,2] <= 0.06)
+        # @NLconstraint(mdl, u_Ol[1,2]-uPrev[1,2] >= -0.06)
+        # for i=1:N-1 # Constraints on u:
+        #     @NLconstraint(mdl, u_Ol[i+1,2]-u_Ol[i,2] <= 0.06)
+        #     @NLconstraint(mdl, u_Ol[i+1,2]-u_Ol[i,2] >= -0.06)
+        # end
 
         # Cost functions
 
@@ -265,7 +265,7 @@ type MpcModel_pF
         mdl = Model(solver = IpoptSolver(print_level=0,max_cpu_time=0.09))#,linear_solver="ma57",print_user_options="yes"))
 
         # Create variables (these are going to be optimized)
-        @variable( mdl, z_Ol[1:(N+1),1:5], start = 0)          # z = s, ey, epsi, v
+        @variable( mdl, z_Ol[1:(N+1),1:5], start = 0)          # z = s, ey, epsi, v , acc_f
         @variable( mdl, u_Ol[1:N,1:2], start = 0)
 
         # Set bounds
@@ -315,7 +315,7 @@ type MpcModel_pF
             @NLconstraint(mdl, z_Ol[i+1,1] == z_Ol[i,1] + dt*dsdt[i]  )                                                # s
             @NLconstraint(mdl, z_Ol[i+1,2] == z_Ol[i,2] + dt*z_Ol[i,4]*sin(z_Ol[i,3]+bta[i])  )                        # ey
             @NLconstraint(mdl, z_Ol[i+1,3] == z_Ol[i,3] + dt*(z_Ol[i,4]/L_a*sin(bta[i])-dsdt[i]*c[i])  )               # epsi
-            @NLconstraint(mdl, z_Ol[i+1,4] == z_Ol[i,4] + dt*(z_Ol[i,5] - 0.5*z_Ol[i,4]))  # v
+            @NLconstraint(mdl, z_Ol[i+1,4] == z_Ol[i,4] + dt*(z_Ol[i,5] - 0.5*z_Ol[i,4]))                              # v
         end
 
         # Cost definitions

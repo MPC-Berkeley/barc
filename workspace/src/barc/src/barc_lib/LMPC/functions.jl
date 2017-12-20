@@ -57,11 +57,11 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_pF::MpcParams,track
     mpcParams.delay_a           = 1                             # acceleration delay
 
     mpcParams_pF.N              = 16
-    mpcParams_pF.Q              = [0.0,50.0,0.1,10.0]
+    mpcParams_pF.Q              = [0.0,50.0,10.1,10.0]
     mpcParams_pF.R              = 0*[1.0,1.0]               # put weights on a and d_f
     mpcParams_pF.QderivZ        = 0.0*[0,0,0.1,0]           # cost matrix for derivative cost of states
-    mpcParams_pF.QderivU        = 1.0*[10,10]                # cost matrix for derivative cost of inputs
-    mpcParams_pF.vPathFollowing = 0.5#0.9                       # reference speed for first lap of path following
+    mpcParams_pF.QderivU        = 1*[10,10]                # cost matrix for derivative cost of inputs
+    mpcParams_pF.vPathFollowing = 0.9                       # reference speed for first lap of path following
     mpcParams_pF.delay_df       = 3                         # steering delay (number of steps)
     mpcParams_pF.delay_a        = 1                         # acceleration delay
 

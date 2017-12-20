@@ -180,6 +180,7 @@ function main()
     # Start node
     while ! is_shutdown()
         if z_est[6] > 0         # check if data has been received (s > 0)
+            println("s= ",z_est[6])
             # ============================= PUBLISH COMMANDS =============================
             # This is done at the beginning of the lap because this makes sure that the command is published 0.1s after the state has been received
             # This guarantees a constant publishing frequency of 10 Hz
@@ -191,6 +192,8 @@ function main()
             # ============================= Initialize iteration parameters =============================
             i                           = lapStatus.currentIt           # current iteration number, just to make notation shorter
             zCurr[i,:]                  = copy(z_est)                   # update state information
+            println("v_x= ",zCurr[i,1])
+            println("v_y= ",zCurr[i,2])
             posInfo.s                   = zCurr[i,6]                    # update position info
             #trackCoeff.coeffCurvature   = copy(coeffCurvature_update)
 
@@ -247,6 +250,9 @@ function main()
             if lapStatus.currentLap <= n_pf
                 z_pf = [zCurr[i,6],zCurr[i,5],zCurr[i,4],norm(zCurr[i,1:2]),acc0]        # use kinematic model and its states
                 solveMpcProblem_pathFollow(mdl_pF,mpcSol,mpcParams_pF,trackCoeff,posInfo,modelParams,z_pf,uPrev)
+                # println("current state= ",z_est[1:6])
+                # println("predicted solution= ",mpcSol.z)
+                # println("predicted steering= ",mpcSol.d_f)
                 acc_f[1] = mpcSol.z[1,5]
                 acc0 = mpcSol.z[2,5]
             else

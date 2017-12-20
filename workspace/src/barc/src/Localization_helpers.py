@@ -112,7 +112,7 @@ class Localization(object):
     def create_track(self):
         x = array([0])           # starting point
         y = array([0])
-        ds = 0.03#0.06
+        ds = 0.03
         theta = array([0])
 
         # Sophisticated racetrack: length = 25.62m
@@ -176,19 +176,57 @@ class Localization(object):
         theta = add_curve(theta,80,-pi/2)
         theta = add_curve(theta,75,0)
 
-        # SIMPLE OVAL FOR TESTS IN VDL
+        # TEST TRACK
 
-        # theta = add_curve(theta,120,0)
-        # theta = add_curve(theta,120,-pi)
-        # theta = add_curve(theta,240,0)
-        # theta = add_curve(theta,120,-pi)
-        # theta = add_curve(theta,120,0)
+        # theta = add_curve(theta,20,0)
+        # theta = add_curve(theta,40,-pi/2)
+        # theta = add_curve(theta,10,0)
+
+        # theta = add_curve(theta,40,-pi/2)
+        # theta = add_curve(theta,230,0)
+
+        # theta = add_curve(theta,40,-pi/2)
+        # theta = add_curve(theta,10,0)
+
+        # theta = add_curve(theta,40,-pi/2)
+        # theta = add_curve(theta,205,0)
 
 
-        # Circle FOR LOCALIZATION DEBUGGING
 
-        # theta = add_curve(theta,50,pi)
-        # theta = add_curve(theta,50,pi)
+        # theta = add_curve(theta,130,0)
+        # theta = add_curve(theta,80,-pi/2)
+        # theta = add_curve(theta,20,0)
+        # theta = add_curve(theta,80,-pi/2)
+        # theta = add_curve(theta,40,pi/10)
+        # theta = add_curve(theta,60,-pi/5)
+        # theta = add_curve(theta,40,pi/10)
+        # theta = add_curve(theta,80,-pi/2)
+        # theta = add_curve(theta,20,0)
+        # theta = add_curve(theta,80,-pi/2)
+        # theta = add_curve(theta,5,0)
+
+
+        # theta = add_curve(theta,10,0)
+        # theta = add_curve(theta,80,-pi/2)
+        # theta = add_curve(theta,20,0)
+        # theta = add_curve(theta,80,-pi/2)
+        # theta = add_curve(theta,40,pi/10)
+        # theta = add_curve(theta,60,-pi/5)
+        # theta = add_curve(theta,40,pi/10)
+        # theta = add_curve(theta,80,-pi/2)
+        # theta = add_curve(theta,20,0)
+        # theta = add_curve(theta,80,-pi/2)
+        # theta = add_curve(theta,125,0)
+
+
+        # theta = add_curve(theta,10,0)
+        # theta = add_curve(theta,60,-pi/2)
+        # theta = add_curve(theta,60,-pi/2)
+        # theta = add_curve(theta,50,0)
+        # theta = add_curve(theta,60,-pi/2)
+        # theta = add_curve(theta,60,-pi/2)
+        # theta = add_curve(theta,40,0)
+
 
 
         # SHORT SIMPLE RACETRACK (smooth curves): 12.0m

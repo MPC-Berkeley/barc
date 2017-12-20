@@ -180,7 +180,7 @@ def state_estimation():
 
     # topic subscriptions / publications
     rospy.Subscriber('imu/data', Imu, se.imu_callback)
-    rospy.Subscriber('encoder_vel', Vel_est, se.encoder_vel_callback)
+    rospy.Subscriber('vel_est', Vel_est, se.encoder_vel_callback)
     rospy.Subscriber('ecu', ECU, se.ecu_callback)
     rospy.Subscriber('hedge_pos', hedge_pos, se.gps_callback, queue_size=1)
     state_pub_pos = rospy.Publisher('pos_info', pos_info, queue_size=1)
@@ -248,9 +248,13 @@ def state_estimation():
 
         bta = 0.5 * u[1]
 
+        # print "V, V_x and V_y : (%f, %f, %f)" % (se.vel_meas,cos(bta)*se.vel_meas, sin(bta)*se.vel_meas)
+
         # get measurement
         y = array([se.x_meas, se.y_meas, se.vel_meas, se.yaw_meas, se.psiDot_meas, se.a_x_meas, se.a_y_meas,
                     se.x_meas, se.y_meas, se.yaw_meas, se.vel_meas, cos(bta)*se.vel_meas, sin(bta)*se.vel_meas])
+
+        
 
         # build extra arguments for non-linear function
         args = (u, vhMdl, dt, 0)
@@ -263,9 +267,12 @@ def state_estimation():
 
         se.x_est = x_est_2
         se.y_est = y_est_2
+        #print "V_x and V_y : (%f, %f)" % (v_x_est, v_y_est)
 
         # Update track position
         l.set_pos(x_est_2, y_est_2, psi_est_2, v_x_est, v_y_est, psi_dot_est)
+
+        #l.set_pos(se.x_meas, se.y_meas, psi_est_2, v_x_est, v_y_est, psi_dot_est)
 
         # Calculate new s, ey, epsi (only 12.5 Hz, enough for controller that runs at 10 Hz)
         if est_counter%4 == 0:
