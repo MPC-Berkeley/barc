@@ -50,7 +50,7 @@ end
 
 function GPS_callback(msg::hedge_pos,gps_meas::Measurements)
     gps_meas.t[gps_meas.i]      = to_sec(get_rostime())
-    gps_meas.t_msg[gps_meas.i]  = to_sec(msg.header.stamp)
+    gps_meas.t_msg[gps_meas.i]  = msg.timestamp_ms
     gps_meas.z[gps_meas.i,:]    = [msg.x_m;msg.y_m]
     gps_meas.i += 1
     nothing

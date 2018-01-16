@@ -164,7 +164,38 @@ class Localization(object):
         # theta = add_curve(theta,37,0)
 
         # GOGGLE TRACK WITH STRAIGHT LINES, LENGTH = 19.11m (using ds = 0.03m)
-        # theta = add_curve(theta,60,0)
+        theta = add_curve(theta,60,0)
+        theta = add_curve(theta,80,-pi/2)
+        theta = add_curve(theta,20,0)
+        theta = add_curve(theta,80,-pi/2)
+        theta = add_curve(theta,40,pi/10)
+        theta = add_curve(theta,60,-pi/5)
+        theta = add_curve(theta,40,pi/10)
+        theta = add_curve(theta,80,-pi/2)
+        theta = add_curve(theta,20,0)
+        theta = add_curve(theta,80,-pi/2)
+        theta = add_curve(theta,75,0)
+
+
+        ######################################################
+        # TEST TRACKS
+
+        # theta = add_curve(theta,20,0)
+        # theta = add_curve(theta,40,-pi/2)
+        # theta = add_curve(theta,10,0)
+
+        # theta = add_curve(theta,40,-pi/2)
+        # theta = add_curve(theta,230,0)
+
+        # theta = add_curve(theta,40,-pi/2)
+        # theta = add_curve(theta,10,0)
+
+        # theta = add_curve(theta,40,-pi/2)
+        # theta = add_curve(theta,205,0)
+
+
+
+        # theta = add_curve(theta,130,0)
         # theta = add_curve(theta,80,-pi/2)
         # theta = add_curve(theta,20,0)
         # theta = add_curve(theta,80,-pi/2)
@@ -174,30 +205,47 @@ class Localization(object):
         # theta = add_curve(theta,80,-pi/2)
         # theta = add_curve(theta,20,0)
         # theta = add_curve(theta,80,-pi/2)
-        # theta = add_curve(theta,75,0)
+        # theta = add_curve(theta,5,0)
 
-        # OVAL TRACK FOR TESTS IN VSD
 
-        theta = add_curve(theta,43,0)
-        theta = add_curve(theta,146,-pi)
-        theta = add_curve(theta,86,0)
-        theta = add_curve(theta,146,-pi)
-        theta = add_curve(theta,43,0)
+        # theta = add_curve(theta,10,0)
+        # theta = add_curve(theta,80,-pi/2)
+        # theta = add_curve(theta,20,0)
+        # theta = add_curve(theta,80,-pi/2)
+        # theta = add_curve(theta,40,pi/10)
+        # theta = add_curve(theta,60,-pi/5)
+        # theta = add_curve(theta,40,pi/10)
+        # theta = add_curve(theta,80,-pi/2)
+        # theta = add_curve(theta,20,0)
+        # theta = add_curve(theta,80,-pi/2)
+        # theta = add_curve(theta,125,0)
 
-        #theta = add_curve(theta,33,0)
+
+        # theta = add_curve(theta,10,0)
+        # theta = add_curve(theta,60,-pi/2)
+        # theta = add_curve(theta,60,-pi/2)
+        # theta = add_curve(theta,50,0)
+        # theta = add_curve(theta,60,-pi/2)
+        # theta = add_curve(theta,60,-pi/2)
+        # theta = add_curve(theta,40,0)
+
+        ############################################################
+
 
         # SHORT SIMPLE RACETRACK (smooth curves): 12.0m
+
+        # theta = add_curve(theta,5,0)
+        # theta = add_curve(theta,40,-pi)
         # theta = add_curve(theta,10,0)
-        # theta = add_curve(theta,80,-pi)
-        # theta = add_curve(theta,20,0)
-        # theta = add_curve(theta,80,-pi)
-        # theta = add_curve(theta,9,0)
+        # theta = add_curve(theta,40,-pi)
+        # theta = add_curve(theta,4,0)
 
         # SIMPLER RACETRACK (half circles as curves):
 
         for i in range(0,size(theta)):
             x = hstack((x, x[-1] + cos(theta[i])*ds))
             y = hstack((y, y[-1] + sin(theta[i])*ds))
+
 
         self.nodes = array([x,y])
         self.ds = ds
@@ -286,6 +334,8 @@ class Localization(object):
     def find_s(self):
         dist        = sum((self.pos*ones([self.n,2])-self.nodes.transpose())**2,1)**0.5 # distance of current position to all nodes
         idx_min     = argmin(dist)              # index of minimum distance
+
+        
 
         n           = self.n                    # number of nodes
         nPoints     = self.nPoints              # number of points for polynomial approximation (around current position)
