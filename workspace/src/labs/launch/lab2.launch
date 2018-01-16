@@ -13,10 +13,12 @@
     <param name="tire_model/B" type="double" value="0.3" />
     <param name="tire_model/C" type="double" value="1.25" />
     <param name="tire_model/mu" type="double" value="0.234" />
+
     <!-- Controller -->
-    <node pkg="simulator" type="controller.py" name="controller" />
+    <node pkg="labs" type="controller.py" name="controller" />
+
     <!-- SIMULATOR -->
-    <node pkg="simulator" type="vehicle_simulator.py" name="simulator" />
+    <node pkg="labs" type="vehicle_simulator.py" name="simulator" />
 
     <!-- Record the experiment data -->
     <node pkg="rosbag" type="record" name="rosbag_record" args="-o /home/me131/ -a" />
