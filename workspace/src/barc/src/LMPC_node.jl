@@ -95,7 +95,7 @@ function main()
     mdl          = MpcModel(mpcParams,mpcCoeff,modelParams,trackCoeff)  
     mdl_pF       = MpcModel_pF(mpcParams_pF,modelParams,trackCoeff)
     mdl_convhull = MpcModel_convhull(mpcParams,mpcCoeff,modelParams,trackCoeff,selectedStates)
-    mdl_test     = MpcModel_test(mpcParams,mpcCoeff,modelParams,trackCoeff,selectedStates)
+    #mdl_test     = MpcModel_test(mpcParams,mpcCoeff,modelParams,trackCoeff,selectedStates)
     mdl_obstacle = MpcModel_obstacle(mpcParams,mpcCoeff,modelParams,trackCoeff,selectedStates,obstacle)
 
 
@@ -167,7 +167,7 @@ function main()
     # Specific initializations:
     lapStatus.currentLap    = 1
     lapStatus.currentIt     = 1
-    posInfo.s_target        = 10.8#19.11#19.14#17.94#17.76#24.0
+    posInfo.s_target        = 19.11#19.14#17.94#17.76#24.0
     k                       = 0                       # overall counter for logging
     
     mpcSol.z = zeros(11,4)
@@ -254,12 +254,12 @@ function main()
 
             # ============================= Pre-Logging (before solving) ================================
             log_t[k+1]                  = to_sec(get_rostime())         # time is measured *before* solving (more consistent that way)
-            # if size(mpcSol.z,2) == 4                                    # find 1-step-error
-            #     step_diff = ([mpcSol.z[2,4], 0, 0, mpcSol.z[2,3], mpcSol.z[2,2]]-[norm(zCurr[i,1:2]), 0, 0, zCurr[i,4], zCurr[i,5]])
-            # else
-            #     step_diff = (mpcSol.z[2,1:5][:]-zCurr[i,1:5][:])
-            # end
-            # log_step_diff[k+1,:]          = step_diff
+            if size(mpcSol.z,2) == 4                                    # find 1-step-error
+                step_diff = ([mpcSol.z[2,4], 0, 0, mpcSol.z[2,3], mpcSol.z[2,2]]-[norm(zCurr[i,1:2]), 0, 0, zCurr[i,4], zCurr[i,5]])
+            else
+                step_diff = (mpcSol.z[2,1:5][:]-zCurr[i,1:5][:])
+            end
+            log_step_diff[k+1,:]          = step_diff
 
             if lapStatus.currentLap > n_pf
                 if lapStatus.currentIt>1

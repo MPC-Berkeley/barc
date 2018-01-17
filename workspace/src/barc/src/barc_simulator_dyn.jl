@@ -239,7 +239,7 @@ function main()
                 gps_meas.t[gps_meas.i] = t
                 gps_meas.z[gps_meas.i,:] = [x y]
                 gps_meas.i += 1
-                gps_data.header.stamp = get_rostime()
+                # gps_data.header.stamp = get_rostime()
                 gps_data.x_m = x
                 gps_data.y_m = y
                 publish(pub_gps, gps_data)
