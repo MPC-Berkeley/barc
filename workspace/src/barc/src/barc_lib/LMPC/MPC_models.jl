@@ -536,12 +536,12 @@ type MpcModel_convhull
         #     @NLconstraint(mdl, u_Ol[i+1,1]-u_Ol[i,1] >= -0.2)
         # end
 
-        # @NLconstraint(mdl, u_Ol[1,2]-uPrev[1,2] <= 0.06)
-        # @NLconstraint(mdl, u_Ol[1,2]-uPrev[1,2] >= -0.06)
-        # for i=1:N-1 # Constraints on u:
-        #     @NLconstraint(mdl, u_Ol[i+1,2]-u_Ol[i,2] <= 0.06)
-        #     @NLconstraint(mdl, u_Ol[i+1,2]-u_Ol[i,2] >= -0.06)
-        # end
+        @NLconstraint(mdl, u_Ol[1,2]-uPrev[1,2] <= 0.06)
+        @NLconstraint(mdl, u_Ol[1,2]-uPrev[1,2] >= -0.06)
+        for i=1:N-1 # Constraints on u:
+            @NLconstraint(mdl, u_Ol[i+1,2]-u_Ol[i,2] <= 0.06)
+            @NLconstraint(mdl, u_Ol[i+1,2]-u_Ol[i,2] >= -0.06)
+        end
 
        
    
