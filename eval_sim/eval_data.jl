@@ -167,24 +167,24 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
         cpsi2        = cpsi[1:currentIt,2,i]
         cpsi3        = cpsi[1:currentIt,3,i]
 
-        # figure(1)
-        # plot(oldSS_xy[:,1,i],oldSS_xy[:,2,i],"og") 
-        # plot(oldSS_xy[:,1,i-1],oldSS_xy[:,2,i-1],"ob") 
-        # plot(track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")#,track[:,1],track[:,2],"b.")
-        # grid("on")
-
-        ellfig = figure(1)
-        ax = ellfig[:add_subplot](1,1,1)
-        ax[:set_aspect]("equal")
+        figure(1)
         plot(oldSS_xy[:,1,i],oldSS_xy[:,2,i],"og") 
         plot(oldSS_xy[:,1,i-1],oldSS_xy[:,2,i-1],"ob") 
         plot(track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")#,track[:,1],track[:,2],"b.")
+        grid("on")
 
-        angle_ell = atan2(pred_sol_xy[2,2]-(pred_sol_xy[2,1]),pred_sol_xy[1,2]-(pred_sol_xy[1,1]))
-        angle_deg = (angle_ell*180)/pi
+        # ellfig = figure(1)
+        # ax = ellfig[:add_subplot](1,1,1)
+        # ax[:set_aspect]("equal")
+        # plot(oldSS_xy[:,1,i],oldSS_xy[:,2,i],"og") 
+        # plot(oldSS_xy[:,1,i-1],oldSS_xy[:,2,i-1],"ob") 
+        # plot(track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")#,track[:,1],track[:,2],"b.")
 
-        ell1 = patch.Ellipse([pred_sol_xy[1,1],pred_sol_xy[2,1]], 0.4, 0.2, 0)#angle=angle_deg)
-        ax[:add_artist](ell1)
+        # angle_ell = atan2(pred_sol_xy[2,2]-(pred_sol_xy[2,1]),pred_sol_xy[1,2]-(pred_sol_xy[1,1]))
+        # angle_deg = (angle_ell*180)/pi
+
+        # ell1 = patch.Ellipse([pred_sol_xy[1,1],pred_sol_xy[2,1]], 0.4, 0.2, 0)#angle=angle_deg)
+        # ax[:add_artist](ell1)
 
 
         grid("on")
