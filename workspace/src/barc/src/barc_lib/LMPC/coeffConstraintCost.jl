@@ -146,7 +146,7 @@ function coeffConstraintCost(oldTraj::OldTrajectory, mpcCoeff::MpcCoeff, posInfo
     n_sys_ID_post = 60              # steps of sysID after current point in previous laps
     n_sys_ID_prev_c = 30            # steps of sysID before current point in current lap
 
-    freq_ratio = 4                  # ratio between the frequency at which the informations about the position are updated in the topic and the frequency at which the controller calculates and updates the control input
+    freq_ratio = 5                  # ratio between the frequency at which the informations about the position are updated in the topic and the frequency at which the controller calculates and updates the control input
     # vec_range_ID    = ()
     # for i=1:n_laps_sysID
     #     vec_range_ID    = tuple(vec_range_ID...,idx_s[i]-n_prev:idx_s[i]+n_ahead)     # related index range
