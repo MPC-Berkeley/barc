@@ -47,14 +47,14 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_pF::MpcParams,track
                               posInfo::PosInfo,oldTraj::OldTrajectory,mpcCoeff::MpcCoeff,lapStatus::LapStatus,buffersize::Int64,
                               obstacle::Obstacle,selectedStates::SelectedStates,oldSS::SafeSetData)
 
-    selectedStates.Np           = 16                            # Number of points to take from each previous trajectory to build the convex hull
+    selectedStates.Np           = 8                            # Number of points to take from each previous trajectory to build the convex hull
     selectedStates.Nl           = 3                             # Number of previous laps to include in the convex hull
     Nl                          = selectedStates.Nl
     selectedStates.selStates    = zeros(Nl*selectedStates.Np,6)  
     selectedStates.statesCost   = zeros(Nl*selectedStates.Np)
     selectedStates.version      = false
 
-    mpcParams.N                 = 11
+    mpcParams.N                 = 16
     mpcParams.Q                 = [5.0,0.0,0.0,0.1,50.0,0.0]   # Q (only for path following mode)
     mpcParams.vPathFollowing    = 1                           # reference speed for first lap of path following
     mpcParams.Q_term            = 1.0*[20.0,1.0,10.0,20.0,50.0]   # weights for terminal constraints (LMPC, for xDot,yDot,psiDot,ePsi,eY)
@@ -66,7 +66,7 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_pF::MpcParams,track
     mpcParams.delay_a           = 1                             # acceleration delay
     mpcParams.Q_lane            = 10                      # weight on the soft constraint for the lane
     mpcParams.Q_vel             = 1                    # weight on the soft constraint for the maximum velocity
-    mpcParams.Q_slack           = [20.0,10.0,10.0,30.0,80.0,50.0]#20.0*[2.0,2.0,1.0,2.0,5.0,5.0]  #vx,vy,psiDot,ePsi,eY,s
+    mpcParams.Q_slack           = 20.0*[2.0,2.0,1.0,5.0,5.0,5.0]#[20.0,10.0,10.0,30.0,80.0,50.0]  #vx,vy,psiDot,ePsi,eY,s
     mpcParams.Q_obs             = ones(Nl*selectedStates.Np)# weight to esclude some of the old trajectories
 
 
