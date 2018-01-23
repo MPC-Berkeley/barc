@@ -50,6 +50,8 @@ class StateEst(object):
     # Velocity
     vel_meas = 0.0
     vel_updated = False
+    vel_prev = 0.0
+    vel_count = 0.0
 
     # GPS
     x_meas = 0.0
@@ -169,8 +171,21 @@ class StateEst(object):
         self.imu_updated = True
 
     def encoder_vel_callback(self, data):
-        self.vel_meas = data.vel_est
-        self.vel_updated = True
+
+        if data.vel_est != self.vel_prev:
+            self.vel_meas = data.vel_est
+            self.vel_updated = True
+            self.vel_prev = data.vel_est
+            self.vel_count = 0
+        else:
+            self.vel_count = self.vel_count + 1
+            if self.vel_count > 10:     # if 10 times in a row the same measurement
+                self.vel_meas = 0       # set velocity measurement to zero
+                self.vel_updated = True
+
+        
+        # self.vel_meas = data.vel_est
+        # self.vel_updated = True
 
 # state estimation node
 def state_estimation():

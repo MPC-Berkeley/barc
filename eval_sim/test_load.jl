@@ -79,9 +79,11 @@ function test(path::AbstractString)
 
     x = inv(A'*A)*A'*B
 
+    println("the computed constants are: ",x)
+
     println("****quick check of the results****")
 
-    a_test = x[1]*commands[1] + x[2] - x[3]*v_final[1]
+    a_test = x[1]*commands[1] + x[2] - x[3]*v_final[end]
 
     println("a_test= ",a_test)
 
