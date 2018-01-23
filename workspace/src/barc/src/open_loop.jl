@@ -250,7 +250,9 @@ function main()
     vel_est_log.i   = 1
     pos_info_log.i  = 1
 
-    cmd_m = 102
+    cmd_m = 105
+
+    cmd_s = 93
 
     # t_cmd = zeros(10)
     # t_no_cmd = zeros(10)
@@ -271,6 +273,7 @@ function main()
         if t <= t_next 
 
             cmd.motor = cmd_m
+            cmd.servo = cmd_s
 
             #t_cmd[index] = t
             
