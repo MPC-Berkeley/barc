@@ -71,7 +71,7 @@ class RecordExperiment():
          
         # start rosrecord for following topics
         self.topics = ['/imu/data', '/encoder', '/ecu', '/ecu_pwm', '/image_transformed/compressed/', '/fix']
-        self.rosbag_file_path = os.path.abspath(rosbag_dir + '/' + self.experiment_name + '.bag')
+        self.rosbag_file_path = os.path.abspath(rosbag_dir + '/' + bag_file )
         
         # upload video to local server on shutdown
         self.process_data()
