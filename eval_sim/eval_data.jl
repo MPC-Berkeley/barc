@@ -1028,7 +1028,7 @@ function create_track(w)
     y_l = [w]
     x_r = [0.0]           # starting point
     y_r = [-w]
-    ds = 0.03
+    ds = 0.06
 
     theta = [0.0]
 
@@ -1067,31 +1067,31 @@ function create_track(w)
     # add_curve(theta,35,0)
 
     # SIMPLE GOGGLE TRACK
-    # add_curve(theta,30,0)
+    add_curve(theta,30,0)
+    add_curve(theta,40,-pi/2)
+    add_curve(theta,10,0)
+    add_curve(theta,40,-pi/2)
+    add_curve(theta,20,-pi/10)
+    add_curve(theta,30,pi/5)
+    add_curve(theta,20,-pi/10)
+    add_curve(theta,40,-pi/2)
+    add_curve(theta,10,0)
+    add_curve(theta,40,-pi/2)
+    add_curve(theta,35,0)
+
+    # TEST TRACK
+
+    # add_curve(theta,65,0)
     # add_curve(theta,40,-pi/2)
     # add_curve(theta,10,0)
     # add_curve(theta,40,-pi/2)
-    # add_curve(theta,20,pi/10)
+    # add_curve(theta,20,-pi/10)
     # add_curve(theta,30,-pi/5)
     # add_curve(theta,20,pi/10)
     # add_curve(theta,40,-pi/2)
     # add_curve(theta,10,0)
     # add_curve(theta,40,-pi/2)
-    # add_curve(theta,35,0)
-
-    # TEST TRACK
-
-    add_curve(theta,65,0)
-    add_curve(theta,40,-pi/2)
-    add_curve(theta,10,0)
-    add_curve(theta,40,-pi/2)
-    add_curve(theta,20,pi/10)
-    add_curve(theta,30,-pi/5)
-    add_curve(theta,20,pi/10)
-    add_curve(theta,40,-pi/2)
-    add_curve(theta,10,0)
-    add_curve(theta,40,-pi/2)
-    add_curve(theta,2,0)
+    # add_curve(theta,2,0)
 
 
     # add_curve(theta,10,0)
