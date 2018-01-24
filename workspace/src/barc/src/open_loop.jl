@@ -241,7 +241,7 @@ function main()
     t0          = to_sec(t0_ros)
     t           = 0.0
 
-    t_next = 4
+    t_next = 2
 
     gps_meas.i      = 1
     imu_meas.i      = 1
@@ -250,7 +250,7 @@ function main()
     vel_est_log.i   = 1
     pos_info_log.i  = 1
 
-    cmd_m = 105
+    cmd_m = 100
 
     cmd_s = 93
 
@@ -277,14 +277,17 @@ function main()
 
             #t_cmd[index] = t
             
-        elseif t > t_next && t <= t_next + 6 
+        elseif t > t_next && t <= t_next + 4 
 
-            cmd.motor = 80
+            cmd.motor = 40
 
             #t_no_cmd[index] = t
 
 
-        # else
+        else
+            cmd.motor = -1
+
+            println("******FLAG*******")
         #     t_next = t + 4
 
         #     println("t== ",t)
