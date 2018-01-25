@@ -131,6 +131,7 @@ function main()
     selStates_log               = zeros(selectedStates.Nl*selectedStates.Np,6,buffersize,30)   #array to log the selected states in every iteration of every lap
     statesCost_log              = zeros(selectedStates.Nl*selectedStates.Np,buffersize,30)     #array to log the selected states' costs in every iteration of every lap
     log_predicted_sol           = zeros(mpcParams.N+1,7,buffersize,30)
+    log_predicted_input         = zeros(mpcParams.N,2,buffersize,30)
     log_onestep                 = zeros(buffersize,6,30)
     log_epsalpha                = zeros(6,buffersize,30)
     log_cvx                     = zeros(buffersize,3,30)
@@ -174,11 +175,6 @@ function main()
     mpcSol.u = zeros(10,2)
     mpcSol.a_x = 0
     mpcSol.d_f = 0
-
-    #mpcCoeff.c_Psi = [-0.26682109207165566,-0.013445078992161885,1.2389672517023724]
-    #mpcCoeff.c_Psi = [-0.3747957571478858,-0.005013036784512181,5.068342163488241]
-    #mpcCoeff.c_Vy  = [-0.006633028965076818,-0.02997779668710061,0.005781203137095575,0.10642934131787765]
-    #mpcCoeff.c_Vy  = [0.002968102163011754,-0.09886540158694888,0.012234790760745129,1.099308717654053]
     
     # Precompile coeffConstraintCost:
     oldTraj.oldTraj[1:buffersize,6,1] = linspace(0,posInfo.s_target,buffersize)
@@ -396,50 +392,6 @@ function main()
 
             mpcParams.Q_obs = ones(selectedStates.Nl*selectedStates.Np)
 
-            ##############################################################
-            # #SSet warm start
-            # if lapStatus.currentLap > n_pf && lapStatus.currentIt > 1
-            #     if selectedStates.version == false && obstacle.obstacle_active == false
-
-            #         setvalue(mdl_convhull.z_Ol[1:mpcParams.N,1],mpcSol.z[2:mpcParams.N+1,1])
-            #         setvalue(mdl_convhull.z_Ol[mpcParams.N+1,1],mpcSol.z[mpcParams.N+1,1])
-            #         setvalue(mdl_convhull.z_Ol[1:mpcParams.N,2],mpcSol.z[2:mpcParams.N+1,2])
-            #         setvalue(mdl_convhull.z_Ol[mpcParams.N+1,2],mpcSol.z[mpcParams.N+1,2])
-            #         setvalue(mdl_convhull.z_Ol[1:mpcParams.N,3],mpcSol.z[2:mpcParams.N+1,3])
-            #         setvalue(mdl_convhull.z_Ol[mpcParams.N+1,3],mpcSol.z[mpcParams.N+1,3])
-            #         setvalue(mdl_convhull.z_Ol[1:mpcParams.N,4],mpcSol.z[2:mpcParams.N+1,4])
-            #         setvalue(mdl_convhull.z_Ol[mpcParams.N+1,4],mpcSol.z[mpcParams.N+1,4])
-            #         setvalue(mdl_convhull.z_Ol[1:mpcParams.N,5],mpcSol.z[2:mpcParams.N+1,5])
-            #         setvalue(mdl_convhull.z_Ol[mpcParams.N+1,5],mpcSol.z[mpcParams.N+1,5])
-            #         setvalue(mdl_convhull.z_Ol[1:mpcParams.N,6],mpcSol.z[2:mpcParams.N+1,6])
-            #         setvalue(mdl_convhull.z_Ol[mpcParams.N+1,6],mpcSol.z[mpcParams.N+1,6])
-
-            #                 #setvalue(mdl_convhull.z_Ol[:,6],mpcSol.z[:,6]-posInfo.s_target)
-            #         setvalue(mdl_convhull.alpha[:],(1/(selectedStates.Nl*selectedStates.Np))*ones(selectedStates.Nl*selectedStates.Np))
-
-            #     elseif selectedStates.version == false && obstacle.obstacle_active == true
-
-            #         setvalue(mdl_obstacle.z_Ol[1:mpcParams.N,1],mpcSol.z[2:mpcParams.N+1,1])
-            #         setvalue(mdl_obstacle.z_Ol[mpcParams.N+1,1],mpcSol.z[mpcParams.N+1,1])
-            #         setvalue(mdl_obstacle.z_Ol[1:mpcParams.N,2],mpcSol.z[2:mpcParams.N+1,2])
-            #         setvalue(mdl_obstacle.z_Ol[mpcParams.N+1,2],mpcSol.z[mpcParams.N+1,2])
-            #         setvalue(mdl_obstacle.z_Ol[1:mpcParams.N,3],mpcSol.z[2:mpcParams.N+1,3])
-            #         setvalue(mdl_obstacle.z_Ol[mpcParams.N+1,3],mpcSol.z[mpcParams.N+1,3])
-            #         setvalue(mdl_obstacle.z_Ol[1:mpcParams.N,4],mpcSol.z[2:mpcParams.N+1,4])
-            #         setvalue(mdl_obstacle.z_Ol[mpcParams.N+1,4],mpcSol.z[mpcParams.N+1,4])
-            #         setvalue(mdl_obstacle.z_Ol[1:mpcParams.N,5],mpcSol.z[2:mpcParams.N+1,5])
-            #         setvalue(mdl_obstacle.z_Ol[mpcParams.N+1,5],mpcSol.z[mpcParams.N+1,5])
-            #         setvalue(mdl_obstacle.z_Ol[1:mpcParams.N,6],mpcSol.z[2:mpcParams.N+1,6])
-            #         setvalue(mdl_obstacle.z_Ol[mpcParams.N+1,6],mpcSol.z[mpcParams.N+1,6])
-
-            #                 #setvalue(mdl_obstacle.z_Ol[:,6],mpcSol.z[:,6]-posInfo.s_target)
-            #         setvalue(mdl_obstacle.alpha[:],(1/(selectedStates.Nl*selectedStates.Np))*ones(selectedStates.Nl*selectedStates.Np))
-            #     end
-            # end
-            ##############################################################
-
-
-
             if lapStatus.currentLap > 1
                 if lapStatus.currentIt == (oldSS.postbuff+2)
                     oldSS.oldSS[oldSS.oldCost[lapStatus.currentLap-1]:oldSS.oldCost[lapStatus.currentLap-1]+oldSS.postbuff+1,1:5,lapStatus.currentLap-1] = zCurr[1:oldSS.postbuff+2,1:5]
@@ -453,27 +405,18 @@ function main()
 
                 obs_temp = obs_curr[lapStatus.currentIt,:,:]
 
-
-
                 if posInfo.s_target-posInfo.s < obstacle.obs_detect  # meaning that I could possibly detect obstacles after the finish line
 
                     index1=find(obs_curr[lapStatus.currentIt,1,:].< obstacle.obs_detect+posInfo.s-posInfo.s_target)  # look for obstacles that could cause problems
 
                     obs_temp[1,1,index1] = posInfo.s_target + obs_curr[lapStatus.currentIt,1,index1]
 
-
                 end
-
 
                 dist,index=findmin(sqrt((obs_temp[1,1,:]-zCurr[lapStatus.currentIt,6]).^2 + (obs_temp[1,2,:]-zCurr[lapStatus.currentIt,5]).^2))
 
-                # println("dist= ",dist)
-                # println("obstacle's position= ",obs_temp[1,1,:])
                 obs_near = obs_temp[1,:,index]
             end
-
-
-
 
             # Find coefficients for cost and constraints
             if lapStatus.currentLap > n_pf
@@ -484,7 +427,8 @@ function main()
             end
 
             #println("Starting solving.")
-            # Solve the MPC problem
+
+            ### Solve the MPC problem
             tic()
             if lapStatus.currentLap <= n_pf
                 z_pf = [zCurr[i,6],zCurr[i,5],zCurr[i,4],norm(zCurr[i,1:2]),acc0]        # use kinematic model and its states
@@ -561,9 +505,9 @@ function main()
             log_input[lapStatus.currentIt,:,lapStatus.currentLap]       = uCurr[i,:] 
             log_mpcCost[lapStatus.currentIt,:,lapStatus.currentLap]     = mpcSol.cost
             log_obs[lapStatus.currentIt,:,:,lapStatus.currentLap]       = obs_curr[i,:,:]
-            if lapStatus.currentLap > n_pf
-                log_mpcCostSlack[lapStatus.currentIt,:,lapStatus.currentLap]= mpcSol.costSlack
-            end
+            # if lapStatus.currentLap > n_pf
+            #     log_mpcCostSlack[lapStatus.currentIt,:,lapStatus.currentLap]= mpcSol.costSlack
+            # end
 
             #log_status[lapStatus.currentIt,lapStatus.currentLap]        = mpcSol.solverStatus
 
@@ -589,6 +533,7 @@ function main()
 
             if lapStatus.currentLap > n_pf
                 log_predicted_sol[:,:,lapStatus.currentIt,lapStatus.currentLap] = mpcSol.z
+                log_predicted_input[:,:,lapStatus.currentIt,lapStatus.currentLap] = mpcSol.u
                 #log_epsalpha[:,lapStatus.currentIt,lapStatus.currentLap]    = mpcSol.eps_alpha
             end
 
@@ -611,7 +556,7 @@ function main()
                     "x_est",log_state_x[1:k,:],"coeffX",log_coeffX[1:k,:],"coeffY",log_coeffY[1:k,:],"c_Vx",log_c_Vx[1:k,:],
                     "c_Vy",log_c_Vy[1:k,:],"c_Psi",log_c_Psi[1:k,:],"cmd",log_cmd[1:k,:],"step_diff",log_step_diff[1:k,:],
                     "t_solv",log_t_solv[1:k],"sol_status",log_sol_status[1:k],"selectedStates",selectedStates,"one_step_error",log_onestep,
-                    "oldSS",oldSS,"selStates",selStates_log,"statesCost",statesCost_log,"pred_sol",log_predicted_sol,"lapStatus",lapStatus,
+                    "oldSS",oldSS,"selStates",selStates_log,"statesCost",statesCost_log,"pred_sol",log_predicted_sol,"pred_input",log_predicted_input,"lapStatus",lapStatus,
                     "posInfo",posInfo,"eps_alpha",log_epsalpha,"cvx",log_cvx,"cvy",log_cvy,"cpsi",log_cpsi,"oldSS_xy",oldSS.oldSS_xy,"input",log_input,
                     "mpcCost",log_mpcCost,"mpcCostSlack",log_mpcCostSlack,"obs_log",log_obs)
                     #,"status",log_status)

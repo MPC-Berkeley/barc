@@ -108,6 +108,7 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
     selStates      = Data["selStates"]
     statesCost     = Data["statesCost"]
     pred_sol       = Data["pred_sol"]
+    pred_input     = Data["pred_input"]
     one_step_error = Data["one_step_error"]
     lapStatus      = Data["lapStatus"]
     posInfo        = Data["posInfo"]
@@ -119,6 +120,7 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
     cost           = Data["mpcCost"]
     costSlack      = Data["mpcCostSlack"]
     obs_log        = Data["obs_log"]
+    sol_u          = Data["sol_u"]
     #status         = Data["status"]
 
     Nl         = selectedStates.Nl
@@ -131,6 +133,7 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
 
     track = create_track(0.4)
 
+    println("prediction horizon N= ", size(pred_sol)[1])
   
 
 
@@ -138,7 +141,7 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
     for i = laps
 
         pred_sol_xy = xyObstacle(oldSS,obs_log,1,i,track)  
-        println("pred sol= ",pred_sol_xy[:,1])
+        #println("pred sol= ",pred_sol_xy[:,1])
         # for index=1:buffersize
         #     if status[index,i] == :UserLimit
         #         flag[1]=index
@@ -168,10 +171,20 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
         cpsi3        = cpsi[1:currentIt,3,i]
 
         figure(1)
-        plot(oldSS_xy[:,1,i],oldSS_xy[:,2,i],"og") 
-        plot(oldSS_xy[:,1,i-1],oldSS_xy[:,2,i-1],"ob") 
+        plot(oldSS_xy[:,1,i],oldSS_xy[:,2,i],"-.") 
+        #plot(oldSS_xy[:,1,i-1],oldSS_xy[:,2,i-1],"ob") 
         plot(track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")#,track[:,1],track[:,2],"b.")
-        grid("on")
+
+        #for i=1:4:size(x_est,1)
+        for index=1:length(oldSS_xy[:,1,i])
+            z_pred = zeros(size(pred_sol)[1],4)
+            #z_pred[1,:] = x_est[i,:]
+            z_pred[1,:] = oldSS_xy[index,:,i]
+            for j=2:size(pred_sol)[1]
+                z_pred[j,:] = simModel(z_pred[j-1,:],pred_input[j-1,:,index,i],0.1,0.125,0.125)
+            end
+            plot(z_pred[:,1],z_pred[:,2],"-+")
+        end
 
         # ellfig = figure(1)
         # ax = ellfig[:add_subplot](1,1,1)
@@ -194,7 +207,7 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
 
         t = linspace(1,currentIt,currentIt)
 
-        figure(2)
+        figure()
 
         subplot(221)
         plot(t,one_step_error[1:currentIt,1,i],t,input[1:currentIt,1,i],"-*",t,input[1:currentIt,2,i],"-+")
@@ -226,7 +239,7 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
         grid("on")
 
 
-        figure(3)
+        figure()
 
         subplot(221)
         plot(t,one_step_error[1:currentIt,5,i],t,input[1:currentIt,1,i],"-*",t,input[1:currentIt,2,i],"-+")
@@ -244,7 +257,7 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
 
 
 
-        figure(4)
+        figure()
 
         subplot(221)
         plot(t,oldSS.oldSS[1:currentIt,1,i],"-*")
@@ -270,7 +283,7 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
         title("ePsi in lap $i")
         grid("on")
 
-        figure(5)
+        figure()
         subplot(221)
         plot(t,oldSS.oldSS[1:currentIt,5,i],"-*")
         #ylim(-0.0001,findmax(one_step_error[1:currentIt,6,i])[1])
@@ -289,10 +302,9 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
         title("Overall velocity in lap $i")
         grid("on")
 
-        println("average velocity= ",mean(velocity))
 
 
-        figure(6)
+        figure()
 
         subplot(221)
         plot(t,cvx1,t,cvx2,t,cvx3)
@@ -312,17 +324,21 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
         title("C_Psi in lap $i")
         grid("on")
 
-        figure(7)
+        figure()
         plot(t,cost[1:currentIt,2,i],t,cost[1:currentIt,3,i],t,cost[1:currentIt,4,i],t,cost[1:currentIt,6,i])
         legend(["terminal Cost","control Cost","derivative Cost","lane Cost"])
         title("Costs of the Mpc")
         grid("on")
 
-        figure(8)
+        figure()
         plot(t,costSlack[1:currentIt,1,i],t,costSlack[1:currentIt,2,i],t,costSlack[1:currentIt,3,i],t,costSlack[1:currentIt,4,i],t,costSlack[1:currentIt,5,i],t,costSlack[1:currentIt,6,i])
         legend(["slack cost on vx","slack cost on vy","slack cost on psiDot","slack cost on ePsi","slack cost on eY","slack cost on s"])
         title("Slack costs")
         grid("on")
+
+
+
+
 
 
         if switch == true
@@ -361,10 +377,10 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
                 #olds3       = selStates[2*Np+1:3*Np,6,j,i]
 
 
-
+                t = linspace(1,j,j)
                 
                 
-                figure(9)
+                figure(15)
                 clf()
                 subplot(221)
                 plot(s_pred,vx_pred,"or")
@@ -403,7 +419,7 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
                 grid("on")
 
 
-                figure(10)
+                figure(16)
                 clf()
                 subplot(221)
                 plot(s_pred,eY_pred,"or")
@@ -414,10 +430,39 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
                 title("State eY in lap $i, iteration $j ")
                 grid("on")
 
+                figure(17)
+                clf()
+
+                subplot(121)
+                velocity= sqrt(oldSS.oldSS[1:j,2,i].^2 + oldSS.oldSS[1:j,1,i].^2)
+                plot(t,velocity,"-*")
+                legend(["velocity"])
+
+                subplot(122)
+                plot(linspace(1,size(pred_input)[1],size(pred_input)[1]),pred_input[:,1,j,i],linspace(1,size(pred_input)[1],size(pred_input)[1]),pred_input[:,2,j,i])
+                legend(["a_x","d_f"])
+
+                title("Comparison between velocity and inputs in lap $i, iteration $j ")
+                grid("on")
+
+                figure(18)
+                clf()
+
+                subplot(121)
+                plot(t,oldSS.oldSS[1:j,5,i],"-*")
+                legend(["e_y"])
+
+                subplot(122)
+                plot(linspace(1,size(pred_input)[1],size(pred_input)[1]),pred_input[:,1,j,i],linspace(1,size(pred_input)[1],size(pred_input)[1]),pred_input[:,2,j,i])
+                legend(["a_x","d_f"])
+
+                title("Comparison between e_y and inputs in lap $i, iteration $j ")
+                grid("on")
+
 
                 
 
-                sleep(3)
+                sleep(5)
             end
         end
     end
@@ -707,6 +752,7 @@ function eval_LMPC(code::AbstractString)
 
     t0 = t[1]
 
+
     figure(2)
     ax1=subplot(311)
     plot(pos_info.t-t0,pos_info.z[:,8],".",t-t0,state[:,1],"-*")
@@ -781,21 +827,21 @@ function eval_LMPC(code::AbstractString)
     grid(1)
     # HERE YOU CAN CHOOSE TO PLOT DIFFERENT DATA:
     # CURRENT HEADING (PLOTTED BY A LINE)
-    for i=1:10:size(pos_info.t,1)
-        dir = [cos(pos_info.z[i,10]) sin(pos_info.z[i,10])]
-        lin = [pos_info.z[i,6:7]; pos_info.z[i,6:7] + 0.1*dir]
-        plot(lin[:,1],lin[:,2],"-+")
-    end
+    # for i=1:10:size(pos_info.t,1)
+    #     dir = [cos(pos_info.z[i,10]) sin(pos_info.z[i,10])]
+    #     lin = [pos_info.z[i,6:7]; pos_info.z[i,6:7] + 0.1*dir]
+    #     plot(lin[:,1],lin[:,2],"-+")
+    # end
 
     # PREDICTED PATH
-    # for i=1:4:size(x_est,1)
-    #         z_pred = zeros(11,4)
-    #         z_pred[1,:] = x_est[i,:]
-    #         for j=2:11
-    #             z_pred[j,:] = simModel(z_pred[j-1,:],sol_u[j-1,:,i],0.1,0.125,0.125)
-    #         end
-    #         plot(z_pred[:,1],z_pred[:,2],"-*")
-    # end
+    for i=1:4:size(x_est,1)
+            z_pred = zeros(11,4)
+            z_pred[1,:] = x_est[i,:]
+            for j=2:11
+                z_pred[j,:] = simModel(z_pred[j-1,:],sol_u[j-1,:,i],0.1,0.125,0.125)
+            end
+            plot(z_pred[:,1],z_pred[:,2],"-*")
+    end
 
     # PREDICTED REFERENCE PATH (DEFINED BY POLYNOM)
     # for i=1:size(x_est,1)
