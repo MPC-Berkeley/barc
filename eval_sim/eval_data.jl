@@ -359,22 +359,22 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
             
                 oldvx       = selStates[1:Np,1,j,i]
                 oldvx2      = selStates[Np+1:2*Np,1,j,i]
-                #oldvx3      = selStates[2*Np+1:3*Np,1,j,i]
+                oldvx3      = selStates[2*Np+1:3*Np,1,j,i]
                 oldvy       = selStates[1:Np,2,j,i]
                 oldvy2      = selStates[Np+1:2*Np,2,j,i]
-                #oldvy3      = selStates[2*Np+1:3*Np,2,j,i]
+                oldvy3      = selStates[2*Np+1:3*Np,2,j,i]
                 oldpsiDot   = selStates[1:Np,3,j,i]
                 oldpsiDot2  = selStates[Np+1:2*Np,3,j,i]
-                #oldpsiDot3  = selStates[2*Np+1:3*Np,3,j,i]
+                oldpsiDot3  = selStates[2*Np+1:3*Np,3,j,i]
                 oldePsi     = selStates[1:Np,4,j,i]
                 oldePsi2    = selStates[Np+1:2*Np,4,j,i]
-                #oldePsi3    = selStates[2*Np+1:3*Np,4,j,i]
+                oldePsi3    = selStates[2*Np+1:3*Np,4,j,i]
                 oldeY       = selStates[1:Np,5,j,i]
                 oldeY2      = selStates[Np+1:2*Np,5,j,i]
-                #oldeY3      = selStates[2*Np+1:3*Np,5,j,i]
+                oldeY3      = selStates[2*Np+1:3*Np,5,j,i]
                 olds        = selStates[1:Np,6,j,i]
                 olds2       = selStates[Np+1:2*Np,6,j,i]
-                #olds3       = selStates[2*Np+1:3*Np,6,j,i]
+                olds3       = selStates[2*Np+1:3*Np,6,j,i]
 
 
                 t = linspace(1,j,j)
@@ -386,7 +386,7 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
                 plot(s_pred,vx_pred,"or")
                 plot(olds,oldvx,"b")
                 plot(olds2,oldvx2,"b")
-                #plot(olds3,oldvx3,"b")
+                plot(olds3,oldvx3,"b")
                 #ylim(findmin(oldTraj.z_pred_sol[:,2,:,i])[1],findmax(oldTraj.z_pred_sol[:,2,:,i])[1])
                 title("State vx in lap $i, iteration $j")
                 grid("on")
@@ -395,7 +395,7 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
                 plot(s_pred,vy_pred,"or")
                 plot(olds,oldvy,"b")
                 plot(olds2,oldvy2,"b")
-                #plot(olds3,oldvy3,"b")
+                plot(olds3,oldvy3,"b")
                 #ylim(findmin(oldTraj.z_pred_sol[:,3,:,i])[1],findmax(oldTraj.z_pred_sol[:,3,:,i])[1])
                 title("State vy in lap $i, iteration $j ")
                 grid("on")
@@ -404,7 +404,7 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
                 plot(s_pred,psiDot_pred,"or")
                 plot(olds,oldpsiDot,"b")
                 plot(olds2,oldpsiDot2,"b")
-                #plot(olds3,oldpsiDot3,"b")
+                plot(olds3,oldpsiDot3,"b")
                 #ylim(findmin(oldTraj.z_pred_sol[:,4,:,i])[1],findmax(oldTraj.z_pred_sol[:,4,:,i])[1])
                 title("State psiDot in lap $i , iteration $j")
                 grid("on")
@@ -413,7 +413,7 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
                 plot(s_pred,ePsi_pred,"or")
                 plot(olds,oldePsi,"b")
                 plot(olds2,oldePsi2,"b")
-                #plot(olds3,oldePsi3,"b")
+                plot(olds3,oldePsi3,"b")
                 #ylim(findmin(oldTraj.z_pred_sol[:,4,:,i])[1],findmax(oldTraj.z_pred_sol[:,4,:,i])[1])
                 title("State ePsi in lap $i, iteration $j ")
                 grid("on")
@@ -425,7 +425,7 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
                 plot(s_pred,eY_pred,"or")
                 plot(olds,oldeY,"b")
                 plot(olds2,oldeY2,"b")
-                #plot(olds3,oldeY3,"b")
+                plot(olds3,oldeY3,"b")
                 #ylim(findmin(oldTraj.z_pred_sol[:,2,:,i])[1],findmax(oldTraj.z_pred_sol[:,2,:,i])[1])
                 title("State eY in lap $i, iteration $j ")
                 grid("on")
@@ -780,14 +780,17 @@ function eval_LMPC(code::AbstractString)
     subplot(311)
     title("c_Vx")
     plot(t-t0,c_Vx)
+    legend(["1","2","3"])
     grid("on")
     subplot(312)
     title("c_Vy")
     plot(t-t0,c_Vy)
+    legend(["1","2","3","4"])
     grid("on")
     subplot(313)
     title("c_Psi")
     plot(t-t0,c_Psi)
+    legend(["1","2","3"])
     grid("on")
 
     # *********** CURVATURE *********************
