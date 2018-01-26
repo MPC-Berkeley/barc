@@ -334,7 +334,7 @@ function main()
                     "cost",log_cost[1:k,:],"curv",log_curv[1:k,:],"coeffCost",log_coeff_Cost,"coeffConst",log_coeff_Const,
                     "x_est",log_state_x[1:k,:],"coeffX",log_coeffX[1:k,:],"coeffY",log_coeffY[1:k,:],"c_Vx",log_c_Vx[1:k,:],
                     "c_Vy",log_c_Vy[1:k,:],"c_Psi",log_c_Psi[1:k,:],"cmd",log_cmd[1:k,:],"step_diff",log_step_diff[1:k,:],
-                    "t_solv",log_t_solv[1:k],"sol_status",log_sol_status[1:k])
+                    "t_solv",log_t_solv[1:k],"sol_status",log_sol_status[1:k],"final_counter",log_final_counter[1:currentLap])
     println("Exiting LMPC node. Saved data to $log_path.")
 
 end

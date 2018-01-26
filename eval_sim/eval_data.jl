@@ -195,6 +195,97 @@ function eval_run(code::AbstractString)
     nothing
 end
 
+function eval_terminal_constraint(code::AbstractString,lap::Int64)
+
+    log_path_LMPC   = "$(homedir())/simulations/output-LMPC-$(code).jld"
+    d_lmpc          = load(log_path_LMPC)
+    x_est           = d_lmpc["x_est"]
+    final_counter   = d_lmpc["final_counter"]
+    pred_sol        = d_lmpc["sol_z"]
+
+    for j=1:2000
+
+        vx_pred     = pred_sol[:,1,final_counter[lap]+j]
+        vy_pred     = pred_sol[:,2,final_counter[lap]+j]
+        psiDot_pred = pred_sol[:,3,final_counter[lap]+j]
+        ePsi_pred   = pred_sol[:,4,final_counter[lap]+j]
+        eY_pred     = pred_sol[:,5,final_counter[lap]+j]
+        s_pred      = pred_sol[:,6,final_counter[lap]+j]
+
+            
+        oldvx       = x_est[final_counter[lap-1]+j:final_counter[lap-1]+j+20,1]
+        oldvx2      = x_est[final_counter[lap-2]+j:final_counter[lap-2]+j+20,1]
+        oldvy       = x_est[final_counter[lap-1]+j:final_counter[lap-1]+j+20,2]
+        oldvy2      = x_est[final_counter[lap-2]+j:final_counter[lap-2]+j+20,2]
+        oldpsiDot   = x_est[final_counter[lap-1]+j:final_counter[lap-1]+j+20,3]
+        oldpsiDot2  = x_est[final_counter[lap-2]+j:final_counter[lap-2]+j+20,3]
+        oldePsi     = x_est[final_counter[lap-1]+j:final_counter[lap-1]+j+20,4]
+        oldePsi2    = x_est[final_counter[lap-2]+j:final_counter[lap-2]+j+20,4]
+        oldeY       = x_est[final_counter[lap-1]+j:final_counter[lap-1]+j+20,5]
+        oldeY2      = x_est[final_counter[lap-2]+j:final_counter[lap-2]+j+20,5]
+        olds        = x_est[final_counter[lap-1]+j:final_counter[lap-1]+j+20,6]
+        olds2       = x_est[final_counter[lap-2]+j:final_counter[lap-2]+j+20,6]
+                
+                
+        figure(15)
+        clf()
+        subplot(221)
+        plot(s_pred,vx_pred,"or")
+        plot(olds,oldvx,"b")
+        plot(olds2,oldvx2,"b")
+        plot(olds3,oldvx3,"b")
+                #ylim(findmin(oldTraj.z_pred_sol[:,2,:,i])[1],findmax(oldTraj.z_pred_sol[:,2,:,i])[1])
+        title("State vx in lap $i, iteration $j")
+        grid("on")
+
+        subplot(222)
+        plot(s_pred,vy_pred,"or")
+        plot(olds,oldvy,"b")
+        plot(olds2,oldvy2,"b")
+        plot(olds3,oldvy3,"b")
+                #ylim(findmin(oldTraj.z_pred_sol[:,3,:,i])[1],findmax(oldTraj.z_pred_sol[:,3,:,i])[1])
+        title("State vy in lap $i, iteration $j ")
+        grid("on")
+
+        subplot(223)
+        plot(s_pred,psiDot_pred,"or")
+        plot(olds,oldpsiDot,"b")
+        plot(olds2,oldpsiDot2,"b")
+        plot(olds3,oldpsiDot3,"b")
+                #ylim(findmin(oldTraj.z_pred_sol[:,4,:,i])[1],findmax(oldTraj.z_pred_sol[:,4,:,i])[1])
+        title("State psiDot in lap $i , iteration $j")
+        grid("on")
+
+        subplot(224)
+        plot(s_pred,ePsi_pred,"or")
+        plot(olds,oldePsi,"b")
+        plot(olds2,oldePsi2,"b")
+        plot(olds3,oldePsi3,"b")
+                #ylim(findmin(oldTraj.z_pred_sol[:,4,:,i])[1],findmax(oldTraj.z_pred_sol[:,4,:,i])[1])
+        title("State ePsi in lap $i, iteration $j ")
+        grid("on")
+
+
+        figure(16)
+        clf()
+        subplot(221)
+        plot(s_pred,eY_pred,"or")
+        plot(olds,oldeY,"b")
+        plot(olds2,oldeY2,"b")
+        plot(olds3,oldeY3,"b")
+                #ylim(findmin(oldTraj.z_pred_sol[:,2,:,i])[1],findmax(oldTraj.z_pred_sol[:,2,:,i])[1])
+        title("State eY in lap $i, iteration $j ")
+        grid("on")
+
+    end        
+
+
+
+
+end
+
+
+
 function plot_friction_circle(code::AbstractString,lap::Int64)
     log_path_record = "$(homedir())/simulations/output-record-$(code).jld"
     log_path_LMPC   = "$(homedir())/simulations/output-LMPC-$(code).jld"
