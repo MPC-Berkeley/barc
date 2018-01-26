@@ -199,32 +199,34 @@ function eval_terminal_constraint(code::AbstractString,lap::Int64)
 
     log_path_LMPC   = "$(homedir())/simulations/output-LMPC-$(code).jld"
     d_lmpc          = load(log_path_LMPC)
-    x_est           = d_lmpc["x_est"]
+    state           = d_lmpc["state"]
     final_counter   = d_lmpc["final_counter"]
     pred_sol        = d_lmpc["sol_z"]
 
+    println(final_counter)
+
     for j=1:2000
 
-        vx_pred     = pred_sol[:,1,final_counter[lap]+j]
-        vy_pred     = pred_sol[:,2,final_counter[lap]+j]
-        psiDot_pred = pred_sol[:,3,final_counter[lap]+j]
-        ePsi_pred   = pred_sol[:,4,final_counter[lap]+j]
-        eY_pred     = pred_sol[:,5,final_counter[lap]+j]
-        s_pred      = pred_sol[:,6,final_counter[lap]+j]
+        vx_pred     = pred_sol[:,1,final_counter[lap-1]+j]
+        vy_pred     = pred_sol[:,2,final_counter[lap-1]+j]
+        psiDot_pred = pred_sol[:,3,final_counter[lap-1]+j]
+        ePsi_pred   = pred_sol[:,4,final_counter[lap-1]+j]
+        eY_pred     = pred_sol[:,5,final_counter[lap-1]+j]
+        s_pred      = pred_sol[:,6,final_counter[lap-1]+j]
 
             
-        oldvx       = x_est[final_counter[lap-1]+j:final_counter[lap-1]+j+20,1]
-        oldvx2      = x_est[final_counter[lap-2]+j:final_counter[lap-2]+j+20,1]
-        oldvy       = x_est[final_counter[lap-1]+j:final_counter[lap-1]+j+20,2]
-        oldvy2      = x_est[final_counter[lap-2]+j:final_counter[lap-2]+j+20,2]
-        oldpsiDot   = x_est[final_counter[lap-1]+j:final_counter[lap-1]+j+20,3]
-        oldpsiDot2  = x_est[final_counter[lap-2]+j:final_counter[lap-2]+j+20,3]
-        oldePsi     = x_est[final_counter[lap-1]+j:final_counter[lap-1]+j+20,4]
-        oldePsi2    = x_est[final_counter[lap-2]+j:final_counter[lap-2]+j+20,4]
-        oldeY       = x_est[final_counter[lap-1]+j:final_counter[lap-1]+j+20,5]
-        oldeY2      = x_est[final_counter[lap-2]+j:final_counter[lap-2]+j+20,5]
-        olds        = x_est[final_counter[lap-1]+j:final_counter[lap-1]+j+20,6]
-        olds2       = x_est[final_counter[lap-2]+j:final_counter[lap-2]+j+20,6]
+        oldvx       = state[final_counter[lap-2]+j:final_counter[lap-2]+j+10,1]
+        oldvx2      = state[final_counter[lap-3]+j:final_counter[lap-3]+j+10,1]
+        oldvy       = state[final_counter[lap-2]+j:final_counter[lap-2]+j+10,2]
+        oldvy2      = state[final_counter[lap-3]+j:final_counter[lap-3]+j+10,2]
+        oldpsiDot   = state[final_counter[lap-2]+j:final_counter[lap-2]+j+10,3]
+        oldpsiDot2  = state[final_counter[lap-3]+j:final_counter[lap-3]+j+10,3]
+        oldePsi     = state[final_counter[lap-2]+j:final_counter[lap-2]+j+10,4]
+        oldePsi2    = state[final_counter[lap-3]+j:final_counter[lap-3]+j+10,4]
+        oldeY       = state[final_counter[lap-2]+j:final_counter[lap-2]+j+10,5]
+        oldeY2      = state[final_counter[lap-3]+j:final_counter[lap-3]+j+10,5]
+        olds        = state[final_counter[lap-2]+j:final_counter[lap-2]+j+10,6]
+        olds2       = state[final_counter[lap-3]+j:final_counter[lap-3]+j+10,6]
                 
                 
         figure(15)
@@ -233,36 +235,32 @@ function eval_terminal_constraint(code::AbstractString,lap::Int64)
         plot(s_pred,vx_pred,"or")
         plot(olds,oldvx,"b")
         plot(olds2,oldvx2,"b")
-        plot(olds3,oldvx3,"b")
                 #ylim(findmin(oldTraj.z_pred_sol[:,2,:,i])[1],findmax(oldTraj.z_pred_sol[:,2,:,i])[1])
-        title("State vx in lap $i, iteration $j")
+        title("State vx in lap $lap, iteration $j")
         grid("on")
 
         subplot(222)
         plot(s_pred,vy_pred,"or")
         plot(olds,oldvy,"b")
         plot(olds2,oldvy2,"b")
-        plot(olds3,oldvy3,"b")
                 #ylim(findmin(oldTraj.z_pred_sol[:,3,:,i])[1],findmax(oldTraj.z_pred_sol[:,3,:,i])[1])
-        title("State vy in lap $i, iteration $j ")
+        title("State vy in lap $lap, iteration $j ")
         grid("on")
 
         subplot(223)
         plot(s_pred,psiDot_pred,"or")
         plot(olds,oldpsiDot,"b")
         plot(olds2,oldpsiDot2,"b")
-        plot(olds3,oldpsiDot3,"b")
                 #ylim(findmin(oldTraj.z_pred_sol[:,4,:,i])[1],findmax(oldTraj.z_pred_sol[:,4,:,i])[1])
-        title("State psiDot in lap $i , iteration $j")
+        title("State psiDot in lap $lap , iteration $j")
         grid("on")
 
         subplot(224)
         plot(s_pred,ePsi_pred,"or")
         plot(olds,oldePsi,"b")
         plot(olds2,oldePsi2,"b")
-        plot(olds3,oldePsi3,"b")
                 #ylim(findmin(oldTraj.z_pred_sol[:,4,:,i])[1],findmax(oldTraj.z_pred_sol[:,4,:,i])[1])
-        title("State ePsi in lap $i, iteration $j ")
+        title("State ePsi in lap $lap, iteration $j ")
         grid("on")
 
 
@@ -272,10 +270,11 @@ function eval_terminal_constraint(code::AbstractString,lap::Int64)
         plot(s_pred,eY_pred,"or")
         plot(olds,oldeY,"b")
         plot(olds2,oldeY2,"b")
-        plot(olds3,oldeY3,"b")
                 #ylim(findmin(oldTraj.z_pred_sol[:,2,:,i])[1],findmax(oldTraj.z_pred_sol[:,2,:,i])[1])
-        title("State eY in lap $i, iteration $j ")
+        title("State eY in lap $lap, iteration $j ")
         grid("on")
+
+        sleep(2)
 
     end        
 
