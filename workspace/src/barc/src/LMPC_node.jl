@@ -122,6 +122,7 @@ function main()
     log_step_diff               = zeros(10000,5)
     log_t_solv                  = zeros(10000)
     log_sol_status              = Array(Symbol,10000)
+    log_final_counter           = zeros(30)
     
     acc_f = [0.0]
 
@@ -209,6 +210,8 @@ function main()
             # ======================================= Lap trigger =======================================
             if lapStatus.nextLap                # if we are switching to the next lap...
                 println("Finishing one lap at iteration ",i)
+
+                log_final_counter[lapStatus.currentLap-1] = k
                 # Important: lapStatus.currentIt is now the number of points up to s > s_target -> -1 in saveOldTraj
                 zCurr[1,:] = zCurr[i,:]         # copy current state
                 i                     = 1
