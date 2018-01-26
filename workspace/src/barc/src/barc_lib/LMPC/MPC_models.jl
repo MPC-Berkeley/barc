@@ -491,7 +491,7 @@ type MpcModel_convhull
 
         @NLconstraint(mdl, [i=2:N+1], z_Ol[i,5] <= ey_max + eps_lane[i])
         @NLconstraint(mdl, [i=2:N+1], z_Ol[i,5] >= -ey_max - eps_lane[i])
-        #@NLconstraint(mdl,[i = 1:(N+1)], z_Ol[i,4] <= v_max + eps_vel[i] )      # sof constraint on maximum velocity
+        #@NLconstraint(mdl,[i = 1:(N+1)], z_Ol[i,4] <= v_max + eps_vel[i] )      # soft constraint on maximum velocity
         @NLconstraint(mdl, sum{alpha[i],i=1:Nl*Np} == 1)                        # constraint on the coefficients of the convex hull
 
         #for n = 1:6

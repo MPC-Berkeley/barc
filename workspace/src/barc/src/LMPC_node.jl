@@ -257,10 +257,10 @@ function main()
             end
             log_step_diff[k+1,:]          = step_diff
 
-            if lapStatus.currentLap > n_pf
-                if lapStatus.currentIt>1
-                    log_onestep[lapStatus.currentIt,:,lapStatus.currentLap] = abs(mpcSol.z[1:6] - zCurr[1:6])
-                end
+            if size(mpcSol.z,2) > 5
+                
+                log_onestep[lapStatus.currentIt,:,lapStatus.currentLap] = abs(mpcSol.z[2,1:6] - zCurr[i,1:6])
+                
             end
 
             # ======================================= Lap trigger =======================================

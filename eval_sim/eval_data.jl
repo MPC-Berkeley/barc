@@ -131,7 +131,7 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
     flag = zeros(2)
 
 
-    track = create_track(0.4)
+    track = create_track(0.3)
 
     println("prediction horizon N= ", size(pred_sol)[1])
   
@@ -175,16 +175,16 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
         #plot(oldSS_xy[:,1,i-1],oldSS_xy[:,2,i-1],"ob") 
         plot(track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")#,track[:,1],track[:,2],"b.")
 
-        #for i=1:4:size(x_est,1)
-        for index=1:length(oldSS_xy[:,1,i])
-            z_pred = zeros(size(pred_sol)[1],4)
-            #z_pred[1,:] = x_est[i,:]
-            z_pred[1,:] = oldSS_xy[index,:,i]
-            for j=2:size(pred_sol)[1]
-                z_pred[j,:] = simModel(z_pred[j-1,:],pred_input[j-1,:,index,i],0.1,0.125,0.125)
-            end
-            plot(z_pred[:,1],z_pred[:,2],"-+")
-        end
+
+        # for index=1:length(oldSS_xy[:,1,i])
+        #     z_pred = zeros(size(pred_sol)[1],4)
+        #     #z_pred[1,:] = x_est[i,:]
+        #     z_pred[1,:] = oldSS_xy[index,:,i]
+        #     for j=2:size(pred_sol)[1]
+        #         z_pred[j,:] = simModel(z_pred[j-1,:],pred_input[j-1,:,index,i],0.1,0.125,0.125)
+        #     end
+        #     plot(z_pred[:,1],z_pred[:,2],"-+")
+        # end
 
         # ellfig = figure(1)
         # ax = ellfig[:add_subplot](1,1,1)
@@ -203,58 +203,67 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
         grid("on")
         title("X-Y view of Lap $i")
 
-
-
         t = linspace(1,currentIt,currentIt)
 
+
+
+
+
+        # figure()
+
+        # subplot(221)
+        # plot(t,one_step_error[1:currentIt,1,i],t,input[1:currentIt,1,i],"-*",t,input[1:currentIt,2,i],"-+")
+        # # annotate("UserLimit",xy=[flag[1],one_step_error[flag[1],1,flag[2]]],xytext=[flag[1]+0.1,one_step_error[flag[1],1,flag[2]]+0.1],xycoords="data",arrowprops=["facecolor"=>"black"])
+        # title("One step prediction error for v_x in lap $i")
+        # #ylim(-0.0001,findmax(one_step_error[1:currentIt,1,i])[1])
+        # legend(["ospe","a_x","d_f"])
+        # grid("on")
+
+        # subplot(222)
+        # plot(t,one_step_error[1:currentIt,2,i],t,input[1:currentIt,1,i],"-*",t,input[1:currentIt,2,i],"-+")
+        # #ylim(-0.0001,findmax(one_step_error[1:currentIt,2,i])[1])
+        # legend(["ospe","a_x","d_f"])
+        # title("One step prediction error for v_y in lap $i")
+        # grid("on")
+
+        # subplot(223)
+        # plot(t,one_step_error[1:currentIt,3,i],t,input[1:currentIt,1,i],"-*",t,input[1:currentIt,2,i],"-+")
+        # #ylim(-0.0001,findmax(one_step_error[1:currentIt,3,i])[1])
+        # legend(["ospe","a_x","d_f"])
+        # title("One step prediction error for psiDot in lap $i")
+        # grid("on")
+
+        # subplot(224)
+        # plot(t,one_step_error[1:currentIt,4,i],t,input[1:currentIt,1,i],"-*",t,input[1:currentIt,2,i],"-+")
+        # #ylim(-0.0001,findmax(one_step_error[1:currentIt,4,i])[1])
+        # legend(["ospe","a_x","d_f"])
+        # title("One step prediction error for ePsi in lap $i")
+        # grid("on")
+
+
+        # figure()
+
+        # subplot(221)
+        # plot(t,one_step_error[1:currentIt,5,i],t,input[1:currentIt,1,i],"-*",t,input[1:currentIt,2,i],"-+")
+        # #ylim(-0.0001,findmax(one_step_error[1:currentIt,5,i])[1])
+        # legend(["ospe","a_x","d_f"])
+        # title("One step prediction error for eY in lap $i")
+        # grid("on")
+
+        # subplot(222)
+        # plot(t,one_step_error[1:currentIt,6,i],t,input[1:currentIt,1,i],"-*",t,input[1:currentIt,2,i],"-+")
+        # #ylim(-0.0001,findmax(one_step_error[1:currentIt,6,i])[1])
+        # legend(["ospe","a_x","d_f"])
+        # title("One step prediction error for s in lap $i")
+        # grid("on")
+
         figure()
-
-        subplot(221)
-        plot(t,one_step_error[1:currentIt,1,i],t,input[1:currentIt,1,i],"-*",t,input[1:currentIt,2,i],"-+")
-        # annotate("UserLimit",xy=[flag[1],one_step_error[flag[1],1,flag[2]]],xytext=[flag[1]+0.1,one_step_error[flag[1],1,flag[2]]+0.1],xycoords="data",arrowprops=["facecolor"=>"black"])
-        title("One step prediction error for v_x in lap $i")
-        #ylim(-0.0001,findmax(one_step_error[1:currentIt,1,i])[1])
-        legend(["ospe","a_x","d_f"])
+        plot(t,one_step_error[1:currentIt,1,i],t,one_step_error[1:currentIt,2,i],t,one_step_error[1:currentIt,3,i],t,one_step_error[1:currentIt,4,i],t,one_step_error[1:currentIt,5,i],t,one_step_error[1:currentIt,6,i])
+        legend(["vx","vy","psiDot","ePsi","eY","s"])
         grid("on")
+        title("One step prediction errors")
 
-        subplot(222)
-        plot(t,one_step_error[1:currentIt,2,i],t,input[1:currentIt,1,i],"-*",t,input[1:currentIt,2,i],"-+")
-        #ylim(-0.0001,findmax(one_step_error[1:currentIt,2,i])[1])
-        legend(["ospe","a_x","d_f"])
-        title("One step prediction error for v_y in lap $i")
-        grid("on")
-
-        subplot(223)
-        plot(t,one_step_error[1:currentIt,3,i],t,input[1:currentIt,1,i],"-*",t,input[1:currentIt,2,i],"-+")
-        #ylim(-0.0001,findmax(one_step_error[1:currentIt,3,i])[1])
-        legend(["ospe","a_x","d_f"])
-        title("One step prediction error for psiDot in lap $i")
-        grid("on")
-
-        subplot(224)
-        plot(t,one_step_error[1:currentIt,4,i],t,input[1:currentIt,1,i],"-*",t,input[1:currentIt,2,i],"-+")
-        #ylim(-0.0001,findmax(one_step_error[1:currentIt,4,i])[1])
-        legend(["ospe","a_x","d_f"])
-        title("One step prediction error for ePsi in lap $i")
-        grid("on")
-
-
-        figure()
-
-        subplot(221)
-        plot(t,one_step_error[1:currentIt,5,i],t,input[1:currentIt,1,i],"-*",t,input[1:currentIt,2,i],"-+")
-        #ylim(-0.0001,findmax(one_step_error[1:currentIt,5,i])[1])
-        legend(["ospe","a_x","d_f"])
-        title("One step prediction error for eY in lap $i")
-        grid("on")
-
-        subplot(222)
-        plot(t,one_step_error[1:currentIt,6,i],t,input[1:currentIt,1,i],"-*",t,input[1:currentIt,2,i],"-+")
-        #ylim(-0.0001,findmax(one_step_error[1:currentIt,6,i])[1])
-        legend(["ospe","a_x","d_f"])
-        title("One step prediction error for s in lap $i")
-        grid("on")
-
+        # println("one step prediction error= ",one_step_error[1:30,:,i])
 
 
         figure()
@@ -378,6 +387,25 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
 
 
                 t = linspace(1,j,j)
+
+                figure(19)
+                clf()
+                plot(oldSS_xy[:,1,i],oldSS_xy[:,2,i],"*") 
+                #plot(oldSS_xy[:,1,i-1],oldSS_xy[:,2,i-1],"ob") 
+                plot(track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")#,track[:,1],track[:,2],"b.")
+
+                #for i=1:4:size(x_est,1)
+                # for index=1:length(oldSS_xy[:,1,i])
+                z_pred = zeros(size(pred_sol)[1],4)
+                    #z_pred[1,:] = x_est[i,:]
+                z_pred[1,:] = oldSS_xy[j,:,i]
+                for j2=2:size(pred_sol)[1]
+                    z_pred[j2,:] = simModel(z_pred[j2-1,:],pred_input[j2-1,:,j,i],0.1,0.125,0.125)
+                end
+                plot(z_pred[:,1],z_pred[:,2],"-+")
+                grid("on")
+                title("Predicted solution in lap $i, iteration $j")
+                # end
                 
                 
                 figure(15)
@@ -459,10 +487,24 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
                 title("Comparison between e_y and inputs in lap $i, iteration $j ")
                 grid("on")
 
+                figure(20)
+                clf()
+                subplot(211)
+                plot(t,oldSS.oldSS[1:50,5,i],"-*")
+                title("eY in lap $i, iteration $j")
+                grid("on")
+                plot(linspace(j,j+size(pred_sol)[1],size(pred_sol)[1]),pred_sol[:,5,j,i],"-+")
+
+                subplot(212)
+                plot(t,cost[1:j,6,i])
+                title("lane cost in lap $i, iteration $j")
+                grid("on")
+
+
 
                 
 
-                sleep(5)
+                 sleep(5)
             end
         end
     end
