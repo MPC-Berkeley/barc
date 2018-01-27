@@ -39,8 +39,8 @@ class Localization(object):
     pos                 = 0                     # current position
     psi                 = 0                     # current orientation
     nodes               = array([0])            # all nodes are saved in a matrix
-    N_nodes_poly_back   = 30                    # number of nodes behind current position
-    N_nodes_poly_front  = 100                    # number of nodes in front
+    N_nodes_poly_back   = 25                    # number of nodes behind current position
+    N_nodes_poly_front  = 90                    # number of nodes in front
     ds                  = 0                     # distance between nodes
     nPoints             = N_nodes_poly_front+N_nodes_poly_back+1    # number of points for interpolation in total
     OrderXY             = 10                     # order of x-y-polynomial interpolation
@@ -164,17 +164,17 @@ class Localization(object):
         # theta = add_curve(theta,37,0)
 
         # GOGGLE TRACK WITH STRAIGHT LINES, LENGTH = 19.11m (using ds = 0.03m)
-        theta = add_curve(theta,60,0)
+        theta = add_curve(theta,50,0)
         theta = add_curve(theta,80,-pi/2)
         theta = add_curve(theta,20,0)
         theta = add_curve(theta,80,-pi/2)
-        theta = add_curve(theta,40,-pi/10)
-        theta = add_curve(theta,60,pi/5)
-        theta = add_curve(theta,40,-pi/10)
+        theta = add_curve(theta,35,-pi/10)
+        theta = add_curve(theta,50,pi/5)
+        theta = add_curve(theta,35,-pi/10)
         theta = add_curve(theta,80,-pi/2)
         theta = add_curve(theta,20,0)
         theta = add_curve(theta,80,-pi/2)
-        theta = add_curve(theta,75,0)
+        theta = add_curve(theta,65,0)
 
         # TEST TRACK
 

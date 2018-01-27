@@ -45,14 +45,14 @@ end
 
 function InitializeParameters(mpcParams::MpcParams,mpcParams_pF::MpcParams,trackCoeff::TrackCoeff,modelParams::ModelParams,
                                 posInfo::PosInfo,oldTraj::OldTrajectory,mpcCoeff::MpcCoeff,lapStatus::LapStatus,buffersize::Int64)
-    mpcParams.N                 = 10
+    mpcParams.N                 = 12
     mpcParams.Q                 = [5.0,0.0,0.0,1.0,10.0,0.0]   # Q (only for path following mode)
-    mpcParams.vPathFollowing    = 0.9                           # reference speed for first lap of path following
-    mpcParams.Q_term            = 1.0*[20.0,1.0,10.0,20.0,50.0]   # weights for terminal constraints (LMPC, for xDot,yDot,psiDot,ePsi,eY)
+    mpcParams.vPathFollowing    = 1.0                          # reference speed for first lap of path following
+    mpcParams.Q_term            = 1.0*[1*20.0,1.0,10.0,1*20.0,1*50.0]   # weights for terminal constraints (LMPC, for xDot,yDot,psiDot,ePsi,eY)
     mpcParams.R                 = 0*[10.0,10.0]                 # put weights on a and d_f
     mpcParams.QderivZ           = 10.0*[1,1,1,1,1,1]             # cost matrix for derivative cost of states
     mpcParams.QderivU           = 1.0*[5.0,10.0] #NOTE Set this to [5.0, 0/40.0]              # cost matrix for derivative cost of inputs
-    mpcParams.Q_term_cost       = 4.0                        # scaling of Q-function
+    mpcParams.Q_term_cost       = 2.0                        # scaling of Q-function
     mpcParams.delay_df          = 3                             # steering delay
     mpcParams.delay_a           = 1                             # acceleration delay
 
@@ -60,8 +60,8 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_pF::MpcParams,track
     mpcParams_pF.Q              = [0.0,50.0,0.1,10.0]
     mpcParams_pF.R              = 0*[1.0,1.0]               # put weights on a and d_f
     mpcParams_pF.QderivZ        = 0.0*[0,0,0.1,0]           # cost matrix for derivative cost of states
-    mpcParams_pF.QderivU        = 1.0*[10,10]                # cost matrix for derivative cost of inputs
-    mpcParams_pF.vPathFollowing = 0.9                       # reference speed for first lap of path following
+    mpcParams_pF.QderivU        = 10.0*[1,1]                # cost matrix for derivative cost of inputs
+    mpcParams_pF.vPathFollowing = 1                       # reference speed for first lap of path following
     mpcParams_pF.delay_df       = 3                         # steering delay (number of steps)
     mpcParams_pF.delay_a        = 1                         # acceleration delay
 

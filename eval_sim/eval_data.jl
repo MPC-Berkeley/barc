@@ -110,7 +110,7 @@ function eval_run(code::AbstractString)
     pos_info    = d_rec["pos_info"]
 
     t0      = pos_info.t[1]
-    track   = create_track(0.4)
+    track   = create_track(0.3)
 
     # Calculate accelerations
     acc = smooth(diff(smooth(vel_est.z[:,1],10))./diff(vel_est.t),10)
@@ -122,7 +122,7 @@ function eval_run(code::AbstractString)
 
     figure()
     plot(gps_meas.z[:,1],gps_meas.z[:,2],"+",pos_info.z[:,6],pos_info.z[:,7],"-*")
-    #plot(track[:,1],track[:,2],"b.",track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")
+    plot(track[:,1],track[:,2],"b.",track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")
     grid(1)
     title("x-y-view")
     axis("equal")
@@ -215,18 +215,18 @@ function eval_terminal_constraint(code::AbstractString,lap::Int64)
         s_pred      = pred_sol[:,6,final_counter[lap-1]+j]
 
             
-        oldvx       = state[final_counter[lap-2]+j:final_counter[lap-2]+j+10,1]
-        oldvx2      = state[final_counter[lap-3]+j:final_counter[lap-3]+j+10,1]
-        oldvy       = state[final_counter[lap-2]+j:final_counter[lap-2]+j+10,2]
-        oldvy2      = state[final_counter[lap-3]+j:final_counter[lap-3]+j+10,2]
-        oldpsiDot   = state[final_counter[lap-2]+j:final_counter[lap-2]+j+10,3]
-        oldpsiDot2  = state[final_counter[lap-3]+j:final_counter[lap-3]+j+10,3]
-        oldePsi     = state[final_counter[lap-2]+j:final_counter[lap-2]+j+10,4]
-        oldePsi2    = state[final_counter[lap-3]+j:final_counter[lap-3]+j+10,4]
-        oldeY       = state[final_counter[lap-2]+j:final_counter[lap-2]+j+10,5]
-        oldeY2      = state[final_counter[lap-3]+j:final_counter[lap-3]+j+10,5]
-        olds        = state[final_counter[lap-2]+j:final_counter[lap-2]+j+10,6]
-        olds2       = state[final_counter[lap-3]+j:final_counter[lap-3]+j+10,6]
+        oldvx       = state[final_counter[lap-2]+j:final_counter[lap-2]+j+120,1]
+        oldvx2      = state[final_counter[lap-3]+j:final_counter[lap-3]+j+120,1]
+        oldvy       = state[final_counter[lap-2]+j:final_counter[lap-2]+j+120,2]
+        oldvy2      = state[final_counter[lap-3]+j:final_counter[lap-3]+j+120,2]
+        oldpsiDot   = state[final_counter[lap-2]+j:final_counter[lap-2]+j+120,3]
+        oldpsiDot2  = state[final_counter[lap-3]+j:final_counter[lap-3]+j+120,3]
+        oldePsi     = state[final_counter[lap-2]+j:final_counter[lap-2]+j+120,4]
+        oldePsi2    = state[final_counter[lap-3]+j:final_counter[lap-3]+j+120,4]
+        oldeY       = state[final_counter[lap-2]+j:final_counter[lap-2]+j+120,5]
+        oldeY2      = state[final_counter[lap-3]+j:final_counter[lap-3]+j+120,5]
+        olds        = state[final_counter[lap-2]+j:final_counter[lap-2]+j+120,6]
+        olds2       = state[final_counter[lap-3]+j:final_counter[lap-3]+j+120,6]
                 
                 
         figure(15)
@@ -1160,17 +1160,17 @@ function create_track(w)
     # add_curve(theta,35,0)
 
     # SIMPLE GOGGLE TRACK
-    add_curve(theta,30,0)
+    add_curve(theta,25,0)
     add_curve(theta,40,-pi/2)
     add_curve(theta,10,0)
     add_curve(theta,40,-pi/2)
-    add_curve(theta,20,-pi/10)
-    add_curve(theta,30,pi/5)
-    add_curve(theta,20,-pi/10)
+    add_curve(theta,17,-pi/10)
+    add_curve(theta,25,pi/5)
+    add_curve(theta,17,-pi/10)
     add_curve(theta,40,-pi/2)
     add_curve(theta,10,0)
     add_curve(theta,40,-pi/2)
-    add_curve(theta,35,0)
+    add_curve(theta,32,0)
 
     # TEST TRACK
 
