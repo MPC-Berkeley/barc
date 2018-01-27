@@ -505,9 +505,9 @@ function main()
             log_input[lapStatus.currentIt,:,lapStatus.currentLap]       = uCurr[i,:] 
             log_mpcCost[lapStatus.currentIt,:,lapStatus.currentLap]     = mpcSol.cost
             log_obs[lapStatus.currentIt,:,:,lapStatus.currentLap]       = obs_curr[i,:,:]
-            # if lapStatus.currentLap > n_pf
-            #     log_mpcCostSlack[lapStatus.currentIt,:,lapStatus.currentLap]= mpcSol.costSlack
-            # end
+            if lapStatus.currentLap > n_pf
+                log_mpcCostSlack[lapStatus.currentIt,:,lapStatus.currentLap]= mpcSol.costSlack
+            end
 
             #log_status[lapStatus.currentIt,lapStatus.currentLap]        = mpcSol.solverStatus
 
