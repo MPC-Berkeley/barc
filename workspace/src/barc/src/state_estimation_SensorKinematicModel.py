@@ -144,33 +144,23 @@ class StateEst(object):
         quaternion = (ori.x, ori.y, ori.z, ori.w)
         (roll_raw, pitch_raw, yaw_raw) = transformations.euler_from_quaternion(quaternion)
 
-
-
-        ### ALTERING SIGNS OF IMU  SIGNALS !!!!!!!!!!!-----------------------------
-
-        pitch_raw *= -1
-        yaw_raw *= -1
         # yaw_meas is element of [-pi,pi]
         yaw = unwrap([self.yaw_prev, yaw_raw])[1]       # get smooth yaw (from beginning)
-        self.yaw_prev = -self.yaw_meas                   # and always use raw measured yaw for unwrapping
+        self.yaw_prev = self.yaw_meas                   # and always use raw measured yaw for unwrapping
         # from this point on 'yaw' will be definitely unwrapped (smooth)!
         if not self.running:
-            self.yaw0 = -yaw              # set yaw0 to current yaw
+            self.yaw0 = yaw              # set yaw0 to current yaw
             self.yaw_meas = 0                 # and current yaw to zero
         else:
-            self.yaw_meas = -(yaw - self.yaw0)
+            self.yaw_meas = yaw - self.yaw0
 
         # extract angular velocity and linear acceleration data
         #w_x = data.angular_velocity.x
         #w_y = data.angular_velocity.y
-
-        w_z = -data.angular_velocity.z
+        w_z = data.angular_velocity.z
         a_x = data.linear_acceleration.x
-        a_y = -data.linear_acceleration.y
-        a_z = -data.linear_acceleration.z
-
-        ### ALTERING SIGNS OF IMU SIGNALS !!!!!!!!!!!-----------------------------
-
+        a_y = data.linear_acceleration.y
+        a_z = data.linear_acceleration.z
 
         self.psiDot_meas = w_z
         # The next two lines 'project' the measured linear accelerations to a horizontal plane
