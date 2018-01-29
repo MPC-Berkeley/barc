@@ -51,7 +51,7 @@ class StateEst(object):
     vel_meas = 0.0
     vel_updated = False
     vel_prev = 0.0
-    vel_count = 0.0
+    vel_count = 0.0 # this counts how often the same vel measurement has been received
 
     # GPS
     x_meas = 0.0
@@ -144,6 +144,8 @@ class StateEst(object):
         quaternion = (ori.x, ori.y, ori.z, ori.w)
         (roll_raw, pitch_raw, yaw_raw) = transformations.euler_from_quaternion(quaternion)
         # yaw_meas is element of [-pi,pi]
+ 
+
         yaw = unwrap([self.yaw_prev, yaw_raw])[1]       # get smooth yaw (from beginning)
         self.yaw_prev = self.yaw_meas                   # and always use raw measured yaw for unwrapping
         # from this point on 'yaw' will be definitely unwrapped (smooth)!
@@ -152,6 +154,7 @@ class StateEst(object):
             self.yaw_meas = 0                 # and current yaw to zero
         else:
             self.yaw_meas = yaw - self.yaw0
+            #print "yaw measured: %f" % self.yaw_meas * 180 / math.pi
 
         # extract angular velocity and linear acceleration data
         #w_x = data.angular_velocity.x
@@ -171,7 +174,6 @@ class StateEst(object):
         self.imu_updated = True
 
     def encoder_vel_callback(self, data):
-
         if data.vel_est != self.vel_prev:
             self.vel_meas = data.vel_est
             self.vel_updated = True
@@ -182,8 +184,6 @@ class StateEst(object):
             if self.vel_count > 10:     # if 10 times in a row the same measurement
                 self.vel_meas = 0       # set velocity measurement to zero
                 self.vel_updated = True
-
-        
         # self.vel_meas = data.vel_est
         # self.vel_updated = True
 

@@ -168,7 +168,7 @@ function main()
     # Specific initializations:
     lapStatus.currentLap    = 1
     lapStatus.currentIt     = 1
-    posInfo.s_target        = 19.11#19.14#17.94#17.76#24.0
+    posInfo.s_target        = 19.11 #17.91 #19.14#17.94#17.76#24.0
     k                       = 0                       # overall counter for logging
     
     mpcSol.z = zeros(11,4)
@@ -272,7 +272,7 @@ function main()
                 cost2target                           = zeros(buffersize) # array containing the cost to arrive from each point of the old trajectory to the target
                 #save the terminal cost
                 for j = 1:buffersize
-                    cost2target[j] = 1*(lapStatus.currentIt-j+1)  
+                    cost2target[j] = mpcParams.Q_term_cost*(lapStatus.currentIt-j+1)  
                 end
                 oldSS.cost2target[:,lapStatus.currentLap-1] = cost2target
                                 

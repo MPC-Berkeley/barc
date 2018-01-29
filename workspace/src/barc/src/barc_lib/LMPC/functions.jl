@@ -47,8 +47,8 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_pF::MpcParams,track
                               posInfo::PosInfo,oldTraj::OldTrajectory,mpcCoeff::MpcCoeff,lapStatus::LapStatus,buffersize::Int64,
                               obstacle::Obstacle,selectedStates::SelectedStates,oldSS::SafeSetData)
 
-    selectedStates.Np           = 15                            # Number of points to take from each previous trajectory to build the convex hull
-    selectedStates.Nl           = 3                             # Number of previous laps to include in the convex hull
+    selectedStates.Np           = 20                            # Number of points to take from each previous trajectory to build the convex hull
+    selectedStates.Nl           = 2                             # Number of previous laps to include in the convex hull
     Nl                          = selectedStates.Nl
     selectedStates.selStates    = zeros(Nl*selectedStates.Np,6)  
     selectedStates.statesCost   = zeros(Nl*selectedStates.Np)
@@ -59,22 +59,22 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_pF::MpcParams,track
     mpcParams.vPathFollowing    = 1                           # reference speed for first lap of path following
     mpcParams.Q_term            = 1.0*[20.0,1.0,10.0,20.0,50.0]   # weights for terminal constraints (LMPC, for xDot,yDot,psiDot,ePsi,eY)
     mpcParams.R                 = 0*[10.0,10.0]                 # put weights on a and d_f
-    mpcParams.QderivZ           = 1.0*[1,1,1,1,1,1]             # cost matrix for derivative cost of states
+    mpcParams.QderivZ           = 10.0*[1,1,1,1,1,1]             # cost matrix for derivative cost of states
     mpcParams.QderivU           = 1.0*[1.0,1.0] #NOTE Set this to [5.0, 0/40.0]              # cost matrix for derivative cost of inputs
-    mpcParams.Q_term_cost       = 4.0                        # scaling of Q-function
+    mpcParams.Q_term_cost       = 1.0                        # scaling of Q-function
     mpcParams.delay_df          = 3                             # steering delay
     mpcParams.delay_a           = 1                             # acceleration delay
-    mpcParams.Q_lane            = 10                      # weight on the soft constraint for the lane
+    mpcParams.Q_lane            = 1                      # weight on the soft constraint for the lane
     mpcParams.Q_vel             = 1                    # weight on the soft constraint for the maximum velocity
-    mpcParams.Q_slack           = [5.0,5.0,5.0,5.0,5.0,5.0]#[20.0,10.0,10.0,30.0,80.0,50.0]  #vx,vy,psiDot,ePsi,eY,s
+    mpcParams.Q_slack           = [20.0,5.0,5.0,20.0,100.0,50.0]#[20.0,10.0,10.0,30.0,80.0,50.0]  #vx,vy,psiDot,ePsi,eY,s
     mpcParams.Q_obs             = ones(Nl*selectedStates.Np)# weight to esclude some of the old trajectories
 
 
 
     mpcParams_pF.N              = 16
-    mpcParams_pF.Q              = [0.0,50.0,10.1,10.0]
+    mpcParams_pF.Q              = [0.0,50.0,10.0,10.0]
     mpcParams_pF.R              = 0*[1.0,1.0]               # put weights on a and d_f
-    mpcParams_pF.QderivZ        = 0.0*[0,0,0.1,0]           # cost matrix for derivative cost of states
+    mpcParams_pF.QderivZ        = 1.0*[0.0,0,1.0,0]           # cost matrix for derivative cost of states
     mpcParams_pF.QderivU        = 1*[10,10]                # cost matrix for derivative cost of inputs
     mpcParams_pF.vPathFollowing = 1                       # reference speed for first lap of path following
     mpcParams_pF.delay_df       = 3                         # steering delay (number of steps)
@@ -91,7 +91,7 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_pF::MpcParams,track
     modelParams.I_z             = 0.03
     modelParams.c_f             = 0.5                   # friction coefficient: xDot = - c_f*xDot (aerodynamic+tire)
 
-    posInfo.s_target            = 19.11
+    posInfo.s_target            = 17.91
 
     oldTraj.oldTraj             = NaN*ones(buffersize,7,30)
     oldTraj.oldInput            = zeros(buffersize,2,30)

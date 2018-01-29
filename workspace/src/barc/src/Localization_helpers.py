@@ -164,6 +164,7 @@ class Localization(object):
         # theta = add_curve(theta,37,0)
 
         # GOGGLE TRACK WITH STRAIGHT LINES, LENGTH = 19.11m (using ds = 0.03m)
+
         theta = add_curve(theta,60,0)
         theta = add_curve(theta,80,-pi/2)
         theta = add_curve(theta,20,0)
@@ -175,6 +176,21 @@ class Localization(object):
         theta = add_curve(theta,20,0)
         theta = add_curve(theta,80,-pi/2)
         theta = add_curve(theta,75,0)
+
+
+        # SMALL GOOGLE FOR 3110
+
+        # theta = add_curve(theta,50,0)
+        # theta = add_curve(theta,80,-pi/2)
+        # theta = add_curve(theta,20,0)
+        # theta = add_curve(theta,80,-pi/2)
+        # theta = add_curve(theta,35,-pi/10)
+        # theta = add_curve(theta,50,pi/5)
+        # theta = add_curve(theta,35,-pi/10)
+        # theta = add_curve(theta,80,-pi/2)
+        # theta = add_curve(theta,20,0)
+        # theta = add_curve(theta,80,-pi/2)
+        # theta = add_curve(theta,65,0)
 
 
         ######################################################

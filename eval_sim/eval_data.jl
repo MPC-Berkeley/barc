@@ -1487,6 +1487,7 @@ function create_track(w)
     # add_curve(theta,35,0)
 
     # SIMPLE GOGGLE TRACK
+
     add_curve(theta,30,0)
     add_curve(theta,40,-pi/2)
     add_curve(theta,10,0)
@@ -1498,6 +1499,20 @@ function create_track(w)
     add_curve(theta,10,0)
     add_curve(theta,40,-pi/2)
     add_curve(theta,35,0)
+
+    # SIMPLE GOOGLE TRACK FOR 3110
+
+    # add_curve(theta,25,0)
+    # add_curve(theta,40,-pi/2)
+    # add_curve(theta,10,0)
+    # add_curve(theta,40,-pi/2)
+    # add_curve(theta,17,-pi/10)
+    # add_curve(theta,25,pi/5)
+    # add_curve(theta,17,-pi/10)
+    # add_curve(theta,40,-pi/2)
+    # add_curve(theta,10,0)
+    # add_curve(theta,40,-pi/2)
+    # add_curve(theta,32,0)
 
     # OVAL TRACK FOR TESTS IN VSD
 
