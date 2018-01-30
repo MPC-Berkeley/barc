@@ -72,17 +72,17 @@ function solveMpcProblem(mdl::MpcModel,mpcSol::MpcSol,mpcCoeff::MpcCoeff,mpcPara
     nothing
 end
 
-function solveMpcProblem_pathFollow(mdl::MpcModel_pF,mpcSol::MpcSol,mpcParams::MpcParams,trackCoeff::TrackCoeff,posInfo::PosInfo,
+function solveMpcProblem_pathFollow(mdl::MpcModel_pF,mpcSol::MpcSol,mpcParams_pF::MpcParams,trackCoeff::TrackCoeff,posInfo::PosInfo,
                                     modelParams::ModelParams,zCurr::Array{Float64},uPrev::Array{Float64},lapStatus::LapStatus)
 
     # Load Parameters
     coeffCurvature  = trackCoeff.coeffCurvature::Array{Float64,1}
-    v_ref       = mpcParams.vPathFollowing
+    v_ref       = mpcParams_pF.vPathFollowing
 
 
-    z_ref1 = cat(2,zeros(mpcParams.N+1,3),v_ref*ones(mpcParams.N+1,1))
-    z_ref2 = cat(2,zeros(mpcParams.N+1,1),0.2*ones(mpcParams.N+1,1),zeros(mpcParams.N+1,1),v_ref*ones(mpcParams.N+1,1))
-    z_ref3 = cat(2,zeros(mpcParams.N+1,1),-0.1*ones(mpcParams.N+1,1),zeros(mpcParams.N+1,1),v_ref*ones(mpcParams.N+1,1))
+    z_ref1 = cat(2,zeros(mpcParams_pF.N+1,3),v_ref*ones(mpcParams_pF.N+1,1))
+    z_ref2 = cat(2,zeros(mpcParams_pF.N+1,1),0.2*ones(mpcParams_pF.N+1,1),zeros(mpcParams_pF.N+1,1),v_ref*ones(mpcParams_pF.N+1,1))
+    z_ref3 = cat(2,zeros(mpcParams_pF.N+1,1),-0.1*ones(mpcParams_pF.N+1,1),zeros(mpcParams_pF.N+1,1),v_ref*ones(mpcParams_pF.N+1,1))
 
     sol_status::Symbol
     sol_u::Array{Float64,2}

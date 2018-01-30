@@ -287,7 +287,6 @@ def state_estimation():
         # Update track position
         l.set_pos(x_est_2, y_est_2, psi_est_2, v_x_est, v_y_est, psi_dot_est)
 
-        #l.set_pos(se.x_meas, se.y_meas, psi_est_2, v_x_est, v_y_est, psi_dot_est)
 
         # Calculate new s, ey, epsi (only 12.5 Hz, enough for controller that runs at 10 Hz)
         if est_counter%4 == 0:

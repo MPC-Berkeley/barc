@@ -209,7 +209,15 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
 
 
 
-        # figure()
+        figure()
+
+        plot(t,input[1:currentIt,1,i],"-*",t,input[1:currentIt,2,i],"-+")
+        title("Inputs")
+        grid("on")
+        legend(["a","d_f"])
+
+
+        #figure()
 
         # subplot(221)
         # plot(t,one_step_error[1:currentIt,1,i],t,input[1:currentIt,1,i],"-*",t,input[1:currentIt,2,i],"-+")

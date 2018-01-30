@@ -74,8 +74,8 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_pF::MpcParams,track
     mpcParams_pF.N              = 16
     mpcParams_pF.Q              = [0.0,50.0,10.0,10.0]
     mpcParams_pF.R              = 0*[1.0,1.0]               # put weights on a and d_f
-    mpcParams_pF.QderivZ        = 1.0*[0.0,0,1.0,0]           # cost matrix for derivative cost of states
-    mpcParams_pF.QderivU        = 1*[10,10]                # cost matrix for derivative cost of inputs
+    mpcParams_pF.QderivZ        = 0.0*[0.0,0,1.0,0]           # cost matrix for derivative cost of states
+    mpcParams_pF.QderivU        = 1*[10,5*10]                # cost matrix for derivative cost of inputs
     mpcParams_pF.vPathFollowing = 1                       # reference speed for first lap of path following
     mpcParams_pF.delay_df       = 3                         # steering delay (number of steps)
     mpcParams_pF.delay_a        = 1                         # acceleration delay
@@ -91,7 +91,7 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_pF::MpcParams,track
     modelParams.I_z             = 0.03
     modelParams.c_f             = 0.5                   # friction coefficient: xDot = - c_f*xDot (aerodynamic+tire)
 
-    posInfo.s_target            = 17.91
+    posInfo.s_target            = 19.11
 
     oldTraj.oldTraj             = NaN*ones(buffersize,7,30)
     oldTraj.oldInput            = zeros(buffersize,2,30)

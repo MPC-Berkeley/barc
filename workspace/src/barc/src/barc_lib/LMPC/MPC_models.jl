@@ -231,7 +231,7 @@ type MpcModel_pF
 
     uPrev::Array{JuMP.NonlinearParameter,2}
 
-    function MpcModel_pF(mpcParams::MpcParams,modelParams::ModelParams,trackCoeff::TrackCoeff)
+    function MpcModel_pF(mpcParams_pF::MpcParams,modelParams::ModelParams,trackCoeff::TrackCoeff)
         println("Starting creation of pf model")
         m = new()
         dt          = modelParams.dt
@@ -243,15 +243,17 @@ type MpcModel_pF
         z_lb        = modelParams.z_lb
         z_ub        = modelParams.z_ub
 
-        N           = mpcParams.N
-        Q           = mpcParams.Q
-        R           = mpcParams.R
-        QderivZ     = mpcParams.QderivZ::Array{Float64,1}
-        QderivU     = mpcParams.QderivU::Array{Float64,1}
-        delay_df    = mpcParams.delay_df::Int64
-        delay_a     = mpcParams.delay_a::Int64
+        N           = mpcParams_pF.N
+        Q           = mpcParams_pF.Q
+        R           = mpcParams_pF.R
+        QderivZ     = mpcParams_pF.QderivZ::Array{Float64,1}
+        QderivU     = mpcParams_pF.QderivU::Array{Float64,1}
+        delay_df    = mpcParams_pF.delay_df::Int64
+        delay_a     = mpcParams_pF.delay_a::Int64
 
-        v_ref       = mpcParams.vPathFollowing
+        println("prediction h= ",N)
+
+        v_ref       = mpcParams_pF.vPathFollowing
 
         acc_f       = 1.0
 
@@ -270,10 +272,10 @@ type MpcModel_pF
         @variable( mdl, u_Ol[1:N,1:2], start = 0)
 
         # Set bounds
-        z_lb_4s = ones(mpcParams.N+1,1)*[-Inf -Inf -Inf -0.5]                  # lower bounds on states
-        z_ub_4s = ones(mpcParams.N+1,1)*[ Inf  Inf  Inf  1.5]                  # upper bounds
-        u_lb_4s = ones(mpcParams.N,1) * [0  -0.3]                            # lower bounds on steering
-        u_ub_4s = ones(mpcParams.N,1) * [1.2   0.3]                            # upper bounds
+        z_lb_4s = ones(mpcParams_pF.N+1,1)*[-Inf -Inf -Inf -0.5]                  # lower bounds on states
+        z_ub_4s = ones(mpcParams_pF.N+1,1)*[ Inf  Inf  Inf  1.5]                  # upper bounds
+        u_lb_4s = ones(mpcParams_pF.N,1) * [0  -0.3]                            # lower bounds on steering
+        u_ub_4s = ones(mpcParams_pF.N,1) * [1.2   0.3]                            # upper bounds
 
         for i=1:2
             for j=1:N
@@ -437,7 +439,9 @@ type MpcModel_convhull
         delay_a    = mpcParams.delay_a
         Q_slack    = mpcParams.Q_slack
 
-      
+        println("prediction h= ",N)
+
+
         Np         = selectedStates.Np::Int64              # how many states to select
         Nl         = selectedStates.Nl::Int64              # how many previous laps to select
 
