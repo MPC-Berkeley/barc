@@ -115,6 +115,10 @@ class Car {
     int FR_count = 0;
     int BL_count = 0;
     int BR_count = 0;
+    int FL_count_old = 0;
+    int FR_count_old = 0;
+    int BL_count_old = 0;
+    int BR_count_old = 0;
     float vel_FL = 0;
     float vel_FR = 0;
     float vel_BL = 0;
@@ -458,18 +462,27 @@ float Car::getVelEstBR() {
 
 void Car::calcVelocityEstimate() {
 
-  // vel = distance / time
-  // distance = 2*pi*R/8 since there are 8 partitions
-  if(FL_DeltaTime > 0){
-    vel_FL = 0.25*pi*R/(FL_DeltaTime/1000000.0);
-  }
-  if(FR_DeltaTime > 0){
-    vel_FR = 0.25*pi*R/(FR_DeltaTime/1000000.0);
-  }
-  if(BL_DeltaTime > 0){
-    vel_BL = 0.25*pi*R/(BL_DeltaTime/1000000.0);
-  }
-  if(BR_DeltaTime > 0){
-    vel_BR = 0.25*pi*R/(BR_DeltaTime/1000000.0);
-  }
+    // vel = distance / time
+    // distance = 2*pi*R/8 since there are 8 partitions
+    if(FL_count_old != FL_count){
+        vel_FL = 0.25*pi*R/(FL_DeltaTime/1000000.0);    }
+    else{ vel_FL = 0.0; }
+
+    if(FR_count_old != FR_count){
+        vel_FR = 0.25*pi*R/(FR_DeltaTime/1000000.0);    }
+    else{ vel_FR = 0.0; }
+
+    if(BL_count_old != BL_count){
+        vel_BL = 0.25*pi*R/(BL_DeltaTime/1000000.0);    }
+    else{ vel_BL = 0.0; }
+
+    if(BR_count_old != BR_count){
+        vel_BR = 0.25*pi*R/(BR_DeltaTime/1000000.0);    }
+    else{ vel_BR = 0.0; }
+
+    // update history
+    FL_count_old = FL_count;
+    FR_count_old = FR_count;
+    BL_count_old = BL_count;
+    BR_count_old = BR_count;
 }
