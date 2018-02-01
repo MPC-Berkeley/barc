@@ -8,7 +8,7 @@
     <param name="video_device" value="/dev/video6"/>
   </node>
 
-  <node pkg="barc" type="image_processing.py" name="image_processing" output="screen">
+  <node pkg="barc" type="controller_image_processing.py" name="image_processing" output="screen">
     <param name="display_image" value="True" type="boolean"/>
     <param name="publish_image" value="False" type="boolean"/>
     <param name="calibrate_transform" value="False" type="boolean"/>

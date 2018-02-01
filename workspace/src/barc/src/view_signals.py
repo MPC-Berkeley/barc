@@ -19,7 +19,7 @@ rosbag_dir = os.path.expanduser("~") + '/rosbag'
 # select bag file
 root = Tkinter.Tk()
 root.withdraw()
-bag_file = tkFileDialog.askopenfilename(initialdir = rosbag_dir, title = "select bag file" )
+bag_file = tkFileDialog.askopenfilename(initialdir = rosbag_dir, title = "select bag file" , filetypes = [("Bags","*.bag")])
 bag         = rosbag.Bag( bag_file )
 meta_data   = bag.get_type_and_topic_info()[1]
 n_msgs      = {}
