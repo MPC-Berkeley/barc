@@ -7,8 +7,8 @@
     <param name="I_z" type="double" value="0.24" />
 
     <!-- Machines -->
-    <machine name="odroid" address="192.168.100.100" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid.sh"/>
-    <machine name="this-pc" address="192.168.100.72" timeout="20.0" env-loader="/home/ugo/GitHub/barc/env_loader_pc.sh"/>
+    <machine name="odroid" address="10.0.0.1" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid.sh"/>
+    <machine name="this-pc" address="10.0.0.72" timeout="20.0" env-loader="/home/ugo/GitHub/barc/env_loader_pc.sh"/>
     
     <!-- START NODES -->
     <!-- Simulator -->
@@ -35,6 +35,9 @@
 
     <!-- LOW LEVEL CONTROLLER -->
     <node machine="this-pc" pkg="barc" type="controller_low_level.py" name="low_level_controller" />
+
+    <!-- VISUALIZATION -->
+    <node machine="this-pc" pkg="barc" type="view_car_trajectory.py" name="visualization" />
 
     <!-- IMU -->
     <node machine="odroid" pkg="myahrs_driver" type="myahrs_driver" name="myahrs_driver">

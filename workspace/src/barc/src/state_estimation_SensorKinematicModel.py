@@ -86,7 +86,9 @@ class StateEst(object):
         """This function is called when a new GPS signal is received."""
         # units: [rad] and [rad/s]
         t_now = rospy.get_rostime().to_sec()-self.t0
-        t_msg = data.header.stamp.to_sec()-self.t0
+        #t_msg = data.header.stamp.to_sec()-self.t0
+        t_msg = t_now
+
         # if abs(t_now - t_msg) > 0.1:
         #    print "GPS: Bad synchronization - dt = %f"%(t_now-t_msg)
         self.x_meas = data.x_m

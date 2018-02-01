@@ -51,6 +51,8 @@ add_message_files(
   DIRECTORY msg
   FILES
   hedge_pos.msg
+  hedge_pos_a.msg
+  beacon_pos_a.msg
 )
 
 ## Generate services in the 'srv' folder
