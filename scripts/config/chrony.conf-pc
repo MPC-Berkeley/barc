@@ -1,0 +1,3 @@
+server odroid minpoll 2 maxpoll 4 iburst
+makestep 0.1 1
+driftfile /var/lib/chrony/drift
