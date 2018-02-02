@@ -241,7 +241,7 @@ function main()
     t0          = to_sec(t0_ros)
     t           = 0.0
 
-    t_next = 2
+    t_next = 2 # SET THIS TO 4 IF YOU DO ACCELERATION TESTS
 
     gps_meas.i      = 1
     imu_meas.i      = 1
@@ -250,9 +250,9 @@ function main()
     vel_est_log.i   = 1
     pos_info_log.i  = 1
 
-    cmd_m = 100
+    cmd_m = 100 # PWM COMMAND FOR MOTOR
 
-    cmd_s = 93
+    cmd_s = 93  # PWM COMMAND FOR STEERING
 
     # t_cmd = zeros(10)
     # t_no_cmd = zeros(10)
