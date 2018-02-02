@@ -1,0 +1,3 @@
+local stratum 8
+allow 10.0.0
+driftfile /var/lib/chrony/drift
