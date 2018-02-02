@@ -39,6 +39,30 @@ type OldTrajectory      # information about previous trajectories
     OldTrajectory(oldTraj=Float64[],oldInput=Float64[],oldTimes=Float64[],oldCost=Float64[],count=Int64[],prebuf=50,postbuf=50,idx_start=Int64[],idx_end=Int64[]) = new(oldTraj,oldInput,oldTimes,oldCost,count,prebuf,postbuf,idx_start,idx_end)
 end
 
+type SafeSetData
+    oldSS::Array{Float64}           # contains data from previous laps usefull to build the safe set
+    cost2target::Array{Float64}     # cost to arrive at the target, i.e. how many iterations from the start to the end of the lap
+    oldCost::Array{Int64}               # contains costs of laps
+    count::Array{Int64}                 # contains the counter for each lap
+    prebuff::Int64
+    postbuff::Int64
+    idx_start::Array{Int64}             # index of the first measurement with s > 0
+    idx_end::Array{Int64}               # index of the last measurement with s < s_target
+    oldSS_xy::Array{Float64}
+
+    SafeSetData(oldSS=Float64[],cost2target=Float64[],oldCost=Int64[],count=Int64[],prebuf=50,postbuf=50,idx_start=Int64[],idx_end=Int64[],oldSS_xy=Float64[]) =
+    new(oldSS,cost2target,oldCost,count,prebuf,postbuf,idx_start,idx_end,oldSS_xy)
+end
+
+type SelectedStates                 # Values needed for the convex hull formulation
+    selStates::Array{Float64}       # selected states from previous laps ...
+    statesCost::Array{Float64}      # ... and their related costs
+    Np::Int64                       # number of states to select from each previous lap
+    Nl::Int64                       # number of previous laps to include in the convex hull
+    version::Bool
+    SelectedStates(selStates=Float64[],statesCost=Float64[],Np=6,Nl=2,version=false) = new(selStates,statesCost,Np,Nl,version)
+end
+
 type MpcParams          # parameters for MPC solver
     N::Int64
     nz::Int64
@@ -52,7 +76,14 @@ type MpcParams          # parameters for MPC solver
     Q_term_cost::Float64
     delay_df::Int64
     delay_a::Int64
-    MpcParams(N=0,nz=0,OrderCostCons=0,Q=Float64[],Q_term=Float64[],R=Float64[],vPathFollowing=1.0,QderivZ=Float64[],QderivU=Float64[],Q_term_cost=1.0,delay_df=0,delay_a=0) = new(N,nz,OrderCostCons,Q,Q_term,R,vPathFollowing,QderivZ,QderivU,Q_term_cost,delay_df,delay_a)
+    Q_lane::Float64                # weight on the soft constraint for the lane
+    Q_vel::Float64                 # weight on the soft constraint for the maximum velocity
+    Q_slack::Array{Float64,1}               # weight on the slack variables for the terminal constraint
+    Q_obs::Array{Float64}          # weight used to esclude some of the old trajectories from the optimization problem
+
+
+
+    MpcParams(N=0,nz=0,OrderCostCons=0,Q=Float64[],Q_term=Float64[],R=Float64[],vPathFollowing=1.0,QderivZ=Float64[],QderivU=Float64[],Q_term_cost=1.0,delay_df=0,delay_a=0,Q_lane=1.0,Q_vel=1.0,Q_slack=Float64[],Q_obs=Float64[]) = new(N,nz,OrderCostCons,Q,Q_term,R,vPathFollowing,QderivZ,QderivU,Q_term_cost,delay_df,delay_a,Q_lane,Q_vel,Q_slack,Q_obs)
 end
 
 type PosInfo            # current position information
@@ -68,7 +99,9 @@ type MpcSol             # MPC solution output
     u::Array{Float64}
     z::Array{Float64}
     cost::Array{Float64}
-    MpcSol(a_x=0.0,d_f=0.0,solverStatus=Symbol(),u=Float64[],z=Float64[],cost=Float64[]) = new(a_x,d_f,solverStatus,u,z,cost)
+    eps_alpha::Array{Float64}
+    costSlack::Array{Float64}
+    MpcSol(a_x=0.0,d_f=0.0,solverStatus=Symbol(),u=Float64[],z=Float64[],cost=Float64[],eps_alpha=Float64[],costSlack=Float64[]) = new(a_x,d_f,solverStatus,u,z,cost,eps_alpha,costSlack)
 end
 
 type TrackCoeff         # coefficients of track
@@ -92,4 +125,19 @@ type ModelParams
     c0::Array{Float64}
     c_f::Float64
     ModelParams(l_A=0.25,l_B=0.25,m=1.98,I_z=0.24,dt=0.1,u_lb=Float64[],u_ub=Float64[],z_lb=Float64[],z_ub=Float64[],c0=Float64[],c_f=0.0) = new(l_A,l_B,m,I_z,dt,u_lb,u_ub,z_lb,z_ub,c0,c_f)
+end
+
+type Obstacle
+    obstacle_active::Bool       # true if we have to consider the obstacles in the optimization problem
+    lap_active::Int64           # number of the first lap in which the obstacles are used
+    obs_detect::Float64         # maximum distance at which we can detect obstacles (in terms of s!!)
+    n_obs::Int64                # number of obstacles in the track
+    s_obs_init::Array{Float64}  # initial s coordinate of each obstacle
+    ey_obs_init::Array{Float64} # initial ey coordinate of each obstacle
+    v_obs_init::Array{Float64}  # initial velocity of each obstacles
+    r_s::Float64                # radius on the s coordinate of the ellipse describing the obstacles
+    r_ey::Float64               # radius on the ey coordinate of the ellipse describing the obstacle 
+    inv_step::Int64             # number of step of invariance required for the safe set
+
+    Obstacle(obstacle_active=false,lap_active=10,obs_detect=1.0,n_obs=1,s_obs_init=Float64[],ey_obs_init=Float64[],v_obs_init=Float64[],r_s=0.5,r_ey=0.3,inv_step=1) = new(obstacle_active,lap_active,obs_detect,n_obs,s_obs_init,ey_obs_init,v_obs_init,r_s,r_ey,inv_step)
 end

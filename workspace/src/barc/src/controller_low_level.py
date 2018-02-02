@@ -51,9 +51,17 @@ class low_level_control(object):
         elif FxR > 0:
             #self.motor_pwm = max(94,91 + 6.5*FxR)   # using writeMicroseconds() in Arduino
             self.motor_pwm = 91 + 6.5*FxR   # using writeMicroseconds() in Arduino
+
+            # self.motor_pwm = max(94,90.74 + 6.17*FxR)
+            #self.motor_pwm = 90.74 + 6.17*FxR
+            
+            #self.motor_pwm = max(94,90.12 + 5.24*FxR)
+            #self.motor_pwm = 90.12 + 5.24*FxR
             # Note: Barc doesn't move for u_pwm < 93
         else:               # motor break / slow down
             self.motor_pwm = 93.5 + 46.73*FxR
+            # self.motor_pwm = 98.65 + 67.11*FxR
+            #self.motor = 69.95 + 68.49*FxR
         self.update_arduino()
     def neutralize(self):
         self.motor_pwm = 40             # slow down first

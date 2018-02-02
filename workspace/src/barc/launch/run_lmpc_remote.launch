@@ -8,6 +8,7 @@
 
     <!-- Machines -->
     <machine name="odroid" address="10.0.0.1" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid.sh"/>
+
     <machine name="this-pc" address="10.0.0.72" timeout="20.0" env-loader="/home/ugo/GitHub/barc/env_loader_pc.sh"/>
     
     <!-- START NODES -->
@@ -31,7 +32,8 @@
     </node>
 
     <!-- MPC CONTROL -->
-    <node machine="this-pc" pkg="barc" type="LMPC_node.jl" name="MPC" output="screen" />
+    <node machine="this-pc" pkg="barc" type="LMPC_node.jl" name="MPC" output="screen" /> 
+
 
     <!-- LOW LEVEL CONTROLLER -->
     <node machine="this-pc" pkg="barc" type="controller_low_level.py" name="low_level_controller" />

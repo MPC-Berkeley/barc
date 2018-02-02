@@ -133,8 +133,8 @@ class Car {
     int BL_count = 0;
     int BR_count = 0;
 
-    // Delta time withing two magnets                                  			    //(ADDED BY TOMMI 7JULY2016)
-    // F = front, B = back, L = left, R = right                         			//(ADDED BY TOMMI 7JULY2016)
+    // Delta time withing two magnets                                           //(ADDED BY TOMMI 7JULY2016)
+    // F = front, B = back, L = left, R = right                               //(ADDED BY TOMMI 7JULY2016)
     volatile unsigned long FL_new_time = 0;                                         //(ADDED BY TOMMI 7JULY2016)
     volatile unsigned long FR_new_time = 0;                                         //(ADDED BY TOMMI 7JULY2016)
     volatile unsigned long BL_new_time = 0;                                         //(ADDED BY TOMMI 7JULY2016)
@@ -145,10 +145,10 @@ class Car {
     volatile unsigned long BL_old_time = 0;                                         //(ADDED BY TOMMI 7JULY2016)
     volatile unsigned long BR_old_time = 0;                                         //(ADDED BY TOMMI 7JULY2016)
 
-    unsigned long FL_DeltaTime = 0;                                         			        //(ADDED BY TOMMI 7JULY2016)
-    unsigned long FR_DeltaTime = 0;                                          			        //(ADDED BY TOMMI 7JULY2016)
-    unsigned long BL_DeltaTime = 0;                                           			    //(ADDED BY TOMMI 7JULY2016)
-    unsigned long BR_DeltaTime = 0;                                            			    //(ADDED BY TOMMI 7JULY2016)
+    unsigned long FL_DeltaTime = 0;                                                       //(ADDED BY TOMMI 7JULY2016)
+    unsigned long FR_DeltaTime = 0;                                                       //(ADDED BY TOMMI 7JULY2016)
+    unsigned long BL_DeltaTime = 0;                                                     //(ADDED BY TOMMI 7JULY2016)
+    unsigned long BR_DeltaTime = 0;                                                     //(ADDED BY TOMMI 7JULY2016)
 
 
     // Utility functions
@@ -156,6 +156,9 @@ class Car {
     float saturateMotor(float x);
     float saturateServo(float x);
 };
+
+// Boolean keeping track of whether the Arduino has received a signal from the ECU recently
+int received_ecu_signal = 0;
 
 // Initialize an instance of the Car class as car
 Car car;
@@ -166,6 +169,7 @@ Car car;
 // figure it out, please atone for my sins.
 void ecuCallback(const barc::ECU& ecu) {
   car.writeToActuators(ecu);
+  received_ecu_signal = 1;
 }
 void incFLCallback() {
   car.incFL();
@@ -189,6 +193,7 @@ void calcThrottleCallback() {
 // Variables for time step
 volatile unsigned long dt;
 volatile unsigned long t0;
+volatile unsigned long ecu_t0;
 
 // Global message variables
 // Encoder, RC Inputs, Electronic Control Unit, Ultrasound
@@ -228,6 +233,7 @@ void setup()
   // Arming ESC, 1 sec delay for arming and ROS
   car.armActuators();
   t0 = millis();
+  ecu_t0 = millis();
 
 }
 
@@ -238,6 +244,16 @@ ARDUINO MAIN lOOP
 void loop() {
   // compute time elapsed (in ms)
   dt = millis() - t0;
+
+  // kill the motor if there is no ECU signal within the last 1s
+  if( (millis() - ecu_t0) >= 200){
+    if(!received_ecu_signal){
+        car.killMotor();
+    } else{
+        received_ecu_signal = 0;
+    }
+    ecu_t0 = millis();
+  }
 
   if (dt > 50) {
     car.readAndCopyInputs();

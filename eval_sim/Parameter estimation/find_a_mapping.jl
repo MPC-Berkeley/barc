@@ -27,14 +27,14 @@ function main(code::AbstractString)
     cmd = zeros(length(t))
 
     for i=1:length(t)
-        #v[i] = vel_est.z[t[i].>vel_est.t,1][end]
-        v[i] = pos_info.z[t[i].>pos_info.t,15][end]
+        v[i] = vel_est.z[t[i].>vel_est.t,1][end]
+        #v[i] = pos_info.z[t[i].>pos_info.t,15][end]
         cmd[i] = cmd_pwm_log.z[t[i].>cmd_pwm_log.t,1][end]
     end
     v_opt   = v[1:end]
     cmd_opt = cmd[1:end]
-    v_opt   = v[cmd.>94]
-    cmd_opt = cmd[cmd.>94]
+    v_opt   = v[cmd.>90]
+    cmd_opt = cmd[cmd.>90]
 
     res = optimize(c->cost(cmd_opt,v_opt,c,0),[0.001,0,0.1,0.001,0])
     c = Optim.minimizer(res)
@@ -63,8 +63,8 @@ function v_over_u(code::AbstractString)
     psiDot = zeros(length(t))
 
     for i=1:length(t)
-        #v[i] = vel_est.z[t[i].>vel_est.t,1][end]
-        v[i] = pos_info.z[t[i].>pos_info.t,15][end]
+        v[i] = vel_est.z[t[i].>vel_est.t,1][end]
+        #v[i] = pos_info.z[t[i].>pos_info.t,15][end]
         cmd[i,:] = cmd_pwm_log.z[t[i].>cmd_pwm_log.t,:][end,:]
         psiDot[i] = imu_meas.z[t[i].>imu_meas.t,3][end]
     end

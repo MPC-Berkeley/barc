@@ -1,6 +1,0 @@
-/**
-\mainpage
-\htmlinclude manifest.html
-
-\b rqt_plot provides a GUI plugin for visualizing numeric values in a 2D plot using PyQwt5.
-*/

@@ -2,6 +2,7 @@ using JLD
 using PyPlot
 using PyCall
 @pyimport matplotlib.animation as animation
+@pyimport matplotlib.patches as patch
 using JLD, ProfileView
 # pos_info[1]  = s
 # pos_info[2]  = eY
@@ -93,6 +94,429 @@ function eval_sim(code::AbstractString)
     plot(z.t-t0,z.z[:,1:2],pos_info.t-t0,pos_info.z[:,6:7],"-*",gps_meas.t-t0,gps_meas.z)
     legend(["real_x","real_y","est_x","est_y","meas_x","meas_x"])
     grid()
+end
+
+function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
+
+    log_path_LMPC   = "$(homedir())/simulations/output-LMPC-$(code).jld"
+    
+    Data      = load(log_path_LMPC)
+
+    oldSS_xy       = Data["oldSS_xy"]
+    oldSS          = Data["oldSS"]
+    selectedStates = Data["selectedStates"]
+    selStates      = Data["selStates"]
+    statesCost     = Data["statesCost"]
+    pred_sol       = Data["pred_sol"]
+    pred_input     = Data["pred_input"]
+    one_step_error = Data["one_step_error"]
+    lapStatus      = Data["lapStatus"]
+    posInfo        = Data["posInfo"]
+    eps_alpha      = Data["eps_alpha"]
+    cvx            = Data["cvx"]
+    cvy            = Data["cvy"]
+    cpsi           = Data["cpsi"]
+    input          = Data["input"]
+    cost           = Data["mpcCost"]
+    costSlack      = Data["mpcCostSlack"]
+    obs_log        = Data["obs_log"]
+    sol_u          = Data["sol_u"]
+    #status         = Data["status"]
+
+    Nl         = selectedStates.Nl
+    Np         = selectedStates.Np
+    buffersize = 5000
+    currentIt  = 200#lapStatus.currentIt
+
+    flag = zeros(2)
+
+
+    track = create_track(0.3)
+
+    println("prediction horizon N= ", size(pred_sol)[1])
+  
+
+
+    
+    for i = laps
+
+        pred_sol_xy = xyObstacle(oldSS,obs_log,1,i,track)  
+        #println("pred sol= ",pred_sol_xy[:,1])
+        # for index=1:buffersize
+        #     if status[index,i] == :UserLimit
+        #         flag[1]=index
+        #         flag[2]= i
+
+        #         break
+        #     end
+        # end
+
+
+        vx_alpha     = eps_alpha[1,1:currentIt,i]
+        vy_alpha     = eps_alpha[2,1:currentIt,i]
+        psiDot_alpha = eps_alpha[3,1:currentIt,i]
+        ePsi_alpha   = eps_alpha[4,1:currentIt,i]
+        eY_alpha     = eps_alpha[5,1:currentIt,i]
+        s_alpha      = eps_alpha[6,1:currentIt,i]
+
+        cvx1         = cvx[1:currentIt,1,i]
+        cvx2         = cvx[1:currentIt,2,i]
+        cvx3         = cvx[1:currentIt,3,i]
+        cvy1         = cvy[1:currentIt,1,i]
+        cvy2         = cvy[1:currentIt,2,i]
+        cvy3         = cvy[1:currentIt,3,i]
+        cvy4         = cvy[1:currentIt,4,i]
+        cpsi1        = cpsi[1:currentIt,1,i]
+        cpsi2        = cpsi[1:currentIt,2,i]
+        cpsi3        = cpsi[1:currentIt,3,i]
+
+        figure(1)
+        plot(oldSS_xy[:,1,i],oldSS_xy[:,2,i],"-.") 
+        #plot(oldSS_xy[:,1,i-1],oldSS_xy[:,2,i-1],"ob") 
+        plot(track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")#,track[:,1],track[:,2],"b.")
+
+
+        # for index=1:length(oldSS_xy[:,1,i])
+        #     z_pred = zeros(size(pred_sol)[1],4)
+        #     #z_pred[1,:] = x_est[i,:]
+        #     z_pred[1,:] = oldSS_xy[index,:,i]
+        #     for j=2:size(pred_sol)[1]
+        #         z_pred[j,:] = simModel(z_pred[j-1,:],pred_input[j-1,:,index,i],0.1,0.125,0.125)
+        #     end
+        #     plot(z_pred[:,1],z_pred[:,2],"-+")
+        # end
+
+        # ellfig = figure(1)
+        # ax = ellfig[:add_subplot](1,1,1)
+        # ax[:set_aspect]("equal")
+        # plot(oldSS_xy[:,1,i],oldSS_xy[:,2,i],"og") 
+        # plot(oldSS_xy[:,1,i-1],oldSS_xy[:,2,i-1],"ob") 
+        # plot(track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")#,track[:,1],track[:,2],"b.")
+
+        # angle_ell = atan2(pred_sol_xy[2,2]-(pred_sol_xy[2,1]),pred_sol_xy[1,2]-(pred_sol_xy[1,1]))
+        # angle_deg = (angle_ell*180)/pi
+
+        # ell1 = patch.Ellipse([pred_sol_xy[1,1],pred_sol_xy[2,1]], 0.4, 0.2, 0)#angle=angle_deg)
+        # ax[:add_artist](ell1)
+
+
+        grid("on")
+        title("X-Y view of Lap $i")
+
+        t = linspace(1,currentIt,currentIt)
+
+
+
+
+
+        figure()
+
+        plot(t,input[1:currentIt,1,i],"-*",t,input[1:currentIt,2,i],"-+")
+        title("Inputs")
+        grid("on")
+        legend(["a","d_f"])
+
+
+        #figure()
+
+        # subplot(221)
+        # plot(t,one_step_error[1:currentIt,1,i],t,input[1:currentIt,1,i],"-*",t,input[1:currentIt,2,i],"-+")
+        # # annotate("UserLimit",xy=[flag[1],one_step_error[flag[1],1,flag[2]]],xytext=[flag[1]+0.1,one_step_error[flag[1],1,flag[2]]+0.1],xycoords="data",arrowprops=["facecolor"=>"black"])
+        # title("One step prediction error for v_x in lap $i")
+        # #ylim(-0.0001,findmax(one_step_error[1:currentIt,1,i])[1])
+        # legend(["ospe","a_x","d_f"])
+        # grid("on")
+
+        # subplot(222)
+        # plot(t,one_step_error[1:currentIt,2,i],t,input[1:currentIt,1,i],"-*",t,input[1:currentIt,2,i],"-+")
+        # #ylim(-0.0001,findmax(one_step_error[1:currentIt,2,i])[1])
+        # legend(["ospe","a_x","d_f"])
+        # title("One step prediction error for v_y in lap $i")
+        # grid("on")
+
+        # subplot(223)
+        # plot(t,one_step_error[1:currentIt,3,i],t,input[1:currentIt,1,i],"-*",t,input[1:currentIt,2,i],"-+")
+        # #ylim(-0.0001,findmax(one_step_error[1:currentIt,3,i])[1])
+        # legend(["ospe","a_x","d_f"])
+        # title("One step prediction error for psiDot in lap $i")
+        # grid("on")
+
+        # subplot(224)
+        # plot(t,one_step_error[1:currentIt,4,i],t,input[1:currentIt,1,i],"-*",t,input[1:currentIt,2,i],"-+")
+        # #ylim(-0.0001,findmax(one_step_error[1:currentIt,4,i])[1])
+        # legend(["ospe","a_x","d_f"])
+        # title("One step prediction error for ePsi in lap $i")
+        # grid("on")
+
+
+        # figure()
+
+        # subplot(221)
+        # plot(t,one_step_error[1:currentIt,5,i],t,input[1:currentIt,1,i],"-*",t,input[1:currentIt,2,i],"-+")
+        # #ylim(-0.0001,findmax(one_step_error[1:currentIt,5,i])[1])
+        # legend(["ospe","a_x","d_f"])
+        # title("One step prediction error for eY in lap $i")
+        # grid("on")
+
+        # subplot(222)
+        # plot(t,one_step_error[1:currentIt,6,i],t,input[1:currentIt,1,i],"-*",t,input[1:currentIt,2,i],"-+")
+        # #ylim(-0.0001,findmax(one_step_error[1:currentIt,6,i])[1])
+        # legend(["ospe","a_x","d_f"])
+        # title("One step prediction error for s in lap $i")
+        # grid("on")
+
+        figure()
+        plot(t,one_step_error[1:currentIt,1,i],t,one_step_error[1:currentIt,2,i],t,one_step_error[1:currentIt,3,i],t,one_step_error[1:currentIt,4,i],t,one_step_error[1:currentIt,5,i],t,one_step_error[1:currentIt,6,i])
+        legend(["vx","vy","psiDot","ePsi","eY","s"])
+        grid("on")
+        title("One step prediction errors")
+
+        # println("one step prediction error= ",one_step_error[1:30,:,i])
+
+
+        figure()
+
+        subplot(221)
+        plot(t,oldSS.oldSS[1:currentIt,1,i],"-*")
+        #ylim(-0.0001,findmax(one_step_error[1:currentIt,6,i])[1])
+        title("vx in lap $i")
+        grid("on")
+
+        subplot(222)
+        plot(t,oldSS.oldSS[1:currentIt,2,i],"-*")
+        #ylim(-0.0001,findmax(one_step_error[1:currentIt,6,i])[1])
+        title("vy in lap $i")
+        grid("on")
+
+        subplot(223)
+        plot(t,oldSS.oldSS[1:currentIt,3,i],"-*")
+        #ylim(-0.0001,findmax(one_step_error[1:currentIt,6,i])[1])
+        title("psiDot in lap $i")
+        grid("on")
+
+        subplot(224)
+        plot(t,oldSS.oldSS[1:currentIt,4,i],"-*")
+        #ylim(-0.0001,findmax(one_step_error[1:currentIt,6,i])[1])
+        title("ePsi in lap $i")
+        grid("on")
+
+        figure()
+        subplot(221)
+        plot(t,oldSS.oldSS[1:currentIt,5,i],"-*")
+        #ylim(-0.0001,findmax(one_step_error[1:currentIt,6,i])[1])
+        title("eY in lap $i")
+        grid("on")
+
+        subplot(222)
+        plot(t,oldSS.oldSS[1:currentIt,6,i],"-*")
+        #ylim(-0.0001,findmax(one_step_error[1:currentIt,6,i])[1])
+        title("s in lap $i")
+        grid("on")
+
+        subplot(223)
+        velocity= sqrt(oldSS.oldSS[1:currentIt,2,i].^2 + oldSS.oldSS[1:currentIt,1,i].^2)
+        plot(t,velocity,"-*")
+        title("Overall velocity in lap $i")
+        grid("on")
+
+
+
+        figure()
+
+        subplot(221)
+        plot(t,cvx1,t,cvx2,t,cvx3)
+        legend(["cvx1","cvx2","cvx3"])
+        title("C_Vx in lap $i")
+        grid("on")
+
+        subplot(222)
+        plot(t,cvy1,t,cvy2,t,cvy3,t,cvy4)
+        legend(["cvx1","cvx2","cvx3","cvy4"])
+        title("C_Vy in lap $i")
+        grid("on")
+
+        subplot(223)
+        plot(t,cpsi1,t,cpsi2,t,cpsi3)
+        legend(["cpsi1","cpsi2","cpsi3"])
+        title("C_Psi in lap $i")
+        grid("on")
+
+        figure()
+        plot(t,cost[1:currentIt,2,i],t,cost[1:currentIt,3,i],t,cost[1:currentIt,4,i],t,cost[1:currentIt,6,i])
+        legend(["terminal Cost","control Cost","derivative Cost","lane Cost"])
+        title("Costs of the Mpc")
+        grid("on")
+
+        figure()
+        plot(t,costSlack[1:currentIt,1,i],t,costSlack[1:currentIt,2,i],t,costSlack[1:currentIt,3,i],t,costSlack[1:currentIt,4,i],t,costSlack[1:currentIt,5,i],t,costSlack[1:currentIt,6,i])
+        legend(["slack cost on vx","slack cost on vy","slack cost on psiDot","slack cost on ePsi","slack cost on eY","slack cost on s"])
+        title("Slack costs")
+        grid("on")
+
+
+
+
+
+
+        if switch == true
+
+
+
+            for j = 2:2000
+
+
+
+                vx_pred     = pred_sol[:,1,j,i]
+                vy_pred     = pred_sol[:,2,j,i]
+                psiDot_pred = pred_sol[:,3,j,i]
+                ePsi_pred   = pred_sol[:,4,j,i]
+                eY_pred     = pred_sol[:,5,j,i]
+                s_pred      = pred_sol[:,6,j,i]
+
+            
+                oldvx       = selStates[1:Np,1,j,i]
+                oldvx2      = selStates[Np+1:2*Np,1,j,i]
+                oldvx3      = selStates[2*Np+1:3*Np,1,j,i]
+                oldvy       = selStates[1:Np,2,j,i]
+                oldvy2      = selStates[Np+1:2*Np,2,j,i]
+                oldvy3      = selStates[2*Np+1:3*Np,2,j,i]
+                oldpsiDot   = selStates[1:Np,3,j,i]
+                oldpsiDot2  = selStates[Np+1:2*Np,3,j,i]
+                oldpsiDot3  = selStates[2*Np+1:3*Np,3,j,i]
+                oldePsi     = selStates[1:Np,4,j,i]
+                oldePsi2    = selStates[Np+1:2*Np,4,j,i]
+                oldePsi3    = selStates[2*Np+1:3*Np,4,j,i]
+                oldeY       = selStates[1:Np,5,j,i]
+                oldeY2      = selStates[Np+1:2*Np,5,j,i]
+                oldeY3      = selStates[2*Np+1:3*Np,5,j,i]
+                olds        = selStates[1:Np,6,j,i]
+                olds2       = selStates[Np+1:2*Np,6,j,i]
+                olds3       = selStates[2*Np+1:3*Np,6,j,i]
+
+
+                t = linspace(1,j,j)
+
+                figure(19)
+                clf()
+                plot(oldSS_xy[:,1,i],oldSS_xy[:,2,i],"*") 
+                #plot(oldSS_xy[:,1,i-1],oldSS_xy[:,2,i-1],"ob") 
+                plot(track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")#,track[:,1],track[:,2],"b.")
+
+                #for i=1:4:size(x_est,1)
+                # for index=1:length(oldSS_xy[:,1,i])
+                z_pred = zeros(size(pred_sol)[1],4)
+                    #z_pred[1,:] = x_est[i,:]
+                z_pred[1,:] = oldSS_xy[j,:,i]
+                for j2=2:size(pred_sol)[1]
+                    z_pred[j2,:] = simModel(z_pred[j2-1,:],pred_input[j2-1,:,j,i],0.1,0.125,0.125)
+                end
+                plot(z_pred[:,1],z_pred[:,2],"-+")
+                grid("on")
+                title("Predicted solution in lap $i, iteration $j")
+                # end
+                
+                
+                figure(15)
+                clf()
+                subplot(221)
+                plot(s_pred,vx_pred,"or")
+                plot(olds,oldvx,"b")
+                plot(olds2,oldvx2,"b")
+                plot(olds3,oldvx3,"b")
+                #ylim(findmin(oldTraj.z_pred_sol[:,2,:,i])[1],findmax(oldTraj.z_pred_sol[:,2,:,i])[1])
+                title("State vx in lap $i, iteration $j")
+                grid("on")
+
+                subplot(222)
+                plot(s_pred,vy_pred,"or")
+                plot(olds,oldvy,"b")
+                plot(olds2,oldvy2,"b")
+                plot(olds3,oldvy3,"b")
+                #ylim(findmin(oldTraj.z_pred_sol[:,3,:,i])[1],findmax(oldTraj.z_pred_sol[:,3,:,i])[1])
+                title("State vy in lap $i, iteration $j ")
+                grid("on")
+
+                subplot(223)
+                plot(s_pred,psiDot_pred,"or")
+                plot(olds,oldpsiDot,"b")
+                plot(olds2,oldpsiDot2,"b")
+                plot(olds3,oldpsiDot3,"b")
+                #ylim(findmin(oldTraj.z_pred_sol[:,4,:,i])[1],findmax(oldTraj.z_pred_sol[:,4,:,i])[1])
+                title("State psiDot in lap $i , iteration $j")
+                grid("on")
+
+                subplot(224)
+                plot(s_pred,ePsi_pred,"or")
+                plot(olds,oldePsi,"b")
+                plot(olds2,oldePsi2,"b")
+                plot(olds3,oldePsi3,"b")
+                #ylim(findmin(oldTraj.z_pred_sol[:,4,:,i])[1],findmax(oldTraj.z_pred_sol[:,4,:,i])[1])
+                title("State ePsi in lap $i, iteration $j ")
+                grid("on")
+
+
+                figure(16)
+                clf()
+                subplot(221)
+                plot(s_pred,eY_pred,"or")
+                plot(olds,oldeY,"b")
+                plot(olds2,oldeY2,"b")
+                plot(olds3,oldeY3,"b")
+                #ylim(findmin(oldTraj.z_pred_sol[:,2,:,i])[1],findmax(oldTraj.z_pred_sol[:,2,:,i])[1])
+                title("State eY in lap $i, iteration $j ")
+                grid("on")
+
+                figure(17)
+                clf()
+
+                subplot(121)
+                velocity= sqrt(oldSS.oldSS[1:j,2,i].^2 + oldSS.oldSS[1:j,1,i].^2)
+                plot(t,velocity,"-*")
+                legend(["velocity"])
+
+                subplot(122)
+                plot(linspace(1,size(pred_input)[1],size(pred_input)[1]),pred_input[:,1,j,i],linspace(1,size(pred_input)[1],size(pred_input)[1]),pred_input[:,2,j,i])
+                legend(["a_x","d_f"])
+
+                title("Comparison between velocity and inputs in lap $i, iteration $j ")
+                grid("on")
+
+                figure(18)
+                clf()
+
+                subplot(121)
+                plot(t,oldSS.oldSS[1:j,5,i],"-*")
+                legend(["e_y"])
+
+                subplot(122)
+                plot(linspace(1,size(pred_input)[1],size(pred_input)[1]),pred_input[:,1,j,i],linspace(1,size(pred_input)[1],size(pred_input)[1]),pred_input[:,2,j,i])
+                legend(["a_x","d_f"])
+
+                title("Comparison between e_y and inputs in lap $i, iteration $j ")
+                grid("on")
+
+                figure(20)
+                clf()
+                subplot(211)
+                plot(t,oldSS.oldSS[1:j,5,i],"-*")
+                title("eY in lap $i, iteration $j")
+                grid("on")
+                plot(linspace(j,j+size(pred_sol)[1],size(pred_sol)[1]),pred_sol[:,5,j,i],"-+")
+
+                subplot(212)
+                plot(t,cost[1:j,6,i])
+                title("lane cost in lap $i, iteration $j")
+                grid("on")
+
+
+
+                
+
+                 sleep(5)
+            end
+        end
+    end
+
 end
 
 # THIS FUNCTION EVALUATES DATA THAT WAS RECORDED BY BARC_RECORD.JL
@@ -378,6 +802,7 @@ function eval_LMPC(code::AbstractString)
 
     t0 = t[1]
 
+
     figure(2)
     ax1=subplot(311)
     plot(pos_info.t-t0,pos_info.z[:,8],".",t-t0,state[:,1],"-*")
@@ -455,21 +880,21 @@ function eval_LMPC(code::AbstractString)
     grid(1)
     # HERE YOU CAN CHOOSE TO PLOT DIFFERENT DATA:
     # CURRENT HEADING (PLOTTED BY A LINE)
-    for i=1:10:size(pos_info.t,1)
-        dir = [cos(pos_info.z[i,10]) sin(pos_info.z[i,10])]
-        lin = [pos_info.z[i,6:7]; pos_info.z[i,6:7] + 0.1*dir]
-        plot(lin[:,1],lin[:,2],"-+")
-    end
+    # for i=1:10:size(pos_info.t,1)
+    #     dir = [cos(pos_info.z[i,10]) sin(pos_info.z[i,10])]
+    #     lin = [pos_info.z[i,6:7]; pos_info.z[i,6:7] + 0.1*dir]
+    #     plot(lin[:,1],lin[:,2],"-+")
+    # end
 
     # PREDICTED PATH
-    # for i=1:4:size(x_est,1)
-    #         z_pred = zeros(11,4)
-    #         z_pred[1,:] = x_est[i,:]
-    #         for j=2:11
-    #             z_pred[j,:] = simModel(z_pred[j-1,:],sol_u[j-1,:,i],0.1,0.125,0.125)
-    #         end
-    #         plot(z_pred[:,1],z_pred[:,2],"-*")
-    # end
+    for i=1:4:size(x_est,1)
+            z_pred = zeros(11,4)
+            z_pred[1,:] = x_est[i,:]
+            for j=2:11
+                z_pred[j,:] = simModel(z_pred[j-1,:],sol_u[j-1,:,i],0.1,0.125,0.125)
+            end
+            plot(z_pred[:,1],z_pred[:,2],"-*")
+    end
 
     # PREDICTED REFERENCE PATH (DEFINED BY POLYNOM)
     # for i=1:size(x_est,1)
@@ -1070,6 +1495,7 @@ function create_track(w)
     # add_curve(theta,35,0)
 
     # SIMPLE GOGGLE TRACK
+
     add_curve(theta,30,0)
     add_curve(theta,40,-pi/2)
     add_curve(theta,10,0)
@@ -1081,6 +1507,35 @@ function create_track(w)
     add_curve(theta,10,0)
     add_curve(theta,40,-pi/2)
     add_curve(theta,35,0)
+
+    # SIMPLE GOOGLE TRACK FOR 3110
+
+    # add_curve(theta,25,0)
+    # add_curve(theta,40,-pi/2)
+    # add_curve(theta,10,0)
+    # add_curve(theta,40,-pi/2)
+    # add_curve(theta,17,-pi/10)
+    # add_curve(theta,25,pi/5)
+    # add_curve(theta,17,-pi/10)
+    # add_curve(theta,40,-pi/2)
+    # add_curve(theta,10,0)
+    # add_curve(theta,40,-pi/2)
+    # add_curve(theta,32,0)
+
+    # OVAL TRACK FOR TESTS IN VSD
+
+    # add_curve(theta,80,0)
+    # add_curve(theta,110,-pi)
+    # add_curve(theta,160,0)
+    # add_curve(theta,110,-pi)
+    # add_curve(theta,80,0)
+
+    # add_curve(theta,53,0)
+    # add_curve(theta,73,-pi)
+    # add_curve(theta,106,0)
+    # add_curve(theta,73,-pi)
+    # add_curve(theta,53,0)
+
 
     #  # SHORT SIMPLE track
     # add_curve(theta,10,0)
@@ -1208,4 +1663,165 @@ function smooth(x,n)
         y[i,:] = mean(x[start:fin,:],1)
     end
     return y
+end
+
+function xyObstacle(oldSS,obs_log::Array{Float64},obstacle::Int64,lap::Int64,track::Array{Float64})
+
+    obs   = obs_log[:,:,obstacle,lap]
+
+    
+
+    buffersize = size(obs)[1]
+    
+
+  
+    # println("obs= ",obs)
+
+    OrderXY        = 18
+    OrderThetaCurv = 12
+
+    
+
+    ds = 0.0625
+
+    s_vec = zeros(OrderXY+1)
+
+    pred_sol_xy = zeros(2,buffersize,1)
+
+    x_track = track[:,1]
+
+    y_track = track[:,2]
+
+    #println("x_track= ",x_track)
+    # println("nodes= ",size([x_track'; y_track']))
+    for i = 1:buffersize
+
+
+        
+
+            nodes          = [x_track'; y_track']
+            n_nodes        = size(x_track)[1]
+            s_start   = (obs[i,1] - 1)
+            s_end     = (obs[i,1] + 6)
+            s_nearest = obs[i,1]
+
+            idx_start = 16*(floor(obs[i,1]) - 1) 
+            idx_end   = 16*(floor(obs[i,1]) + 6)
+
+            n_poly = 113
+
+            # if idx_start>n_nodes
+            #   idx_start=idx_start%n_nodes
+            #   idx_end=idx_end%n_nodes
+            # end
+
+
+            if idx_start<=0
+                 nodes_XY = hcat(nodes[:,n_nodes+idx_start:n_nodes],nodes[:,1:idx_end])       # then stack the end and beginning of a lap together
+            #     #nodes_Y = hcat(nodes[2,n_nodes+idx_start:n_nodes],nodes[2,1:idx_end])
+               
+                 #idx_start = n_nodes+idx_start
+            elseif idx_end>=n_nodes                   # if the end is behind the finish line
+                 nodes_XY = hcat(nodes[:,idx_start:n_nodes],nodes[:,1:idx_end-n_nodes])       # then stack the end and beginning of the lap together
+                 #nodes_Y = hcat(nodes[2,idx_start:n_nodes],nodes[2,1:idx_end-n_nodes])
+            else                               # if we are somewhere in the middle of the track
+                nodes_XY = nodes[:,idx_start:idx_end]     # then just use the nodes from idx_start to end for interpolation
+             #nodes_Y = nodes[2,idx_start:idx_end]
+            end
+
+
+            nodes_X = vec(nodes_XY[1,:])
+            nodes_Y = vec(nodes_XY[2,:])
+
+            
+
+            itp_matrix = zeros(n_poly,OrderXY+1)
+
+            for ind=1:n_poly
+                for k=0:OrderXY
+
+                    itp_matrix[ind,OrderXY+1-k] = (s_start + (ind-1)*ds)^k
+                end
+            end
+
+            itp_matrix_curv = zeros(n_poly,OrderThetaCurv+1)
+
+            for ind=1:n_poly
+                for k=0:OrderThetaCurv
+
+                    itp_matrix_curv[ind,OrderThetaCurv+1-k] = (s_start + (ind-1)*ds)^k
+                end
+            end
+            
+           # println("size of nodes x= ",size(nodes_X))
+           # println("size of itpmatrix= ",size(itp_matrix))
+           # println("s start= ",s_start)
+           # println("s end= ",s_end)
+
+            coeffY = itp_matrix\nodes_Y
+            coeffX = itp_matrix\nodes_X
+           
+
+            b_curvature_vector = zeros(n_poly)
+
+            Counter = 1
+            
+
+            for ind = 0:n_poly-1
+                s_expression_der  = zeros(OrderXY+1)
+                s_expression_2der = zeros(OrderXY+1)
+                s_poly       = s_start + ind*ds
+                for k=0:OrderXY-1
+                    s_expression_der[OrderXY-k] = (k+1)*s_poly^k
+                end
+                for k=0:OrderXY-2
+                    s_expression_2der[OrderXY-1-k] = (2+k*(3+k))*s_poly^k
+                end
+
+                dX  = dot(coeffX,s_expression_der)
+                dY  = dot(coeffY,s_expression_der)
+                ddX = dot(coeffX,s_expression_2der)
+                ddY = dot(coeffY,s_expression_2der)
+
+                curvature = (dX*ddY-dY*ddX)/((dX^2+dY^2)^(3/2)) #standard curvature formula
+
+                b_curvature_vector[Counter] = curvature
+
+                Counter = Counter + 1
+            end
+
+
+            
+            coeffCurv  = itp_matrix_curv\b_curvature_vector
+
+            s0 =  obs[i,1]+0.001
+          
+            s_vec = zeros(OrderXY+1)::Array{Float64}
+            sdot_vec = zeros(OrderXY+1)::Array{Float64}
+
+            for k = 1:OrderXY+1
+                    s_vec[k] = obs[i,1]^(OrderXY-k+1)
+                    
+            end
+            for k = 1:OrderXY
+                    sdot_vec[k] = (OrderXY+1-k)* obs[i,1]^(OrderXY-k)
+            end
+
+
+            XCurve  = dot(coeffX,s_vec)
+            YCurve  = dot(coeffY,s_vec)
+
+            dX = dot(coeffX,sdot_vec)
+            dY = dot(coeffY,sdot_vec)      
+
+            
+            xyPathAngle = atan2(dY,dX)
+
+            pred_sol_xy[2,i] = YCurve + obs[i,2]*cos(xyPathAngle)
+            pred_sol_xy[1,i] = XCurve - obs[i,2]*sin(xyPathAngle)
+
+        
+    end
+
+    return pred_sol_xy
 end
