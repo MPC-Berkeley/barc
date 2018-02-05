@@ -181,7 +181,6 @@ function main()
     # Start node
     while ! is_shutdown()
         if z_est[6] > 0         # check if data has been received (s > 0)
-            println("s= ",z_est[6])
             # ============================= PUBLISH COMMANDS =============================
             # This is done at the beginning of the lap because this makes sure that the command is published 0.1s after the state has been received
             # This guarantees a constant publishing frequency of 10 Hz
@@ -193,8 +192,7 @@ function main()
             # ============================= Initialize iteration parameters =============================
             i                           = lapStatus.currentIt           # current iteration number, just to make notation shorter
             zCurr[i,:]                  = copy(z_est)                   # update state information
-            println("v_x= ",zCurr[i,1])
-            println("v_y= ",zCurr[i,2])
+        
             posInfo.s                   = zCurr[i,6]                    # update position info
             #trackCoeff.coeffCurvature   = copy(coeffCurvature_update)
 
