@@ -16,10 +16,10 @@
 import rospy
 import time
 from barc.msg import ECU
-from simulator.msg import Z_DynBkMdl
+from labs.msg import Z_DynBkMdl
 from numpy import sin, cos, tan, arctan, array, dot, pi
 from numpy import sign, argmin, sqrt, zeros, row_stack, ones, interp
-from system_models_simulator import bikeFE
+from bike_model import bikeFE
 # input variables
 d_f         = 0
 acc         = 0
@@ -45,6 +45,7 @@ def vehicle_simulator():
 
     # get external force model
     a0    = rospy.get_param("air_drag_coeff")
+    m	= rospy.get_param("mass")
     Ff    = rospy.get_param("friction")
     x_list     = array([0, 20, 20, 40,  40, 60, 60,  80, 80, 100, 100, 120, 120, 140, 140, 160, 160, 180])
     theta_list = array([0, 0,  10, 10,  0,  0, -10, -10,  0,  0,  30,  30,  0,   0,   -30, -30, 0,   0])
@@ -68,8 +69,7 @@ def vehicle_simulator():
     epsi = 0
     while not rospy.is_shutdown():
         theta = interp(x, x_list, theta_list)/180*pi
-
-        (x, y, psi, v_x) = bikeFE(x, y, psi, v_x, acc, d_f, a0, Ff, theta, ts)
+        (x, y, psi, v_x) = bikeFE(x, y, psi, v_x, acc, d_f, a0, m, Ff, theta, ts)
         v_y = 0
         r = 0
         # publish information
