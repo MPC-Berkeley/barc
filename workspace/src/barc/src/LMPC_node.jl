@@ -92,9 +92,16 @@ function main()
 
     InitializeParameters(mpcParams,mpcParams_pF,trackCoeff,modelParams,posInfo,oldTraj,mpcCoeff,lapStatus,buffersize,obstacle,selectedStates,oldSS)
 
-    mdl          = MpcModel(mpcParams,mpcCoeff,modelParams,trackCoeff)  
     mdl_pF       = MpcModel_pF(mpcParams_pF,modelParams,trackCoeff)
-    mdl_convhull = MpcModel_convhull(mpcParams,mpcCoeff,modelParams,trackCoeff,selectedStates)
+
+    if selectedStates.version == true
+        mdl          = MpcModel(mpcParams,mpcCoeff,modelParams,trackCoeff)  
+    elseif selectedStates.version == false
+        mdl_convhull = MpcModel_convhull(mpcParams,mpcCoeff,modelParams,trackCoeff,selectedStates)
+    end
+
+    
+   
     #mdl_test     = MpcModel_test(mpcParams,mpcCoeff,modelParams,trackCoeff,selectedStates)
     mdl_obstacle = MpcModel_obstacle(mpcParams,mpcCoeff,modelParams,trackCoeff,selectedStates,obstacle)
 
@@ -109,8 +116,8 @@ function main()
     coeffCurvature_update       = zeros(trackCoeff.nPolyCurvature+1)
 
     # Logging variables
-    log_coeff_Cost              = NaN*ones(mpcCoeff.order+1,2,10000)        # DONT NEED THIS
-    log_coeff_Const             = NaN*ones(mpcCoeff.order+1,2,5,10000)      # DONT NEED THIS
+    log_coeff_Cost              = NaN*ones(mpcCoeff.order+1,2,10000)        
+    log_coeff_Const             = NaN*ones(mpcCoeff.order+1,2,5,10000)      
     log_sol_z                   = NaN*ones(max_N+1,7,10000)
     log_sol_u                   = NaN*ones(max_N,2,10000)
     log_curv                    = zeros(10000,trackCoeff.nPolyCurvature+1)

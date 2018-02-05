@@ -59,8 +59,9 @@ type SelectedStates                 # Values needed for the convex hull formulat
     statesCost::Array{Float64}      # ... and their related costs
     Np::Int64                       # number of states to select from each previous lap
     Nl::Int64                       # number of previous laps to include in the convex hull
-    version::Bool
-    SelectedStates(selStates=Float64[],statesCost=Float64[],Np=6,Nl=2,version=false) = new(selStates,statesCost,Np,Nl,version)
+    version::Bool                   # false if you want to use convex hull
+    simulator::Bool                 # true to use tuning made for simulator,  false to use tuning made for BARC
+    SelectedStates(selStates=Float64[],statesCost=Float64[],Np=6,Nl=2,version=false, simulator=true) = new(selStates,statesCost,Np,Nl,version,simulator)
 end
 
 type MpcParams          # parameters for MPC solver

@@ -439,7 +439,7 @@ type MpcModel_convhull
         delay_a    = mpcParams.delay_a
         Q_slack    = mpcParams.Q_slack
 
-        println("prediction h= ",N)
+        println("prediction horizon= ",N)
 
 
         Np         = selectedStates.Np::Int64              # how many states to select
@@ -564,7 +564,8 @@ type MpcModel_convhull
 
         # Lane cost (soft)
         # ---------------------------------
-        @NLexpression(mdl, laneCost, Q_lane*sum{10.0*eps_lane[i]+100.0*eps_lane[i]^2 ,i=2:N+1})
+        @NLexpression(mdl, laneCost, Q_lane*sum{30.0*eps_lane[i]+200.0*eps_lane[i]^2 ,i=2:N+1})
+
 
         # Terminal Cost
         # ---------------------------------
