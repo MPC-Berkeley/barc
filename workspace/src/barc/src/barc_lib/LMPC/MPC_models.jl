@@ -439,7 +439,7 @@ type MpcModel_convhull
         delay_a    = mpcParams.delay_a
         Q_slack    = mpcParams.Q_slack
 
-        println("prediction h= ",N)
+        println("prediction horizon= ",N)
 
 
         Np         = selectedStates.Np::Int64              # how many states to select
@@ -540,11 +540,11 @@ type MpcModel_convhull
         #     @NLconstraint(mdl, u_Ol[i+1,1]-u_Ol[i,1] >= -0.2)
         # end
 
-        @NLconstraint(mdl, u_Ol[1,2]-uPrev[1,2] <= 0.06)
-        @NLconstraint(mdl, u_Ol[1,2]-uPrev[1,2] >= -0.06)
+        @NLconstraint(mdl, u_Ol[1,2]-uPrev[1,2] <= 0.12)
+        @NLconstraint(mdl, u_Ol[1,2]-uPrev[1,2] >= -0.12)
         for i=1:N-1 # Constraints on u:
-            @NLconstraint(mdl, u_Ol[i+1,2]-u_Ol[i,2] <= 0.06)
-            @NLconstraint(mdl, u_Ol[i+1,2]-u_Ol[i,2] >= -0.06)
+            @NLconstraint(mdl, u_Ol[i+1,2]-u_Ol[i,2] <= 0.12)
+            @NLconstraint(mdl, u_Ol[i+1,2]-u_Ol[i,2] >= -0.12)
         end
 
        
@@ -564,7 +564,8 @@ type MpcModel_convhull
 
         # Lane cost (soft)
         # ---------------------------------
-        @NLexpression(mdl, laneCost, Q_lane*sum{10.0*eps_lane[i]+100.0*eps_lane[i]^2 ,i=2:N+1})
+        @NLexpression(mdl, laneCost, Q_lane*sum{40.0*eps_lane[i]+300.0*eps_lane[i]^2 ,i=2:N+1})
+
 
         # Terminal Cost
         # ---------------------------------
