@@ -87,7 +87,8 @@ class StateEst(object):
         # units: [rad] and [rad/s]
         # get current time stamp
         t_now = rospy.get_rostime().to_sec()-self.t0
-        #t_msg = data.timestamp_ms/1000.0 - self.t0
+
+        #t_msg = data.header.stamp.to_sec()-self.t0
         t_msg = t_now
 
         # if abs(t_now - t_msg) > 0.1:
