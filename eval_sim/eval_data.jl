@@ -110,7 +110,7 @@ function eval_run(code::AbstractString)
     pos_info    = d_rec["pos_info"]
 
     t0      = pos_info.t[1]
-    track   = create_track(0.4)
+    track   = create_track(0.3)
 
     # Calculate accelerations
     acc = smooth(diff(smooth(vel_est.z[:,1],10))./diff(vel_est.t),10)
@@ -121,7 +121,7 @@ function eval_run(code::AbstractString)
 
 
     figure()
-    plot(gps_meas.z[:,1],gps_meas.z[:,2],"-.",pos_info.z[:,6],pos_info.z[:,7],"-*")
+    plot(gps_meas.z[:,1],gps_meas.z[:,2],"+",pos_info.z[:,6],pos_info.z[:,7],"-*")
     plot(track[:,1],track[:,2],"b.",track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")
     grid(1)
     title("x-y-view")
@@ -194,6 +194,96 @@ function eval_run(code::AbstractString)
     # legend(["u","d_f"])
     nothing
 end
+
+function eval_terminal_constraint(code::AbstractString,lap::Int64)
+
+    log_path_LMPC   = "$(homedir())/simulations/output-LMPC-$(code).jld"
+    d_lmpc          = load(log_path_LMPC)
+    state           = d_lmpc["state"]
+    final_counter   = d_lmpc["final_counter"]
+    pred_sol        = d_lmpc["sol_z"]
+
+    println(final_counter)
+
+    for j=1:2000
+
+        vx_pred     = pred_sol[:,1,final_counter[lap-1]+j]
+        vy_pred     = pred_sol[:,2,final_counter[lap-1]+j]
+        psiDot_pred = pred_sol[:,3,final_counter[lap-1]+j]
+        ePsi_pred   = pred_sol[:,4,final_counter[lap-1]+j]
+        eY_pred     = pred_sol[:,5,final_counter[lap-1]+j]
+        s_pred      = pred_sol[:,6,final_counter[lap-1]+j]
+
+            
+        oldvx       = state[final_counter[lap-2]+j:final_counter[lap-2]+j+120,1]
+        oldvx2      = state[final_counter[lap-3]+j:final_counter[lap-3]+j+120,1]
+        oldvy       = state[final_counter[lap-2]+j:final_counter[lap-2]+j+120,2]
+        oldvy2      = state[final_counter[lap-3]+j:final_counter[lap-3]+j+120,2]
+        oldpsiDot   = state[final_counter[lap-2]+j:final_counter[lap-2]+j+120,3]
+        oldpsiDot2  = state[final_counter[lap-3]+j:final_counter[lap-3]+j+120,3]
+        oldePsi     = state[final_counter[lap-2]+j:final_counter[lap-2]+j+120,4]
+        oldePsi2    = state[final_counter[lap-3]+j:final_counter[lap-3]+j+120,4]
+        oldeY       = state[final_counter[lap-2]+j:final_counter[lap-2]+j+120,5]
+        oldeY2      = state[final_counter[lap-3]+j:final_counter[lap-3]+j+120,5]
+        olds        = state[final_counter[lap-2]+j:final_counter[lap-2]+j+120,6]
+        olds2       = state[final_counter[lap-3]+j:final_counter[lap-3]+j+120,6]
+                
+                
+        figure(15)
+        clf()
+        subplot(221)
+        plot(s_pred,vx_pred,"or")
+        plot(olds,oldvx,"b")
+        plot(olds2,oldvx2,"b")
+                #ylim(findmin(oldTraj.z_pred_sol[:,2,:,i])[1],findmax(oldTraj.z_pred_sol[:,2,:,i])[1])
+        title("State vx in lap $lap, iteration $j")
+        grid("on")
+
+        subplot(222)
+        plot(s_pred,vy_pred,"or")
+        plot(olds,oldvy,"b")
+        plot(olds2,oldvy2,"b")
+                #ylim(findmin(oldTraj.z_pred_sol[:,3,:,i])[1],findmax(oldTraj.z_pred_sol[:,3,:,i])[1])
+        title("State vy in lap $lap, iteration $j ")
+        grid("on")
+
+        subplot(223)
+        plot(s_pred,psiDot_pred,"or")
+        plot(olds,oldpsiDot,"b")
+        plot(olds2,oldpsiDot2,"b")
+                #ylim(findmin(oldTraj.z_pred_sol[:,4,:,i])[1],findmax(oldTraj.z_pred_sol[:,4,:,i])[1])
+        title("State psiDot in lap $lap , iteration $j")
+        grid("on")
+
+        subplot(224)
+        plot(s_pred,ePsi_pred,"or")
+        plot(olds,oldePsi,"b")
+        plot(olds2,oldePsi2,"b")
+                #ylim(findmin(oldTraj.z_pred_sol[:,4,:,i])[1],findmax(oldTraj.z_pred_sol[:,4,:,i])[1])
+        title("State ePsi in lap $lap, iteration $j ")
+        grid("on")
+
+
+        figure(16)
+        clf()
+        subplot(221)
+        plot(s_pred,eY_pred,"or")
+        plot(olds,oldeY,"b")
+        plot(olds2,oldeY2,"b")
+                #ylim(findmin(oldTraj.z_pred_sol[:,2,:,i])[1],findmax(oldTraj.z_pred_sol[:,2,:,i])[1])
+        title("State eY in lap $lap, iteration $j ")
+        grid("on")
+
+        sleep(2)
+
+    end        
+
+
+
+
+end
+
+
 
 function plot_friction_circle(code::AbstractString,lap::Int64)
     log_path_record = "$(homedir())/simulations/output-record-$(code).jld"
@@ -448,28 +538,28 @@ function eval_LMPC(code::AbstractString)
     track = create_track(0.4)
     figure()
     hold(1)
-    plot(x_est[:,1],x_est[:,2],"-*")
+    plot(x_est[:,1],x_est[:,2],"-+")
     title("Estimated position")
     plot(track[:,1],track[:,2],"b.",track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")
     axis("equal")
     grid(1)
     # HERE YOU CAN CHOOSE TO PLOT DIFFERENT DATA:
     # CURRENT HEADING (PLOTTED BY A LINE)
-    for i=1:10:size(pos_info.t,1)
-        dir = [cos(pos_info.z[i,10]) sin(pos_info.z[i,10])]
-        lin = [pos_info.z[i,6:7]; pos_info.z[i,6:7] + 0.1*dir]
-        plot(lin[:,1],lin[:,2],"-+")
-    end
+    # for i=1:10:size(pos_info.t,1)
+    #     dir = [cos(pos_info.z[i,10]) sin(pos_info.z[i,10])]
+    #     lin = [pos_info.z[i,6:7]; pos_info.z[i,6:7] + 0.1*dir]
+    #     plot(lin[:,1],lin[:,2],"-+")
+    # end
 
     # PREDICTED PATH
-    # for i=1:4:size(x_est,1)
-    #         z_pred = zeros(11,4)
-    #         z_pred[1,:] = x_est[i,:]
-    #         for j=2:11
-    #             z_pred[j,:] = simModel(z_pred[j-1,:],sol_u[j-1,:,i],0.1,0.125,0.125)
-    #         end
-    #         plot(z_pred[:,1],z_pred[:,2],"-*")
-    # end
+    for i=1:1:size(x_est,1)
+            z_pred = zeros(11,4)
+            z_pred[1,:] = x_est[i,:]
+            for j=2:11
+                z_pred[j,:] = simModel(z_pred[j-1,:],sol_u[j-1,:,i],0.1,0.125,0.125)
+            end
+            plot(z_pred[:,1],z_pred[:,2],"-*")
+    end
 
     # PREDICTED REFERENCE PATH (DEFINED BY POLYNOM)
     # for i=1:size(x_est,1)
@@ -1070,6 +1160,7 @@ function create_track(w)
     # add_curve(theta,35,0)
 
     # SIMPLE GOGGLE TRACK
+
     add_curve(theta,30,0)
     add_curve(theta,40,-pi/2)
     add_curve(theta,10,0)
@@ -1081,6 +1172,48 @@ function create_track(w)
     add_curve(theta,10,0)
     add_curve(theta,40,-pi/2)
     add_curve(theta,35,0)
+
+
+
+
+    # add_curve(theta,25,0)
+    # add_curve(theta,40,-pi/2)
+    # add_curve(theta,10,0)
+    # add_curve(theta,40,-pi/2)
+    # add_curve(theta,17,-pi/10)
+    # add_curve(theta,25,pi/5)
+    # add_curve(theta,17,-pi/10)
+    # add_curve(theta,40,-pi/2)
+    # add_curve(theta,10,0)
+    # add_curve(theta,40,-pi/2)
+    # add_curve(theta,32,0)
+
+    # TEST TRACK
+
+    # add_curve(theta,65,0)
+    # add_curve(theta,40,-pi/2)
+    # add_curve(theta,10,0)
+    # add_curve(theta,40,-pi/2)
+    # add_curve(theta,20,-pi/10)
+    # add_curve(theta,30,-pi/5)
+    # add_curve(theta,20,pi/10)
+    # add_curve(theta,40,-pi/2)
+    # add_curve(theta,10,0)
+    # add_curve(theta,40,-pi/2)
+    # add_curve(theta,2,0)
+
+
+    # add_curve(theta,10,0)
+    # add_curve(theta,80,-pi/2)
+    # add_curve(theta,20,0)
+    # add_curve(theta,80,-pi/2)
+    # add_curve(theta,40,pi/10)
+    # add_curve(theta,60,-pi/5)
+    # add_curve(theta,40,pi/10)
+    # add_curve(theta,80,-pi/2)
+    # add_curve(theta,20,0)
+    # add_curve(theta,80,-pi/2)
+    # add_curve(theta,125,0)
 
     #  # SHORT SIMPLE track
     # add_curve(theta,10,0)

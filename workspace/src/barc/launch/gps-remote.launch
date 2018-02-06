@@ -1,0 +1,9 @@
+<launch>
+    <!-- Machines -->
+    <machine name="odroid" address="10.0.0.1" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid.sh"/>
+    <machine name="this-pc" address="10.0.0.14" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc.sh"/>
+
+    <!-- GPS -->
+    <node machine="odroid" pkg="marvelmind_nav" type="hedge_rcv_bin" name="indoor_gps" args="/dev/ttyACM1"/>
+    
+</launch>

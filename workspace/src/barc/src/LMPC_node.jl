@@ -2,11 +2,11 @@
 
 using RobotOS
 @rosimport barc.msg: ECU, pos_info
-@rosimport data_service.msg: TimeData
+#@rosimport data_service.msg: TimeData
 @rosimport geometry_msgs.msg: Vector3
 rostypegen()
 using barc.msg
-using data_service.msg
+#using data_service.msg
 using geometry_msgs.msg
 using JuMP
 using Ipopt
@@ -27,6 +27,8 @@ function SE_callback(msg::pos_info,acc_f::Array{Float64},lapStatus::LapStatus,po
     z_est[:]                  = [msg.v_x,msg.v_y,msg.psiDot,msg.epsi,msg.ey,msg.s,acc_f[1]]             # use z_est as pointer
     x_est[:]                  = [msg.x,msg.y,msg.psi,msg.v]
     trackCoeff.coeffCurvature = msg.coeffCurvature
+
+    #println("z_est= ",z_est)
 
     # check if lap needs to be switched
     if z_est[6] <= lapStatus.s_lapTrigger && lapStatus.switchLap
@@ -120,6 +122,7 @@ function main()
     log_step_diff               = zeros(10000,5)
     log_t_solv                  = zeros(10000)
     log_sol_status              = Array(Symbol,10000)
+    log_final_counter           = zeros(30)
     
     acc_f = [0.0]
 
@@ -150,10 +153,10 @@ function main()
     mpcSol.a_x = 0
     mpcSol.d_f = 0
 
-    #mpcCoeff.c_Psi = [-0.26682109207165566,-0.013445078992161885,1.2389672517023724]
-    #mpcCoeff.c_Psi = [-0.3747957571478858,-0.005013036784512181,5.068342163488241]
-    #mpcCoeff.c_Vy  = [-0.006633028965076818,-0.02997779668710061,0.005781203137095575,0.10642934131787765]
-    #mpcCoeff.c_Vy  = [0.002968102163011754,-0.09886540158694888,0.012234790760745129,1.099308717654053]
+    # mpcCoeff.c_Psi = [-0.26682109207165566,-0.013445078992161885,1.2389672517023724]
+    # mpcCoeff.c_Psi = [-0.3747957571478858,-0.005013036784512181,5.068342163488241]
+    # mpcCoeff.c_Vy  = [-0.006633028965076818,-0.02997779668710061,0.005781203137095575,0.10642934131787765]
+    # mpcCoeff.c_Vy  = [0.002968102163011754,-0.09886540158694888,0.012234790760745129,1.099308717654053]
     
     # Precompile coeffConstraintCost:
     oldTraj.oldTraj[1:buffersize,6,1] = linspace(0,posInfo.s_target,buffersize)
@@ -189,6 +192,7 @@ function main()
             # ============================= Initialize iteration parameters =============================
             i                           = lapStatus.currentIt           # current iteration number, just to make notation shorter
             zCurr[i,:]                  = copy(z_est)                   # update state information
+        
             posInfo.s                   = zCurr[i,6]                    # update position info
             #trackCoeff.coeffCurvature   = copy(coeffCurvature_update)
 
@@ -204,6 +208,8 @@ function main()
             # ======================================= Lap trigger =======================================
             if lapStatus.nextLap                # if we are switching to the next lap...
                 println("Finishing one lap at iteration ",i)
+
+                log_final_counter[lapStatus.currentLap-1] = k
                 # Important: lapStatus.currentIt is now the number of points up to s > s_target -> -1 in saveOldTraj
                 zCurr[1,:] = zCurr[i,:]         # copy current state
                 i                     = 1
@@ -235,6 +241,10 @@ function main()
             if lapStatus.currentLap > n_pf
                 tic()
                 coeffConstraintCost(oldTraj,mpcCoeff,posInfo,mpcParams,lapStatus)
+                # mpcCoeff.c_Psi = [-0.26682109207165566,-0.013445078992161885,1.2389672517023724]
+                # mpcCoeff.c_Psi = [-0.3747957571478858,-0.005013036784512181,5.068342163488241]
+                # mpcCoeff.c_Vy  = [-0.006633028965076818,-0.02997779668710061,0.005781203137095575,0.10642934131787765]
+                # mpcCoeff.c_Vy  = [0.002968102163011754,-0.09886540158694888,0.012234790760745129,1.099308717654053]
                 tt = toq()
                 println("Finished coefficients, t = ",tt," s")
             end
@@ -245,6 +255,9 @@ function main()
             if lapStatus.currentLap <= n_pf
                 z_pf = [zCurr[i,6],zCurr[i,5],zCurr[i,4],norm(zCurr[i,1:2]),acc0]        # use kinematic model and its states
                 solveMpcProblem_pathFollow(mdl_pF,mpcSol,mpcParams_pF,trackCoeff,posInfo,modelParams,z_pf,uPrev)
+                # println("current state= ",z_est[1:6])
+                # println("predicted solution= ",mpcSol.z)
+                # println("predicted steering= ",mpcSol.d_f)
                 acc_f[1] = mpcSol.z[1,5]
                 acc0 = mpcSol.z[2,5]
             else
@@ -307,6 +320,7 @@ function main()
             # Count one up:
             lapStatus.currentIt += 1
         else
+         
             println("No estimation data received!")
         end
         rossleep(loop_rate)
@@ -322,7 +336,7 @@ function main()
                     "cost",log_cost[1:k,:],"curv",log_curv[1:k,:],"coeffCost",log_coeff_Cost,"coeffConst",log_coeff_Const,
                     "x_est",log_state_x[1:k,:],"coeffX",log_coeffX[1:k,:],"coeffY",log_coeffY[1:k,:],"c_Vx",log_c_Vx[1:k,:],
                     "c_Vy",log_c_Vy[1:k,:],"c_Psi",log_c_Psi[1:k,:],"cmd",log_cmd[1:k,:],"step_diff",log_step_diff[1:k,:],
-                    "t_solv",log_t_solv[1:k],"sol_status",log_sol_status[1:k])
+                    "t_solv",log_t_solv[1:k],"sol_status",log_sol_status[1:k],"final_counter",log_final_counter[1:lapStatus.currentLap])
     println("Exiting LMPC node. Saved data to $log_path.")
 
 end
