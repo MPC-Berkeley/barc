@@ -56,9 +56,9 @@ function coeffConstraintCost(oldTraj::OldTrajectory, mpcCoeff::MpcCoeff, posInfo
         selected_laps[i] = lapStatus.currentLap-i    # use previous lap
     end
 
-    # if lapStatus.currentLap >= 5
-    #     selected_laps[Nl] = indmin(oldSS.oldCost[1:lapStatus.currentLap-2])      # and the best from all previous laps
-    # end
+    if lapStatus.currentLap >= 5
+        selected_laps[Nl] = indmin(oldSS.oldCost[1:lapStatus.currentLap-2])      # and the best from all previous laps
+    end
 
     # Select the old data
     oldxDot         = oldTraj.oldTraj[:,1,selected_laps]::Array{Float64,3}
@@ -100,8 +100,7 @@ function coeffConstraintCost(oldTraj::OldTrajectory, mpcCoeff::MpcCoeff, posInfo
     idx_s = findmin(DistS,1)[2]              # contains both indices for the closest distances for both oldS !!
     idx_s2= findmin(DistS2,1)[2]
 
-    off = 3
-    idx_s2 = idx_s2 + off
+    idx_s2 = idx_s2 + selectedStates.shift
 
     # Propagate the obstacle for the prediction horizon
 

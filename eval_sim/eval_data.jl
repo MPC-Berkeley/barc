@@ -131,9 +131,54 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
     flag = zeros(2)
 
 
-    track = create_track(0.3)
+    track = create_track(0.4)
 
     println("prediction horizon N= ", size(pred_sol)[1])
+
+    ospe1 = []
+        ospe2 = []
+        ospe3 = []
+        ospe4 = []
+        ospe5 = []
+        ospe6 = []
+
+        slack1 = []
+        slack2 = []
+        slack3 = []
+        slack4 = []
+        slack5 = []
+        slack6 = []
+        
+        for l = laps
+            ospe1 = vcat(ospe1,one_step_error[1:currentIt,1,l])
+            ospe2 = vcat(ospe2,one_step_error[1:currentIt,2,l])
+            ospe3 = vcat(ospe3,one_step_error[1:currentIt,3,l])
+            ospe4 = vcat(ospe4,one_step_error[1:currentIt,4,l])
+            ospe5 = vcat(ospe5,one_step_error[1:currentIt,5,l])
+            ospe6 = vcat(ospe6,one_step_error[1:currentIt,6,l])
+
+            slack1 = vcat(slack1,costSlack[1:currentIt,1,l])
+            slack2 = vcat(slack2,costSlack[1:currentIt,2,l])
+            slack3 = vcat(slack3,costSlack[1:currentIt,3,l])
+            slack4 = vcat(slack4,costSlack[1:currentIt,4,l])
+            slack5 = vcat(slack5,costSlack[1:currentIt,5,l])
+            slack6 = vcat(slack6,costSlack[1:currentIt,6,l])
+        end
+
+        t_ospe = linspace(1,length(ospe1),length(ospe1))
+
+        figure()
+        plot(t_ospe,ospe1,t_ospe,ospe2,t_ospe,ospe3,t_ospe,ospe4,t_ospe,ospe5,t_ospe,ospe6)
+        legend(["vx","vy","psiDot","ePsi","eY","s"])
+        grid("on")
+        title("One step prediction errors")
+
+        figure()
+        plot(t_ospe,slack1,t_ospe,slack2,t_ospe,slack3,t_ospe,slack4,t_ospe,slack5,t_ospe,slack6)
+        legend(["slack cost on vx","slack cost on vy","slack cost on psiDot","slack cost on ePsi","slack cost on eY","slack cost on s"])
+        title("Slack costs")
+        grid("on")
+
   
 
 
@@ -170,7 +215,7 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
         cpsi2        = cpsi[1:currentIt,2,i]
         cpsi3        = cpsi[1:currentIt,3,i]
 
-        figure(1)
+        figure()
         plot(oldSS_xy[:,1,i],oldSS_xy[:,2,i],"-.") 
         #plot(oldSS_xy[:,1,i-1],oldSS_xy[:,2,i-1],"ob") 
         plot(track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")#,track[:,1],track[:,2],"b.")
@@ -212,7 +257,7 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
         figure()
 
         plot(t,input[1:currentIt,1,i],"-*",t,input[1:currentIt,2,i],"-+")
-        title("Inputs")
+        title("Inputs in lap $i")
         grid("on")
         legend(["a","d_f"])
 
@@ -264,12 +309,21 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
         # legend(["ospe","a_x","d_f"])
         # title("One step prediction error for s in lap $i")
         # grid("on")
+        
 
-        figure()
-        plot(t,one_step_error[1:currentIt,1,i],t,one_step_error[1:currentIt,2,i],t,one_step_error[1:currentIt,3,i],t,one_step_error[1:currentIt,4,i],t,one_step_error[1:currentIt,5,i],t,one_step_error[1:currentIt,6,i])
-        legend(["vx","vy","psiDot","ePsi","eY","s"])
-        grid("on")
-        title("One step prediction errors")
+        # figure()
+        # plot(t,costSlack[1:currentIt,1,i],t,costSlack[1:currentIt,2,i],t,costSlack[1:currentIt,3,i],t,costSlack[1:currentIt,4,i],t,costSlack[1:currentIt,5,i],t,costSlack[1:currentIt,6,i])
+        # legend(["slack cost on vx","slack cost on vy","slack cost on psiDot","slack cost on ePsi","slack cost on eY","slack cost on s"])
+        # title("Slack costs")
+        # grid("on")
+
+
+
+        # figure()
+        # plot(t,one_step_error[1:currentIt,1,i],t,one_step_error[1:currentIt,2,i],t,one_step_error[1:currentIt,3,i],t,one_step_error[1:currentIt,4,i],t,one_step_error[1:currentIt,5,i],t,one_step_error[1:currentIt,6,i])
+        # legend(["vx","vy","psiDot","ePsi","eY","s"])
+        # grid("on")
+        # title("One step prediction errors")
 
         # println("one step prediction error= ",one_step_error[1:30,:,i])
 
@@ -344,14 +398,9 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
         figure()
         plot(t,cost[1:currentIt,2,i],t,cost[1:currentIt,3,i],t,cost[1:currentIt,4,i],t,cost[1:currentIt,6,i])
         legend(["terminal Cost","control Cost","derivative Cost","lane Cost"])
-        title("Costs of the Mpc")
+        title("Costs of the Mpc in lap $i")
         grid("on")
 
-        figure()
-        plot(t,costSlack[1:currentIt,1,i],t,costSlack[1:currentIt,2,i],t,costSlack[1:currentIt,3,i],t,costSlack[1:currentIt,4,i],t,costSlack[1:currentIt,5,i],t,costSlack[1:currentIt,6,i])
-        legend(["slack cost on vx","slack cost on vy","slack cost on psiDot","slack cost on ePsi","slack cost on eY","slack cost on s"])
-        title("Slack costs")
-        grid("on")
 
 
 
