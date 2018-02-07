@@ -46,7 +46,7 @@ end
 function InitializeParameters(mpcParams::MpcParams,mpcParams_pF::MpcParams,trackCoeff::TrackCoeff,modelParams::ModelParams,
                               posInfo::PosInfo,oldTraj::OldTrajectory,mpcCoeff::MpcCoeff,lapStatus::LapStatus,buffersize::Int64,
                               obstacle::Obstacle,selectedStates::SelectedStates,oldSS::SafeSetData)
-    selectedStates.simulator = false     # set this to TRUE if SIMULATOR is in use, set this to FALSE if BARC is in use
+    selectedStates.simulator = true     # set this to TRUE if SIMULATOR is in use, set this to FALSE if BARC is in use
 
     if selectedStates.simulator == false   # if the BARC is in use
 
@@ -155,11 +155,11 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_pF::MpcParams,track
     lapStatus.currentIt         = 0         # current iteration in lap
 
     obstacle.obstacle_active    = false     # true if we have to consider the obstacles in the optimization problem
-    obstacle.lap_active         = 100         # number of the first lap in which the obstacles are used
+    obstacle.lap_active         = 100000         # number of the first lap in which the obstacles are used
     obstacle.obs_detect         = 10         # maximum distance at which we can detect obstacles (in terms of s!!)
     obstacle.n_obs              = 1         # number of obstacles
-    obstacle.s_obs_init         = [19]    # initial s coordinate of each obstacle
-    obstacle.ey_obs_init        = [-0.3]       # initial ey coordinate of each obstacle
+    obstacle.s_obs_init         = [16]    # initial s coordinate of each obstacle
+    obstacle.ey_obs_init        = [-0.4]       # initial ey coordinate of each obstacle
     obstacle.v_obs_init         = [0]       # initial velocity of each obstacles
     obstacle.r_s                = 0.2#0.5
     obstacle.r_ey               = 0.1#0.2
