@@ -547,6 +547,8 @@ function main()
                 #log_epsalpha[:,lapStatus.currentIt,lapStatus.currentLap]    = mpcSol.eps_alpha
             end
 
+            println("solution u= ",mpcSol.u)
+
             # Count one up:
             lapStatus.currentIt += 1
         else

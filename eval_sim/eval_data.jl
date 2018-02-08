@@ -450,15 +450,15 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool,obst
 
                 #for i=1:4:size(x_est,1)
                 # for index=1:length(oldSS_xy[:,1,i])
-                z_pred = zeros(size(pred_sol)[1],4)
-                    #z_pred[1,:] = x_est[i,:]
-                z_pred[1,:] = oldSS_xy[j,:,i]
-                for j2=2:size(pred_sol)[1]
-                    z_pred[j2,:] = simModel(z_pred[j2-1,:],pred_input[j2-1,:,j,i],0.1,0.125,0.125)
-                end
-                plot(z_pred[:,1],z_pred[:,2],"-+")
+                # z_pred = zeros(size(pred_sol)[1],4)
+                #     #z_pred[1,:] = x_est[i,:]
+                # z_pred[1,:] = oldSS_xy[j,:,i]
+                # for j2=2:size(pred_sol)[1]
+                #     z_pred[j2,:] = simModel(z_pred[j2-1,:],pred_input[j2-1,:,j,i],0.1,0.125,0.125)
+                # end
+                plot(oldSS_xy[j,1,i],oldSS_xy[j,2,i],"og")
                 grid("on")
-                title("Predicted solution in lap $i, iteration $j")
+                # title("Predicted solution in lap $i, iteration $j")
                 # end
                 
                 

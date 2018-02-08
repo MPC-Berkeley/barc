@@ -39,7 +39,7 @@ class Localization(object):
     pos                 = 0                     # current position
     psi                 = 0                     # current orientation
     nodes               = array([0])            # all nodes are saved in a matrix
-    N_nodes_poly_back   = 30                    # number of nodes behind current position
+    N_nodes_poly_back   = 20                    # number of nodes behind current position
     N_nodes_poly_front  = 100                    # number of nodes in front
     ds                  = 0                     # distance between nodes
     nPoints             = N_nodes_poly_front+N_nodes_poly_back+1    # number of points for interpolation in total
