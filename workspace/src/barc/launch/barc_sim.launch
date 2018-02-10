@@ -14,6 +14,10 @@
     <node pkg="barc" type="LMPC_node.jl" name="control" output="screen" />
     <!--node pkg="barc" type="open_loop.jl" name="control" output="screen" /-->
 
+    <!-- VISUALIZATION -->
+    <node pkg="barc" type="view_car_trajectory.py" name="visualization" />
+
+
     <!-- SIMULATOR -->
     <node pkg="barc" type="barc_simulator_dyn.jl" name="barc_sim" output="screen" />
 
