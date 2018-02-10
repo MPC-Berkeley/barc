@@ -540,11 +540,11 @@ type MpcModel_convhull
         #     @NLconstraint(mdl, u_Ol[i+1,1]-u_Ol[i,1] >= -0.2)
         # end
 
-        @NLconstraint(mdl, u_Ol[1,2]-uPrev[1,2] <= 0.12)
-        @NLconstraint(mdl, u_Ol[1,2]-uPrev[1,2] >= -0.12)
+        @NLconstraint(mdl, u_Ol[1,2]-uPrev[1,2] <= 0.06)
+        @NLconstraint(mdl, u_Ol[1,2]-uPrev[1,2] >= -0.06)
         for i=1:N-1 # Constraints on u:
-            @NLconstraint(mdl, u_Ol[i+1,2]-u_Ol[i,2] <= 0.12)
-            @NLconstraint(mdl, u_Ol[i+1,2]-u_Ol[i,2] >= -0.12)
+            @NLconstraint(mdl, u_Ol[i+1,2]-u_Ol[i,2] <= 0.06)
+            @NLconstraint(mdl, u_Ol[i+1,2]-u_Ol[i,2] >= -0.06)
         end
 
        
@@ -554,7 +554,7 @@ type MpcModel_convhull
         # Derivative cost
         # ---------------------------------
         @NLexpression(mdl, derivCost, sum{QderivZ[j]*(sum{(z_Ol[i,j]-z_Ol[i+1,j])^2,i=1:N}),j=1:6} +
-                                          QderivU[1]*((uPrev[1,1]-u_Ol[1,1])^2+sum{(u_Ol[i,1]-u_Ol[i+1,1])^2,i=1:N-delay_a-1})+
+                                          QderivU[1]*((uPrev[1,1]-u_Ol[1,1])^2+sum{(u_Ol[i,1]-u_Ol[i+1,1])^2,i=1:N-1})+
                                           QderivU[2]*((uPrev[1,2]-u_Ol[1,2])^2+sum{(u_Ol[i,2]-u_Ol[i+1,2])^2,i=1:N-delay_df-1}))        
 
         # Control Input cost
@@ -609,7 +609,6 @@ type MpcModel_convhull
         #@NLobjective(mdl, Min, derivCost + laneCost + controlCost + terminalCost )#+ slackCost)#+ velocityCost)
 
         @NLobjective(mdl, Min, derivCost + laneCost +  terminalCost + Q_slack[1]*slackVx + Q_slack[2]*slackVy + Q_slack[3]*slackPsidot + Q_slack[4]*slackEpsi + Q_slack[5]*slackEy + Q_slack[6]*slackS) #+ controlCost
-
 
 
         sol_stat=solve(mdl)

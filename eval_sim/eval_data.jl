@@ -96,7 +96,7 @@ function eval_sim(code::AbstractString)
     grid()
 end
 
-function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
+function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool,obstacle::Bool)
 
     log_path_LMPC   = "$(homedir())/simulations/output-LMPC-$(code).jld"
     
@@ -121,7 +121,8 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
     costSlack      = Data["mpcCostSlack"]
     obs_log        = Data["obs_log"]
     sol_u          = Data["sol_u"]
-    #status         = Data["status"]
+    final_counter  = Data["final_counter"]
+    status         = Data["sol_status"]
 
     Nl         = selectedStates.Nl
     Np         = selectedStates.Np
@@ -133,7 +134,9 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
 
     track = create_track(0.4)
 
-    println("prediction horizon N= ", size(pred_sol)[1])
+    pred_horizon = size(pred_sol)[1] - 1
+
+    println("prediction horizon N= ", pred_horizon)
 
     ospe1 = []
         ospe2 = []
@@ -185,7 +188,8 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
     
     for i = laps
 
-        pred_sol_xy = xyObstacle(oldSS,obs_log,1,i,track)  
+        pred_sol_xy, xyPathAngle = xyObstacle(oldSS,obs_log,1,i,track) 
+         
         #println("pred sol= ",pred_sol_xy[:,1])
         # for index=1:buffersize
         #     if status[index,i] == :UserLimit
@@ -215,34 +219,28 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
         cpsi2        = cpsi[1:currentIt,2,i]
         cpsi3        = cpsi[1:currentIt,3,i]
 
-        figure()
-        plot(oldSS_xy[:,1,i],oldSS_xy[:,2,i],"-.") 
-        #plot(oldSS_xy[:,1,i-1],oldSS_xy[:,2,i-1],"ob") 
-        plot(track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")#,track[:,1],track[:,2],"b.")
 
+        if obstacle == false
+            figure()
+            plot(oldSS_xy[:,1,i],oldSS_xy[:,2,i],"-.") 
+            #plot(oldSS_xy[:,1,i-1],oldSS_xy[:,2,i-1],"ob") 
+            plot(track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")#,track[:,1],track[:,2],"b.")
 
-        # for index=1:length(oldSS_xy[:,1,i])
-        #     z_pred = zeros(size(pred_sol)[1],4)
-        #     #z_pred[1,:] = x_est[i,:]
-        #     z_pred[1,:] = oldSS_xy[index,:,i]
-        #     for j=2:size(pred_sol)[1]
-        #         z_pred[j,:] = simModel(z_pred[j-1,:],pred_input[j-1,:,index,i],0.1,0.125,0.125)
-        #     end
-        #     plot(z_pred[:,1],z_pred[:,2],"-+")
-        # end
+        elseif obstacle == true
 
-        # ellfig = figure(1)
-        # ax = ellfig[:add_subplot](1,1,1)
-        # ax[:set_aspect]("equal")
-        # plot(oldSS_xy[:,1,i],oldSS_xy[:,2,i],"og") 
-        # plot(oldSS_xy[:,1,i-1],oldSS_xy[:,2,i-1],"ob") 
-        # plot(track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")#,track[:,1],track[:,2],"b.")
+            ellfig = figure(3)
+            ax = ellfig[:add_subplot](1,1,1)
+            ax[:set_aspect]("equal")
+            plot(oldSS_xy[:,1,i],oldSS_xy[:,2,i],"-.") 
+            # plot(oldSS_xy[:,1,i-1],oldSS_xy[:,2,i-1],"ob") 
+            plot(track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")#,track[:,1],track[:,2],"b.")
 
-        # angle_ell = atan2(pred_sol_xy[2,2]-(pred_sol_xy[2,1]),pred_sol_xy[1,2]-(pred_sol_xy[1,1]))
-        # angle_deg = (angle_ell*180)/pi
+            angle_ell = atan2(pred_sol_xy[2,2]-(pred_sol_xy[2,1]),pred_sol_xy[1,2]-(pred_sol_xy[1,1]))
+            angle_deg = (angle_ell*180)/pi
 
-        # ell1 = patch.Ellipse([pred_sol_xy[1,1],pred_sol_xy[2,1]], 0.4, 0.2, 0)#angle=angle_deg)
-        # ax[:add_artist](ell1)
+            ell1 = patch.Ellipse([pred_sol_xy[1,1],pred_sol_xy[2,1]], 0.2, 0.1, angle = 90)
+            ax[:add_artist](ell1)
+        end
 
 
         grid("on")
@@ -413,7 +411,7 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
 
             for j = 2:2000
 
-
+                solution_status = status[final_counter[i-1]+j]
 
                 vx_pred     = pred_sol[:,1,j,i]
                 vy_pred     = pred_sol[:,2,j,i]
@@ -445,25 +443,64 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
 
                 t = linspace(1,j,j)
 
-                figure(19)
-                clf()
-                plot(oldSS_xy[:,1,i],oldSS_xy[:,2,i],"*") 
-                #plot(oldSS_xy[:,1,i-1],oldSS_xy[:,2,i-1],"ob") 
-                plot(track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")#,track[:,1],track[:,2],"b.")
+                if obstacle == false
+                    figure(19)
+                    clf()
+                    plot(oldSS_xy[:,1,i],oldSS_xy[:,2,i],"*") 
+                    #plot(oldSS_xy[:,1,i-1],oldSS_xy[:,2,i-1],"ob") 
+                    plot(track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")#,track[:,1],track[:,2],"b.")
 
-                #for i=1:4:size(x_est,1)
-                # for index=1:length(oldSS_xy[:,1,i])
-                z_pred = zeros(size(pred_sol)[1],4)
-                    #z_pred[1,:] = x_est[i,:]
-                z_pred[1,:] = oldSS_xy[j,:,i]
-                for j2=2:size(pred_sol)[1]
-                    z_pred[j2,:] = simModel(z_pred[j2-1,:],pred_input[j2-1,:,j,i],0.1,0.125,0.125)
-                end
-                plot(z_pred[:,1],z_pred[:,2],"-+")
-                grid("on")
-                title("Predicted solution in lap $i, iteration $j")
-                # end
+                    #for i=1:4:size(x_est,1)
+                    # for index=1:length(oldSS_xy[:,1,i])
+                    # z_pred = zeros(size(pred_sol)[1],4)
+                    #     #z_pred[1,:] = x_est[i,:]
+                    # z_pred[1,:] = oldSS_xy[j,:,i]
+                    # for j2=2:size(pred_sol)[1]
+                    #     z_pred[j2,:] = simModel(z_pred[j2-1,:],pred_input[j2-1,:,j,i],0.1,0.125,0.125)
+                    # end
+
+
+                    plot(oldSS_xy[j,1,i],oldSS_xy[j,2,i],"og")
+                    grid("on")
+                    # title("Predicted solution in lap $i, iteration $j")
+                    title("Position at iteration $j")
+                    # end
                 
+                elseif obstacle == true
+                    ellfig = figure(19)
+                    clf()
+                    # plot(oldSS_xy[:,1,i],oldSS_xy[:,2,i],"*") 
+                    #plot(oldSS_xy[:,1,i-1],oldSS_xy[:,2,i-1],"ob") 
+                    plot(track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")#,track[:,1],track[:,2],"b.")
+
+                    #for i=1:4:size(x_est,1)
+                    # for index=1:length(oldSS_xy[:,1,i])
+                    # z_pred = zeros(size(pred_sol)[1],4)
+                    #     #z_pred[1,:] = x_est[i,:]
+                    # z_pred[1,:] = oldSS_xy[j,:,i]
+                    # for j2=2:size(pred_sol)[1]
+                    #     z_pred[j2,:] = simModel(z_pred[j2-1,:],pred_input[j2-1,:,j,i],0.1,0.125,0.125)
+                    # end
+
+                    
+                    ax = ellfig[:add_subplot](1,1,1)
+                    ax[:set_aspect]("equal")
+                    plot(oldSS_xy[:,1,i],oldSS_xy[:,2,i],"-.") 
+                    # plot(oldSS_xy[:,1,i-1],oldSS_xy[:,2,i-1],"ob") 
+                    plot(track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")#,track[:,1],track[:,2],"b.")
+
+                    angle_ell = atan2(pred_sol_xy[2,j]-(pred_sol_xy[2,j-1]),pred_sol_xy[1,j]-(pred_sol_xy[1,j-1]))
+                    angle_deg = (angle_ell*180)/pi
+
+                    ell1 = patch.Ellipse([pred_sol_xy[1,j],pred_sol_xy[2,j]], 0.2, 0.1, angle = 0)#angle = angle_deg)
+                    ax[:add_artist](ell1)
+
+                    plot(oldSS_xy[j,1,i],oldSS_xy[j,2,i],"og")
+                    grid("on")
+                    # title("Predicted solution in lap $i, iteration $j")
+                    title("Position at iteration $j")
+                    # end
+                end
                 
                 figure(15)
                 clf()
@@ -473,7 +510,7 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
                 plot(olds2,oldvx2,"b")
                 #plot(olds3,oldvx3,"b")
                 #ylim(findmin(oldTraj.z_pred_sol[:,2,:,i])[1],findmax(oldTraj.z_pred_sol[:,2,:,i])[1])
-                title("State vx in lap $i, iteration $j")
+                title("State vx in lap $i, iteration $j, status = $solution_status")
                 grid("on")
 
                 subplot(222)
@@ -482,7 +519,7 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
                 plot(olds2,oldvy2,"b")
                 #plot(olds3,oldvy3,"b")
                 #ylim(findmin(oldTraj.z_pred_sol[:,3,:,i])[1],findmax(oldTraj.z_pred_sol[:,3,:,i])[1])
-                title("State vy in lap $i, iteration $j ")
+                title("State vy in lap $i, iteration $j, status = $solution_status ")
                 grid("on")
 
                 subplot(223)
@@ -491,7 +528,7 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
                 plot(olds2,oldpsiDot2,"b")
                 #plot(olds3,oldpsiDot3,"b")
                 #ylim(findmin(oldTraj.z_pred_sol[:,4,:,i])[1],findmax(oldTraj.z_pred_sol[:,4,:,i])[1])
-                title("State psiDot in lap $i , iteration $j")
+                title("State psiDot in lap $i , iteration $j, status = $solution_status")
                 grid("on")
 
                 subplot(224)
@@ -500,7 +537,7 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
                 plot(olds2,oldePsi2,"b")
                 #plot(olds3,oldePsi3,"b")
                 #ylim(findmin(oldTraj.z_pred_sol[:,4,:,i])[1],findmax(oldTraj.z_pred_sol[:,4,:,i])[1])
-                title("State ePsi in lap $i, iteration $j ")
+                title("State ePsi in lap $i, iteration $j, status = $solution_status ")
                 grid("on")
 
 
@@ -512,7 +549,7 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
                 plot(olds2,oldeY2,"b")
                 #plot(olds3,oldeY3,"b")
                 #ylim(findmin(oldTraj.z_pred_sol[:,2,:,i])[1],findmax(oldTraj.z_pred_sol[:,2,:,i])[1])
-                title("State eY in lap $i, iteration $j ")
+                title("State eY in lap $i, iteration $j, status $solution_status ")
                 grid("on")
 
                 figure(17)
@@ -523,8 +560,11 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
                 plot(t,velocity,"-*")
                 legend(["velocity"])
 
+
                 subplot(122)
-                plot(linspace(1,size(pred_input)[1],size(pred_input)[1]),pred_input[:,1,j,i],linspace(1,size(pred_input)[1],size(pred_input)[1]),pred_input[:,2,j,i])
+                #plot(linspace(1,size(pred_input)[1],size(pred_input)[1]),pred_input[:,1,j,i],linspace(1,size(pred_input)[1],size(pred_input)[1]),pred_input[:,2,j,i])
+                plot(t,input[1:j,1,i],t,input[1:j,2,i])
+                plot(linspace(length(t),length(t)+pred_horizon,pred_horizon),pred_input[:,1,j,i],"-*",linspace(length(t),length(t)+pred_horizon,pred_horizon),pred_input[:,2,j,i],"-*")
                 legend(["a_x","d_f"])
 
                 title("Comparison between velocity and inputs in lap $i, iteration $j ")
@@ -538,7 +578,9 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool)
                 legend(["e_y"])
 
                 subplot(122)
-                plot(linspace(1,size(pred_input)[1],size(pred_input)[1]),pred_input[:,1,j,i],linspace(1,size(pred_input)[1],size(pred_input)[1]),pred_input[:,2,j,i])
+                # plot(linspace(1,size(pred_input)[1],size(pred_input)[1]),pred_input[:,1,j,i],linspace(1,size(pred_input)[1],size(pred_input)[1]),pred_input[:,2,j,i])
+                plot(t,input[1:j,1,i],t,input[1:j,2,i])
+                plot(linspace(length(t),length(t)+pred_horizon,pred_horizon),pred_input[:,1,j,i],"-*",linspace(length(t),length(t)+pred_horizon,pred_horizon),pred_input[:,2,j,i],"-*")
                 legend(["a_x","d_f"])
 
                 title("Comparison between e_y and inputs in lap $i, iteration $j ")
@@ -1726,16 +1768,17 @@ function xyObstacle(oldSS,obs_log::Array{Float64},obstacle::Int64,lap::Int64,tra
   
     # println("obs= ",obs)
 
-    OrderXY        = 18
-    OrderThetaCurv = 12
+    OrderXY        = 10
+    OrderThetaCurv = 8
 
     
 
-    ds = 0.0625
+    ds = 0.06
 
     s_vec = zeros(OrderXY+1)
 
     pred_sol_xy = zeros(2,buffersize,1)
+    xyPathAngle = []
 
     x_track = track[:,1]
 
@@ -1750,14 +1793,18 @@ function xyObstacle(oldSS,obs_log::Array{Float64},obstacle::Int64,lap::Int64,tra
 
             nodes          = [x_track'; y_track']
             n_nodes        = size(x_track)[1]
-            s_start   = (obs[i,1] - 1)
-            s_end     = (obs[i,1] + 6)
+            #println("number of nodes= ",n_nodes)
+            s_start   = (obs[i,1] - 2)
+            #println("s_start= ",s_start)
+            s_end     = (obs[i,1] + 10)
+            #println("s_end= ",s_end)
             s_nearest = obs[i,1]
 
-            idx_start = 16*(floor(obs[i,1]) - 1) 
-            idx_end   = 16*(floor(obs[i,1]) + 6)
+            idx_start = round(s_start / ds)
+            #println("idx_start= ",idx_start) 
+            idx_end   = round(s_end / ds)
+            #println("idx_end= ",idx_end)
 
-            n_poly = 113
 
             # if idx_start>n_nodes
             #   idx_start=idx_start%n_nodes
@@ -1781,6 +1828,10 @@ function xyObstacle(oldSS,obs_log::Array{Float64},obstacle::Int64,lap::Int64,tra
 
             nodes_X = vec(nodes_XY[1,:])
             nodes_Y = vec(nodes_XY[2,:])
+            #println("length node xy= ",length(nodes_XY[1,:]))
+
+            n_poly = round(Int,length(nodes_XY[1,:]))
+            #println("n_poly= ",n_poly)
 
             
 
@@ -1872,5 +1923,5 @@ function xyObstacle(oldSS,obs_log::Array{Float64},obstacle::Int64,lap::Int64,tra
         
     end
 
-    return pred_sol_xy
+    return pred_sol_xy, xyPathAngle
 end

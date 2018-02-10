@@ -134,6 +134,7 @@ function main()
     log_step_diff               = zeros(10000,5)
     log_t_solv                  = zeros(10000)
     log_sol_status              = Array(Symbol,10000)
+    log_final_counter           = zeros(30)
 
     selStates_log               = zeros(selectedStates.Nl*selectedStates.Np,6,buffersize,30)   #array to log the selected states in every iteration of every lap
     statesCost_log              = zeros(selectedStates.Nl*selectedStates.Np,buffersize,30)     #array to log the selected states' costs in every iteration of every lap
@@ -274,6 +275,8 @@ function main()
             if lapStatus.nextLap                # if we are switching to the next lap...
                 println("Finishing one lap at iteration ",i)
                 # Important: lapStatus.currentIt is now the number of points up to s > s_target -> -1 in saveOldTraj
+
+                log_final_counter[lapStatus.currentLap-1] = k
 
                 oldSS.oldCost[lapStatus.currentLap-1] = lapStatus.currentIt
                 cost2target                           = zeros(buffersize) # array containing the cost to arrive from each point of the old trajectory to the target
@@ -516,7 +519,7 @@ function main()
                 log_mpcCostSlack[lapStatus.currentIt,:,lapStatus.currentLap]= mpcSol.costSlack
             end
 
-            #log_status[lapStatus.currentIt,lapStatus.currentLap]        = mpcSol.solverStatus
+            log_status[lapStatus.currentIt,lapStatus.currentLap]        = mpcSol.solverStatus
 
             k = k + 1       # counter
             log_sol_status[k]       = mpcSol.solverStatus
@@ -544,6 +547,7 @@ function main()
                 #log_epsalpha[:,lapStatus.currentIt,lapStatus.currentLap]    = mpcSol.eps_alpha
             end
 
+
             # Count one up:
             lapStatus.currentIt += 1
         else
@@ -565,8 +569,7 @@ function main()
                     "t_solv",log_t_solv[1:k],"sol_status",log_sol_status[1:k],"selectedStates",selectedStates,"one_step_error",log_onestep,
                     "oldSS",oldSS,"selStates",selStates_log,"statesCost",statesCost_log,"pred_sol",log_predicted_sol,"pred_input",log_predicted_input,"lapStatus",lapStatus,
                     "posInfo",posInfo,"eps_alpha",log_epsalpha,"cvx",log_cvx,"cvy",log_cvy,"cpsi",log_cpsi,"oldSS_xy",oldSS.oldSS_xy,"input",log_input,
-                    "mpcCost",log_mpcCost,"mpcCostSlack",log_mpcCostSlack,"obs_log",log_obs)
-                    #,"status",log_status)
+                    "mpcCost",log_mpcCost,"mpcCostSlack",log_mpcCostSlack,"obs_log",log_obs,"final_counter",log_final_counter[1:lapStatus.currentLap])#,"status",log_status)
     println("Exiting LMPC node. Saved data to $log_path.")
 
     println("number of same s in path following = ",same_sPF)
