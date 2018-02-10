@@ -7,9 +7,9 @@
     <param name="I_z" type="double" value="0.24" />
 
     <!-- Machines -->
-    <machine name="odroid" address="192.168.10.176" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid.sh"/>
+    <machine name="odroid" address="10.0.0.1" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid.sh"/>
 
-    <machine name="this-pc" address="192.168.10.147" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc.sh"/>
+    <machine name="this-pc" address="10.0.0.72" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc.sh"/>
     
     <!-- START NODES -->
     <!-- Simulator -->

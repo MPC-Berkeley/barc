@@ -46,11 +46,11 @@ end
 function InitializeParameters(mpcParams::MpcParams,mpcParams_pF::MpcParams,trackCoeff::TrackCoeff,modelParams::ModelParams,
                               posInfo::PosInfo,oldTraj::OldTrajectory,mpcCoeff::MpcCoeff,lapStatus::LapStatus,buffersize::Int64,
                               obstacle::Obstacle,selectedStates::SelectedStates,oldSS::SafeSetData)
-    selectedStates.simulator = true     # set this to TRUE if SIMULATOR is in use, set this to FALSE if BARC is in use
+    selectedStates.simulator = false     # set this to TRUE if SIMULATOR is in use, set this to FALSE if BARC is in use
 
     if selectedStates.simulator == false   # if the BARC is in use
 
-        selectedStates.Np           = 25                           # Number of points to take from each previous trajectory to build the convex hull
+        selectedStates.Np           = 15                           # Number of points to take from each previous trajectory to build the convex hull
         selectedStates.Nl           = 2                             # Number of previous laps to include in the convex hull
         selectedStates.shift        = 8
         Nl                          = selectedStates.Nl
