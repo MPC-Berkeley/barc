@@ -47,7 +47,7 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_pF::MpcParams,track
                               posInfo::PosInfo,oldTraj::OldTrajectory,mpcCoeff::MpcCoeff,lapStatus::LapStatus,buffersize::Int64,
                               obstacle::Obstacle,selectedStates::SelectedStates,oldSS::SafeSetData)
     selectedStates.simulator = true     # set this to TRUE if SIMULATOR is in use, set this to FALSE if BARC is in use
-    obstacle.obstacle_tuning = false
+    obstacle.obstacle_tuning = true    # set this to TRUE if the tuning for obstacle avoidance is needed, FALSE if not needed
 
     if selectedStates.simulator == false   # if the BARC is in use
 
@@ -128,9 +128,9 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_pF::MpcParams,track
 
         if obstacle.obstacle_tuning == true
 
-            selectedStates.Np           = 15                           # Number of points to take from each previous trajectory to build the convex hull
+            selectedStates.Np           = 16                           # Number of points to take from each previous trajectory to build the convex hull
             selectedStates.Nl           = 2                             # Number of previous laps to include in the convex hull
-            selectedStates.shift        = 5
+            selectedStates.shift        = 8
             Nl                          = selectedStates.Nl
             selectedStates.selStates    = zeros(Nl*selectedStates.Np,6)  
             selectedStates.statesCost   = zeros(Nl*selectedStates.Np)
@@ -208,15 +208,15 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_pF::MpcParams,track
     lapStatus.currentLap        = 1         # initialize lap number
     lapStatus.currentIt         = 0         # current iteration in lap
 
-    obstacle.obstacle_active    = false     # true if we have to consider the obstacles in the optimization problem
-    obstacle.lap_active         = 1000         # number of the first lap in which the obstacles are used
+    obstacle.obstacle_active    = false     # true if we have to consider the obstacles in the optimization problem (NEVER set true here, the LMPC_node.jl script will set this value to true as soon as the current lap is equal to obstacle.lap_active)
+    obstacle.lap_active         = 4         # number of the first lap in which the obstacles are used
     obstacle.obs_detect         = 10         # maximum distance at which we can detect obstacles (in terms of s!!)
     obstacle.n_obs              = 1         # number of obstacles
-    obstacle.s_obs_init         = [14]    # initial s coordinate of each obstacle
+    obstacle.s_obs_init         = [15]    # initial s coordinate of each obstacle
     obstacle.ey_obs_init        = [-0.3]       # initial ey coordinate of each obstacle
     obstacle.v_obs_init         = [0]       # initial velocity of each obstacles
-    obstacle.r_s                = 0.2#0.5
-    obstacle.r_ey               = 0.1#0.2
+    obstacle.r_s                = 0.4#0.5
+    obstacle.r_ey               = 0.2#0.2
     obstacle.inv_step           = 0         # number of step of invariance required for the safe set
 end
 

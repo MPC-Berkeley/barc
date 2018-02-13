@@ -419,13 +419,19 @@ function main()
 
                     index1=find(obs_curr[lapStatus.currentIt,1,:].< obstacle.obs_detect+posInfo.s-posInfo.s_target)  # look for obstacles that could cause problems
 
-                    obs_temp[1,1,index1] = posInfo.s_target + obs_curr[lapStatus.currentIt,1,index1]
-
+                    if size(index1)[1] > 0  # if at least one obstacle has been identified
+                        obs_temp[1,1,index1] = posInfo.s_target + obs_curr[lapStatus.currentIt,1,index1]  # increase the s of s_target so that the algorithm identifies them
+                    end
                 end
 
-                dist,index=findmin(sqrt((obs_temp[1,1,:]-zCurr[lapStatus.currentIt,6]).^2 + (obs_temp[1,2,:]-zCurr[lapStatus.currentIt,5]).^2))
+
+                dist,index=findmin(sqrt((obs_temp[1,1,:]-zCurr[lapStatus.currentIt,6]).^2 + (obs_temp[1,2,:]-zCurr[lapStatus.currentIt,5]).^2))  # find the closest obstacle using the equation of the ellipse. Closest in terms of s and e_y!!
 
                 obs_near = obs_temp[1,:,index]
+
+                # println("current s= ",posInfo.s)
+                # println("closest obstacle= ",obs_near[1,1,1])
+                # println("distance= ",dist)
             end
 
             # Find coefficients for cost and constraints
