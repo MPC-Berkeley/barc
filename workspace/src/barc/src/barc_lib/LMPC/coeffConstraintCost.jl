@@ -18,11 +18,7 @@
 
 function coeffConstraintCost(oldTraj::OldTrajectory, mpcCoeff::MpcCoeff, posInfo::PosInfo, mpcParams::MpcParams,lapStatus::LapStatus,
                              selectedStates::SelectedStates,oldSS::SafeSetData,obs::Array{Float64},obstacle::Obstacle)
-    # this computes the coefficients for the cost and constraints
-
-    # Outputs: 
-    # coeffConst
-    # coeffCost
+ 
 
     # Read Inputs
     s               = posInfo.s
@@ -124,8 +120,8 @@ function coeffConstraintCost(oldTraj::OldTrajectory, mpcCoeff::MpcCoeff, posInfo
                     #println("flag**************************************************************************************************************")
                     index = find(ellipse_check.<=1)     # find all the states in the ellipse 
                     
-                    mpcParams.Q_obs[i=(j*Np)+(index[1]-obstacle.inv_step)+1:(j+1)*Np] =  10   # and set the values of the weight to 10, so that they are excluded from optimization
-                    println("Q_obs= ",mpcParams.Q_obs)
+                    mpcParams.Q_obs[i=(j*Np)+(index[1]-obstacle.inv_step)+1:(j+1)*Np] =  100   # and set the values of the weight to 100, so that they are excluded from optimization
+                    #println("Q_obs= ",mpcParams.Q_obs)
                 end
             end
         end     

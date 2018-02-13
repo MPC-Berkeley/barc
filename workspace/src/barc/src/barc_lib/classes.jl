@@ -140,6 +140,7 @@ type Obstacle
     r_s::Float64                # radius on the s coordinate of the ellipse describing the obstacles
     r_ey::Float64               # radius on the ey coordinate of the ellipse describing the obstacle 
     inv_step::Int64             # number of step of invariance required for the safe set
+    obstacle_tuning::Bool       # true if we are using the tuning made for obstacle avoidance
 
-    Obstacle(obstacle_active=false,lap_active=10,obs_detect=1.0,n_obs=1,s_obs_init=Float64[],ey_obs_init=Float64[],v_obs_init=Float64[],r_s=0.5,r_ey=0.3,inv_step=1) = new(obstacle_active,lap_active,obs_detect,n_obs,s_obs_init,ey_obs_init,v_obs_init,r_s,r_ey,inv_step)
+    Obstacle(obstacle_active=false,lap_active=10,obs_detect=1.0,n_obs=1,s_obs_init=Float64[],ey_obs_init=Float64[],v_obs_init=Float64[],r_s=0.5,r_ey=0.3,inv_step=1,obstacle_tuning=false) = new(obstacle_active,lap_active,obs_detect,n_obs,s_obs_init,ey_obs_init,v_obs_init,r_s,r_ey,inv_step,obstacle_tuning)
 end

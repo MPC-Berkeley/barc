@@ -238,7 +238,7 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool,obst
             angle_ell = atan2(pred_sol_xy[2,2]-(pred_sol_xy[2,1]),pred_sol_xy[1,2]-(pred_sol_xy[1,1]))
             angle_deg = (angle_ell*180)/pi
 
-            ell1 = patch.Ellipse([pred_sol_xy[1,1],pred_sol_xy[2,1]], 0.2, 0.1, angle = 90)
+            ell1 = patch.Ellipse([pred_sol_xy[1,1],pred_sol_xy[2,1]], 0.4, 0.2, angle = 90)
             ax[:add_artist](ell1)
         end
 
@@ -489,10 +489,10 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool,obst
                     # plot(oldSS_xy[:,1,i-1],oldSS_xy[:,2,i-1],"ob") 
                     plot(track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")#,track[:,1],track[:,2],"b.")
 
-                    angle_ell = atan2(pred_sol_xy[2,j]-(pred_sol_xy[2,j-1]),pred_sol_xy[1,j]-(pred_sol_xy[1,j-1]))
+                    angle_ell = atan2(pred_sol_xy[2,j+1]-(pred_sol_xy[2,j-1]),pred_sol_xy[1,j+1]-(pred_sol_xy[1,j-1]))
                     angle_deg = (angle_ell*180)/pi
 
-                    ell1 = patch.Ellipse([pred_sol_xy[1,j],pred_sol_xy[2,j]], 0.2, 0.1, angle = 0)#angle = angle_deg)
+                    ell1 = patch.Ellipse([pred_sol_xy[1,j],pred_sol_xy[2,j]], 0.4, 0.2, angle = angle_deg)
                     ax[:add_artist](ell1)
 
                     plot(oldSS_xy[j,1,i],oldSS_xy[j,2,i],"og")
@@ -548,7 +548,15 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool,obst
                 plot(olds,oldeY,"b")
                 plot(olds2,oldeY2,"b")
                 #plot(olds3,oldeY3,"b")
-                #ylim(findmin(oldTraj.z_pred_sol[:,2,:,i])[1],findmax(oldTraj.z_pred_sol[:,2,:,i])[1])
+
+                if obstacle == true
+                    for obs_ind = 1:size(obs_log)[3]
+                        if obs_log[j,1,obs_ind,i] < max(olds[end],olds2[end])
+                            plot(obs_log[j,1,obs_ind,i],obs_log[j,2,obs_ind,i],"ko")
+                        end
+                    end
+                end
+
                 title("State eY in lap $i, iteration $j, status $solution_status ")
                 grid("on")
 

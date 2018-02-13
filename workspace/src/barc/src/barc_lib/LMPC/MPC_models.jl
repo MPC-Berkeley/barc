@@ -1140,7 +1140,7 @@ type MpcModel_obstacle
 
         # Soft Constraint on the Obstacle
         # --------------------------------
-        @NLexpression(mdl, obstacleSlackCost, 0.1*sum{-log(((z_Ol[i,6]-obs[i,1])/r_s)^2 + ((z_Ol[i,5]-obs[i,2])/r_ey)^2 -1),i=1:N+1})
+        @NLexpression(mdl, obstacleSlackCost, 1*sum{-log(((z_Ol[i,6]-obs[i,1])/r_s)^2 + ((z_Ol[i,5]-obs[i,2])/r_ey)^2 -1),i=1:N+1})
 
 
         # Velocity Cost
