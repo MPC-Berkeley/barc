@@ -564,7 +564,7 @@ type MpcModel_convhull
 
         # Lane cost (soft)
         # ---------------------------------
-        @NLexpression(mdl, laneCost, Q_lane*sum{40.0*eps_lane[i]+300.0*eps_lane[i]^2 ,i=2:N+1})
+        @NLexpression(mdl, laneCost, Q_lane*sum{10.0*eps_lane[i]+100.0*eps_lane[i]^2 ,i=2:N+1})
 
 
         # Terminal Cost
@@ -999,7 +999,7 @@ type MpcModel_obstacle
 
         z_lb_6s = ones(mpcParams.N+1,1)*[0.1 -Inf -Inf -Inf -Inf -Inf -Inf]                      # lower bounds on states
         z_ub_6s = ones(mpcParams.N+1,1)*[3.5  Inf Inf  Inf  Inf  Inf Inf]                      # upper bounds
-        u_lb_6s = ones(mpcParams.N,1) * [-1.0  -0.3]                                         # lower bounds on steering
+        u_lb_6s = ones(mpcParams.N,1) * [-1.3  -0.3]                                         # lower bounds on steering
         u_ub_6s = ones(mpcParams.N,1) * [2.0   0.3]                                         # upper bounds
 
         for i=1:2
