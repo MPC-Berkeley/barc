@@ -168,47 +168,7 @@ function solveMpcProblem_convhull(m::MpcModel_convhull,mpcSol::MpcSol,mpcCoeff::
     nothing
 end
 
-function solveMpcProblem_test(m::MpcModel_test,mpcSol::MpcSol,mpcCoeff::MpcCoeff,mpcParams::MpcParams,trackCoeff::TrackCoeff,lapStatus::LapStatus,
-                                  posInfo::PosInfo,modelParams::ModelParams,zCurr::Array{Float64},uPrev::Array{Float64},selectedStates::SelectedStates)
 
- # Load Parameters
-    sol_status::Symbol
-    sol_u::Array{Float64,2}
-    sol_z::Array{Float64,2}
-
-    selStates       = selectedStates.selStates::Array{Float64,2}
-    statesCost      = selectedStates.statesCost::Array{Float64,1}
-
-    # Update current initial condition, curvature and System ID coefficients
-    setvalue(m.z0,zCurr)
-    setvalue(m.uPrev,uPrev)
-    setvalue(m.c_Vx,mpcCoeff.c_Vx)            # System ID coefficients
-    setvalue(m.c_Vy,mpcCoeff.c_Vy)
-    setvalue(m.c_Psi,mpcCoeff.c_Psi)
-    setvalue(m.coeff,trackCoeff.coeffCurvature)       # Track curvature
-    setvalue(m.selStates,selStates)
-    setvalue(m.statesCost,statesCost)
-
-     # Solve Problem and return solution
-    sol_status  = solve(m.mdl)
-    sol_u       = getvalue(m.u_Ol)
-    sol_z       = getvalue(m.z_Ol)
-
-    # export data
-    mpcSol.a_x = sol_u[1,1]
-    mpcSol.d_f = sol_u[1,2]
-    mpcSol.u   = sol_u
-    mpcSol.z   = sol_z
-    #mpcSol.eps_alpha = getvalue(m.eps_alpha)
-    mpcSol.solverStatus = sol_status
-    mpcSol.cost = zeros(6)
-    #mpcSol.cost = [0,getvalue(m.terminalCost),getvalue(m.controlCost),getvalue(m.derivCost),0,getvalue(m.laneCost)]
-    #println("o,terminal,control,deriv,0,lane= ",mpcSol.cost)
-
-    println("Solved, status = $sol_status")
-
-    nothing
-end
 
 function solveMpcProblem_obstacle(m::MpcModel_obstacle,mpcSol::MpcSol,mpcCoeff::MpcCoeff,mpcParams::MpcParams,trackCoeff::TrackCoeff,lapStatus::LapStatus,
                                   posInfo::PosInfo,modelParams::ModelParams,zCurr::Array{Float64},uPrev::Array{Float64},selectedStates::SelectedStates,

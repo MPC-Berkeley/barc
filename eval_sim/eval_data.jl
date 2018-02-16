@@ -443,27 +443,30 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool,obst
 
                 t = linspace(1,j,j)
 
+                s_ey_pred = zeros(pred_horizon+1,2)
+
+                s_ey_pred[:,1] = pred_sol[:,6,j,i]
+                s_ey_pred[:,2] = pred_sol[:,5,j,i]
+
+                #println(s_ey_pred)
+
+
+                xy_predictions = xyPrediction(oldSS,s_ey_pred,track)
+
+                #println("xyPredictions= ",xy_predictions)
+
+
                 if obstacle == false
                     figure(19)
                     clf()
-                    plot(oldSS_xy[:,1,i],oldSS_xy[:,2,i],"*") 
+                    plot(oldSS_xy[:,1,i],oldSS_xy[:,2,i])
+                    plot(xy_predictions[1,:]',xy_predictions[2,:]',"*")
                     #plot(oldSS_xy[:,1,i-1],oldSS_xy[:,2,i-1],"ob") 
                     plot(track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")#,track[:,1],track[:,2],"b.")
-
-                    #for i=1:4:size(x_est,1)
-                    # for index=1:length(oldSS_xy[:,1,i])
-                    # z_pred = zeros(size(pred_sol)[1],4)
-                    #     #z_pred[1,:] = x_est[i,:]
-                    # z_pred[1,:] = oldSS_xy[j,:,i]
-                    # for j2=2:size(pred_sol)[1]
-                    #     z_pred[j2,:] = simModel(z_pred[j2-1,:],pred_input[j2-1,:,j,i],0.1,0.125,0.125)
-                    # end
-
-
-                    plot(oldSS_xy[j,1,i],oldSS_xy[j,2,i],"og")
+                    #plot(oldSS_xy[j,1,i],oldSS_xy[j,2,i],"og")
                     grid("on")
                     # title("Predicted solution in lap $i, iteration $j")
-                    title("Position at iteration $j")
+                    title("Prediction at iteration $j, status = $solution_status")
                     # end
                 
                 elseif obstacle == true
@@ -557,7 +560,7 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool,obst
                     end
                 end
 
-                title("State eY in lap $i, iteration $j, status $solution_status ")
+                title("State eY in lap $i, iteration $j, status = $solution_status ")
                 grid("on")
 
                 figure(17)
@@ -611,7 +614,7 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool,obst
 
                 
 
-                 sleep(1)
+                sleep(0.5)
             end
         end
     end
@@ -809,7 +812,7 @@ function plot_v_over_xy(code::AbstractString,lap::Int64)
 
     figure()
     plot(track[:,1],track[:,2],"b.",track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")
-    scatter(pos_info.z[idx,6],pos_info.z[idx,7],c=pos_info.z[idx,8],cmap=ColorMap("jet"),edgecolors="face",vmin=0.5,vmax=2.0)
+    scatter(pos_info.z[idx,6],pos_info.z[idx,7],c=pos_info.z[idx,8],cmap=ColorMap("jet"),edgecolors="face",vmin=0.5,vmax=3.0)
     grid(1)
     title("x-y-view")
     axis("equal")
@@ -1555,7 +1558,7 @@ function create_track(w)
     y_l = [w]
     x_r = [0.0]           # starting point
     y_r = [-w]
-    ds = 0.06
+    ds = 0.03
 
     theta = [0.0]
 
@@ -1595,17 +1598,29 @@ function create_track(w)
 
     # SIMPLE GOGGLE TRACK
 
-    add_curve(theta,30,0)
-    add_curve(theta,40,-pi/2)
-    add_curve(theta,10,0)
-    add_curve(theta,40,-pi/2)
-    add_curve(theta,20,pi/10)
-    add_curve(theta,30,-pi/5)
-    add_curve(theta,20,pi/10)
-    add_curve(theta,40,-pi/2)
-    add_curve(theta,10,0)
-    add_curve(theta,40,-pi/2)
-    add_curve(theta,35,0)
+    # add_curve(theta,30,0)
+    # add_curve(theta,40,-pi/2)
+    # add_curve(theta,10,0)
+    # add_curve(theta,40,-pi/2)
+    # add_curve(theta,20,pi/10)
+    # add_curve(theta,30,-pi/5)
+    # add_curve(theta,20,pi/10)
+    # add_curve(theta,40,-pi/2)
+    # add_curve(theta,10,0)
+    # add_curve(theta,40,-pi/2)
+    # add_curve(theta,35,0)
+
+    add_curve(theta,60,0)
+    add_curve(theta,80,-pi/2)
+    add_curve(theta,20,0)
+    add_curve(theta,80,-pi/2)
+    add_curve(theta,40,pi/10)
+    add_curve(theta,60,-pi/5)
+    add_curve(theta,40,pi/10)
+    add_curve(theta,80,-pi/2)
+    add_curve(theta,20,0)
+    add_curve(theta,80,-pi/2)
+    add_curve(theta,75,0)
 
     # SIMPLE GOOGLE TRACK FOR 3110
 
@@ -1781,7 +1796,7 @@ function xyObstacle(oldSS,obs_log::Array{Float64},obstacle::Int64,lap::Int64,tra
 
     
 
-    ds = 0.06
+    ds = 0.03
 
     s_vec = zeros(OrderXY+1)
 
@@ -1802,9 +1817,9 @@ function xyObstacle(oldSS,obs_log::Array{Float64},obstacle::Int64,lap::Int64,tra
             nodes          = [x_track'; y_track']
             n_nodes        = size(x_track)[1]
             #println("number of nodes= ",n_nodes)
-            s_start   = (obs[i,1] - 2)
+            s_start   = (obs[i,1] - 1)
             #println("s_start= ",s_start)
-            s_end     = (obs[i,1] + 10)
+            s_end     = (obs[i,1] + 5)
             #println("s_end= ",s_end)
             s_nearest = obs[i,1]
 
@@ -1932,4 +1947,174 @@ function xyObstacle(oldSS,obs_log::Array{Float64},obstacle::Int64,lap::Int64,tra
     end
 
     return pred_sol_xy, xyPathAngle
+end
+
+
+
+
+
+function xyPrediction(oldSS,s_ey_pred::Array{Float64},track::Array{Float64})
+
+    
+    pred_horizon = size(s_ey_pred)[1] 
+
+
+    OrderXY        = 10
+    OrderThetaCurv = 8
+
+    
+
+    ds = 0.03
+
+    s_vec = zeros(OrderXY+1)
+
+    pred_sol_xy = zeros(2,pred_horizon,1)
+    xyPathAngle = []
+
+    x_track = track[:,1]
+
+    y_track = track[:,2]
+
+    #println("x_track= ",x_track)
+    # println("nodes= ",size([x_track'; y_track']))
+    for i = 1:pred_horizon
+
+
+        
+
+            nodes          = [x_track'; y_track']
+            n_nodes        = size(x_track)[1]
+            #println("number of nodes= ",n_nodes)
+            s_start   = (s_ey_pred[i,1] - 1)
+            #println("s_start= ",s_start)
+            s_end     = (s_ey_pred[i,1] + 5)
+            #println("s_end= ",s_end)
+            s_nearest = s_ey_pred[i,1]
+
+            idx_start = round(s_start / ds)
+            #println("idx_start= ",idx_start) 
+            idx_end   = round(s_end / ds)
+            #println("idx_end= ",idx_end)
+
+
+            # if idx_start>n_nodes
+            #   idx_start=idx_start%n_nodes
+            #   idx_end=idx_end%n_nodes
+            # end
+            
+
+
+            if idx_start<=0
+                 nodes_XY = hcat(nodes[:,n_nodes+idx_start:n_nodes],nodes[:,1:idx_end])       # then stack the end and beginning of a lap together
+            #     #nodes_Y = hcat(nodes[2,n_nodes+idx_start:n_nodes],nodes[2,1:idx_end])
+               
+                 #idx_start = n_nodes+idx_start
+            elseif idx_end>=n_nodes                   # if the end is behind the finish line
+                 nodes_XY = hcat(nodes[:,idx_start:n_nodes],nodes[:,1:idx_end-n_nodes])       # then stack the end and beginning of the lap together
+                 #nodes_Y = hcat(nodes[2,idx_start:n_nodes],nodes[2,1:idx_end-n_nodes])
+            else                               # if we are somewhere in the middle of the track
+                nodes_XY = nodes[:,idx_start:idx_end]     # then just use the nodes from idx_start to end for interpolation
+             #nodes_Y = nodes[2,idx_start:idx_end]
+            end
+
+
+            nodes_X = vec(nodes_XY[1,:])
+            nodes_Y = vec(nodes_XY[2,:])
+            #println("length node xy= ",length(nodes_XY[1,:]))
+
+            n_poly = round(Int,length(nodes_XY[1,:]))
+            #println("n_poly= ",n_poly)
+
+            
+
+            itp_matrix = zeros(n_poly,OrderXY+1)
+
+            for ind=1:n_poly
+                for k=0:OrderXY
+
+                    itp_matrix[ind,OrderXY+1-k] = (s_start + (ind-1)*ds)^k
+                end
+            end
+
+            itp_matrix_curv = zeros(n_poly,OrderThetaCurv+1)
+
+            for ind=1:n_poly
+                for k=0:OrderThetaCurv
+
+                    itp_matrix_curv[ind,OrderThetaCurv+1-k] = (s_start + (ind-1)*ds)^k
+                end
+            end
+            
+           # println("size of nodes x= ",size(nodes_X))
+           # println("size of itpmatrix= ",size(itp_matrix))
+           # println("s start= ",s_start)
+           # println("s end= ",s_end)
+
+            coeffY = itp_matrix\nodes_Y
+            coeffX = itp_matrix\nodes_X
+           
+
+            b_curvature_vector = zeros(n_poly)
+
+            Counter = 1
+            
+
+            for ind = 0:n_poly-1
+                s_expression_der  = zeros(OrderXY+1)
+                s_expression_2der = zeros(OrderXY+1)
+                s_poly       = s_start + ind*ds
+                for k=0:OrderXY-1
+                    s_expression_der[OrderXY-k] = (k+1)*s_poly^k
+                end
+                for k=0:OrderXY-2
+                    s_expression_2der[OrderXY-1-k] = (2+k*(3+k))*s_poly^k
+                end
+
+                dX  = dot(coeffX,s_expression_der)
+                dY  = dot(coeffY,s_expression_der)
+                ddX = dot(coeffX,s_expression_2der)
+                ddY = dot(coeffY,s_expression_2der)
+
+                curvature = (dX*ddY-dY*ddX)/((dX^2+dY^2)^(3/2)) #standard curvature formula
+
+                b_curvature_vector[Counter] = curvature
+
+                Counter = Counter + 1
+            end
+
+
+            
+            coeffCurv  = itp_matrix_curv\b_curvature_vector
+
+            s0 =  s_ey_pred[i,1]+0.001
+          
+            s_vec = zeros(OrderXY+1)::Array{Float64}
+            sdot_vec = zeros(OrderXY+1)::Array{Float64}
+
+            for k = 1:OrderXY+1
+                    s_vec[k] = s_ey_pred[i,1]^(OrderXY-k+1)
+                    
+            end
+            for k = 1:OrderXY
+                    sdot_vec[k] = (OrderXY+1-k)* s_ey_pred[i,1]^(OrderXY-k)
+            end
+
+
+            XCurve  = dot(coeffX,s_vec)
+            YCurve  = dot(coeffY,s_vec)
+
+            dX = dot(coeffX,sdot_vec)
+            dY = dot(coeffY,sdot_vec)      
+
+            
+            xyPathAngle = atan2(dY,dX)
+
+            pred_sol_xy[2,i] = YCurve + s_ey_pred[i,2]*cos(xyPathAngle)
+            pred_sol_xy[1,i] = XCurve - s_ey_pred[i,2]*sin(xyPathAngle)
+
+        
+    end
+
+
+    return pred_sol_xy
 end

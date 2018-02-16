@@ -53,7 +53,7 @@ function coeffConstraintCost(oldTraj::OldTrajectory, mpcCoeff::MpcCoeff, posInfo
     end
 
     if lapStatus.currentLap >= 5
-        selected_laps[Nl] = indmin(oldSS.oldCost[1:lapStatus.currentLap-2])      # and the best from all previous laps
+        selected_laps[Nl] = indmin(oldSS.oldCost[1:lapStatus.currentLap-Nl])      # and the best from all previous laps 
     end
 
     # Select the old data
@@ -95,6 +95,7 @@ function coeffConstraintCost(oldTraj::OldTrajectory, mpcCoeff::MpcCoeff, posInfo
 
     idx_s = findmin(DistS,1)[2]              # contains both indices for the closest distances for both oldS !!
     idx_s2= findmin(DistS2,1)[2]
+
 
     idx_s2 = idx_s2 + selectedStates.shift
 
