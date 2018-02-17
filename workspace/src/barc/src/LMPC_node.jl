@@ -100,9 +100,6 @@ function main()
         mdl_convhull = MpcModel_convhull(mpcParams,mpcCoeff,modelParams,trackCoeff,selectedStates)
     end
 
-    
-   
-    #mdl_test     = MpcModel_test(mpcParams,mpcCoeff,modelParams,trackCoeff,selectedStates)
     mdl_obstacle = MpcModel_obstacle(mpcParams,mpcCoeff,modelParams,trackCoeff,selectedStates,obstacle)
 
 
@@ -213,7 +210,7 @@ function main()
 
     uPrev = zeros(10,2)     # saves the last 10 inputs (1 being the most recent one)
 
-    n_pf = 3               # number of first path-following laps (needs to be at least 2)
+    n_pf = 4               # number of first path-following laps (needs to be at least 2)
 
     acc0 = 0.0
     opt_count = 0
@@ -289,6 +286,9 @@ function main()
 
                 if lapStatus.currentLap == obstacle.lap_active            # if its time to put the obstacles in the track
                     obstacle.obstacle_active = true    # tell the system to put the obstacles on the track
+                end
+                if lapStatus.currentLap == obstacle.lap_deactivate 
+                    obstacle.obstacle_active = false
                 end
                 if lapStatus.currentLap > obstacle.lap_active             # initialize current obstacle states with final states from the previous lap
                     obs_curr[1,:,:] = obs_curr[i,:,:]
@@ -459,9 +459,7 @@ function main()
                     solveMpcProblem(mdl,mpcSol,mpcCoeff,mpcParams,trackCoeff,lapStatus,posInfo,modelParams,zCurr[i,:]',uPrev)
                 elseif selectedStates.version == false && obstacle.obstacle_active == false
                     solveMpcProblem_convhull(mdl_convhull,mpcSol,mpcCoeff,mpcParams,trackCoeff,lapStatus,posInfo,modelParams,zCurr[i,:]',uPrev,selectedStates)
-                    #solveMpcProblem_test(mdl_test,mpcSol,mpcCoeff,mpcParams,trackCoeff,lapStatus,posInfo,modelParams,zCurr[i,:]',uPrev,selectedStates)
                 elseif selectedStates.version == false && obstacle.obstacle_active == true
-
                     solveMpcProblem_obstacle(mdl_obstacle,mpcSol,mpcCoeff,mpcParams,trackCoeff,lapStatus,posInfo,modelParams,zCurr[i,:]',uPrev,selectedStates,obs_near,obstacle)
 
                 end
