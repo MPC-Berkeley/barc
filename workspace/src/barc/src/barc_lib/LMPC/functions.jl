@@ -48,11 +48,15 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_pF::MpcParams,track
                               obstacle::Obstacle,selectedStates::SelectedStates,oldSS::SafeSetData)
 
     selectedStates.simulator = false     # set this to TRUE if SIMULATOR is in use, set this to FALSE if BARC is in use
-    obstacle.obstacle_tuning = true    # set this to TRUE if the tuning for obstacle avoidance is needed, FALSE if not needed
+    obstacle.obstacle_tuning = false    # set this to TRUE if the tuning for obstacle avoidance is needed, FALSE if not needed
 
     if selectedStates.simulator == false   # if the BARC is in use
 
-        selectedStates.Np           = 15                           # Number of points to take from each previous trajectory to build the convex hull
+        selectedStates.Nl_sID       = 3
+        selectedStates.lambda1      = 0
+        selectedStates.lambda2      = 0
+        selectedStates.lambda3      = 0
+        selectedStates.Np           = 20                           # Number of points to take from each previous trajectory to build the convex hull
         selectedStates.Nl           = 2                             # Number of previous laps to include in the convex hull
         selectedStates.shift        = 8
         Nl                          = selectedStates.Nl
