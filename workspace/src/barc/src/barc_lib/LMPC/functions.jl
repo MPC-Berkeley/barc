@@ -46,8 +46,9 @@ end
 function InitializeParameters(mpcParams::MpcParams,mpcParams_pF::MpcParams,trackCoeff::TrackCoeff,modelParams::ModelParams,
                               posInfo::PosInfo,oldTraj::OldTrajectory,mpcCoeff::MpcCoeff,lapStatus::LapStatus,buffersize::Int64,
                               obstacle::Obstacle,selectedStates::SelectedStates,oldSS::SafeSetData)
-    selectedStates.simulator = true     # set this to TRUE if SIMULATOR is in use, set this to FALSE if BARC is in use
-    obstacle.obstacle_tuning = false    # set this to TRUE if the tuning for obstacle avoidance is needed, FALSE if not needed
+
+    selectedStates.simulator = false     # set this to TRUE if SIMULATOR is in use, set this to FALSE if BARC is in use
+    obstacle.obstacle_tuning = true    # set this to TRUE if the tuning for obstacle avoidance is needed, FALSE if not needed
 
     if selectedStates.simulator == false   # if the BARC is in use
 
@@ -74,6 +75,7 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_pF::MpcParams,track
         mpcParams.Q_slack           = 1*[5*20.0,0.5*20.0,1*10.0,30.0,0.1*80.0,50.0]#[20.0,10.0,10.0,30.0,80.0,50.0]  #vx,vy,psiDot,ePsi,eY,s
         mpcParams.Q_obs = ones(Nl*selectedStates.Np)# weight to esclude some of the old trajectories
 
+
         if obstacle.obstacle_tuning == true
 
             selectedStates.Np           = 15                           # Number of points to take from each previous trajectory to build the convex hull
@@ -84,19 +86,19 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_pF::MpcParams,track
             selectedStates.statesCost   = zeros(Nl*selectedStates.Np)
             selectedStates.version      = false
 
-            mpcParams.N                 = 14
+            mpcParams.N                 = 12
             mpcParams.Q                 = [5.0,0.0,0.0,0.1,50.0,0.0]   # Q (only for path following mode)
             mpcParams.vPathFollowing    = 1                           # reference speed for first lap of path following
             mpcParams.Q_term            = 1.0*[20.0,1.0,10.0,20.0,50.0]   # weights for terminal constraints (LMPC, for xDot,yDot,psiDot,ePsi,eY).Not used if using convex hull
             mpcParams.R                 = 0*[10.0,10.0]                 # put weights on a and d_f
             mpcParams.QderivZ           = 10.0*[1,1,1,1,1,1]             # cost matrix for derivative cost of states
-            mpcParams.QderivU           = 1.0*[5.0,1.0] #NOTE Set this to [5.0, 0/40.0]              # cost matrix for derivative cost of inputs
-            mpcParams.Q_term_cost       = 3                        # scaling of Q-function
+            mpcParams.QderivU           = 1.0*[5.0,0.1] #NOTE Set this to [5.0, 0/40.0]              # cost matrix for derivative cost of inputs
+            mpcParams.Q_term_cost       = 5                        # scaling of Q-function
             mpcParams.delay_df          = 3                             # steering delay
             mpcParams.delay_a           = 1                             # acceleration delay
             mpcParams.Q_lane            = 1                      # weight on the soft constraint for the lane
             mpcParams.Q_vel             = 1                    # weight on the soft constraint for the maximum velocity
-            mpcParams.Q_slack           = 1*[5*20.0,20.0,10.0,30.0,80.0,50.0]#[20.0,10.0,10.0,30.0,80.0,50.0]  #vx,vy,psiDot,ePsi,eY,s
+            mpcParams.Q_slack           = 1*[5*20.0,0.5*20.0,1*10.0,30.0,0.1*80.0,50.0]#[20.0,10.0,10.0,30.0,80.0,50.0]  #vx,vy,psiDot,ePsi,eY,s
             mpcParams.Q_obs             = ones(Nl*selectedStates.Np)# weight to esclude some of the old trajectories
         end
 
@@ -215,9 +217,10 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_pF::MpcParams,track
     obstacle.obstacle_active    = false     # true if we have to consider the obstacles in the optimization problem (NEVER set true here, the LMPC_node.jl script will set this value to true as soon as the current lap is equal to obstacle.lap_active)
     obstacle.lap_deactivate     = 600        # number of lap in which to stop considering obstacles
     obstacle.lap_active         = 400         # number of the first lap in which the obstacles are used
+
     obstacle.obs_detect         = 10         # maximum distance at which we can detect obstacles (in terms of s!!)
     obstacle.n_obs              = 1         # number of obstacles
-    obstacle.s_obs_init         = [15]    # initial s coordinate of each obstacle
+    obstacle.s_obs_init         = [18]    # initial s coordinate of each obstacle
     obstacle.ey_obs_init        = [-0.3]       # initial ey coordinate of each obstacle
     obstacle.v_obs_init         = [0]       # initial velocity of each obstacles
     obstacle.r_s                = 0.4#0.5
