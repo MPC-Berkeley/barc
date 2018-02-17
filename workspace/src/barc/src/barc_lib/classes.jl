@@ -62,7 +62,11 @@ type SelectedStates                 # Values needed for the convex hull formulat
     version::Bool                   # false if you want to use convex hull
     simulator::Bool                 # true to use tuning made for simulator,  false to use tuning made for BARC
     shift::Int64
-    SelectedStates(selStates=Float64[],statesCost=Float64[],Np=6,Nl=2,version=false, simulator=true,shift=3) = new(selStates,statesCost,Np,Nl,version,simulator,shift)
+    Nl_sID::Int64
+    lambda1::Int64 
+    lambda2::Int64 
+    lambda3::Int64 
+    SelectedStates(selStates=Float64[],statesCost=Float64[],Np=6,Nl=2,version=false, simulator=true,shift=3,Nl_sID=3,lambda1=1,lambda2=1,lambda3=1) = new(selStates,statesCost,Np,Nl,version,simulator,shift,Nl_sID,lambda1,lambda2,lambda3)
 end
 
 type MpcParams          # parameters for MPC solver

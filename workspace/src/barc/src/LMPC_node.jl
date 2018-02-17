@@ -210,7 +210,7 @@ function main()
 
     uPrev = zeros(10,2)     # saves the last 10 inputs (1 being the most recent one)
 
-    n_pf = 3               # number of first path-following laps (needs to be at least 2)
+    n_pf = 4               # number of first path-following laps (needs to be at least 2)
 
     acc0 = 0.0
     opt_count = 0
