@@ -819,6 +819,7 @@ function plot_v_over_xy(code::AbstractString,lap::Int64)
     cb = colorbar()
     cb[:set_label]("Velocity [m/s]")
     println("Average v_x = ",mean(pos_info.z[idx,8])," m/s")
+    println("Max v_x = ",findmax(pos_info.z[idx,8])[1]," m/s")
 
 end
 
