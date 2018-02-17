@@ -59,20 +59,20 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_pF::MpcParams,track
         selectedStates.statesCost   = zeros(Nl*selectedStates.Np)
         selectedStates.version      = false
 
-        mpcParams.N                 = 14
+        mpcParams.N                 = 12
         mpcParams.Q                 = [5.0,0.0,0.0,0.1,50.0,0.0]   # Q (only for path following mode)
         mpcParams.vPathFollowing    = 1                           # reference speed for first lap of path following
         mpcParams.Q_term            = 1.0*[20.0,1.0,10.0,20.0,50.0]   # weights for terminal constraints (LMPC, for xDot,yDot,psiDot,ePsi,eY).Not used if using convex hull
         mpcParams.R                 = 0*[10.0,10.0]                 # put weights on a and d_f
         mpcParams.QderivZ           = 10.0*[1,1,1,1,1,1]             # cost matrix for derivative cost of states
-        mpcParams.QderivU           = 1.0*[5.0,1.0] #NOTE Set this to [5.0, 0/40.0]              # cost matrix for derivative cost of inputs
-        mpcParams.Q_term_cost       = 3                        # scaling of Q-function
+        mpcParams.QderivU           = 1.0*[5.0,0.1] #NOTE Set this to [5.0, 0/40.0]              # cost matrix for derivative cost of inputs
+        mpcParams.Q_term_cost       = 5                        # scaling of Q-function
         mpcParams.delay_df          = 3                             # steering delay
         mpcParams.delay_a           = 1                             # acceleration delay
         mpcParams.Q_lane            = 1                      # weight on the soft constraint for the lane
         mpcParams.Q_vel             = 1                    # weight on the soft constraint for the maximum velocity
-        mpcParams.Q_slack           = 1*[5*20.0,20.0,10.0,30.0,80.0,50.0]#[20.0,10.0,10.0,30.0,80.0,50.0]  #vx,vy,psiDot,ePsi,eY,s
-        mpcParams.Q_obs             = ones(Nl*selectedStates.Np)# weight to esclude some of the old trajectories
+        mpcParams.Q_slack           = 1*[5*20.0,0.5*20.0,1*10.0,30.0,0.1*80.0,50.0]#[20.0,10.0,10.0,30.0,80.0,50.0]  #vx,vy,psiDot,ePsi,eY,s
+        mpcParams.Q_obs = ones(Nl*selectedStates.Np)# weight to esclude some of the old trajectories
 
         if obstacle.obstacle_tuning == true
 
