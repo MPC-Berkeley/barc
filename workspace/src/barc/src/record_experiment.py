@@ -61,7 +61,7 @@ class RecordExperiment():
             os.makedirs(image_dir)
          
         # start rosrecord for following topics
-        self.topics = ['/imu/data', '/encoder', '/ecu', '/ecu_pwm', '/image_transformed/compressed/', '/fix']
+        self.topics = ['/imu/data', '/encoder', '/ecu', '/ecu_pwm', '/image_transformed/compressed/', '/fix', '/vel_est']
         self.rosbag_file_path = os.path.abspath(rosbag_dir + '/' + self.experiment_name + '.bag')
         self.start_record_data()
         
@@ -170,8 +170,8 @@ class RecordExperiment():
         vars_list = ['roll', 'pitch', 'yaw',
                      'angular_velocity_x', 'angular_velocity_y', 'angular_velocity_z',
                      'linear_acceleration_x', 'linear_acceleration_y', 'linear_acceleration_z',
-                     'encoder_FL', 'encoder_FR','encoder_BL','encoder_BR',
-                     'motor', 'servo','motor_pwm','servo_pwm',
+                     'encoder_FL', 'encoder_FR','encoder_BL','encoder_BR', 'velocity_FL', 'velocity_FR',
+                     'velocity_BL', 'velocity_BR', 'motor', 'servo','motor_pwm','servo_pwm',
                      'image_id',
                      'longitude','latitude','altitude','gps_status','gps_service']
 
@@ -199,6 +199,13 @@ class RecordExperiment():
                 encoder_FR = msg.FR
                 encoder_BL = msg.BL
                 encoder_BR = msg.BR
+                
+            # Velocity
+            if topic == '/vel_est':
+                velocity_FL = msg.FL
+                velocity_FR = msg.FR
+                velocity_BL = msg.BL
+                velocity_BR = msg.BR
 
             # Ultrasound
             if topic == '/ultrasound':
