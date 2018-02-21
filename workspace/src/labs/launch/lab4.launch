@@ -27,6 +27,6 @@
         <param name="camera_on" value="false" />
     </node>
 
-    <node pkg="labs" type="SteeringMapping.py" name="model_id" />
+    <node pkg="labs" type="AccelerationModelID.py" name="model_id" />
  
 </launch>
