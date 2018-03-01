@@ -96,13 +96,17 @@ function eval_sim(code::AbstractString)
     grid()
 end
 
-function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool,obstacle::Bool)
+function eval_convhull(code::AbstractString,code2::AbstractString,laps::Array{Int64},switch::Bool,obstacle::Bool)
 
     log_path_LMPC   = "$(homedir())/simulations/output-LMPC-$(code).jld"
-    
+        log_path_LMPC2   = "$(homedir())/simulations/output-LMPC-$(code2).jld"
+
     Data      = load(log_path_LMPC)
+    Data2      = load(log_path_LMPC2)
 
     oldSS_xy       = Data["oldSS_xy"]
+    oldSS_xy2       = Data2["oldSS_xy"]
+
     oldSS          = Data["oldSS"]
     selectedStates = Data["selectedStates"]
     selStates      = Data["selStates"]
@@ -132,7 +136,7 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool,obst
     flag = zeros(2)
 
 
-    track = create_track(0.4)
+    track = create_track(0.45)
 
     pred_horizon = size(pred_sol)[1] - 1
 
@@ -182,7 +186,62 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool,obst
         title("Slack costs")
         grid("on")
 
+    pred_sol_xy, xyPathAngle = xyObstacle(oldSS,obs_log,1,11,track)
+    ellfig = figure(20)
+    ax = ellfig[:add_subplot](1,1,1)
+    ax[:set_aspect]("equal")
+    plot(oldSS_xy[:,1,11],oldSS_xy[:,2,11],oldSS_xy2[:,1,22],oldSS_xy2[:,2,22])
+    legend(["lap 13","lap 26"])
+    xlabel("x [m]")
+    ylabel("y [m]")
+    grid("on")
+
+    plot(track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")#,track[:,1],track[:,2],"b.")
+
+    angle_ell = atan2(pred_sol_xy[2,2]-(pred_sol_xy[2,1]),pred_sol_xy[1,2]-(pred_sol_xy[1,1]))
+    angle_deg = (angle_ell*180)/pi
+
+    ell1 = patch.Ellipse([pred_sol_xy[1,1],pred_sol_xy[2,1]], 0.4, 0.2, angle = 0)
+    ax[:add_artist](ell1)
+    title("X-Y view of laps 13 and 26")
   
+
+    ellfig = figure(21)
+    ax = ellfig[:add_subplot](1,1,1)
+    ax[:set_aspect]("equal")
+    plot(oldSS_xy[:,1,5],oldSS_xy[:,2,5],oldSS_xy[:,1,26],oldSS_xy[:,2,26])
+    legend(["lap 5","lap 26"])
+    xlabel("x [m]")
+    ylabel("y [m]")
+    grid("on")
+
+    plot(track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")#,track[:,1],track[:,2],"b.")
+
+    angle_ell = atan2(pred_sol_xy[2,2]-(pred_sol_xy[2,1]),pred_sol_xy[1,2]-(pred_sol_xy[1,1]))
+    angle_deg = (angle_ell*180)/pi
+
+    # ell1 = patch.Ellipse([pred_sol_xy[1,1],pred_sol_xy[2,1]], 0.4, 0.2, angle = 0)
+    #ax[:add_artist](ell1)
+    title("X-Y view of laps 5 and 26")
+
+
+    ellfig = figure(22)
+    ax = ellfig[:add_subplot](1,1,1)
+    ax[:set_aspect]("equal")
+    plot(oldSS_xy2[:,1,10],oldSS_xy2[:,2,10],oldSS_xy2[:,1,22],oldSS_xy2[:,2,22])
+    legend(["lap 14","lap 26"])
+    xlabel("x [m]")
+    ylabel("y [m]")
+    grid("on")
+
+    plot(track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")#,track[:,1],track[:,2],"b.")
+
+    angle_ell = atan2(pred_sol_xy[2,2]-(pred_sol_xy[2,1]),pred_sol_xy[1,2]-(pred_sol_xy[1,1]))
+    angle_deg = (angle_ell*180)/pi
+
+    ell1 = patch.Ellipse([pred_sol_xy[1,1],pred_sol_xy[2,1]], 0.4, 0.2, angle = 0)
+    ax[:add_artist](ell1)
+    title("X-Y view of laps 14 and 26")
 
 
     
@@ -238,7 +297,7 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool,obst
             angle_ell = atan2(pred_sol_xy[2,2]-(pred_sol_xy[2,1]),pred_sol_xy[1,2]-(pred_sol_xy[1,1]))
             angle_deg = (angle_ell*180)/pi
 
-            ell1 = patch.Ellipse([pred_sol_xy[1,1],pred_sol_xy[2,1]], 0.4, 0.2, angle = 90)
+            ell1 = patch.Ellipse([pred_sol_xy[1,1],pred_sol_xy[2,1]], 0.4, 0.2, angle = 0)
             ax[:add_artist](ell1)
         end
 
@@ -383,7 +442,7 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool,obst
 
         subplot(222)
         plot(t,cvy1,t,cvy2,t,cvy3,t,cvy4)
-        legend(["cvx1","cvx2","cvx3","cvy4"])
+        legend(["cvy1","cvy2","cvy3","cvy4"])
         title("C_Vy in lap $i")
         grid("on")
 
@@ -409,8 +468,8 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool,obst
 
 
 
-            for j = 2:2000
-
+            # for j = 2:2000
+            for j = 54:60
                 solution_status = status[final_counter[i-1]+j]
 
                 vx_pred     = pred_sol[:,1,j,i]
@@ -474,7 +533,17 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool,obst
                     clf()
                     # plot(oldSS_xy[:,1,i],oldSS_xy[:,2,i],"*") 
                     #plot(oldSS_xy[:,1,i-1],oldSS_xy[:,2,i-1],"ob") 
+                    #plot(oldSS_xy[:,1,i],oldSS_xy[:,2,i])
+
+                    # plot([oldSS_xy[63:75,1,i-1],oldSS_xy[63:75,1,i-2]],[oldSS_xy[63:75,2,i-1],oldSS_xy[63:75,2,i-2]],"g")#,oldSS_xy[:,1,i-2],oldSS_xy[:,2,i-2])
+                    plot(oldSS_xy[59:73,1,i-1],oldSS_xy[59:73,2,i-1],"g")
+                    legend(["SS^13"])
+                    plot(oldSS_xy[63:77,1,i-2],oldSS_xy[63:77,2,i-2],"g")
                     plot(track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")#,track[:,1],track[:,2],"b.")
+                    plot(xy_predictions[1,:]',xy_predictions[2,:]',"k*")
+                    
+                    xlabel("x[m]")
+                    ylabel("y[m]")
 
                     #for i=1:4:size(x_est,1)
                     # for index=1:length(oldSS_xy[:,1,i])
@@ -488,20 +557,22 @@ function eval_convhull(code::AbstractString,laps::Array{Int64},switch::Bool,obst
                     
                     ax = ellfig[:add_subplot](1,1,1)
                     ax[:set_aspect]("equal")
-                    plot(oldSS_xy[:,1,i],oldSS_xy[:,2,i],"-.") 
+                    #plot(oldSS_xy[:,1,i],oldSS_xy[:,2,i],"-.") 
                     # plot(oldSS_xy[:,1,i-1],oldSS_xy[:,2,i-1],"ob") 
-                    plot(track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")#,track[:,1],track[:,2],"b.")
+                    #plot(track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")#,track[:,1],track[:,2],"b.")
 
                     angle_ell = atan2(pred_sol_xy[2,j+1]-(pred_sol_xy[2,j-1]),pred_sol_xy[1,j+1]-(pred_sol_xy[1,j-1]))
                     angle_deg = (angle_ell*180)/pi
 
-                    ell1 = patch.Ellipse([pred_sol_xy[1,j],pred_sol_xy[2,j]], 0.4, 0.2, angle = angle_deg)
+                    ell1 = patch.Ellipse([pred_sol_xy[1,j],pred_sol_xy[2,j]], 0.4, 0.2, angle = 0)
+                    rec1 = patch.Rectangle([xy_predictions[1,1]'-0.2,xy_predictions[2,1]'-0.1],0.4,0.2,angle=-2,fill=false)
                     ax[:add_artist](ell1)
+                    ax[:add_artist](rec1)
 
-                    plot(oldSS_xy[j,1,i],oldSS_xy[j,2,i],"og")
-                    grid("on")
+                    #plot(oldSS_xy[j,1,i],oldSS_xy[j,2,i],"og")
+                    #grid("on")
                     # title("Predicted solution in lap $i, iteration $j")
-                    title("Position at iteration $j")
+                    title("Prediction in XY, lap 13")
                     # end
                 end
                 
@@ -785,7 +856,9 @@ function plot_v_ey_over_s(code::AbstractString,laps::Array{Int64})
         lap_times[i] = t_end-t_start
     end
     figure(3)
-    plot(1:size(lap_times,1),lap_times,"-o")
+    #plot(1:size(lap_times,1)-2,lap_times[1:size(lap_times,1)-2],"-o")
+    plot(1:4,lap_times[1:4],"go",5:13,lap_times[5:13],"bo",14:size(lap_times,1),lap_times[14:size(lap_times,1)],"ro")
+    legend(["Path following","LMPC with Obstacle","LMPC without Obstacle"])
     grid("on")
     xlabel("Lap number")
     ylabel("Lap time [s]")
@@ -812,7 +885,7 @@ function plot_v_over_xy(code::AbstractString,lap::Int64)
 
     figure()
     plot(track[:,1],track[:,2],"b.",track[:,3],track[:,4],"r-",track[:,5],track[:,6],"r-")
-    scatter(pos_info.z[idx,6],pos_info.z[idx,7],c=pos_info.z[idx,8],cmap=ColorMap("jet"),edgecolors="face",vmin=0.5,vmax=3.0)
+    scatter(pos_info.z[idx,6],pos_info.z[idx,7],c=pos_info.z[idx,8],cmap=ColorMap("jet"),edgecolors="face",vmin=1.5,vmax=2.8)
     grid(1)
     title("x-y-view")
     axis("equal")
