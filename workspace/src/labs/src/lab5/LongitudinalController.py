@@ -8,18 +8,13 @@ from numpy import pi
 # from encoder
 v_meas      = 0.0
 t0          = time.time()
-ang_km1     = 0.0
-ang_km2     = 0.0
-n_FL        = 0.0
-n_FR        = 0.0
-n_BL        = 0.0
-n_BR        = 0.0
 r_tire      = 0.05 # radius of the tire
 servo_pwm   = 1580.0
 motor_pwm   = 1500.0
 motor_pwm_offset = 1500.0
+
 # reference speed 
-v_ref = 0.5 # reference speed is 0.5 m/s
+v_ref = 0.5 # give reference speed is 0.5 m/s
 
 # ===================================PID longitudinal controller================================#
 class PID():
@@ -74,13 +69,13 @@ def controller():
     loop_rate   = 50
     rate        = rospy.Rate(loop_rate)
     
-    # TODO: Initialize your PID controller here
+    # TODO: Initialize your PID controller here, with your chosen PI gains
+    PID_control = PID(kp = 1, ki = 1, kd = 0)
     
-
     while not rospy.is_shutdown():
-        # acceleration calculated from PID controller.
+        # calculate acceleration from PID controller.
         motor_pwm = PID_control.acc_calculate(v_ref, v_meas) + motor_pwm_offset
-        rospy.logwarn("pwm = {}".format(motor_pwm))
+ 
         # publish control command
         ecu_pub.publish( ECU(motor_pwm, servo_pwm) )
 
