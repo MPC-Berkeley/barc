@@ -24,7 +24,7 @@
     <!-- RECORD -->
     <node pkg="barc" type="record_experiment.py" name="record_experiment" output="screen">
         <param name="experiment_name" value="$(arg id)" />
-        <param name="camera_on" value="false" />
+        <param name="camera_on" value="true" />
     </node>
 
     <node pkg="labs" type="AccelerationModelID.py" name="model_id" />
