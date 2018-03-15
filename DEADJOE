@@ -1,0 +1,48 @@
+
+*** These modified files were found in JOE when it aborted on Tue Mar 13 02:32:37 2018
+*** JOE was aborted because the terminal closed
+
+*** File '/home/odroid/barc/.git/COMMIT_EDITMSG'
+updating
+# Please enter the commit message for your changes. Lines starting
+# with '#' will be ignored, and an empty message aborts the commit.
+# On branch master
+# Your branch and 'origin/master' have diverged,
+# and have 1 and 16 different commits each, respectively.
+#   (use "git pull" to merge the remote branch into yours)
+#
+# Changes to be committed:
+#	new file:   workspace/src/barc/launch/dnn_record.launch
+#	new file:   workspace/src/barc/launch/rc_record_vision.launch
+#	new file:   workspace/src/barc/launch/sensors/gps_marvelmind.launch
+#	new file:   workspace/src/barc/src/view_car_trajectory_live.py
+#	new file:   workspace/src/labs/launch/lab5.launch
+#	new file:   workspace/src/labs/src/lab4/CoastDown.py
+#
+# Changes not staged for commit:
+#	modified:   scripts/team_name.sh
+#	modified:   workspace/src/barc/launch/record_experiment.launch
+#	modified:   workspace/src/barc/src/record_experiment.py
+#	modified:   workspace/src/barc/src/record_experiment_from_bag.py
+#	modified:   workspace/src/labs/launch/lab4.launch
+#	modified:   workspace/src/labs/src/lab5/LongitudinalControlle.py
+wq
+:wq
+wq
+:wq
+ls
+
+*** File '(Unnamed)'
+q
+
+*** File '(Unnamed)'
+/home/odroid/barc/.git/COMMIT_EDITMSG
+removing-packages
+/home/odroid/barc/.git/MERGE_MSG
+/home/odroid/barc/.git/COMMIT_EDITMSG
+
+*** File '* Startup Log *'
+Processing '/etc/joe/editorrc'...
+Processing '/etc/joe/ftyperc'...
+Finished processing /etc/joe/ftyperc
+Finished processing /etc/joe/editorrc

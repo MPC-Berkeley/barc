@@ -97,6 +97,7 @@ class RecordExperiment():
                 break
             time.sleep(1.0)
         if not os.path.isfile(self.rosbag_file_path):
+            print("file not created on time")
             return
 
         # get bag file  

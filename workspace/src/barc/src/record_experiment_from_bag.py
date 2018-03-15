@@ -55,10 +55,10 @@ class RecordExperiment():
         self.camera_on           = False
       
         # wait for ROS services
-        rospy.wait_for_service('send_data')
+    #    rospy.wait_for_service('send_data')
 
         # resigter proxy service
-        self.send_data = rospy.ServiceProxy('send_data', DataForward, persistent=True)
+    #    self.send_data = rospy.ServiceProxy('send_data', DataForward, persistent=True)
 
  
         # ensure data storage directories exist
@@ -74,7 +74,7 @@ class RecordExperiment():
         self.rosbag_file_path = os.path.abspath(rosbag_dir + '/' + bag_file )
         
         # upload video to local server on shutdown
-        self.process_data()
+     #   self.process_data()
 
 
     def process_data(self):
@@ -82,12 +82,12 @@ class RecordExperiment():
         self.bag = rosbag.Bag(self.rosbag_file_path)
 
         # extract images
-        if self.camera_on:
-            self.extract_images()
+     #   if self.camera_on:
+     #       self.extract_images()
 
         # upload all data
         print("starting to upload data ...")
-        self.upload_data()
+       # self.upload_data()
 
     def extract_images(self):
         # create directory for images
@@ -226,7 +226,7 @@ class RecordExperiment():
 
 if __name__ == '__main__':
     # initialize the node
-    rospy.init_node('record_experiment')
+   # rospy.init_node('record_experiment')
 
     try:
         node = RecordExperiment()

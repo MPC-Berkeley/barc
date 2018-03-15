@@ -18,8 +18,9 @@ r_tire      = 0.05 # radius of the tire
 servo_pwm   = 1580.0
 motor_pwm   = 1500.0
 motor_pwm_offset = 1580.0
+
 # reference speed 
-v_ref = 1.0 # reference speed is 3 m/s
+v_ref = 0.5 # reference speed is 0.5 m/s
 
 # encoder measurement update
 def enc_callback(data):
@@ -43,8 +44,8 @@ def enc_callback(data):
     dt = tf - t0
     
     # compute speed with second-order, backwards-finite-difference estimate
-    v_meas    = r_tire*(ang_mean - 4*ang_km1 + 3*ang_km2)/(2*dt)
-    rospy.logwarn("speed = {}".format(v_meas))
+    v_meas    = r_tire*(ang_mean - 4*ang_km1 + 3*ang_km2)/(dt)
+    rospy.logwarn("velocity = {}".format(v_meas))
     # update old data
     ang_km1 = ang_mean
     ang_km2 = ang_km1
@@ -59,11 +60,8 @@ class PID():
     def __init__(self, kp=1, ki=1, kd=1, integrator=0, derivator=0):
         self.kp = kp
         self.ki = ki
-        self.kd = kd
         self.integrator = integrator
-        self.derivator = derivator
-        self.integrator_max = 10
-        self.integrator_min = -10
+        self.integrator_max = 100
 
     def acc_calculate(self, speed_reference, speed_current):
         self.error = speed_reference - speed_current
@@ -73,21 +71,15 @@ class PID():
         
         # Integral control
         self.integrator = self.integrator + self.error
-        ## Anti windup
-        if self.integrator >= self.integrator_max:
-            self.integrator = self.integrator_max
-        if self.integrator <= self.integrator_min:
-            self.integrator = self.integrator_min
-        self.I_effect = self.ki*self.integrator
         
-        # Derivative control
-        self.derivator = self.error - self.derivator
-        self.D_effect = self.kd*self.derivator
-        self.derivator = self.error
+		# Anti windup
+        if self.integrator >= self.integrator_max:
+           self.integrator = self.integrator_max
 
-        acc = self.P_effect + self.I_effect + self.D_effect
-        if acc <= 0:
-            acc = 20
+        self.I_effect = self.ki*self.integrator
+
+        acc = self.P_effect + self.I_effect
+
         return acc
 
 # =====================================end of the controller====================================#
@@ -101,7 +93,6 @@ def controller():
 
     # topic subscriptions / publications
     rospy.Subscriber('encoder', Encoder, enc_callback)
-
     ecu_pub   = rospy.Publisher('ecu_pwm', ECU, queue_size = 10)
 
     # set node rate
@@ -109,12 +100,12 @@ def controller():
     rate        = rospy.Rate(loop_rate)
 
     # Initialize the PID controller
-    PID_control = PID(kp=200, ki=0, kd=0.0)
+    PID_control = PID(kp=20, ki=5, kd=0.0)
 
     while not rospy.is_shutdown():
         # acceleration calculated from PID controller.
         motor_pwm = PID_control.acc_calculate(v_ref, v_meas) + motor_pwm_offset
-        rospy.logwarn("pwm = {}".format(motor_pwm))
+
         # publish information
         ecu_pub.publish( ECU(motor_pwm, servo_pwm) )
 
