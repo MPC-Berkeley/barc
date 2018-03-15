@@ -17,13 +17,13 @@ from numpy import sin, cos, tan, arctan, array, dot
 from numpy import sign, argmin, sqrt, abs, pi
 import rospy
 
-def bikeFE(x, y, psi, v, a, d_f, a0, Ff, theta, ts):
+def bikeFE(x, y, psi, v, a, d_f, a0,m, Ff, theta, ts):
     """
     process model
     """
     # external parameters
-    L_a                    = TODO
-    L_b                    = TODO
+    l_f                    = TODO
+    l_r                    = TODO
     g                      = TODO
 
     # compute slip angle

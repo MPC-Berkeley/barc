@@ -27,10 +27,6 @@
         <param name="camera_on" value="true" />
     </node>
 
-<<<<<<< HEAD
-    <node pkg="labs" type="CoastDown.py" name="model_id" />
-=======
-    <node pkg="labs" type="SpeedModelID.py" name="model_id" />
->>>>>>> 913163a1acddc1d846eb269c04ae3dc60ecbc2bd
+    <node pkg="labs" type="MovementTest.py" name="MovementTest" output="screen"/>
  
 </launch>

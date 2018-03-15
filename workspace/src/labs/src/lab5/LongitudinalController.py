@@ -8,15 +8,10 @@ from numpy import pi
 # from encoder
 v_meas      = 0.0
 t0          = time.time()
-ang_km1     = 0.0
-ang_km2     = 0.0
-n_FL        = 0.0
-n_FR        = 0.0
-n_BL        = 0.0
-n_BR        = 0.0
 r_tire      = 0.05 # radius of the tire
 servo_pwm   = 1580.0
 motor_pwm   = 1500.0
+<<<<<<< HEAD
 motor_pwm_offset = 1580.0
 
 # reference speed 
@@ -50,11 +45,13 @@ def enc_callback(data):
     ang_km1 = ang_mean
     ang_km2 = ang_km1
     t0      = time.time()
+=======
+motor_pwm_offset = 1500.0
+>>>>>>> 913163a1acddc1d846eb269c04ae3dc60ecbc2bd
 
+# reference speed 
+v_ref = 0.5 # give reference speed is 0.5 m/s
 
-# Insert your PID longitudinal controller here: since you are asked to do longitudinal control, 
-# the steering angle d_f can always be set to zero. Therefore, the control output of your controller 
-# is essentially longitudinal acceleration acc.
 # ===================================PID longitudinal controller================================#
 class PID():
     def __init__(self, kp=1, ki=1, kd=1, integrator=0, derivator=0):
@@ -88,25 +85,42 @@ class PID():
 def controller():
     global motor_pwm, servo_pwm, motor_pwm_offset
     global v_ref, v_meas
-    # initialize node:
+    
+    # Initialize node:
     rospy.init_node('simulationGain', anonymous=True)
 
+<<<<<<< HEAD
     # topic subscriptions / publications
     rospy.Subscriber('encoder', Encoder, enc_callback)
+=======
+    # TODO: Add your necessary topic subscriptions / publications, depending on your preferred method of velocity estimation
+>>>>>>> 913163a1acddc1d846eb269c04ae3dc60ecbc2bd
     ecu_pub   = rospy.Publisher('ecu_pwm', ECU, queue_size = 10)
 
-    # set node rate
+    # Set node rate
     loop_rate   = 50
     rate        = rospy.Rate(loop_rate)
+<<<<<<< HEAD
 
     # Initialize the PID controller
     PID_control = PID(kp=20, ki=5, kd=0.0)
 
+=======
+    
+    # TODO: Initialize your PID controller here, with your chosen PI gains
+    PID_control = PID(kp = 1, ki = 1, kd = 0)
+    
+>>>>>>> 913163a1acddc1d846eb269c04ae3dc60ecbc2bd
     while not rospy.is_shutdown():
-        # acceleration calculated from PID controller.
+        # calculate acceleration from PID controller.
         motor_pwm = PID_control.acc_calculate(v_ref, v_meas) + motor_pwm_offset
+<<<<<<< HEAD
 
         # publish information
+=======
+ 
+        # publish control command
+>>>>>>> 913163a1acddc1d846eb269c04ae3dc60ecbc2bd
         ecu_pub.publish( ECU(motor_pwm, servo_pwm) )
 
         # wait

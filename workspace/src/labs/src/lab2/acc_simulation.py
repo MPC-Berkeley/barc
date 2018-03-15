@@ -5,10 +5,9 @@ import os
 import matplotlib.patches as patches
 from matplotlib import animation
 
-length = 1.738*2
-height = 1.5
-bag = rosbag.Bag(os.path.expanduser("~/_2017-09-17-15-35-47.bag"))
-
+length = 1.5*2
+height = 0.9
+bag = rosbag.Bag(os.path.expanduser("~/FILENAMEHERE.bag"))
 
 topics = bag.get_type_and_topic_info()[1].keys()
 types = []
@@ -21,7 +20,7 @@ for i in range(0,len(bag.get_type_and_topic_info()[1].values())):
     dimEcu = bag.get_type_and_topic_info()[1].values()[i][1]
     print "Dim ECU mgs:", dimEcu
 
-  if bag.get_type_and_topic_info()[1].values()[i][0] == 'simulator/Z_DynBkMdl':
+  if bag.get_type_and_topic_info()[1].values()[i][0] == 'labs/Z_DynBkMdl':
     dimxy = bag.get_type_and_topic_info()[1].values()[i][1]
     print "Dim hedge_pos msg:", dimxy
 
@@ -58,7 +57,7 @@ for (topic, msg, t) in bag.read_messages(topics=['/ecu']) :
 fig = plt.figure()
 
 ax1 = fig.add_subplot(2, 1, 1)
-plt.plot(x_draw, z_list, label = 'Country road')
+plt.plot(x_draw, z_list)
 ax1.fill_between(x_draw, 0, z_list, facecolor='green')
 plt.ylabel('Position along Z-axis [m]')
 plt.xlabel('Position along X-axis [m]')
@@ -71,7 +70,7 @@ plt.legend(loc = 4)
 patch1 = patches.Rectangle((0, 0), 0, 0, fc='r')
 
 ax2 = fig.add_subplot(2, 1, 2)
-plt.plot(x_axis, v_raw, label = 'Speed curve')
+plt.plot(x_axis, v_raw, label = 'Current Velocity')
 plt.xlabel('Position along X-axis [m]')
 plt.ylabel('Speed of the vehicle [m/s]')
 plt.axis('equal')
@@ -106,4 +105,5 @@ anim = animation.FuncAnimation(fig, animate,
                                interval=20,
                                blit=False)
 plt.show()
+
 bag.close()
