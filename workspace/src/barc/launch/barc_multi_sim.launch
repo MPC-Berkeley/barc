@@ -1,0 +1,48 @@
+<launch>
+
+    <!-- SYSTEM MODEL -->
+    <!-- vehicle parameters -->
+    <param name="L_a" type="double" value="0.125" />
+    <param name="L_b" type="double" value="0.125" />
+    <param name="m" type="double" value="1.98" />
+    <param name="I_z" type="double" value="0.24" />
+
+    <!-- MACHINES -->
+    <machine name="yoga" address="192.168.10.74" user="lukas" timeout="20.0" env-loader="/home/lukas/projects/barc/env_loader_yoga.sh"/>
+    <machine name="this-pc" address="192.168.10.147" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc.sh"/>
+
+    <!-- RECORD -->
+    <node machine="this-pc" pkg="barc" type="barc_record.jl" name="barc_record" output="screen" />
+
+    <!-- CONTROL -->
+    <node machine="this-pc" pkg="barc" type="LMPC_node.jl" name="control" output="screen" />
+    <!--node machine="this-pc" pkg="barc" type="open_loop.jl" name="control" output="screen" /-->
+
+    <!-- VISUALIZATION -->
+    <node machine="this-pc" pkg="barc" type="view_car_trajectory.py" name="visualization" />
+
+    <!-- SIMULATOR -->
+    <node machine="this-pc" pkg="barc" type="barc_simulator_dyn.jl" name="barc_sim" output="screen" />
+
+    <!--DYNAMIC OBSERVER-->
+    <!--node machine="this-pc" pkg="barc" type="state_estimation_KinBkMdl_mixed.py" name="state_estimation_dynamic" output="screen"-->
+    <!--node machine="this-pc" pkg="barc" type="state_estimation_SensorKinematicModel_sim.py" name="state_estimation_dynamic" output="screen"-->
+    <node machine="this-pc" pkg="barc" type="state_estimation_SensorKinematicModel.py" name="state_estimation_dynamic" output="screen">
+        <!-- ekf properties -->
+        <param name="q_std" type="double" value="0.1" />
+
+        <param name="psi_std" type="double" value="0.5" />
+        <param name="v_std" type="double" value="0.5" />
+        <param name="gps_std" type="double" value="0.8" />
+        <param name="ang_v_std" type="double" value="0.8" />
+
+        <param name="est_mode" type="double" value="1" />
+    </node>
+
+    <!-- LOW LEVEL CONTROLLER -->
+    <node machine="this-pc" pkg="barc" type="controller_low_level.py" name="low_level_controller" />
+
+    <!-- TEST CONNECTION -->
+    <node machine="yoga" pkg="barc" type="test_connection.py" name="connection_test" />
+
+</launch>
