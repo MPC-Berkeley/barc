@@ -8,7 +8,7 @@
     <param name="I_z" type="double" value="0.24" />
 
     <!-- MACHINES -->
-    <machine name="yoga" address="192.168.10.74" user="lukas" timeout="20.0" env-loader="/home/lukas/projects/barc/env_loader_yoga.sh"/>
+    <machine name="yoga" address="192.168.10.74" user="lukas" timeout="20.0" env-loader="/home/lukas/barc/env_loader_yoga.sh" />
     <machine name="this-pc" address="192.168.10.147" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc.sh"/>
 
     <!-- RECORD -->
