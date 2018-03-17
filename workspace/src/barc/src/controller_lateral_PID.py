@@ -64,7 +64,7 @@ def enc_callback(data):
     dt = tf - t0
     
     # compute speed with second-order, backwards-finite-difference estimate
-    v_meas    = r_tire*(ang_mean - 4*ang_km1 + 3*ang_km2)/(2*dt)
+    v_meas    = r_tire*(3*ang_mean - 4*ang_km1 + ang_km2)/(2*dt)
     # rospy.logwarn("speed = {}".format(v_meas))
 
     # update old data
