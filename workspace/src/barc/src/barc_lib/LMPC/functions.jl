@@ -215,7 +215,7 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_pF::MpcParams,track
     lapStatus.currentIt         = 0         # current iteration in lap
 
     obstacle.obstacle_active    = false     # true if we have to consider the obstacles in the optimization problem (NEVER set true here, the LMPC_node.jl script will set this value to true as soon as the current lap is equal to obstacle.lap_active)
-    obstacle.lap_deactivate     = 6        # number of lap in which to stop considering obstacles
+    obstacle.lap_deactivate     = 8        # number of lap in which to stop considering obstacles
     obstacle.lap_active         = 4         # number of the first lap in which the obstacles are used
     obstacle.obs_detect         = 10         # maximum distance at which we can detect obstacles (in terms of s!!)
     obstacle.n_obs              = 1         # number of obstacles

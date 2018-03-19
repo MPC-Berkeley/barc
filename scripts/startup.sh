@@ -2,19 +2,19 @@
 # local start up script when opening bash session
 
 # set environment variable for python 
-export WORKON_HOME=$HOME/.virtualenvs
-export VIRTUALENVWRAPPER_PYTHON=/usr/bin/python
-export VIRTUALENVWRAPPER_VIRTUALENV=/usr/local/bin/virtualenv
-export VIRTUALENVWRAPPER_VIRTUALENV_ARGS='--no-site-packages'
-source /usr/local/bin/virtualenvwrapper.sh
-workon barc
+# export WORKON_HOME=$HOME/.virtualenvs
+# export VIRTUALENVWRAPPER_PYTHON=/usr/bin/python
+# export VIRTUALENVWRAPPER_VIRTUALENV=/usr/local/bin/virtualenv
+# export VIRTUALENVWRAPPER_VIRTUALENV_ARGS='--no-site-packages'
+# source /usr/local/bin/virtualenvwrapper.sh
+# workon barc
 
 # set environment variables for ROS
 source $HOME/barc/workspace/devel/setup.bash
 export ROS_HOME=$HOME/barc/workspace/src/barc/rosbag/
 
 # set environment variables for Amazon Web Server
-source $HOME/team_name.sh
+# source $HOME/team_name.sh
 
 # define commands
 #   * nanorst           - resets the arduino nano from the command line (assuming the device is connected and on port /dev/ttyUSB0
