@@ -50,6 +50,7 @@ add_message_files(
    pos_info.msg
    ECU.msg
    Vel_est.msg
+   prediction.msg
 )
 
 ## Generate services in the 'srv' folder

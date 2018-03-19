@@ -42,7 +42,7 @@
     <!-- LOW LEVEL CONTROLLER -->
     <node machine="this-pc" pkg="barc" type="controller_low_level.py" name="low_level_controller" />
 
-    <!-- TEST CONNECTION -->
-    <node machine="yoga" pkg="barc" type="test_connection.py" name="connection_test" />
+    <!-- TEST OBSTACLE -->
+    <node machine="yoga" pkg="barc" type="test_obstacle.jl" name="obstacle_test" />
 
 </launch>
