@@ -52,7 +52,7 @@ class RecordExperiment():
         
         # get parameters
         self.experiment_name     = bag_file
-        self.camera_on           = False
+        self.camera_on           = True
       
         # wait for ROS services
     #    rospy.wait_for_service('send_data')
@@ -74,7 +74,7 @@ class RecordExperiment():
         self.rosbag_file_path = os.path.abspath(rosbag_dir + '/' + bag_file )
         
         # upload video to local server on shutdown
-     #   self.process_data()
+        self.process_data()
 
 
     def process_data(self):
@@ -82,8 +82,8 @@ class RecordExperiment():
         self.bag = rosbag.Bag(self.rosbag_file_path)
 
         # extract images
-     #   if self.camera_on:
-     #       self.extract_images()
+        if self.camera_on:
+            self.extract_images()
 
         # upload all data
         print("starting to upload data ...")
@@ -97,7 +97,7 @@ class RecordExperiment():
 
         # extract images
         idx = 0
-        for topic, msg, t in self.bag.read_messages( topics='/image_transformed/compressed/' ):
+        for topic, msg, t in self.bag.read_messages( topics='/image_raw/compressed/' ):
             nparr = np.fromstring(msg.data, np.uint8)
             img_data = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
             cv2.imwrite( experiment_img_dir + '/%5d.jpg' % idx, img_data)
