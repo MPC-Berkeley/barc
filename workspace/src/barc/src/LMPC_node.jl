@@ -67,8 +67,11 @@ function SE_callback(msg::pos_info,acc_f::Array{Float64},lapStatus::LapStatus,po
     end
 end
 
-function obstacle_callback(msg::prediction)
-    return prediction[:, [1, 2, 4]]
+function obstacle_callback(msg::prediction, obstacle::Obstacle, dummy::Int64)         # update current position and track data
+#function obstacle_callback(msg::prediction, obstacle::Obstacle)
+    obstacle.prediction[:, 1] = msg.s
+    obstacle.prediction[:, 2] = msg.ey
+    obstacle.prediction[:, 3] = msg.v
 end
 
 # This is the main function, it is called when the node is started.
@@ -115,10 +118,8 @@ function main()
     coeffY                      = zeros(9)          # buffer for coeffY (only logging)
     cmd                         = ECU()             # command type
     agents_predictions          = prediction()
-<<<<<<< HEAD
-=======
-    obstacle_predictions        = prediction()
->>>>>>> b0c95e078574a78abb30a26f3cda480f50676e4f
+    # obstacle_predictions        = prediction()
+    obstacle.prediction         = zeros(mpcParams.N + 1, 3)
     coeffCurvature_update       = zeros(trackCoeff.nPolyCurvature+1)
 
     # Logging variables
@@ -169,7 +170,11 @@ function main()
     s1 = Subscriber("pos_info", pos_info, SE_callback, (acc_f,lapStatus,posInfo,mpcSol,oldTraj,trackCoeff,z_est,x_est),queue_size=50)::RobotOS.Subscriber{barc.msg.pos_info}
     # Note: Choose queue size long enough so that no pos_info packets get lost! They are important for system ID!
 
-    sub_obstacle = Subscriber("obstacle", obstacle_predictions, obstacle_callback, queue_size=1)::RobotOS.Subscriber{barc.msg.prediction}
+    #sub_obstacle = Subscriber("obs_prediction", prediction, obstacle_callback, callback_args=(obstacle), 
+    #                          queue_size=1)::RobotOS.Subscriber{barc.msg.prediction}
+    dummy = 0
+    s2 = Subscriber("obs_prediction", prediction, obstacle_callback, (obstacle, dummy), queue_size=1)::RobotOS.Subscriber{barc.msg.prediction}
+
 
     run_id = get_param("run_id")
     println("Finished initialization.")
@@ -422,10 +427,11 @@ function main()
             end
 
             ## if obstacles are on the track, find the nearest one
+            println(obstacle.prediction[:, 1])
 
             if obstacle.obstacle_active == true
                 # take the first input from the obstacle prediction
-                obs_curr[lapStatus.currentIt, :, 1] = sub_obstacle[1, :]
+                obs_curr[lapStatus.currentIt, :, 1] = obstacle.prediction[1, :]
 
                 obs_temp = obs_curr[lapStatus.currentIt,:,:]
 
@@ -442,7 +448,7 @@ function main()
                 dist,index=findmin(sqrt((obs_temp[1,1,:]-zCurr[lapStatus.currentIt,6]).^2 + (obs_temp[1,2,:]-zCurr[lapStatus.currentIt,5]).^2))  # find the closest obstacle using the equation of the ellipse. Closest in terms of s and e_y!!
 
                 obs_near = obs_temp[1,:,index]
-                obs_near = sub_obstacle
+                obs_near = obstacle.prediction
 
                 # println("current s= ",posInfo.s)
                 # println("closest obstacle= ",obs_near[1,1,1])

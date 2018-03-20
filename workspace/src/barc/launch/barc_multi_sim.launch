@@ -43,6 +43,6 @@
     <node machine="this-pc" pkg="barc" type="controller_low_level.py" name="low_level_controller" />
 
     <!-- TEST OBSTACLE -->
-    <node machine="yoga" pkg="barc" type="test_obstacle.jl" name="obstacle_test" />
+    <node machine="this-pc" pkg="barc" type="test_obstacle.jl" name="obstacle_test" />
 
 </launch>

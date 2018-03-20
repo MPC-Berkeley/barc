@@ -20,7 +20,7 @@ include("barc_lib/simModel.jl")
 include("barc_lib/obstaclePosition.jl")
 
 # horizon
-const OBSTACLE_N = 16
+const OBSTACLE_N = 12
 
 function obstacle()
 	obstacle_predictions = prediction()
@@ -28,7 +28,8 @@ function obstacle()
 	init_node("obstacle")
 	loop_rate = Rate(10.0)
 
-	obstacle = Publisher("obs_prediction", prediction, queue_size=1)::RobotOS.Publisher{barc.msg.prediction}
+	obstacle = Publisher("obs_prediction", prediction, 
+						 queue_size=1)::RobotOS.Publisher{barc.msg.prediction}
 
 	while !is_shutdown()
 		obstacle_predictions.header.stamp = get_rostime()
