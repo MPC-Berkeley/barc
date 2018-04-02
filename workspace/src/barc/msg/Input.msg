@@ -1,2 +1,2 @@
-float32 accel
+float32 vel
 float32 delta
