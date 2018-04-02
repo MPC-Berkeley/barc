@@ -51,7 +51,7 @@ class image_processing_node():
         self.avg2 = 0 
         self.publish_image = True;
         self.timeprev = time.time()-self.dt
-
+        time.sleep(0.2)
         # Compute the udistortion and rectification transformation map
         self.newcameramtx, self.roi = cv2.getOptimalNewCameraMatrix(self.mtx,self.dist,(self.w,self.h),0,(self.w,self.h))
         self.mapx,self.mapy = cv2.initUndistortRectifyMap(self.mtx,self.dist,None,self.newcameramtx,(self.w,self.h),5)
