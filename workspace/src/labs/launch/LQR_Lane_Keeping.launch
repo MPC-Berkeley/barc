@@ -1,6 +1,6 @@
 <launch>
 
-  <node pkg="labs" type="LQR_Lane_Keeping_Blank.py" name="image_processing" output="screen">
+  <node pkg="labs" type="LQR_Lane_Keeping.py" name="image_processing" output="screen">
     <param name="display_image" value="True" type="boolean"/>
     <param name="publish_image" value="False" type="boolean"/>
     <param name="calibrate_transform" value="False" type="boolean"/>
@@ -16,7 +16,7 @@
 
     <node 
 		pkg="labs" 
-		type="input_to_PWM_Blank.py" 
+		type="input_to_PWM.py" 
 		name="input_to_PWM">
     </node>
 

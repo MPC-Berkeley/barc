@@ -9,13 +9,14 @@ import roslib
 import sys
 import cv2
 import numpy as np
+
 # state estimation node
 class camera_node():
     def __init__(self):    
         
         self.vid = cv2.VideoCapture("/dev/video6")
         self.vid.set(12,5) #contrast
-        self.vid.set(13,255) #saturation
+        self.vid.set(13,0) #saturation
 
         # Calibration Matrices
         self.mtx = np.array([[592.156892, 0.000000, 326.689246], [0.000000, 584.923917, 282.822026], [0.000000, 0.000000, 1.000000]])
