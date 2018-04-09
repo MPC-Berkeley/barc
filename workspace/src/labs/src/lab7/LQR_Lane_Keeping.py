@@ -421,7 +421,7 @@ class image_processing_node():
                 # Compute the LQR controller
                 K, X, closedLoopEigVals = # TO DO
 
-                u_Opt = -K*(z-z_ref)+u_bar;
+                u_Opt = # TO DO
                 vOpt = u_Opt[0,0]
                 betaOpt = u_Opt[1,0]
                 deltaOpt = atan2(((lf+lr)*tan(u_Opt[1,0])),lr)
