@@ -407,18 +407,19 @@ class image_processing_node():
                 print('psi_des',psi_des*180/pi)
                 """
 
-                Ac = np.matrix([[0, 0, -v_ref*sin(psi_des+beta_des)],[0, 0, v_ref*cos(psi_des+beta_des)],[0, 0, 0]]);
-                Bc = np.matrix([[cos(psi_des+beta_des), -v_ref*sin(psi_des+beta_des)],[sin(psi_des+beta_des), v_ref*cos(psi_des+beta_des)],[sin(beta_des)/lr, v_ref*cos(beta_des)/lr]])
-
-                Q = np.matrix([[50, 0, 0],[0, 50, 0],[0, 0, 1]]);
-                R = np.matrix([[25, 0 ],[0, 1]]);
-
                 z = np.matrix([[0],[0],[0]])
                 z_ref = [[x_ref[0]],[y_ref[0]],[psi_des]];
                 u_bar = [[v_ref],[beta_des]];
 
+
+                Ac = # TO DO
+                Bc = # TO DO
+
+                Q = # TO DO
+                R = # TO DO
+
                 # Compute the LQR controller
-                K, X, closedLoopEigVals = controlpy.synthesis.controller_lqr_discrete_from_continuous_time(Ac, Bc, Q, R, dt)
+                K, X, closedLoopEigVals = # TO DO
 
                 u_Opt = -K*(z-z_ref)+u_bar;
                 vOpt = u_Opt[0,0]
