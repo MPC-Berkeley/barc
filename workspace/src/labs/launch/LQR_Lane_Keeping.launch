@@ -1,0 +1,36 @@
+<launch>
+
+  <node pkg="labs" type="LQR_Lane_Keeping.py" name="image_processing" output="screen">
+    <param name="display_image" value="True" type="boolean"/>
+    <param name="publish_image" value="False" type="boolean"/>
+    <param name="calibrate_transform" value="False" type="boolean"/>
+    <param name="upperLeftX" value="321" type="int"/>
+    <param name="upperLeftY" value="141" type="int"/>
+    <param name="upperRightX" value="326" type="int"/>
+    <param name="upperRightY" value="350" type="int"/>
+    <param name="lowerRightX" value="162" type="int"/>
+    <param name="lowerRightY" value="433" type="int"/>
+    <param name="lowerLeftX" value="148" type="int"/>
+    <param name="lowerLeftY" value="65" type="int"/>
+ </node>
+
+    <node 
+		pkg="labs" 
+		type="input_to_PWM.py" 
+		name="input_to_PWM">
+    </node>
+
+<!-- ARDUINO -->
+    <!--  * encoders and ultrasound sensors -->
+    <node pkg="rosserial_python" type="serial_node.py" name="arduino_node" >
+        <param name="port" value="/dev/ttyUSB0" />
+    </node>
+
+    <node
+		pkg = "turtlesim"
+		type = "turtle_teleop_key"
+		name = "teleop_key"
+		required = "true"
+        output = "screen"
+	/>
+</launch>
