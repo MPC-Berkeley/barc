@@ -59,8 +59,8 @@ class EncoderModel:
         self.s_m1       += self.vhat_m1*dt
 
         # update
-        self.ang_km1 = ang_mean
         self.ang_km2 = self.ang_km1
+        self.ang_km1 = ang_mean
         self.t0_m1   = time.time()
 
     # This callback takes velocity estimates directly as input from the arduino and filters them
