@@ -1,0 +1,42 @@
+<launch>
+
+    <!-- SYSTEM MODEL -->
+    <!-- vehicle parameters -->
+    <param name="L_a" type="double" value="0.125" />
+    <param name="L_b" type="double" value="0.125" />
+    <param name="m" type="double" value="1.98" />
+    <param name="I_z" type="double" value="0.24" />
+
+    <!-- RECORD -->
+    <node pkg="barc" type="barc_record.jl" name="barc_record" output="screen" />
+
+    <!-- CONTROL -->
+    <node pkg="barc" type="LMPC_node_feature_data_collecting.jl" name="control" output="screen" />
+    <!--node pkg="barc" type="open_loop.jl" name="control" output="screen" /-->
+
+    <!-- VISUALIZATION -->
+    <node pkg="barc" type="view_car_trajectory.py" name="visualization" />
+
+
+    <!-- SIMULATOR -->
+    <node pkg="barc" type="barc_simulator_dyn.jl" name="barc_sim" output="screen" />
+
+    <!--DYNAMIC OBSERVER-->
+    <!--node pkg="barc" type="state_estimation_KinBkMdl_mixed.py" name="state_estimation_dynamic" output="screen"-->
+    <!--node pkg="barc" type="state_estimation_SensorKinematicModel_sim.py" name="state_estimation_dynamic" output="screen"-->
+    <node pkg="barc" type="state_estimation_SensorKinematicModel.py" name="state_estimation_dynamic" output="screen">
+        <!-- ekf properties -->
+        <param name="q_std" type="double" value="0.1" />
+
+        <param name="psi_std" type="double" value="0.5" />
+        <param name="v_std" type="double" value="0.5" />
+        <param name="gps_std" type="double" value="0.8" />
+        <param name="ang_v_std" type="double" value="0.8" />
+
+        <param name="est_mode" type="double" value="1" />
+    </node>
+
+    <!-- LOW LEVEL CONTROLLER -->
+    <node pkg="barc" type="controller_low_level.py" name="low_level_controller" />
+
+</launch>

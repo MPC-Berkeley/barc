@@ -87,7 +87,7 @@ def view_trajectory():
     rospy.Subscriber("pos_info", pos_info, pos_info_callback)
     
     l = Localization()
-    l.create_track()
+    l.create_feature_track()
     #l.create_circle(rad=0.8, c=array([0.0, -0.5]))
 
     fig = pylab.figure()
@@ -140,6 +140,8 @@ def view_trajectory():
 
         if (v_vals):
             t_vals_zeroed = [t - t_vals[0] for t in t_vals]
+            print(len(t_vals_zeroed))
+            print(len(v_vals))
             ax2.plot(t_vals_zeroed, v_vals, 'm-')
             ax2.set_ylim([min(0, min(v_vals)), max(vmax_ref, max(v_vals))])
 

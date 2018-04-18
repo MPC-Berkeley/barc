@@ -230,7 +230,8 @@ def state_estimation():
 
     # Set up track parameters
     l = Localization()
-    l.create_track()
+    # l.create_track()
+    l.create_feature_track()
     #l.prepare_trajectory(0.06)
 
     d_f_hist = [0.0]*10       # assuming that we are running at 50Hz, array of 10 means 0.2s lag
@@ -301,10 +302,10 @@ def state_estimation():
 
         # and then publish position info
         ros_t = rospy.get_rostime()
-        state_pub_pos.publish(pos_info(Header(stamp=ros_t), l.s, l.ey, l.epsi, v_est_2, l.s_start, l.x, l.y, l.v_x, l.v_y,
+        state_pub_pos.publish(pos_info(Header(stamp=ros_t), l.s, l.ey, l.epsi, v_est_2, l.x, l.y, l.v_x, l.v_y,
                                        l.psi, l.psiDot, se.x_meas, se.y_meas, se.yaw_meas, se.vel_meas, se.psiDot_meas,
                                        psi_drift_est, a_x_est, a_y_est, se.a_x_meas, se.a_y_meas, se.cmd_motor, se.cmd_servo,
-                                       (0,), (0,), (0,), l.coeffCurvature.tolist()))
+                                       (0,), (0,), (0,), l.curv_curr))
 
         # wait
         est_counter += 1

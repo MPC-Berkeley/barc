@@ -71,82 +71,31 @@ end
 function main()
     println("Starting LMPC node.")
 
-    buffersize                  = 5000       # size of oldTraj buffers
+    # PARAMETER INITILIZATION
+    buffersize       = 1000       # size of oldTraj buffers
 
+    oldTraj          = OldTrajectory()
+    posInfo          = PosInfo()
+    mpcCoeff         = MpcCoeff()
+    lapStatus        = LapStatus(1,1,false,false,0.3)
+    mpcSol           = MpcSol()
+    trackCoeff       = TrackCoeff()      # info about track (at current position, approximated)
+    modelParams      = ModelParams()
+    mpcParams        = MpcParams()
+    mpcParams_pF     = MpcParams()       # for 1st lap (path following)
+    obstacle         = Obstacle()
+    selectedStates   = SelectedStates()
+    oldSS            = SafeSetData()
 
-    # Define and initialize variables
-    # ---------------------------------------------------------------
-    # General LMPC variables
-    oldTraj                     = OldTrajectory()
-    posInfo                     = PosInfo()
-    mpcCoeff                    = MpcCoeff()
-    lapStatus                   = LapStatus(1,1,false,false,0.3)
-    mpcSol                      = MpcSol()
-    trackCoeff                  = TrackCoeff()      # info about track (at current position, approximated)
-    modelParams                 = ModelParams()
-    mpcParams                   = MpcParams()
-    mpcParams_pF                = MpcParams()       # for 1st lap (path following)
-    obstacle                    = Obstacle()
-    selectedStates              = SelectedStates()
-    oldSS                       = SafeSetData()
-
-    InitializeParameters(mpcParams,mpcParams_pF,trackCoeff,modelParams,posInfo,oldTraj,mpcCoeff,lapStatus,buffersize,obstacle,selectedStates,oldSS)
-
-    mdl_pF       = MpcModel_pF(mpcParams_pF,modelParams,trackCoeff)
-
-    if selectedStates.version == true
-        mdl          = MpcModel(mpcParams,mpcCoeff,modelParams,trackCoeff)  
-    elseif selectedStates.version == false
-        mdl_convhull = MpcModel_convhull(mpcParams,mpcCoeff,modelParams,trackCoeff,selectedStates)
-    end
-
-    mdl_obstacle = MpcModel_obstacle(mpcParams,mpcCoeff,modelParams,trackCoeff,selectedStates,obstacle)
-
-
+    # MODEL INITIALIZATION
+    mdl_pF       = MpcModel_pF(mpcParams_pF,modelParams)
+    # mdl          = MpcModel_kin_linear_GP(mpcParams,mpcCoeff,modelParams,trackCoeff)  
+    
     max_N = max(mpcParams.N,mpcParams_pF.N)
     # ROS-specific variables
     z_est                       = zeros(7)          # this is a buffer that saves current state information (xDot, yDot, psiDot, ePsi, eY, s)
     x_est                       = zeros(4)          # this is a buffer that saves further state information (x, y, psi, v)
-    coeffX                      = zeros(9)          # buffer for coeffX (only logging)
-    coeffY                      = zeros(9)          # buffer for coeffY (only logging)
-    cmd                         = ECU()             # command type
-    coeffCurvature_update       = zeros(trackCoeff.nPolyCurvature+1)
-
-    # Logging variables
-    log_coeff_Cost              = NaN*ones(mpcCoeff.order+1,2,10000)        
-    log_coeff_Const             = NaN*ones(mpcCoeff.order+1,2,5,10000)      
-    log_sol_z                   = NaN*ones(max_N+1,7,10000)
-    log_sol_u                   = NaN*ones(max_N,2,10000)
-    log_curv                    = zeros(10000,trackCoeff.nPolyCurvature+1)
-    log_state_x                 = zeros(10000,4)
-    log_coeffX                  = zeros(10000,9)
-    log_coeffY                  = zeros(10000,9)
-    log_t                       = zeros(10000,1)
-    log_state                   = zeros(10000,7)
-    log_cost                    = zeros(10000,6)
-    log_c_Vx                    = zeros(10000,3)
-    log_c_Vy                    = zeros(10000,4)
-    log_c_Psi                   = zeros(10000,3)
-    log_cmd                     = zeros(10000,2)
-    log_step_diff               = zeros(10000,5)
-    log_t_solv                  = zeros(10000)
-    log_sol_status              = Array(Symbol,10000)
-    log_final_counter           = zeros(30)
-
-    selStates_log               = zeros(selectedStates.Nl*selectedStates.Np,6,buffersize,30)   #array to log the selected states in every iteration of every lap
-    statesCost_log              = zeros(selectedStates.Nl*selectedStates.Np,buffersize,30)     #array to log the selected states' costs in every iteration of every lap
-    log_predicted_sol           = zeros(mpcParams.N+1,7,buffersize,30)
-    log_predicted_input         = zeros(mpcParams.N,2,buffersize,30)
-    log_onestep                 = zeros(buffersize,6,30)
-    log_epsalpha                = zeros(6,buffersize,30)
-    log_cvx                     = zeros(buffersize,3,30)
-    log_cvy                     = zeros(buffersize,4,30)
-    log_cpsi                    = zeros(buffersize,3,30)
-    log_input                   = zeros(buffersize,2,30)
-    log_status                  = Array(Symbol,buffersize,30)
-    log_mpcCost                 = zeros(buffersize,6,30)
-    log_mpcCostSlack            = zeros(buffersize,6,30)
-    log_obs                     = zeros(buffersize,3,obstacle.n_obs,30)
+    
 
 
     acc_f = [0.0]
@@ -181,48 +130,11 @@ function main()
     mpcSol.a_x = 0
     mpcSol.d_f = 0
     
-    # Precompile coeffConstraintCost:
-    oldTraj.oldTraj[1:buffersize,6,1] = linspace(0,posInfo.s_target,buffersize)
-    oldTraj.oldTraj[1:buffersize,6,2] = linspace(0,posInfo.s_target,buffersize)
-    oldTraj.oldTraj[1:buffersize,6,3] = linspace(0,posInfo.s_target,buffersize)
-
-
-    oldSS.oldSS[1:buffersize,6,1]     = linspace(0.1,posInfo.s_target,buffersize)
-    oldSS.oldSS[1:buffersize,6,2]     = linspace(0.1,posInfo.s_target,buffersize)
-    oldSS.oldSS[1:buffersize,6,3]     = linspace(0.1,posInfo.s_target,buffersize)
-
-    posInfo.s = posInfo.s_target/2
-    lapStatus.currentLap = 4
-    oldTraj.count[4] = 500
-    coeffConstraintCost(oldTraj,mpcCoeff,posInfo,mpcParams,lapStatus,selectedStates,oldSS,obs_curr[1,:,:],obstacle)
-    oldTraj.count[4] = 1
-    lapStatus.currentLap = 1
-    oldTraj.oldTraj[1:buffersize,6,1] = NaN*ones(buffersize,1)
-    oldTraj.oldTraj[1:buffersize,6,2] = NaN*ones(buffersize,1)
-    oldTraj.oldTraj[1:buffersize,6,3] = NaN*ones(buffersize,1)
-
-    posInfo.s = 0
-
-    #selectedStates.selStates    = zeros(selectedStates.Nl*selectedStates.Np,6)  
-    #selectedStates.statesCost   = zeros(selectedStates.Nl*selectedStates.Np)
-    oldSS.oldSS                 = NaN*ones(buffersize,7,30)
-
 
     uPrev = zeros(10,2)     # saves the last 10 inputs (1 being the most recent one)
 
     n_pf = 4               # number of first path-following laps (needs to be at least 2)
 
-    acc0 = 0.0
-    opt_count = 0
-
-    same_sPF   = 0
-    same_sLMPC = 0
-
-    #### Set initial conditions on the obstacles
-
-    obs_curr[1,1,:] = obstacle.s_obs_init
-    obs_curr[1,2,:] = obstacle.ey_obs_init
-    obs_curr[1,3,:] = obstacle.v_obs_init
 
     # Start node
     while ! is_shutdown()
@@ -232,8 +144,7 @@ function main()
             # This guarantees a constant publishing frequency of 10 Hz
             # (The state can be predicted by 0.1s)
             cmd.header.stamp = get_rostime()
-            # cmd.motor = convert(Float32,mpcSol.a_x)
-            # cmd.servo = convert(Float32,mpcSol.d_f)
+     
             publish(pub, cmd)
             # ============================= Initialize iteration parameters =============================
             i                           = lapStatus.currentIt           # current iteration number, just to make notation shorter

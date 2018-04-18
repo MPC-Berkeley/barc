@@ -17,7 +17,7 @@
 # z[6] = s
 
 function coeffConstraintCost(oldTraj::OldTrajectory, mpcCoeff::MpcCoeff, posInfo::PosInfo, mpcParams::MpcParams,lapStatus::LapStatus,
-                             selectedStates::SelectedStates,oldSS::SafeSetData,obs::Array{Float64},obstacle::Obstacle)
+                             selectedStates::SelectedStates,oldSS::SafeSetData,obs::Array{Float64})
  
 
     # Read Inputs
@@ -103,40 +103,11 @@ function coeffConstraintCost(oldTraj::OldTrajectory, mpcCoeff::MpcCoeff, posInfo
 
     idx_s2 = idx_s2 + selectedStates.shift
 
-    # Propagate the obstacle for the prediction horizon
-
-    obs_prop_s  = obs[1,1,:] + dt*N*obs[1,3,:]
-    obs_prop_ey = obs[1,2,:]
-
-
-    #######################################################################
-
     for j = 0:(Nl-1)
-
         selectedStates.selStates[i=(j*Np)+1:(j+1)*Np,m=1:6] = oldSS.oldSS[i=idx_s2[j+1]-(j*N_points2):idx_s2[j+1]+Np-(j*N_points2)-1,i=1:6,selected_laps[j+1]]  # select the states from lap j...
-        
-        selectedStates.statesCost[i=(j*Np)+1:(j+1)*Np] = oldSS.cost2target[i=idx_s2[j+1]-(j*N_points2):idx_s2[j+1]-(j*N_points2)+Np-1,selected_laps[j+1]]  # and their cost
-
-        if obstacle.obstacle_active == true   # if the obstacles are on the track, check if any of the selected states interferes with the propagated obstacle
-            for n=1:obstacle.n_obs
-                ellipse_check = (((selectedStates.selStates[i=(j*Np)+1:(j+1)*Np,6]-obs_prop_s[n])/obstacle.r_s).^2) + (((selectedStates.selStates[i=(j*Np)+1:(j+1)*Np,5]-obs_prop_ey[n])/obstacle.r_ey).^2)
-                
-                if any(x->x<=1, ellipse_check) == true  # if any of the selected states is in the ellipse
-                    #println("flag**************************************************************************************************************")
-                    index = find(ellipse_check.<=1)     # find all the states in the ellipse 
-                    
-                    mpcParams.Q_obs[i=(j*Np)+(index[1]-obstacle.inv_step)+1:(j+1)*Np] =  100   # and set the values of the weight to 100, so that they are excluded from optimization
-                    #println("Q_obs= ",mpcParams.Q_obs)
-                end
-            end
-        end     
-        
+        selectedStates.statesCost[i=(j*Np)+1:(j+1)*Np] = oldSS.cost2target[i=idx_s2[j+1]-(j*N_points2):idx_s2[j+1]-(j*N_points2)+Np-1,selected_laps[j+1]]  # and their cost     
     end
-
-        #println("Q_obs= ",mpcParams.Q_obs)
-
-
-    ##########################################################################
+    
     if selectedStates.version == true
         vec_range = (idx_s[1]:idx_s[1]+pLength,idx_s[2]:idx_s[2]+pLength)
 
