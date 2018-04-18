@@ -59,7 +59,7 @@ end
 function pos_info_callback(msg::pos_info,pos_info_log::Measurements)
     pos_info_log.t[pos_info_log.i]      = to_sec(get_rostime())
     pos_info_log.t_msg[pos_info_log.i]  = to_sec(msg.header.stamp)
-    pos_info_log.z[pos_info_log.i,:]    = [msg.s;msg.ey;msg.epsi;msg.v;msg.s_start;msg.x;msg.y;msg.v_x;msg.v_y;
+    pos_info_log.z[pos_info_log.i,:]    = [msg.s;msg.ey;msg.epsi;msg.v;msg.x;msg.y;msg.v_x;msg.v_y;
                                             msg.psi;msg.psiDot;msg.x_raw;msg.y_raw;msg.psi_raw;msg.v_raw;msg.psi_drift;
                                             msg.a_x;msg.a_y;msg.a_x_raw;msg.a_y_raw]
     pos_info_log.i += 1

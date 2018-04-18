@@ -40,11 +40,14 @@ class Localization(object):
     pos                 = 0                     # current position
     psi                 = 0                     # current orientation
     curv_curr           = 0                     # current track curvature
+    idx_curr            = 0
     # TRACK RELATED VARIABLES
     nodes               = array([0])            # x-y coordinate of the track
     nodes_bound1        = array([0])
     nodes_bound2        = array([0])
     ds                  = 0.03                  # distance between nodes
+    track_s             = 0
+    track_idx           = 0
     curvature           = 0
     theta               = array([0])            # orientation of the track
     # POSITIONS RELATED VARIABLES
@@ -85,6 +88,7 @@ class Localization(object):
         self.curvature = curvature
         self.ds = ds
         self.n = size(x)
+        self.track_s = array([ds*0.03 for i in range(self.n)])
         print "number of nodes: %i"%self.n
         print "length : %f"%((self.n)*ds)
 
@@ -135,9 +139,12 @@ class Localization(object):
         self.nodes = array([x,y])
         self.nodes_bound1 = array([bound1_x,bound1_y])
         self.nodes_bound2 = array([bound2_x,bound2_y])
+        self.theta = theta
         self.curvature = curvature
-        self.ds = ds
         self.n = size(x)
+        self.track_s = array([0.03*i for i in range(self.n)])
+        self.track_idx = array([i for i in range(self.n)])
+        self.ds = ds
         print "number of nodes: %i"%self.n
         print "length : %f"%((self.n)*ds)
 
@@ -152,21 +159,39 @@ class Localization(object):
         self.psiDot = psiDot
 
     def find_s(self):
-        dist        = sum((self.pos*ones([self.n,2])-self.nodes.transpose())**2,1)**0.5 # distance of current position to all nodes
-        idx_min     = argmin(dist)              # index of minimum distance
-        self.s      = 0.03*idx_min
-
-        dist_bound1 = (self.pos[0]-self.nodes_bound1[0,idx_min])**2 + (self.pos[1]-self.nodes_bound1[1,idx_min])**2
-        dist_bound2 = (self.pos[0]-self.nodes_bound2[0,idx_min])**2 + (self.pos[1]-self.nodes_bound2[1,idx_min])**2
-        
-        ey = dist[idx_min]
-        if dist_bound1>dist_bound2:
-            self.ey = ey
+        if self.s > self.track_s[-1]-0.3:
+            idx_candidate_1 = (self.track_s+0.3>=self.track_s[-1])
+            idx_candidate_2 = (self.track_s<=0.3)
+            x_candidate = hstack((self.nodes[0,:][idx_candidate_1],self.nodes[0,:][idx_candidate_2]))
+            y_candidate = hstack((self.nodes[1,:][idx_candidate_1],self.nodes[1,:][idx_candidate_2]))
+            nodes_candidate = array([x_candidate,y_candidate])
+            s_candidate = hstack((self.track_s[idx_candidate_1],self.track_s[idx_candidate_2]))
+            idx_curr_candidate = hstack((self.track_idx[idx_candidate_1],self.track_idx[idx_candidate_2]))
+            
         else:
-            self.ey = -ey
+            dist_s = self.track_s - self.s
+            idx_candidate = (dist_s>=0) & (dist_s<0.3) # the car can travel 0.3m maximumly within 0.1s  
+            x_candidate = self.nodes[0,:][idx_candidate]
+            y_candidate = self.nodes[1,:][idx_candidate]
+            nodes_candidate = array([x_candidate,y_candidate])
+            s_candidate = self.track_s[idx_candidate]
+            idx_curr_candidate = self.track_idx[idx_candidate]
 
-        self.epsi      = self.psi - self.theta[idx_min]
-        self.curv_curr = self.curvature[idx_min]
+        dist        = sum((self.pos*ones([len(x_candidate),2])-nodes_candidate.transpose())**2,1) # distance of current position to all nodes, sqrt() is not necessary
+        idx_min     = argmin(dist)              # index of minimum distance
+        self.s      = s_candidate[idx_min]
+        self.idx_curr = idx_curr_candidate[idx_min]
+
+        dist_bound1 = (self.pos[0]-self.nodes_bound1[0,self.idx_curr])**2 + (self.pos[1]-self.nodes_bound1[1,self.idx_curr])**2
+        dist_bound2 = (self.pos[0]-self.nodes_bound2[0,self.idx_curr])**2 + (self.pos[1]-self.nodes_bound2[1,self.idx_curr])**2
+        ey = dist[idx_min]**0.5
+        if dist_bound1>dist_bound2:
+            self.ey = -ey
+        else:
+            self.ey = ey
+        # print("length of self.theta is "+repr(len(self.theta)))
+        self.epsi      = self.psi - self.theta[self.idx_curr]
+        self.curv_curr = self.curvature[self.idx_curr]
 
     def __init__(self):
         self.x = 0

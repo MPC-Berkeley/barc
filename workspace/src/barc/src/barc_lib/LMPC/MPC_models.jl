@@ -21,10 +21,15 @@ type MpcModel_pF
         dt          = modelParams.dt
         L_a         = modelParams.l_A
         L_b         = modelParams.l_B
-        u_lb        = mpcParams_pF.u_lb
-        u_ub        = mpcParams_pF.u_ub
-        z_lb        = mpcParams_pF.z_lb
-        z_ub        = mpcParams_pF.z_ub
+        # u_lb        = mpcParams_pF.u_lb
+        # u_ub        = mpcParams_pF.u_ub
+        # z_lb        = mpcParams_pF.z_lb
+        # z_ub        = mpcParams_pF.z_ub
+        u_lb = [-1    -18/180*pi]
+        u_ub = [ 2     18/180*pi]
+        z_lb = [-Inf -Inf -Inf -0.5] # 1.s 2.ey 3.epsi 4.v
+        z_ub = [ Inf  Inf  Inf  2.5] # 1.s 2.ey 3.epsi 4.v
+
         c_f         = modelParams.c_f   # motor drag coefficient
         # MPC prameters
         N           = mpcParams_pF.N

@@ -67,7 +67,8 @@ type MpcParams          # parameters for MPC solver
     Q_vel::Float64                 # weight on the soft constraint for the maximum velocity
     Q_slack::Array{Float64,1}               # weight on the slack variables for the terminal constraint
     Q_obs::Array{Float64}          # weight used to esclude some of the old trajectories from the optimization problem
-    MpcParams(N=0,nz=0,OrderCostCons=0,Q=Float64[],Q_term=Float64[],R=Float64[],vPathFollowing=1.0,QderivZ=Float64[],QderivU=Float64[],Q_term_cost=1.0,delay_df=0,delay_a=0,Q_lane=1.0,Q_vel=1.0,Q_slack=Float64[],Q_obs=Float64[]) = new(N,nz,OrderCostCons,Q,Q_term,R,vPathFollowing,QderivZ,QderivU,Q_term_cost,delay_df,delay_a,Q_lane,Q_vel,Q_slack,Q_obs)
+    MpcParams(N=0,nz=0,Q=Float64[],Q_term=Float64[],R=Float64[],vPathFollowing=1.0,QderivZ=Float64[],QderivU=Float64[],Q_term_cost=1.0,delay_df=0,delay_a=0,Q_lane=1.0,Q_vel=1.0,Q_slack=Float64[],Q_obs=Float64[])=
+    new(N,nz,Q,Q_term,R,vPathFollowing,QderivZ,QderivU,Q_term_cost,delay_df,delay_a,Q_lane,Q_vel,Q_slack,Q_obs)
 end
 
 type PosInfo            # current position information
@@ -102,3 +103,79 @@ type ModelParams
     c_f::Float64
     ModelParams(l_A=0.25,l_B=0.25,m=1.98,I_z=0.24,dt=0.1,u_lb=Float64[],u_ub=Float64[],z_lb=Float64[],z_ub=Float64[],c0=Float64[],c_f=0.0) = new(l_A,l_B,m,I_z,dt,u_lb,u_ub,z_lb,z_ub,c0,c_f)
 end
+
+# THIS IS THE CORRESPONDING TRACK DATA IN JULIA
+# WE NEED TO DEFINE THEM BOTH IN PYTHON AND JULIA
+
+function add_curve(theta::Array{Float64,1},curvature::Array{Float64,1},num_point,angle::Float64,ds::Float64)
+    d_theta = 0
+    curve = 2*sum(1:num_point/2)#+num_point/2
+    for i=1:num_point
+        if i <= num_point/2
+            d_theta = d_theta + angle / curve
+        elseif i == num_point/2+1
+            d_theta = d_theta
+        else
+            d_theta = d_theta - angle / curve
+        end
+        append!(theta,[theta[end]+d_theta])
+        curv_curr = d_theta/ds
+        append!(curvature,[curv_curr])
+    end
+    return theta,curvature
+end
+
+type Track
+    xy::Array{Float64,2}
+    idx     # not dummy idx vector, which will be useful when finding the nearest point in function "find_idx()"
+    bound1xy::Array{Float64,2} # bound data are only for plotting visualization
+    bound2xy::Array{Float64,2} # bound data are only for plotting visualization
+    curvature::Array{Float64,1}
+    max_curvature::Float64
+    theta::Array{Float64,1}
+    ds::Float64 # track discretization distance
+    n_node::Int64 # number of points in the track
+    w::Float64  # track width
+    s::Float64  # track total length
+    function Track(track_data::Array{Float64,2})
+        # object Initialization
+        track=new()
+
+        xy=[0.0 0.0] # 1.x 2.y
+        # theta=[0.0]
+        theta=[pi/4]
+        curvature=[0.0]
+        ds=0.03 # length of each segment
+        width=0.8
+        # bound1xy=[0.0 width/2]
+        # bound2xy=[0.0 -width/2]
+        bound1xy = xy + width/2*[cos(theta[1]+pi/2) sin(theta[1]+pi/2)]
+        bound2xy = xy - width/2*[cos(theta[1]+pi/2) sin(theta[1]+pi/2)]
+
+        # create the track segment angle
+        for i=1:size(track_data,1)
+            (theta,curvature)=add_curve(theta,curvature,track_data[i,1],track_data[i,2],ds)
+        end
+        max_curvature=maximum(abs(curvature))
+        # create the track segment by segment using the angle just calculated
+        for i=2:size(theta,1) # we will have one more point at the end of the array, which is the same as the original starting point
+            xy_next=[xy[end,1]+ds*cos(theta[i]) xy[end,2]+ds*sin(theta[i])]
+            bound1xy_next = xy_next + width/2*[cos(theta[i]+pi/2) sin(theta[i]+pi/2)]
+            bound2xy_next = xy_next - width/2*[cos(theta[i]+pi/2) sin(theta[i]+pi/2)]
+            xy=vcat(xy,xy_next)
+            bound1xy=vcat(bound1xy,bound1xy_next)
+            bound2xy=vcat(bound2xy,bound2xy_next)
+        end
+
+        # object construction
+        track.xy=xy; track.bound1xy=bound1xy; track.bound2xy=bound2xy;
+        track.curvature=curvature; track.max_curvature=max_curvature;
+        track.theta=theta; track.ds=ds; track.w=width
+        track.n_node=size(xy,1); track.idx=1:size(xy,1)
+        track.s=(track.n_node-1)*track.ds # Important: exclude the last point from the track length!
+        return track
+    end
+    # The last point of this function is actually a dummy point
+end
+
+
