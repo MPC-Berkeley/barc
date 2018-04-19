@@ -27,9 +27,11 @@ function SE_callback(msg::pos_info,acc_f::Array{Float64},lapStatus::LapStatus,po
 
     # check if lap needs to be switched
     if z_est[6] <= lapStatus.s_lapTrigger && lapStatus.switchLap
+        println("It is now swithing the lap")
         oldTraj.idx_end[lapStatus.currentLap] = oldTraj.count[lapStatus.currentLap]
         oldTraj.oldCost[lapStatus.currentLap] = oldTraj.idx_end[lapStatus.currentLap] - oldTraj.idx_start[lapStatus.currentLap]
         lapStatus.currentLap += 1
+        lapStatus.currentIt = 1
         lapStatus.nextLap = true
         lapStatus.switchLap = false
     elseif z_est[6] > lapStatus.s_lapTrigger
@@ -69,7 +71,7 @@ function main()
     println("Starting LMPC_Feature_Collecting node.")
 
     # PARAMETER INITILIZATION
-    buffersize       = 1000       # size of oldTraj buffers
+    buffersize       = 5000       # size of oldTraj buffers
 
     v = 2.5
     max_a=7.6;
@@ -79,6 +81,7 @@ function main()
     R_kin = 0.8
     num_kin = Int(round(angle/ ( 0.03/R_kin ) * 2))
     num = max(Int(round(angle/ ( 0.03/R ) * 2)),num_kin)
+    # num*=2
     track_data=[num -angle;
                 num  angle]
     track            = Track(track_data)
@@ -169,8 +172,8 @@ function main()
             (z_sol,u_sol,sol_status)=solveMpcProblem_featureData(mdl_pF,mpcParams_pF,modelParams,z_curr,z_prev,u_prev,track,1.0)
             mpcSol.z = z_sol
             mpcSol.u = u_sol
-            mpcSol.a_x = u_sol[1,1] 
-            mpcSol.d_f = u_sol[1,2]
+            mpcSol.a_x = u_sol[2,1] 
+            mpcSol.d_f = u_sol[2,2]
             z_prev = z_sol
             u_prev = u_sol
             println("Feature collecting solver status is = $sol_status")
@@ -179,8 +182,6 @@ function main()
             cmd.servo = convert(Float32,mpcSol.d_f)
 
             # DATA WRITING AND COUNTER UPDATE
-            # selStates_log[:,:,lapStatus.currentIt,lapStatus.currentLap] = selectedStates.selStates  # array to log the selected states in every iteration of every lap
-            # statesCost_log[:,lapStatus.currentIt,lapStatus.currentLap]  = selectedStates.statesCost # array to log the selected states' costs in every iteration of every lap
             
             log_cvx[lapStatus.currentIt,:,lapStatus.currentLap]         = mpcCoeff.c_Vx       
             log_cvy[lapStatus.currentIt,:,lapStatus.currentLap]         = mpcCoeff.c_Vy       
@@ -199,7 +200,7 @@ function main()
         log_path = "$(homedir())/simulations/FeatureDataCollecting-$(run_id[1:4])-2.jld"
         warn("Warning: File already exists.")
     end
-    save(log_path,"oldTraj",oldTraj,"cvx",log_cvx,"cvy",log_cvy,"cpsi",log_cpsi)#,"status",log_status)
+    # save(log_path,"oldTraj",oldTraj,"cvx",log_cvx,"cvy",log_cvy,"cpsi",log_cpsi)#,"status",log_status)
     println("Exiting LMPC node. Saved data to $log_path.")
 end
 

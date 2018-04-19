@@ -97,6 +97,7 @@ class Localization(object):
         ds = 0.03
         width =0.8
         theta = array([pi/4])
+        # theta = array([0])
         # X-Y TRACK/BOUND COORDINATE INITILIZATION 
         x = array([0])
         bound1_x = array([0])
@@ -119,6 +120,7 @@ class Localization(object):
         R_kin = 0.8
         num_kin = int(round(angle/ ( 0.03/R_kin ) * 2))
         num = max(int(round(angle/ ( 0.03/R ) * 2)),num_kin)
+        # num*=2
         # TRACK DATA CALCULATION
         theta, curvature = add_curve(theta,curvature,num,-angle)
         theta, curvature = add_curve(theta,curvature,num,angle)
