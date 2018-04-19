@@ -196,9 +196,9 @@ def state_estimation():
     rospy.init_node('state_estimation', anonymous=True)
 
     # topic subscriptions / publications
-    rospy.Subscriber('imu/data', Imu, se.imu_callback)
-    rospy.Subscriber('vel_est', Vel_est, se.encoder_vel_callback)
-    rospy.Subscriber('ecu', ECU, se.ecu_callback)
+    rospy.Subscriber('imu/data', Imu, se.imu_callback, queue_size=1)
+    rospy.Subscriber('vel_est', Vel_est, se.encoder_vel_callback, queue_size=1)
+    rospy.Subscriber('ecu', ECU, se.ecu_callback, queue_size=1)
     rospy.Subscriber('hedge_pos', hedge_pos, se.gps_callback, queue_size=1)
     state_pub_pos = rospy.Publisher('pos_info', pos_info, queue_size=1)
 

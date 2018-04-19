@@ -62,6 +62,31 @@ function curvature_prediction(z::Array{Float64,2},track::Track)
     return curvature
 end
 
+function trackFrame_to_xyFrame(z_sol::Array{Float64,2},track::Track)
+    # Position sanity check
+    n = size(z_sol,1)
+    z_x = zeros(n)
+    z_y = zeros(n)
+    for i in 1:n
+        z = z_sol[i,:]
+        if z[1]>track.s
+            z[1]-=track.s
+        elseif z[1]<0
+            z[1]+=track.s
+        end # At the end of one lap, the prediction can be out of the lap idx range
+
+        ds=track.ds; s=z[1]; ey=z[2]; epsi=z[3]
+        idx=Int64(ceil(s/ds))+1 # correction for the starting original point
+
+        x_track=track.xy[idx,1]; y_track=track.xy[idx,2]; theta=track.theta[idx]
+        x=x_track+ey*cos(theta+pi/2); y=y_track+ey*sin(theta+pi/2)
+        # psi=theta+epsi
+        z_x[i]=x
+        z_y[i]=y
+    end
+    return z_x, z_y
+end
+
 # FUNCTION FOR PARAMETERS INITIALIZATION
 function InitializeParameters(mpcParams::MpcParams,mpcParams_pF::MpcParams,modelParams::ModelParams,
                               posInfo::PosInfo,oldTraj::OldTrajectory,mpcCoeff::MpcCoeff,lapStatus::LapStatus,buffersize::Int64,

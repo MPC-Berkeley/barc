@@ -1,7 +1,7 @@
 #!/usr/bin/env julia
 
 using RobotOS
-@rosimport barc.msg: ECU, pos_info
+@rosimport barc.msg: ECU, pos_info, mpc_solution
 @rosimport geometry_msgs.msg: Vector3
 rostypegen()
 using barc.msg
@@ -98,6 +98,7 @@ function main()
     z_est            = zeros(7)          # (xDot, yDot, psiDot, ePsi, eY, s, acc_f)
     x_est            = zeros(4)          # (x, y, psi, v)
     cmd              = ECU()             # CONTROL SIGNAL MESSAGE INITIALIZATION
+    mpcSol_to_pub    = mpc_solution()
 
     # DATA LOGGING VARIABLE INITIALIZATION
     # selStates_log    = zeros(selectedStates.Nl*selectedStates.Np,6,buffersize,30)
@@ -117,6 +118,7 @@ function main()
     init_node("mpc_traj")
     loop_rate = Rate(1/modelParams.dt)
     pub = Publisher("ecu", ECU, queue_size=1)::RobotOS.Publisher{barc.msg.ECU}
+    mpcSol_pub = Publisher("mpc_solution", mpc_solution, queue_size=1)::RobotOS.Publisher{barc.msg.mpc_solution}
     # The subscriber passes arguments (coeffCurvature and z_est) which are updated by the callback function:
     acc_f = [0.0]
     s1 = Subscriber("pos_info", pos_info, SE_callback, (acc_f,lapStatus,posInfo,mpcSol,oldTraj,z_est,x_est),queue_size=50)::RobotOS.Subscriber{barc.msg.pos_info}
@@ -139,8 +141,10 @@ function main()
     while ! is_shutdown()
         if z_est[6] > 0    
             # CONTROL SIGNAL PUBLISHING
-            cmd.header.stamp = get_rostime()     
+            cmd.header.stamp = get_rostime()
+            mpcSol_to_pub.header.stamp = get_rostime()     
             publish(pub, cmd)
+            publish(mpcSol_pub, mpcSol_to_pub)
 
             # LAP SWITCHING
             if lapStatus.nextLap
@@ -180,6 +184,10 @@ function main()
 
             cmd.motor = convert(Float32,mpcSol.a_x)
             cmd.servo = convert(Float32,mpcSol.d_f)
+
+            (z_x,z_y) = trackFrame_to_xyFrame(z_sol,track)
+            mpcSol_to_pub.z_x = z_x
+            mpcSol_to_pub.z_y = z_y
 
             # DATA WRITING AND COUNTER UPDATE
             
