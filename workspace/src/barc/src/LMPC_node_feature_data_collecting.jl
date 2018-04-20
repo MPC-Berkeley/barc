@@ -27,7 +27,6 @@ function SE_callback(msg::pos_info,acc_f::Array{Float64},lapStatus::LapStatus,po
 
     # check if lap needs to be switched
     if z_est[6] <= lapStatus.s_lapTrigger && lapStatus.switchLap
-        println("It is now swithing the lap")
         oldTraj.idx_end[lapStatus.currentLap] = oldTraj.count[lapStatus.currentLap]
         oldTraj.oldCost[lapStatus.currentLap] = oldTraj.idx_end[lapStatus.currentLap] - oldTraj.idx_start[lapStatus.currentLap]
         lapStatus.currentLap += 1
@@ -216,6 +215,10 @@ function main()
                         log_path = "$(homedir())/simulations/Feature_Data/FeatureDataCollecting-$(run_id[1:4])-2.jld"
                         warn("Warning: File already exists.")
                     end
+                    # CUT THE FRONT AND REAR TAIL BEFORE SAVING THE DATA
+                    feature_z = feature_z[2:k-1,:,:]
+                    feature_u = feature_u[2:k-1,:]
+                    # DATA SAVING
                     save(log_path,"feature_z",feature_z,"feature_u",feature_u)
                 end
             end
@@ -226,13 +229,13 @@ function main()
         rossleep(loop_rate)
     end # END OF THE WHILE LOOP
     # DATA SAVING
-    log_path = "$(homedir())/simulations/Feature_Data/FeatureDataCollecting-$(run_id[1:4]).jld"
-    if isfile(log_path)
-        log_path = "$(homedir())/simulations/Feature_Data/FeatureDataCollecting-$(run_id[1:4])-2.jld"
-        warn("Warning: File already exists.")
-    end
-    save(log_path,"feature_z",feature_z,"feature_u",feature_u)
-    println("Exiting LMPC node. Saved data to $log_path.")
+    # log_path = "$(homedir())/simulations/Feature_Data/FeatureDataCollecting-$(run_id[1:4]).jld"
+    # if isfile(log_path)
+    #     log_path = "$(homedir())/simulations/Feature_Data/FeatureDataCollecting-$(run_id[1:4])-2.jld"
+    #     warn("Warning: File already exists.")
+    # end
+    # save(log_path,"feature_z",feature_z,"feature_u",feature_u)
+    # println("Exiting LMPC node. Saved data to $log_path.")
 end
 
 

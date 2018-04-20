@@ -100,13 +100,13 @@ def view_trajectory():
     rospy.Subscriber("mpc_solution", mpc_solution, mpcSol_callback, queue_size=1)
     
     l = Localization()
-    l.create_feature_track()
+    l.create_race_track()
     #l.create_circle(rad=0.8, c=array([0.0, -0.5]))
 
-    fig = plt.figure(figsize=(15,10))
+    fig = plt.figure(figsize=(10,7))
     plt.ion()
-    ax1 = fig.add_subplot(2, 1, 1)
-    ax2 = fig.add_subplot(2, 1, 2)
+    ax1 = fig.add_subplot(1, 1, 1)
+    # ax2 = fig.add_subplot(2, 1, 2)
     ax1.plot(l.nodes[0,:],l.nodes[1,:],"k--",alpha=0.4)
     ax1.plot(l.nodes_bound1[0,:],l.nodes_bound1[1,:],"r-")
     ax1.plot(l.nodes_bound2[0,:],l.nodes_bound2[1,:],"r-")
@@ -131,8 +131,8 @@ def view_trajectory():
 
     t_vals_zeroed = [t - t_vals[0] for t in t_vals]
     num = min(len(t_vals_zeroed),len(v_vals))
-    v_plot, = ax2.plot(t_vals_zeroed[:num], v_vals[:num], 'm-')
-    ax2.set_ylim([0,2.5])
+    # v_plot, = ax2.plot(t_vals_zeroed[:num], v_vals[:num], 'm-')
+    # ax2.set_ylim([0,2.5])
 
     plt.show()
     car_frame = np.vstack((np.array(car_xs_origin), np.array(car_ys_origin)))
@@ -184,10 +184,12 @@ def view_trajectory():
         #     t_vals_zeroed = [t - t_vals[0] for t in t_vals]
         #     ax2.plot(t_vals_zeroed, v_vals, 'm-')
 
-        t_vals_zeroed = [t - t_vals[0] for t in t_vals]
-        num = min(len(t_vals_zeroed),len(v_vals))
-        v_plot.set_data(t_vals_zeroed[:num], v_vals[:num])
-        ax2.set_xlim([0,t_vals_zeroed[num-1]])
+        # t_vals_zeroed = [t - t_vals[0] for t in t_vals]
+        # num = min(len(t_vals_zeroed),len(v_vals))
+        # v_plot.set_data(t_vals_zeroed[:num], v_vals[:num])
+        # ax2.set_xlim([0,t_vals_zeroed[num-1]])
+        
+
         # ax2.set_ylim([min(0, min(v_vals)), max(v_vals)])
         # ax1.set_title("Green: Data from POS_INFO, Blue: Data from GPS")
 
@@ -195,7 +197,7 @@ def view_trajectory():
         # ax2.set_ylabel("Velocity (m/s)")
 
         pre_plot.set_data(z_x,z_y)
-
+        # ax1.set_ylim([-10,30])
         fig.canvas.draw()
         # plt.draw()
         rate.sleep()

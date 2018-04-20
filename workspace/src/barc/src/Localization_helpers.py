@@ -150,6 +150,70 @@ class Localization(object):
         print "number of nodes: %i"%self.n
         print "length : %f"%((self.n)*ds)
 
+    def create_race_track(self):
+        # BASIC PARAMETERS INITIALIZATION
+        ds = 0.03
+        width =0.8
+        theta = array([0])
+        # theta = array([0])
+        # X-Y TRACK/BOUND COORDINATE INITILIZATION 
+        x = array([0])
+        bound1_x = array([0])
+        bound2_x = array([0])
+        y = array([0])
+        bound1_y = array([0])
+        bound2_y = array([0])
+        bound1_x = x + width/2*cos(theta[0]+pi/2)
+        bound2_x = x - width/2*cos(theta[0]+pi/2)
+        bound1_y = y + width/2*sin(theta[0]+pi/2)
+        bound2_y = y - width/2*sin(theta[0]+pi/2)
+        # CURVATURE ARRAY INITIALIZATION
+        curvature = array([0])
+
+        # TRACK DATA CALCULATION
+        track_data=[[80,0],
+                    [120,-pi/2],
+                    [80,0],
+                    [220,-pi*0.85],
+                    [105,pi/15],
+                    [300,pi*1.15],
+                    [240,-pi*0.865],
+                    [100,0],
+                    [120,-pi/2],
+                    [153,0],
+                    [120,-pi/2],
+                    [211,0]]
+        for i in range(len(track_data)):
+            num = track_data[i][0]
+            angle = track_data[i][1]
+            theta, curvature = add_curve(theta,curvature,num,angle)
+            
+        for i in range(1,size(theta)):
+            x_next = x[-1] + cos(theta[i])*ds
+            y_next = y[-1] + sin(theta[i])*ds
+            bound1_x_next = x_next + width/2*cos(theta[i]+pi/2)
+            bound2_x_next = x_next - width/2*cos(theta[i]+pi/2)
+            bound1_y_next = y_next + width/2*sin(theta[i]+pi/2)
+            bound2_y_next = y_next - width/2*sin(theta[i]+pi/2)
+            x = hstack((x, x_next))
+            y = hstack((y, y_next))
+            bound1_x = hstack((bound1_x, x_next+ width/2*cos(theta[i]+pi/2)))
+            bound2_x = hstack((bound2_x, x_next- width/2*cos(theta[i]+pi/2)))
+            bound1_y = hstack((bound1_y, y_next+ width/2*sin(theta[i]+pi/2)))
+            bound2_y = hstack((bound2_y, y_next- width/2*sin(theta[i]+pi/2)))
+        # LOCALIZATION OBJECT DATA WRITING
+        self.nodes = array([x,y])
+        self.nodes_bound1 = array([bound1_x,bound1_y])
+        self.nodes_bound2 = array([bound2_x,bound2_y])
+        self.theta = theta
+        self.curvature = curvature
+        self.n = size(x)
+        self.track_s = array([0.03*i for i in range(self.n)])
+        self.track_idx = array([i for i in range(self.n)])
+        self.ds = ds
+        print "number of nodes: %i"%self.n
+        print "length : %f"%((self.n)*ds)
+
     def set_pos(self,x,y,psi,v_x,v_y,psiDot):
         self.pos = array([x,y])
         self.psi = psi
@@ -192,7 +256,7 @@ class Localization(object):
         else:
             self.ey = ey
         # print("length of self.theta is "+repr(len(self.theta)))
-        self.epsi      = self.psi - self.theta[self.idx_curr]
+        self.epsi      = (self.psi - self.theta[self.idx_curr]+pi)%(2*pi)-pi
         self.curv_curr = self.curvature[self.idx_curr]
 
     def __init__(self):

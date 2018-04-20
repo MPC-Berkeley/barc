@@ -9,38 +9,38 @@
 # After the recorded trajectory, the rest of the vector (until <buffersize>) is filled up with constant values
 
 function saveOldTraj(oldTraj::OldTrajectory,zCurr::Array{Float64},uCurr::Array{Float64},lapStatus::LapStatus,posInfo::PosInfo,buffersize::Int64)
-        println("Starting function")
-        i               = lapStatus.currentIt-1         # i = number of points for 0 <= s < s_target (= cost of this lap)
-        prebuf          = oldTraj.prebuf                # so many points of the end of the previous old traj will be attached to the beginning
-        zCurr_export    = zeros(buffersize,6)
-        uCurr_export    = zeros(buffersize,2)
+    println("Starting function")
+    i               = lapStatus.currentIt-1         # i = number of points for 0 <= s < s_target (= cost of this lap)
+    prebuf          = oldTraj.prebuf                # so many points of the end of the previous old traj will be attached to the beginning
+    zCurr_export    = zeros(buffersize,6)
+    uCurr_export    = zeros(buffersize,2)
 
-        println("Creating exports")
-        zCurr_export    = cat(1,oldTraj.oldTraj[oldTraj.oldCost[1]+1:oldTraj.oldCost[1]+prebuf,:,1],
-                                zCurr[1:i,:], NaN*ones(buffersize-i-prebuf,6))#[ones(buffersize-i-prebuf,1)*zCurr[i,1:5] zCurr[i,6]+collect(1:buffersize-i-prebuf)*dt*zCurr[i,1]])
-        uCurr_export    = cat(1,oldTraj.oldInput[oldTraj.oldCost[1]+1:oldTraj.oldCost[1]+prebuf,:,1],
-                                uCurr[1:i,:], NaN*ones(buffersize-i-prebuf,2))#zeros(buffersize-i-prebuf,2))
+    println("Creating exports")
+    zCurr_export    = cat(1,oldTraj.oldTraj[oldTraj.oldCost[1]+1:oldTraj.oldCost[1]+prebuf,:,1],
+                            zCurr[1:i,:], NaN*ones(buffersize-i-prebuf,6))#[ones(buffersize-i-prebuf,1)*zCurr[i,1:5] zCurr[i,6]+collect(1:buffersize-i-prebuf)*dt*zCurr[i,1]])
+    uCurr_export    = cat(1,oldTraj.oldInput[oldTraj.oldCost[1]+1:oldTraj.oldCost[1]+prebuf,:,1],
+                            uCurr[1:i,:], NaN*ones(buffersize-i-prebuf,2))#zeros(buffersize-i-prebuf,2))
 
-        zCurr_export[1:prebuf,6] -= posInfo.s_target       # make the prebuf-values below zero
-        costLap                   = i                      # the cost of the current lap is the time it took to reach the finish line
-        println("Saving")
-        # Save all data in oldTrajectory:
-        if lapStatus.currentLap <= 2                        # if it's the first or second lap
-            oldTraj.oldTraj[:,:,1]  = zCurr_export          # ... just save everything
-            oldTraj.oldInput[:,:,1] = uCurr_export
-            oldTraj.oldTraj[:,:,2]  = zCurr_export  
-            oldTraj.oldInput[:,:,2] = uCurr_export
-            oldTraj.oldCost = [costLap,costLap]
-        else                                                # idea: always copy the new trajectory in the first array!
-            if oldTraj.oldCost[1] < oldTraj.oldCost[2]      # if the first old traj is better than the second
-                oldTraj.oldTraj[:,:,2]  = oldTraj.oldTraj[:,:,1]    # ... copy the first in the second
-                oldTraj.oldInput[:,:,2] = oldTraj.oldInput[:,:,1]   # ... same for the input
-                oldTraj.oldCost[2] = oldTraj.oldCost[1]
-            end
-            oldTraj.oldTraj[:,:,1]  = zCurr_export                 # ... and write the new traj in the first
-            oldTraj.oldInput[:,:,1] = uCurr_export
-            oldTraj.oldCost[1] = costLap
+    zCurr_export[1:prebuf,6] -= posInfo.s_target       # make the prebuf-values below zero
+    costLap                   = i                      # the cost of the current lap is the time it took to reach the finish line
+    println("Saving")
+    # Save all data in oldTrajectory:
+    if lapStatus.currentLap <= 2                        # if it's the first or second lap
+        oldTraj.oldTraj[:,:,1]  = zCurr_export          # ... just save everything
+        oldTraj.oldInput[:,:,1] = uCurr_export
+        oldTraj.oldTraj[:,:,2]  = zCurr_export  
+        oldTraj.oldInput[:,:,2] = uCurr_export
+        oldTraj.oldCost = [costLap,costLap]
+    else                                                # idea: always copy the new trajectory in the first array!
+        if oldTraj.oldCost[1] < oldTraj.oldCost[2]      # if the first old traj is better than the second
+            oldTraj.oldTraj[:,:,2]  = oldTraj.oldTraj[:,:,1]    # ... copy the first in the second
+            oldTraj.oldInput[:,:,2] = oldTraj.oldInput[:,:,1]   # ... same for the input
+            oldTraj.oldCost[2] = oldTraj.oldCost[1]
         end
+        oldTraj.oldTraj[:,:,1]  = zCurr_export                 # ... and write the new traj in the first
+        oldTraj.oldInput[:,:,1] = uCurr_export
+        oldTraj.oldCost[1] = costLap
+    end
 end
 
 # FUNCTIONS FOR LOCALIZATION
@@ -85,6 +85,123 @@ function trackFrame_to_xyFrame(z_sol::Array{Float64,2},track::Track)
         z_y[i]=y
     end
     return z_x, z_y
+end
+
+# FUNCTIONS FOR FEATURE DATA SELECTING AND SYS_ID
+function find_feature_dist(z_feature::Array{Float64,3},u_feature::Array{Float64,2},z_curr::Array{Float64,1},u_curr::Array{Float64,1},)
+    Np=40 # Just to make life easier, we directly put a specific number here
+    # Clear the safe set data of previous iteration
+    iden_z=zeros(Np,3,2)
+    iden_u=zeros(Np,2)
+
+    # curr_state=hcat(z_curr[1],z_curr[4:6]',u_curr')
+    # norm_state=[0.5 1 0.1 1 1 0.3] # [1 0.1 1] are the normed state, the first state is for "s", which is for putting some weight on the track place
+    curr_state=hcat(z_curr[4:6]',u_curr')
+
+    norm_state=[1 0.1 1 1 0.3] # [1 0.1 1] are the normed state, the first state is for "s", which is for putting some weight on the track place
+    dummy_state=z_feature[:,:,1]
+    dummy_input=u_feature
+    cal_state=Float64[] # stored for normalization calculation
+    cal_state=vcat(cal_state,hcat(dummy_state,dummy_input))
+    dummy_norm=zeros(size(dummy_state,1),2)
+
+    norm_dist=(curr_state.-cal_state[:,vcat(4:8),1]) #./norm_state
+    dummy_norm[:,1]=norm_dist[:,1].^2+norm_dist[:,2].^2+norm_dist[:,3].^2+norm_dist[:,4].^2
+    dummy_norm[:,2]=1:size(dummy_state,1)
+    dummy_norm=sortrows(dummy_norm) # pick up the first minimum Np points
+
+    for i=1:Np
+        iden_z[i,:,1]=z_feature[Int(dummy_norm[i,2]),4:6,1]
+        iden_z[i,:,2]=z_feature[Int(dummy_norm[i,2]),4:6,2]
+        # iden_z_plot[i,:]=dummy_state[Int(dummy_norm[i,2]),:,1]
+        iden_u[i,:]=dummy_input[Int(dummy_norm[i,2]),:]
+    end
+
+    # iden_z: Npx3x2 states selected for system identification
+    # iden_u: Npx2 inputs selected for system identification
+    return iden_z, iden_u
+end
+
+function coeff_iden_dist(idenStates::Array{Float64,3},idenInputs::Array{Float64,2})
+    z = idenStates
+    u = idenInputs
+    size(z,1)==size(u,1) ? nothing : error("state and input in coeff_iden() need to have the same dimensions")
+    A_vx=zeros(size(z,1),3)
+    A_vy=zeros(size(z,1),4)
+    A_psi=zeros(size(z,1),3)
+    y_vx=diff(z[:,1,:],2)
+    y_vy=diff(z[:,2,:],2)
+    y_psi=diff(z[:,3,:],2)
+    for i=1:size(z,1)
+        A_vx[i,1]=z[i,2,1]*z[i,3,1]
+        A_vx[i,2]=z[i,1,1]
+        A_vx[i,3]=u[i,1]
+        A_vy[i,1]=z[i,2,1]/z[i,1,1]
+        A_vy[i,2]=z[i,1,1]*z[i,3,1]
+        A_vy[i,3]=z[i,3,1]/z[i,1,1]
+        A_vy[i,4]=u[i,2]
+        A_psi[i,1]=z[i,3,1]/z[i,1,1]
+        A_psi[i,2]=z[i,2,1]/z[i,1,1]
+        A_psi[i,3]=u[i,2]
+    end
+    c_Vx = A_vx\y_vx
+    c_Vy = A_vy\y_vy
+    c_Psi = A_psi\y_psi
+    return c_Vx, c_Vy, c_Psi
+end
+
+function find_SS(safeSetData::SafeSetData,selectedStates::SelectedStates,
+                 z_prev::Array{Float64,2},lapStatus::LapStatus,
+                 modelParams::ModelParams,mpcParams::MpcParams,track::Track)
+
+    s=z_prev[2,1]; v=z_prev[2,4];
+    N=mpcParams.N; dt=modelParams.dt
+    Nl=selectedStates.Nl; Np_here=copy(selectedStates.Np/2)
+    # Clear the safe set data of previous iteration
+    selectedStates.selStates=Float64[];
+    selectedStates.statesCost=Float64[];
+    # target_s=s+v*dt*(N)   # 3 is a temporary shift number
+    target_s=z_prev[end,1]+z_prev[end,4]*dt
+    # for i=1:lapStatus.currentLap-1
+    for i=1:Nl
+        SS_curr=safeSetData.oldSS[lapStatus.currentLap-i,:,:]
+        SScost_curr=copy(safeSetData.cost2target[lapStatus.currentLap-i,:])
+        all_s=SS_curr[:,1]
+        if target_s>track.s
+            target_s-=track.s # correction when switching the lap
+        end
+        (value_s,idx_s)=findmin(abs.(all_s-target_s))
+        idx_s_start=Int(idx_s-Np_here);
+        # idx_s_start=max(idx_s_start,find_idx(z_prev[2,:],track));
+        idx_s_end=Int(idx_s+Np_here-1) # to be consistant with the number of points selected in the safe set
+        # idx sanity check
+        cost=Int(safeSetData.oldCost[lapStatus.currentLap-i])
+        if idx_s_start<1
+            SS_curr[1:idx_s_end,1]+=track.s # correction when switching lap
+            selectedStates.selStates=vcat(selectedStates.selStates,SS_curr[cost+idx_s_start:cost,:],SS_curr[1:idx_s_end,:])
+            SScost_curr[1:idx_s_end]-=cost # correction when switching lap
+            selectedStates.statesCost=vcat(selectedStates.statesCost,SScost_curr[cost+idx_s_start:cost],SScost_curr[1:idx_s_end])
+        elseif idx_s_end>cost
+            SS_curr[1:idx_s_end-cost,1]+=track.s
+            selectedStates.selStates=vcat(selectedStates.selStates,SS_curr[idx_s_start:cost,:],SS_curr[1:idx_s_end-cost,:])
+            SScost_curr[1:idx_s_end-cost]-=cost
+            selectedStates.statesCost=vcat(selectedStates.statesCost,SScost_curr[idx_s_start:cost],SScost_curr[1:idx_s_end-cost])
+        else
+            if s>track.s-v*dt*(N)
+                SS_curr[idx_s_start:idx_s_end,1]+=track.s
+                selectedStates.selStates=vcat(selectedStates.selStates,SS_curr[idx_s_start:idx_s_end,:])
+                selectedStates.statesCost=vcat(selectedStates.statesCost,SScost_curr[idx_s_start:idx_s_end])
+            else
+                # println("idx_s_start")
+                # println(idx_s_start)
+                # println("idx_s_end")
+                # println(idx_s_end)
+                selectedStates.selStates=vcat(selectedStates.selStates,SS_curr[idx_s_start:idx_s_end,:])
+                selectedStates.statesCost=vcat(selectedStates.statesCost,SScost_curr[idx_s_start:idx_s_end])
+            end
+        end
+    end
+    return selectedStates
 end
 
 # FUNCTION FOR PARAMETERS INITIALIZATION
@@ -185,8 +302,8 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_pF::MpcParams,model
     oldTraj.idx_start           = zeros(num_lap)
     oldTraj.idx_end             = zeros(num_lap)
 
-    oldSS.oldSS                 = NaN*ones(buffersize,7,num_lap)          # contains data from previous laps usefull to build the safe set
-    oldSS.oldSS_xy              = NaN*ones(buffersize,4,num_lap)
+    oldSS.oldSS                 = NaN*ones(buffersize,6,num_lap)          # contains data from previous laps usefull to build the safe set
+    oldSS.oldSS_xy              = NaN*ones(buffersize,4,num_lap)          
     oldSS.cost2target           = zeros(buffersize,num_lap)     # cost to arrive at the target, i.e. how many iterations from the start to the end of the lap
     oldSS.oldCost               = ones(Int64,num_lap)              # contains costs of laps
     oldSS.count                 = ones(num_lap)*2               # contains the counter for each lap
