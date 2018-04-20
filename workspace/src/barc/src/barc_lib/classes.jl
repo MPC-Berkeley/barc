@@ -48,7 +48,7 @@ type SelectedStates                 # Values needed for the convex hull formulat
     statesCost::Array{Float64}      # ... and their related costs
     Np::Int64                       # number of states to select from each previous lap
     Nl::Int64                       # number of previous laps to include in the convex hull
-    SelectedStates(selStates=Float64[],statesCost=Float64[],Np=6,Nl=2) = new(selStates,statesCost,Np,Nl)
+    SelectedStates(selStates=Float64[],statesCost=Float64[],Np=10,Nl=2) = new(selStates,statesCost,Np,Nl)
 end
 
 type MpcParams          # parameters for MPC solver
@@ -142,8 +142,8 @@ type Track
         track=new()
 
         xy=[0.0 0.0] # 1.x 2.y
-        theta=[0.0]
-        # theta=[pi/4]
+        # theta=[0.0]
+        theta=[pi/4]
         curvature=[0.0]
         ds=0.03 # length of each segment
         width=0.8

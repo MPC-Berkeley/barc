@@ -164,13 +164,13 @@ function find_SS(safeSetData::SafeSetData,selectedStates::SelectedStates,
     target_s=z_prev[end,1]+z_prev[end,4]*dt
     # for i=1:lapStatus.currentLap-1
     for i=1:Nl
-        SS_curr=safeSetData.oldSS[lapStatus.currentLap-i,:,:]
+        SS_curr=safeSetData.oldSS[:,:,lapStatus.currentLap-i]
         SScost_curr=copy(safeSetData.cost2target[lapStatus.currentLap-i,:])
         all_s=SS_curr[:,1]
         if target_s>track.s
             target_s-=track.s # correction when switching the lap
         end
-        (value_s,idx_s)=findmin(abs.(all_s-target_s))
+        (value_s,idx_s)=findmin(abs(all_s-target_s))
         idx_s_start=Int(idx_s-Np_here);
         # idx_s_start=max(idx_s_start,find_idx(z_prev[2,:],track));
         idx_s_end=Int(idx_s+Np_here-1) # to be consistant with the number of points selected in the safe set

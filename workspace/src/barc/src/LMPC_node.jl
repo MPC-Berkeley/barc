@@ -29,8 +29,6 @@ function SE_callback(msg::pos_info,acc_f::Array{Float64},lapStatus::LapStatus,po
     if z_est[6] <= lapStatus.s_lapTrigger && lapStatus.switchLap
         oldTraj.idx_end[lapStatus.currentLap] = oldTraj.count[lapStatus.currentLap]
         oldTraj.oldCost[lapStatus.currentLap] = oldTraj.idx_end[lapStatus.currentLap] - oldTraj.idx_start[lapStatus.currentLap]
-        lapStatus.currentLap += 1
-        lapStatus.currentIt = 1
         lapStatus.nextLap = true
         lapStatus.switchLap = false
     elseif z_est[6] > lapStatus.s_lapTrigger
@@ -72,18 +70,31 @@ function main()
     # PARAMETER INITILIZATION
     buffersize       = 5000       # size of oldTraj buffers
 
-    track_data=[80 0;
-                120 -pi/2;
-                80 0;
-                220 -pi*0.85;
-                105 pi/15;
-                300  pi*1.15;
-                240  -pi*0.865;
-                100 0;
-                120 -pi/2;
-                153 0;
-                120 -pi/2;
-                211 0]
+    # RACING TRACK DATA
+    # track_data=[80 0;
+    #             120 -pi/2;
+    #             80 0;
+    #             220 -pi*0.85;
+    #             105 pi/15;
+    #             300  pi*1.15;
+    #             240  -pi*0.865;
+    #             100 0;
+    #             120 -pi/2;
+    #             153 0;
+    #             120 -pi/2;
+    #             211 0]
+    # FEATURE TRACK DATA
+    v = 2.5
+    max_a=7.6;
+    R=v^2/max_a
+    max_c=1/R
+    angle=(pi+pi/2)-0.105
+    R_kin = 0.8
+    num_kin = Int(round(angle/ ( 0.03/R_kin ) * 2))
+    num = max(Int(round(angle/ ( 0.03/R ) * 2)),num_kin)
+    # num*=2
+    track_data=[num -angle;
+                num  angle]
     track            = Track(track_data)
     oldTraj          = OldTrajectory()
     posInfo          = PosInfo();  posInfo.s_target=track.s;
@@ -159,12 +170,12 @@ function main()
                 println("Finishing one lap at iteration ",lapStatus.currentIt)
                 # SAFE SET COST UPDATE
                 # log_final_counter[lapStatus.currentLap-1] = k
-                oldSS.oldCost[lapStatus.currentLap-1] = lapStatus.currentIt
-                cost2target                           = zeros(buffersize) # array containing the cost to arrive from each point of the old trajectory to the target            
-                for j = 1:buffersize
-                    cost2target[j] = (lapStatus.currentIt-j+1)  
-                end
-                oldSS.cost2target[:,lapStatus.currentLap-1] = cost2target
+                oldSS.oldCost[lapStatus.currentLap] = lapStatus.currentIt
+                # cost2target                           = zeros(buffersize) # array containing the cost to arrive from each point of the old trajectory to the target            
+                # for j = 1:buffersize
+                #     cost2target[j] = (lapStatus.currentIt-j+1)  
+                # end
+                oldSS.cost2target[:,lapStatus.currentLap] = oldSS.cost2target[:,lapStatus.currentLap] - lapStatus.currentIt
                 lapStatus.nextLap = false
                 if mpcSol.z[1,1]>posInfo.s_target
                     # WARM START SWITCHING
@@ -173,28 +184,28 @@ function main()
                     setvalue(mdl_convhull.z_Ol[1:mpcParams.N,1],mpcSol.z[2:mpcParams.N+1,1]-posInfo.s_target)
                     setvalue(mdl_convhull.z_Ol[mpcParams.N+1,1],mpcSol.z[mpcParams.N+1,1]-posInfo.s_target)
                 end
+                lapStatus.currentLap += 1
+                lapStatus.currentIt = 1
             end
 
             # OPTIMIZATION
             println("Current Lap: ", lapStatus.currentLap, ", It: ", lapStatus.currentIt)
-            if lapStatus.currentLap<=3
+            if lapStatus.currentLap<=-1 # FOR QUICK LMPC DEBUGGING
                 # (xDot, yDot, psiDot, ePsi, eY, s, acc_f)
                 z_curr = [z_est[6],z_est[5],z_est[4],sqrt(z_est[1]^2+z_est[2]^2)]
-                # println("s:", z_curr[1], " x:", x_est[1], " y:", x_est[2])
-                # println("ey: ",z_est[5])
-                # println("z_curr: ",z_curr)
-                # println("z_prev: ",z_prev)
-                # println("u_prev: ",u_prev)
-
                 (z_sol,u_sol,sol_status)=solveMpcProblem_pathFollow(mdl_pF,mpcParams_pF,modelParams,z_curr,z_prev,u_prev,track)
                 mpcSol.z = z_sol
                 mpcSol.u = u_sol
-                mpcSol.a_x = u_sol[2,1] 
+                mpcSol.a_x = u_sol[2,1]
                 mpcSol.d_f = u_sol[2,2]
                 z_prev = z_sol
                 u_prev = u_sol
                 println("LMPC solver status is = $sol_status")
             else
+                # # THIS SAVING IS ONLY FOR QUICK DEBUGGING
+                # log_path = "$(homedir())/simulations/oldSS.jld"
+                # save(log_path,"oldSS",oldSS)
+
                 # ESTIMATED STATES PARSING
                 # (xDot, yDot, psiDot, ePsi, eY, s, acc_f)
                 z_curr = [z_est[6],z_est[5],z_est[4],z_est[1],z_est[2],z_est[3]]
