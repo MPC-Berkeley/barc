@@ -103,10 +103,10 @@ def view_trajectory():
     l.create_feature_track()
     #l.create_circle(rad=0.8, c=array([0.0, -0.5]))
 
-    fig = plt.figure(figsize=(10,5))
+    fig = plt.figure(figsize=(15,10))
     plt.ion()
-    ax1 = fig.add_subplot(1, 1, 1)
-    # ax2 = fig.add_subplot(2, 1, 2)
+    ax1 = fig.add_subplot(2, 1, 1)
+    ax2 = fig.add_subplot(2, 1, 2)
     ax1.plot(l.nodes[0,:],l.nodes[1,:],"k--",alpha=0.4)
     ax1.plot(l.nodes_bound1[0,:],l.nodes_bound1[1,:],"r-")
     ax1.plot(l.nodes_bound2[0,:],l.nodes_bound2[1,:],"r-")
@@ -124,14 +124,21 @@ def view_trajectory():
     car_plot, = ax1.plot(car_xs_origin,car_ys_origin,"k-")
     car_center_plot, = ax1.plot(0,0,"ko",alpha=0.4)
     pre_plot, = ax1.plot([0 for i in range(11)],[0 for i in range(11)],"b-*")
+    # num = min(len(gps_x_vals),len(gps_y_vals))
     # GPS_plot, = ax1.plot(gps_x_vals, gps_y_vals, 'b-', label="GPS data path")
-    pos_plot, = ax1.plot(pos_info_x_vals, pos_info_y_vals, 'g-', label="pos data path")
+    num = min(len(pos_info_x_vals),len(pos_info_y_vals))
+    pos_plot, = ax1.plot(pos_info_x_vals[:num], pos_info_y_vals[:num], 'g-', label="pos data path")
+
+    t_vals_zeroed = [t - t_vals[0] for t in t_vals]
+    num = min(len(t_vals_zeroed),len(v_vals))
+    v_plot, = ax2.plot(t_vals_zeroed[:num], v_vals[:num], 'm-')
+    ax2.set_ylim([0,2.5])
 
     plt.show()
     car_frame = np.vstack((np.array(car_xs_origin), np.array(car_ys_origin)))
     while not rospy.is_shutdown():
-        if (pos_info_s>0 and pos_info_s<0.3):
-        # if (pos_info_s>10 and pos_info_s<11):
+        if (pos_info_s>0 and pos_info_s<0.5):
+            # lap switching trajectory cleaning
             gps_x_vals = [0,gps_x_vals[-1]]
             gps_y_vals = [0,gps_y_vals[-1]]
             pos_info_x_vals = [0,pos_info_x_vals[-1]]
@@ -165,18 +172,23 @@ def view_trajectory():
 
         car_plot.set_data([car_xs[i] for i in range(5)], [car_ys[i] for i in range(5)])
         car_center_plot.set_data(x,y)
-        # GPS_plot.set_data(gps_x_vals, gps_y_vals)
-        pos_plot.set_data(pos_info_x_vals, pos_info_y_vals)
+        # num = min(len(gps_x_vals),len(gps_y_vals))
+        # GPS_plot.set_data(gps_x_vals, gps_y_vals) 
+        num = min(len(pos_info_x_vals),len(pos_info_y_vals))
+        pos_plot.set_data(pos_info_x_vals[:num], pos_info_y_vals[:num])
+
         # ax1.plot(front_car_segment_x, front_car_segment_y, 'y-')
         #plt.plot(np.array(car_xs_origin) + x, np.array(car_ys_origin) + y, 'k-')
-
-
 
         # if (v_vals):
         #     t_vals_zeroed = [t - t_vals[0] for t in t_vals]
         #     ax2.plot(t_vals_zeroed, v_vals, 'm-')
-        #     ax2.set_ylim([min(0, min(v_vals)), max(vmax_ref, max(v_vals))])
 
+        t_vals_zeroed = [t - t_vals[0] for t in t_vals]
+        num = min(len(t_vals_zeroed),len(v_vals))
+        v_plot.set_data(t_vals_zeroed[:num], v_vals[:num])
+        ax2.set_xlim([0,t_vals_zeroed[num-1]])
+        # ax2.set_ylim([min(0, min(v_vals)), max(v_vals)])
         # ax1.set_title("Green: Data from POS_INFO, Blue: Data from GPS")
 
         # ax2.set_xlabel("Time (s)")

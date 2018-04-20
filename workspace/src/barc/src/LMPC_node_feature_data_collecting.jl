@@ -98,16 +98,24 @@ function main()
     z_est            = zeros(7)          # (xDot, yDot, psiDot, ePsi, eY, s, acc_f)
     x_est            = zeros(4)          # (x, y, psi, v)
     cmd              = ECU()             # CONTROL SIGNAL MESSAGE INITIALIZATION
-    mpcSol_to_pub    = mpc_solution()
+    mpcSol_to_pub    = mpc_solution()    # MPC SOLUTION PUBLISHING MESSAGE INITIALIZATION
+
+    # FEATURE DATA INITIALIZATION
+    # 100000 IS THE BUFFER FOR FEATURE DATA
+    v_ref = [i for i in 1:0.05:2.5]
+    v_ref = vcat([1],[v_ref])
+    num_lap = length(v_ref)
+    feature_z = zeros(100000,6,2)
+    feature_u = zeros(100000,2)
 
     # DATA LOGGING VARIABLE INITIALIZATION
     # selStates_log    = zeros(selectedStates.Nl*selectedStates.Np,6,buffersize,30)
     # statesCost_log   = zeros(selectedStates.Nl*selectedStates.Np,buffersize,30)
-    log_cvx                     = zeros(buffersize,3,30)
-    log_cvy                     = zeros(buffersize,4,30)
-    log_cpsi                    = zeros(buffersize,3,30)
-    log_status                  = Array(Symbol,buffersize,30)
-    k = 1 # counter initialization
+    log_cvx                     = zeros(buffersize,3,num_lap)
+    log_cvy                     = zeros(buffersize,4,num_lap)
+    log_cpsi                    = zeros(buffersize,3,num_lap)
+    log_status                  = Array(Symbol,buffersize,num_lap)
+    k = 1 # counter initialization, k is the counter from the beginning of the experiment
 
     InitializeParameters(mpcParams,mpcParams_pF,modelParams,posInfo,oldTraj,mpcCoeff,lapStatus,buffersize,selectedStates,oldSS)
 
@@ -173,7 +181,7 @@ function main()
             println("s: ", z_curr[1], "x: ", x_est[1], "y: ", x_est[2])
             println("ey: ",z_est[5])
 
-            (z_sol,u_sol,sol_status)=solveMpcProblem_featureData(mdl_pF,mpcParams_pF,modelParams,z_curr,z_prev,u_prev,track,1.0)
+            (z_sol,u_sol,sol_status)=solveMpcProblem_featureData(mdl_pF,mpcParams_pF,modelParams,z_curr,z_prev,u_prev,track,v_ref[lapStatus.currentLap])
             mpcSol.z = z_sol
             mpcSol.u = u_sol
             mpcSol.a_x = u_sol[2,1] 
@@ -185,17 +193,32 @@ function main()
             cmd.motor = convert(Float32,mpcSol.a_x)
             cmd.servo = convert(Float32,mpcSol.d_f)
 
+            # VISUALIZATION COORDINATE CALCULATION FOR view_trajectory.jl NODE
             (z_x,z_y) = trackFrame_to_xyFrame(z_sol,track)
             mpcSol_to_pub.z_x = z_x
             mpcSol_to_pub.z_y = z_y
 
             # DATA WRITING AND COUNTER UPDATE
-            
             log_cvx[lapStatus.currentIt,:,lapStatus.currentLap]         = mpcCoeff.c_Vx       
             log_cvy[lapStatus.currentIt,:,lapStatus.currentLap]         = mpcCoeff.c_Vy       
             log_cpsi[lapStatus.currentIt,:,lapStatus.currentLap]        = mpcCoeff.c_Psi
             log_status[lapStatus.currentIt,lapStatus.currentLap]        = mpcSol.solverStatus
-            k = k + 1
+            if lapStatus.currentLap>1
+                k = k + 1 # start counting from the second lap.
+                # (xDot, yDot, psiDot, ePsi, eY, s, acc_f)
+                feature_z[k,:,1] = [z_est[6],z_est[5],z_est[4],z_est[1],z_est[2],z_est[3]]
+                feature_u[k,:] = u_sol[2,:]
+                feature_z[k-1,:,2] = [z_est[6],z_est[5],z_est[4],z_est[1],z_est[2],z_est[3]]
+                # So bsides the zeros tail, the first and last points will be removed.
+                if lapStatus.currentLap==32 && z_est[6] > track.s[end]-0.5
+                    log_path = "$(homedir())/simulations/Feature_Data/FeatureDataCollecting-$(run_id[1:4]).jld"
+                    if isfile(log_path)
+                        log_path = "$(homedir())/simulations/Feature_Data/FeatureDataCollecting-$(run_id[1:4])-2.jld"
+                        warn("Warning: File already exists.")
+                    end
+                    save(log_path,"feature_z",feature_z,"feature_u",feature_u)
+                end
+            end
             lapStatus.currentIt += 1
         else
             println("No estimation data received!")
@@ -203,12 +226,12 @@ function main()
         rossleep(loop_rate)
     end # END OF THE WHILE LOOP
     # DATA SAVING
-    log_path = "$(homedir())/simulations/FeatureDataCollecting-$(run_id[1:4]).jld"
+    log_path = "$(homedir())/simulations/Feature_Data/FeatureDataCollecting-$(run_id[1:4]).jld"
     if isfile(log_path)
-        log_path = "$(homedir())/simulations/FeatureDataCollecting-$(run_id[1:4])-2.jld"
+        log_path = "$(homedir())/simulations/Feature_Data/FeatureDataCollecting-$(run_id[1:4])-2.jld"
         warn("Warning: File already exists.")
     end
-    # save(log_path,"oldTraj",oldTraj,"cvx",log_cvx,"cvy",log_cvy,"cpsi",log_cpsi)#,"status",log_status)
+    save(log_path,"feature_z",feature_z,"feature_u",feature_u)
     println("Exiting LMPC node. Saved data to $log_path.")
 end
 

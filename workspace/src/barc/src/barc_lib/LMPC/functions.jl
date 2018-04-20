@@ -174,26 +174,26 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_pF::MpcParams,model
     modelParams.c_f             = 0.5                   # friction coefficient: xDot = - c_f*xDot (aerodynamic+tire)
 
     # posInfo.s_target            = 19.11
-
-    oldTraj.oldTraj             = NaN*ones(buffersize,7,30)
-    oldTraj.oldInput            = zeros(buffersize,2,30)
-    oldTraj.oldTimes            = NaN*ones(buffersize,30)
-    oldTraj.count               = ones(30)*2
-    oldTraj.oldCost             = ones(Int64,30)                   # dummies for initialization
+    num_lap = 40
+    oldTraj.oldTraj             = NaN*ones(buffersize,7,num_lap)
+    oldTraj.oldInput            = zeros(buffersize,2,num_lap)
+    oldTraj.oldTimes            = NaN*ones(buffersize,num_lap)
+    oldTraj.count               = ones(num_lap)*2
+    oldTraj.oldCost             = ones(Int64,num_lap)                   # dummies for initialization
     # oldTraj.prebuf              = 30
     # oldTraj.postbuf             = 30
-    oldTraj.idx_start           = zeros(30)
-    oldTraj.idx_end             = zeros(30)
+    oldTraj.idx_start           = zeros(num_lap)
+    oldTraj.idx_end             = zeros(num_lap)
 
-    oldSS.oldSS                 = NaN*ones(buffersize,7,30)          # contains data from previous laps usefull to build the safe set
-    oldSS.oldSS_xy              = NaN*ones(buffersize,4,30)
-    oldSS.cost2target           = zeros(buffersize,30)     # cost to arrive at the target, i.e. how many iterations from the start to the end of the lap
-    oldSS.oldCost               = ones(Int64,30)              # contains costs of laps
-    oldSS.count                 = ones(30)*2               # contains the counter for each lap
+    oldSS.oldSS                 = NaN*ones(buffersize,7,num_lap)          # contains data from previous laps usefull to build the safe set
+    oldSS.oldSS_xy              = NaN*ones(buffersize,4,num_lap)
+    oldSS.cost2target           = zeros(buffersize,num_lap)     # cost to arrive at the target, i.e. how many iterations from the start to the end of the lap
+    oldSS.oldCost               = ones(Int64,num_lap)              # contains costs of laps
+    oldSS.count                 = ones(num_lap)*2               # contains the counter for each lap
     # oldSS.prebuff                = 30
     # oldSS.postbuff               = 50
-    oldSS.idx_start             = ones(30)            # index of the first measurement with s > 0
-    oldSS.idx_end               = zeros(30)              # index of the last measurement with s < s_target
+    oldSS.idx_start             = ones(num_lap)            # index of the first measurement with s > 0
+    oldSS.idx_end               = zeros(num_lap)              # index of the last measurement with s < s_target
 
     # mpcCoeff.order              = 5
     # mpcCoeff.coeffCost          = zeros(mpcCoeff.order+1,2)

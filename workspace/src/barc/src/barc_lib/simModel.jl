@@ -66,8 +66,10 @@ function simDynModel(z::Array{Float64},u::Array{Float64},dt::Float64,coeff::Arra
     dsdt = (z[1]*cos(z[4]) - z[2]*sin(z[4]))/(1-z[5]*c)
 
     zNext = copy(z)
-    zNext[1] = z[1] + dt * (z[7] + z[2]*z[3] - c_f*z[1])                    # xDot
-    zNext[2] = z[2] + dt * (2/m*(FyF*cos(z[8]) + FyR) - z[3]*z[1])          # yDot
+    # zNext[1] = z[1] + dt * (z[7] + z[2]*z[3] - c_f*z[1])                    # xDot
+    zNext[1] = z[1] + dt * (u[1] + z[2]*z[3] - c_f*z[1])                    # xDot
+    # zNext[2] = z[2] + dt * (2/m*(FyF*cos(z[8]) + FyR) - z[3]*z[1])          # yDot
+    zNext[2] = z[2] + dt * (2/m*(FyF*cos(u[2]) + FyR) - z[3]*z[1])          # yDot
     zNext[3] = z[3] + dt * (2/I_z*(L_f*FyF - L_r*FyR))                      # psiDot
     zNext[4] = z[4] + dt * (z[3]-dsdt*c)                                    # ePsi
     zNext[5] = z[5] + dt * (z[1]*sin(z[4]) + z[2]*cos(z[4]))                # eY
@@ -79,8 +81,10 @@ function simDynModel(z::Array{Float64},u::Array{Float64},dt::Float64,coeff::Arra
 end
 
 function pacejka(a)
-    B = 1.0             # This value determines the steepness of the curve
-    C = 1.25
+    # B = 1.0             # This value determines the steepness of the curve
+    # C = 1.25
+    B = 6.0
+    C = 1.6
     mu = 0.8            # Friction coefficient (responsible for maximum lateral tire force)
     m = 1.98
     g = 9.81
