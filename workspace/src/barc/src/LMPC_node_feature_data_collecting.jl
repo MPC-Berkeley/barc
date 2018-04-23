@@ -210,9 +210,9 @@ function main()
                 feature_z[k-1,:,2] = [z_est[6],z_est[5],z_est[4],z_est[1],z_est[2],z_est[3]]
                 # So bsides the zeros tail, the first and last points will be removed.
                 if lapStatus.currentLap==32 && z_est[6] > track.s[end]-0.5
-                    log_path = "$(homedir())/simulations/Feature_Data/FeatureDataCollecting-$(run_id[1:4]).jld"
+                    log_path = "$(homedir())/simulations/Feature_Data/FeatureDataCollecting.jld"
                     if isfile(log_path)
-                        log_path = "$(homedir())/simulations/Feature_Data/FeatureDataCollecting-$(run_id[1:4])-2.jld"
+                        log_path = "$(homedir())/simulations/Feature_Data/FeatureDataCollecting-2.jld"
                         warn("Warning: File already exists.")
                     end
                     # CUT THE FRONT AND REAR TAIL BEFORE SAVING THE DATA

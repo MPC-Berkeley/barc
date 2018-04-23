@@ -83,22 +83,23 @@ function solveMpcProblem_convhull_dyn_iden(mdl::MpcModel_convhull_dyn_iden,mpcPa
                                            zPrev::Array{Float64,2},uPrev::Array{Float64,2},selectedStates::SelectedStates,track::Track)
 
    # warm start: Julia will do the warm start automatically
-   if lapStatus.switchingLap
-       println("warm start during switching")
-       # zPrev[:,1]-=track.s
-       setvalue(mdl.z_Ol,vcat(zPrev[2:end,:],zPrev[end,:]'))
-       setvalue(mdl.u_Ol,vcat(uPrev[2:end,:],uPrev[end,:]'))
-       lapStatus.switchingLap=false
-   end
-   # IMPORTANT: do not comment out this warm-start setiing
-   setvalue(mdl.z_Ol,vcat(zPrev[2:end,:],zPrev[end,:]'))
-   setvalue(mdl.u_Ol,vcat(uPrev[2:end,:],uPrev[end,:]'))
+   # if lapStatus.switchingLap
+   #     println("warm start during switching")
+   #     # zPrev[:,1]-=track.s
+   #     setvalue(mdl.z_Ol,vcat(zPrev[2:end,:],zPrev[end,:]'))
+   #     setvalue(mdl.u_Ol,vcat(uPrev[2:end,:],uPrev[end,:]'))
+   #     lapStatus.switchingLap=false
+   # end
+   # IMPORTANT: this warm start must be done manually when swiching the lap, but here, this warm start is done in the swiching lap section outside
+
+   setvalue(mdl.z_Ol,vcat(zPrev[2:end,:],zPrev[end,:]))
+   setvalue(mdl.u_Ol,vcat(uPrev[2:end,:],uPrev[end,:]))
    # zeros in the model initialization is dangerous for optimization: invalid number might occur when divided by zero happends
 
    selStates       = selectedStates.selStates
    statesCost      = selectedStates.statesCost
 
-   z_curvature=vcat(z_curr',z_prev[3:end,:])
+   z_curvature=vcat(zCurr',zPrev[3:end,:])
    curvature=curvature_prediction(z_curvature,track)
 
    # Update current initial condition, curvature and System ID coefficients

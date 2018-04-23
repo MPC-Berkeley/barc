@@ -88,7 +88,7 @@ function trackFrame_to_xyFrame(z_sol::Array{Float64,2},track::Track)
 end
 
 # FUNCTIONS FOR FEATURE DATA SELECTING AND SYS_ID
-function find_feature_dist(z_feature::Array{Float64,3},u_feature::Array{Float64,2},z_curr::Array{Float64,1},u_curr::Array{Float64,1},)
+function find_feature_dist(z_feature::Array{Float64,3},u_feature::Array{Float64,2},z_curr::Array{Float64,2},u_curr::Array{Float64,2},)
     Np=40 # Just to make life easier, we directly put a specific number here
     # Clear the safe set data of previous iteration
     iden_z=zeros(Np,3,2)
@@ -96,20 +96,20 @@ function find_feature_dist(z_feature::Array{Float64,3},u_feature::Array{Float64,
 
     # curr_state=hcat(z_curr[1],z_curr[4:6]',u_curr')
     # norm_state=[0.5 1 0.1 1 1 0.3] # [1 0.1 1] are the normed state, the first state is for "s", which is for putting some weight on the track place
-    curr_state=hcat(z_curr[4:6]',u_curr')
+    curr_state=hcat(z_curr[4:6]',u_curr)
 
     norm_state=[1 0.1 1 1 0.3] # [1 0.1 1] are the normed state, the first state is for "s", which is for putting some weight on the track place
     dummy_state=z_feature[:,:,1]
     dummy_input=u_feature
-    cal_state=Float64[] # stored for normalization calculation
-    cal_state=vcat(cal_state,hcat(dummy_state,dummy_input))
+    # cal_state=Float64[] # stored for normalization calculation
+    cal_state=hcat(dummy_state,dummy_input)
     dummy_norm=zeros(size(dummy_state,1),2)
 
     norm_dist=(curr_state.-cal_state[:,vcat(4:8),1]) #./norm_state
     dummy_norm[:,1]=norm_dist[:,1].^2+norm_dist[:,2].^2+norm_dist[:,3].^2+norm_dist[:,4].^2
     dummy_norm[:,2]=1:size(dummy_state,1)
     dummy_norm=sortrows(dummy_norm) # pick up the first minimum Np points
-
+    # println(dummy_norm[1:Np,:])
     for i=1:Np
         iden_z[i,:,1]=z_feature[Int(dummy_norm[i,2]),4:6,1]
         iden_z[i,:,2]=z_feature[Int(dummy_norm[i,2]),4:6,2]
@@ -125,13 +125,18 @@ end
 function coeff_iden_dist(idenStates::Array{Float64,3},idenInputs::Array{Float64,2})
     z = idenStates
     u = idenInputs
+    # println(z)
+    # println(u)
     size(z,1)==size(u,1) ? nothing : error("state and input in coeff_iden() need to have the same dimensions")
     A_vx=zeros(size(z,1),3)
     A_vy=zeros(size(z,1),4)
     A_psi=zeros(size(z,1),3)
-    y_vx=diff(z[:,1,:],2)
-    y_vy=diff(z[:,2,:],2)
-    y_psi=diff(z[:,3,:],2)
+    # y_vx=diff(z[:,1,:],2)
+    # y_vy=diff(z[:,2,:],2)
+    # y_psi=diff(z[:,3,:],2)
+    y_vx=diff(reshape(z[:,1,:],size(z,1),size(z,3)),2)
+    y_vy=diff(reshape(z[:,2,:],size(z,1),size(z,3)),2)
+    y_psi=diff(reshape(z[:,3,:],size(z,1),size(z,3)),2)
     for i=1:size(z,1)
         A_vx[i,1]=z[i,2,1]*z[i,3,1]
         A_vx[i,2]=z[i,1,1]
@@ -147,6 +152,9 @@ function coeff_iden_dist(idenStates::Array{Float64,3},idenInputs::Array{Float64,
     c_Vx = A_vx\y_vx
     c_Vy = A_vy\y_vy
     c_Psi = A_psi\y_psi
+    println("c_Vx is $c_Vx")
+    println("c_Vx is $c_Vy")
+    println("c_Vx is $c_Psi")
     return c_Vx, c_Vy, c_Psi
 end
 
@@ -158,15 +166,15 @@ function find_SS(safeSetData::SafeSetData,selectedStates::SelectedStates,
     N=mpcParams.N; dt=modelParams.dt
     Nl=selectedStates.Nl; Np_here=copy(selectedStates.Np/2)
     # Clear the safe set data of previous iteration
-    selectedStates.selStates=Float64[];
-    selectedStates.statesCost=Float64[];
+    selectedStates.selStates=Array{Float64}(0,6);
+    selectedStates.statesCost=Array{Float64}(0,1);
     # target_s=s+v*dt*(N)   # 3 is a temporary shift number
     target_s=z_prev[end,1]+z_prev[end,4]*dt
     # for i=1:lapStatus.currentLap-1
     for i=1:Nl
         SS_curr=safeSetData.oldSS[:,:,lapStatus.currentLap-i]
         SScost_curr=copy(safeSetData.cost2target[lapStatus.currentLap-i,:])
-        all_s=SS_curr[:,1]
+        all_s=SS_curr[1:Int(safeSetData.oldCost[lapStatus.currentLap-i]),1]
         if target_s>track.s
             target_s-=track.s # correction when switching the lap
         end
@@ -176,6 +184,11 @@ function find_SS(safeSetData::SafeSetData,selectedStates::SelectedStates,
         idx_s_end=Int(idx_s+Np_here-1) # to be consistant with the number of points selected in the safe set
         # idx sanity check
         cost=Int(safeSetData.oldCost[lapStatus.currentLap-i])
+        println(safeSetData.oldCost)
+        # println(idx_s_start)
+        # println(idx_s_end)
+        # println(cost)
+        
         if idx_s_start<1
             SS_curr[1:idx_s_end,1]+=track.s # correction when switching lap
             selectedStates.selStates=vcat(selectedStates.selStates,SS_curr[cost+idx_s_start:cost,:],SS_curr[1:idx_s_end,:])
@@ -198,6 +211,8 @@ function find_SS(safeSetData::SafeSetData,selectedStates::SelectedStates,
                 # println(idx_s_end)
                 selectedStates.selStates=vcat(selectedStates.selStates,SS_curr[idx_s_start:idx_s_end,:])
                 selectedStates.statesCost=vcat(selectedStates.statesCost,SScost_curr[idx_s_start:idx_s_end])
+                # selectedStates.selStates=SS_curr[idx_s_start:idx_s_end,:]
+                # selectedStates.statesCost=SScost_curr[idx_s_start:idx_s_end]
             end
         end
     end
@@ -242,8 +257,8 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_pF::MpcParams,model
     
     elseif simulator_flag == true  # if the simulator is in use
 
-        selectedStates.Np           = 15                           # Number of points to take from each previous trajectory to build the convex hull
-        selectedStates.Nl           = 2                             # Number of previous laps to include in the convex hull
+        selectedStates.Np           = 10        # please select an even number
+        selectedStates.Nl           = 2         # Number of previous laps to include in the convex hull
         # selectedStates.Nl_sID       = 3
         # selectedStates.lambda1      = 1
         # selectedStates.lambda2      = 1
@@ -316,9 +331,9 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_pF::MpcParams,model
     # mpcCoeff.coeffCost          = zeros(mpcCoeff.order+1,2)
     # mpcCoeff.coeffConst         = zeros(mpcCoeff.order+1,2,5)
     # mpcCoeff.pLength            = 5*2*mpcParams.N        # small values here may lead to numerical problems since the functions are only approximated in a short horizon
-    mpcCoeff.c_Vx               = zeros(3)
-    mpcCoeff.c_Vy               = zeros(4)
-    mpcCoeff.c_Psi              = zeros(3)
+    mpcCoeff.c_Vx               = zeros(mpcParams.N,3)
+    mpcCoeff.c_Vy               = zeros(mpcParams.N,4)
+    mpcCoeff.c_Psi              = zeros(mpcParams.N,3)
 
     lapStatus.currentLap        = 1         # initialize lap number
     lapStatus.currentIt         = 1         # current iteration in lap

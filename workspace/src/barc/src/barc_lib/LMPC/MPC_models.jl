@@ -121,7 +121,7 @@ type MpcModel_convhull_dyn_iden
     u_Ol::Array{JuMP.Variable,2}
 
     dsdt::Array{JuMP.NonlinearExpression,1}
-    c::Array{JuMP.NonlinearExpression,1}
+    c::Array{JuMP.NonlinearParameter,1}
 
     derivCost::JuMP.NonlinearExpression
     # controlCost::JuMP.NonlinearExpression
@@ -257,7 +257,7 @@ type MpcModel_convhull_dyn_iden
 
         m.mdl = mdl
         m.z0 = z0
-        # m.coeff = coeff
+        m.c = c
         m.z_Ol = z_Ol
         m.u_Ol = u_Ol
         m.c_Vx = c_Vx

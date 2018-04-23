@@ -14,10 +14,10 @@ end
 # 3th dimension specifies one of the two lap numbers between which are iterated
 
 type MpcCoeff           # coefficients for trajectory approximation
-    c_Vx::Array{Float64,1}
-    c_Vy::Array{Float64,1}
-    c_Psi::Array{Float64,1}
-    MpcCoeff(c_Vx=Float64[],c_Vy=Float64[],c_Psi=Float64[]) = new(c_Vx, c_Vy, c_Psi)
+    c_Vx::Array{Float64,2}
+    c_Vy::Array{Float64,2}
+    c_Psi::Array{Float64,2}
+    MpcCoeff(c_Vx=zeros(10,3),c_Vy=zeros(10,4),c_Psi=zeros(10,3)) = new(c_Vx, c_Vy, c_Psi)
 end
 
 type OldTrajectory      # information about previous trajectories
@@ -31,6 +31,7 @@ type OldTrajectory      # information about previous trajectories
     OldTrajectory(oldTraj=Float64[],oldInput=Float64[],oldTimes=Float64[],oldCost=Float64[],count=Int64[],idx_start=Int64[],idx_end=Int64[]) = new(oldTraj,oldInput,oldTimes,oldCost,count,idx_start,idx_end)
 end
 
+# To make the data structure to be compatible with my own simulation code, idx_start and idx_end in SafeSetData are acturally not used, since I am using other way to cantacate the laps.
 type SafeSetData
     oldSS::Array{Float64}           # contains data from previous laps usefull to build the safe set
     cost2target::Array{Float64}     # cost to arrive at the target, i.e. how many iterations from the start to the end of the lap

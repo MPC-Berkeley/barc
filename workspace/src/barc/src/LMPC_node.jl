@@ -115,19 +115,18 @@ function main()
     data = load("$(homedir())/simulations/Feature_Data/FeatureDataCollecting.jld")
     
     feature_z = data["feature_z"]
-    feature_u = data["feature_u"]
+    feature_u = data["feature_u"]    
 
     # DATA LOGGING VARIABLE INITIALIZATION
     # selStates_log    = zeros(selectedStates.Nl*selectedStates.Np,6,buffersize,30)
     # statesCost_log   = zeros(selectedStates.Nl*selectedStates.Np,buffersize,30)
     num_lap = 32
-    log_cvx                     = zeros(buffersize,3,num_lap)
-    log_cvy                     = zeros(buffersize,4,num_lap)
-    log_cpsi                    = zeros(buffersize,3,num_lap)
+    InitializeParameters(mpcParams,mpcParams_pF,modelParams,posInfo,oldTraj,mpcCoeff,lapStatus,buffersize,selectedStates,oldSS)
+    log_cvx                     = zeros(buffersize,mpcParams.N,3,num_lap)
+    log_cvy                     = zeros(buffersize,mpcParams.N,4,num_lap)
+    log_cpsi                    = zeros(buffersize,mpcParams.N,3,num_lap)
     log_status                  = Array(Symbol,buffersize,num_lap)
     k = 1 # counter initialization, k is the counter from the beginning of the experiment
-
-    InitializeParameters(mpcParams,mpcParams_pF,modelParams,posInfo,oldTraj,mpcCoeff,lapStatus,buffersize,selectedStates,oldSS)
 
     # MODEL INITIALIZATION
     mdl_pF           = MpcModel_pF(mpcParams_pF,modelParams)
@@ -149,6 +148,7 @@ function main()
     
     mpcSol.z = zeros(11,4)
     mpcSol.u = zeros(10,2)
+    mpcSol.z[1,4] = 1.1 # give the vehcile some initial speed to simulate forward
     for i in 2:11
         mpcSol.z[i,:]=car_sim_kin(mpcSol.z[i-1,:],mpcSol.u[i-1,:],track,modelParams)
     end
@@ -156,6 +156,10 @@ function main()
     mpcSol.d_f = 0
     z_prev = mpcSol.z
     u_prev = mpcSol.u
+
+    # Just for LMPC quick syntax debugging
+    data = load("$(homedir())/simulations/oldSS.jld")
+    oldSS = data["oldSS"]
 
     while ! is_shutdown()
         if z_est[6] > 0    
@@ -202,6 +206,10 @@ function main()
                 u_prev = u_sol
                 println("LMPC solver status is = $sol_status")
             else
+                # Just for LMPC quick debugging
+                lapStatus.currentLap = 4
+
+
                 # # THIS SAVING IS ONLY FOR QUICK DEBUGGING
                 # log_path = "$(homedir())/simulations/oldSS.jld"
                 # save(log_path,"oldSS",oldSS)
@@ -212,13 +220,20 @@ function main()
                 println("s:", z_curr[1], " x:", x_est[1], " y:", x_est[2])
                 # SAFESET POINT SELECTION
                 selectedStates=find_SS(oldSS,selectedStates,z_prev,lapStatus,modelParams,mpcParams,track)
+                println(size(selectedStates.selStates))
+
+                # Temperal solution: will be improved
+                if size(z_prev,2)==4
+                    z_prev = hcat(z_prev,zeros(size(z_prev,1),2))
+                end
+
                 # FEATURE POINT SELECTION AND SYS_ID
-                z_to_iden = vcat(z_curr,z_prev[3:end-1,:])
+                z_to_iden = vcat(z_curr',z_prev[3:end,:])
                 u_to_iden = vcat(u_prev[2:end,:],u_prev[end,:])
-                for i in 1:N
-                    z = z_iden[i,:]
-                    u = u_iden[i,:]
-                    (iden_z,iden_u)=find_feature_dist(feature_z,feature_u,z[i,:],u[i,:])
+                for i in 1:mpcParams.N
+                    z = z_to_iden[i,:]
+                    u = u_to_iden[i,:]
+                    (iden_z,iden_u)=find_feature_dist(feature_z,feature_u,z,u)
                     (mpcCoeff.c_Vx[i,:],mpcCoeff.c_Vy[i,:],mpcCoeff.c_Psi[i,:])=coeff_iden_dist(iden_z,iden_u)
                 end
                 # LMPC CONTROLLER OPTIMIZATION
@@ -240,9 +255,9 @@ function main()
             mpcSol_to_pub.z_y = z_y
 
             # DATA WRITING AND COUNTER UPDATE
-            log_cvx[lapStatus.currentIt,:,lapStatus.currentLap]         = mpcCoeff.c_Vx       
-            log_cvy[lapStatus.currentIt,:,lapStatus.currentLap]         = mpcCoeff.c_Vy       
-            log_cpsi[lapStatus.currentIt,:,lapStatus.currentLap]        = mpcCoeff.c_Psi
+            log_cvx[lapStatus.currentIt,:,:,lapStatus.currentLap]         = mpcCoeff.c_Vx       
+            log_cvy[lapStatus.currentIt,:,:,lapStatus.currentLap]         = mpcCoeff.c_Vy       
+            log_cpsi[lapStatus.currentIt,:,:,lapStatus.currentLap]        = mpcCoeff.c_Psi
             log_status[lapStatus.currentIt,lapStatus.currentLap]        = mpcSol.solverStatus
             lapStatus.currentIt += 1
 
