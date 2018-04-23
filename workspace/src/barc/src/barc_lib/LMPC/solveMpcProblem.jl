@@ -91,9 +91,9 @@ function solveMpcProblem_convhull_dyn_iden(mdl::MpcModel_convhull_dyn_iden,mpcPa
    #     lapStatus.switchingLap=false
    # end
    # IMPORTANT: this warm start must be done manually when swiching the lap, but here, this warm start is done in the swiching lap section outside
-
    setvalue(mdl.z_Ol,vcat(zPrev[2:end,:],zPrev[end,:]))
    setvalue(mdl.u_Ol,vcat(uPrev[2:end,:],uPrev[end,:]))
+   
    # zeros in the model initialization is dangerous for optimization: invalid number might occur when divided by zero happends
 
    selStates       = selectedStates.selStates

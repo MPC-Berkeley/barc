@@ -148,7 +148,7 @@ type MpcModel_convhull_dyn_iden
         u_lb = [-1    -18/180*pi]
         u_ub = [ 2     18/180*pi]
         z_lb = [-Inf -Inf -Inf -0.5 -Inf -Inf] # 1.s 2.ey 3.epsi 4.vx 5.vy 6.psi_dot
-        z_ub = [ Inf  Inf  Inf  2.5 -Inf -Inf] # 1.s 2.ey 3.epsi 4.vx 5.vy 6.psi_dot
+        z_ub = [ Inf  Inf  Inf  2.5  Inf  Inf] # 1.s 2.ey 3.epsi 4.vx 5.vy 6.psi_dot
 
         ey_max      = 0.8/2           # bound for the state ey (distance from the center track). It is set as half of the width of the track for obvious reasons
 
@@ -164,8 +164,8 @@ type MpcModel_convhull_dyn_iden
         Np         = 10
         Nl         = 2
 
-        mdl = Model(solver = IpoptSolver(print_level=0,linear_solver="ma27"))#,check_derivatives_for_naninf="yes"))#,linear_solver="ma57",print_user_options="yes"))
-        # ,max_cpu_time=0.09
+        mdl = Model(solver = IpoptSolver(print_level=0,max_cpu_time=0.09)) #,linear_solver="ma27"))#,check_derivatives_for_naninf="yes"))#,linear_solver="ma57",print_user_options="yes"))
+        # 
         @variable( mdl, z_Ol[1:(N+1),1:n_state])
         @variable( mdl, u_Ol[1:N,1:n_input])
         @variable( mdl, eps_lane[1:N] >= 0)   # eps for soft lane constraints
@@ -181,10 +181,10 @@ type MpcModel_convhull_dyn_iden
                 setupperbound(z_Ol[j+1,i], z_ub[i])
             end
         end
-        # for i=1:n_state
-        #     setlowerbound(z_Ol[N+1,i], z_lb[i])
-        #     setupperbound(z_Ol[N+1,i], z_ub[i])
-        # end
+        for i=1:n_state
+            setlowerbound(z_Ol[N+1,i], z_lb[i])
+            setupperbound(z_Ol[N+1,i], z_ub[i])
+        end
 
         @NLparameter(mdl, z0[i=1:n_state] == 0)
         @NLparameter(mdl, c[1:N] == 0)
@@ -231,27 +231,27 @@ type MpcModel_convhull_dyn_iden
         @NLexpression(mdl, terminalCost , Q_term_cost*sum{alpha[i]*statesCost[i] , i=1:Nl*Np})
         # Slack cost on vx
         #----------------------------------
-        @NLexpression(mdl, slackVx, (z_Ol[N+1,1] - sum{alpha[j]*selStates[j,1] , j=1:Nl*Np})^2)
+        @NLexpression(mdl, slackVx, (z_Ol[N+1,4] - sum{alpha[j]*selStates[j,4] , j=1:Nl*Np})^2)
 
         # Slack cost on vy
         #----------------------------------
-        @NLexpression(mdl, slackVy, (z_Ol[N+1,2] - sum{alpha[j]*selStates[j,2] , j=1:Nl*Np})^2)
+        @NLexpression(mdl, slackVy, (z_Ol[N+1,5] - sum{alpha[j]*selStates[j,5] , j=1:Nl*Np})^2)
 
         # Slack cost on Psi dot
         #----------------------------------
-        @NLexpression(mdl, slackPsidot, (z_Ol[N+1,3] - sum{alpha[j]*selStates[j,3] ,j=1:Nl*Np})^2)
+        @NLexpression(mdl, slackPsidot, (z_Ol[N+1,6] - sum{alpha[j]*selStates[j,6] ,j=1:Nl*Np})^2)
 
         # Slack cost on ePsi
         #----------------------------------
-        @NLexpression(mdl, slackEpsi, (z_Ol[N+1,4] - sum{alpha[j]*selStates[j,4] , j=1:Nl*Np})^2)
+        @NLexpression(mdl, slackEpsi, (z_Ol[N+1,3] - sum{alpha[j]*selStates[j,3] , j=1:Nl*Np})^2)
 
         # Slack cost on ey
         #----------------------------------
-        @NLexpression(mdl, slackEy, (z_Ol[N+1,5] - sum{alpha[j]*selStates[j,5] , j=1:Nl*Np})^2)
+        @NLexpression(mdl, slackEy, (z_Ol[N+1,2] - sum{alpha[j]*selStates[j,2] , j=1:Nl*Np})^2)
 
         # Slack cost on s
         #----------------------------------
-        @NLexpression(mdl, slackS, (z_Ol[N+1,6] - sum{alpha[j]*selStates[j,6] , j=1:Nl*Np})^2)
+        @NLexpression(mdl, slackS, (z_Ol[N+1,1] - sum{alpha[j]*selStates[j,1] , j=1:Nl*Np})^2)
 
         @NLobjective(mdl, Min, derivCost + laneCost +  terminalCost + Q_slack[1]*slackS + Q_slack[2]*slackEy + Q_slack[3]*slackEpsi + Q_slack[4]*slackVx + Q_slack[5]*slackVy + Q_slack[6]*slackPsidot) #+ controlCost
 

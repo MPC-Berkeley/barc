@@ -158,8 +158,18 @@ function main()
     u_prev = mpcSol.u
 
     # Just for LMPC quick syntax debugging
+    
+
+    # FUNCTION DUMMY CALLS: this is important to call all the functions that will be used before for initial compiling
     data = load("$(homedir())/simulations/oldSS.jld")
-    oldSS = data["oldSS"]
+    oldSS_dummy = data["oldSS"]
+    lapStatus_dummy = LapStatus(3,1,false,false,0.3)
+    selectedStates_dummy=find_SS(oldSS_dummy,selectedStates,z_prev,lapStatus_dummy,modelParams,mpcParams,track)
+    z = rand(1,6); u = rand(1,2)
+    (iden_z,iden_u)=find_feature_dist(feature_z,feature_u,z,u)
+    (c_Vx,c_Vy,c_Psi)=coeff_iden_dist(iden_z,iden_u)
+    (~,~,~)=solveMpcProblem_convhull_dyn_iden(mdl_convhull,mpcParams,mpcCoeff,lapStatus_dummy,rand(6),rand(11,6),rand(10,2),selectedStates_dummy,track)    
+    (~,~,~)=car_pre_dyn(rand(1,6),rand(10,2),track,modelParams,6)
 
     while ! is_shutdown()
         if z_est[6] > 0    
@@ -179,22 +189,24 @@ function main()
                 # for j = 1:buffersize
                 #     cost2target[j] = (lapStatus.currentIt-j+1)  
                 # end
-                oldSS.cost2target[:,lapStatus.currentLap] = oldSS.cost2target[:,lapStatus.currentLap] - lapStatus.currentIt
+                oldSS.cost2target[:,lapStatus.currentLap] = lapStatus.currentIt - oldSS.cost2target[:,lapStatus.currentLap]
                 lapStatus.nextLap = false
-                if mpcSol.z[1,1]>posInfo.s_target
+                # if mpcSol.z[1,1]>posInfo.s_target
                     # WARM START SWITCHING
-                    setvalue(mdl_pF.z_Ol[1:mpcParams.N,1],mpcSol.z[2:mpcParams.N+1,1]-posInfo.s_target)
-                    setvalue(mdl_pF.z_Ol[mpcParams.N+1,1],mpcSol.z[mpcParams.N+1,1]-posInfo.s_target)
-                    setvalue(mdl_convhull.z_Ol[1:mpcParams.N,1],mpcSol.z[2:mpcParams.N+1,1]-posInfo.s_target)
-                    setvalue(mdl_convhull.z_Ol[mpcParams.N+1,1],mpcSol.z[mpcParams.N+1,1]-posInfo.s_target)
-                end
+                setvalue(mdl_pF.z_Ol[1:mpcParams.N,1],mpcSol.z[2:mpcParams.N+1,1]-posInfo.s_target)
+                setvalue(mdl_pF.z_Ol[mpcParams.N+1,1],mpcSol.z[mpcParams.N+1,1]-posInfo.s_target)
+                setvalue(mdl_convhull.z_Ol[1:mpcParams.N,1],mpcSol.z[2:mpcParams.N+1,1]-posInfo.s_target)
+                setvalue(mdl_convhull.z_Ol[mpcParams.N+1,1],mpcSol.z[mpcParams.N+1,1]-posInfo.s_target)
+                z_prev[:,1] -= posInfo.s_target
+
+                # end
                 lapStatus.currentLap += 1
                 lapStatus.currentIt = 1
             end
 
             # OPTIMIZATION
             println("Current Lap: ", lapStatus.currentLap, ", It: ", lapStatus.currentIt)
-            if lapStatus.currentLap<=-1 # FOR QUICK LMPC DEBUGGING
+            if lapStatus.currentLap<=3 # FOR QUICK LMPC DEBUGGING
                 # (xDot, yDot, psiDot, ePsi, eY, s, acc_f)
                 z_curr = [z_est[6],z_est[5],z_est[4],sqrt(z_est[1]^2+z_est[2]^2)]
                 (z_sol,u_sol,sol_status)=solveMpcProblem_pathFollow(mdl_pF,mpcParams_pF,modelParams,z_curr,z_prev,u_prev,track)
@@ -206,21 +218,14 @@ function main()
                 u_prev = u_sol
                 println("LMPC solver status is = $sol_status")
             else
-                # Just for LMPC quick debugging
-                lapStatus.currentLap = 4
-
-
-                # # THIS SAVING IS ONLY FOR QUICK DEBUGGING
-                # log_path = "$(homedir())/simulations/oldSS.jld"
-                # save(log_path,"oldSS",oldSS)
-
+                tic()
+                # lapStatus.currentLap = 4
                 # ESTIMATED STATES PARSING
                 # (xDot, yDot, psiDot, ePsi, eY, s, acc_f)
                 z_curr = [z_est[6],z_est[5],z_est[4],z_est[1],z_est[2],z_est[3]]
                 println("s:", z_curr[1], " x:", x_est[1], " y:", x_est[2])
                 # SAFESET POINT SELECTION
                 selectedStates=find_SS(oldSS,selectedStates,z_prev,lapStatus,modelParams,mpcParams,track)
-                println(size(selectedStates.selStates))
 
                 # Temperal solution: will be improved
                 if size(z_prev,2)==4
@@ -236,8 +241,29 @@ function main()
                     (iden_z,iden_u)=find_feature_dist(feature_z,feature_u,z,u)
                     (mpcCoeff.c_Vx[i,:],mpcCoeff.c_Vy[i,:],mpcCoeff.c_Psi[i,:])=coeff_iden_dist(iden_z,iden_u)
                 end
+                t = toc()
+                println("elapse time: $t")
+                tic()
                 # LMPC CONTROLLER OPTIMIZATION
+                # println("mpcCoeff.Vx: $(mpcCoeff.c_Vx)")
+                # println("mpcCoeff.Vy: $(mpcCoeff.c_Vy)")
+                # println("mpcCoeff.Psi: $(mpcCoeff.c_Psi)")
+                println("z_curr: $z_curr")
+                # println("z_prev: $z_prev")
+                println("u: $(u_prev[2,:])")
+                # println("SelectedState: $selectedStates")
+                # println("mpcParams: $mpcParams")
                 (z_sol,u_sol,sol_status)=solveMpcProblem_convhull_dyn_iden(mdl_convhull,mpcParams,mpcCoeff,lapStatus,z_curr,z_prev,u_prev,selectedStates,track)
+                # In case it is not optimal solution
+                # save("$(homedir())/status.jld","sol_status",sol_status)
+                t = toc()
+                println("elapse time: $t")
+
+                sol_status_dummy = "$sol_status"
+                if sol_status_dummy[1] != 'O'
+                    u_sol=copy(u_prev)
+                    (z_sol,~,~)=car_pre_dyn(z_curr,u_sol,track,modelParams,6)
+                end
                 mpcSol.z = z_sol
                 mpcSol.u = u_sol
                 mpcSol.a_x = u_sol[2,1] 
