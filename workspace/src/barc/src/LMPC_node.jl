@@ -199,7 +199,7 @@ function main()
                 println("Finishing one lap at iteration ",lapStatus.currentIt)
                 # SAFE SET COST UPDATE
                 # log_final_counter[lapStatus.currentLap-1] = k
-                oldSS.oldCost[lapStatus.currentLap] = lapStatus.currentIt
+                oldSS.oldCost[lapStatus.currentLap] = lapStatus.currentIt-1
                 # cost2target                           = zeros(buffersize) # array containing the cost to arrive from each point of the old trajectory to the target            
                 # for j = 1:buffersize
                 #     cost2target[j] = (lapStatus.currentIt-j+1)  
@@ -233,6 +233,7 @@ function main()
                 u_prev = u_sol
                 println("LMPC solver status is = $sol_status")
             else
+                # save("$(homedir())/simulations/oldSS.jld","oldSS",oldSS)
                 # tic()
                 # lapStatus.currentLap = 4
                 # ESTIMATED STATES PARSING
@@ -260,13 +261,13 @@ function main()
                 # println("elapse time: $t")
                 # tic()
                 # LMPC CONTROLLER OPTIMIZATION
-                println("mpcCoeff.Vx: $(mpcCoeff.c_Vx)")
-                println("mpcCoeff.Vy: $(mpcCoeff.c_Vy)")
-                println("mpcCoeff.Psi: $(mpcCoeff.c_Psi)")
-                println("z_curr: $z_curr")
+                # println("mpcCoeff.Vx: $(mpcCoeff.c_Vx)")
+                # println("mpcCoeff.Vy: $(mpcCoeff.c_Vy)")
+                # println("mpcCoeff.Psi: $(mpcCoeff.c_Psi)")
+                # println("z_curr: $z_curr")
                 # println("z_prev: $z_prev")
                 # println("u: $(u_prev[2,:])")
-                println("SelectedState: $selectedStates")
+                # println("SelectedState: $selectedStates")
                 # println("mpcParams: $mpcParams")
                 (z_sol,u_sol,sol_status)=solveMpcProblem_convhull_dyn_iden(mdl_convhull,mpcParams,mpcCoeff,lapStatus,z_curr,z_prev,u_prev,selectedStates,track)
                 # In case it is not optimal solution
@@ -303,11 +304,12 @@ function main()
             log_cvy[lapStatus.currentIt,:,:,lapStatus.currentLap]         = mpcCoeff.c_Vy       
             log_cpsi[lapStatus.currentIt,:,:,lapStatus.currentLap]        = mpcCoeff.c_Psi
             log_status[lapStatus.currentIt,lapStatus.currentLap]        = mpcSol.solverStatus
-            lapStatus.currentIt += 1
+            
 
             # SAFESET DATA SAVING BASED ON CONTROLLER'S FREQUENCY
             oldSS.oldSS[lapStatus.currentIt,:,lapStatus.currentLap]=[z_est[6],z_est[5],z_est[4],z_est[1],z_est[2],z_est[3]]
             oldSS.cost2target[lapStatus.currentIt,lapStatus.currentLap]=lapStatus.currentIt
+            lapStatus.currentIt += 1
         else
             println("No estimation data received!")
         end
