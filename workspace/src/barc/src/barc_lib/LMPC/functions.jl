@@ -77,6 +77,9 @@ function trackFrame_to_xyFrame(z_sol::Array{Float64,2},track::Track)
 
         ds=track.ds; s=z[1]; ey=z[2]; epsi=z[3]
         idx=Int64(ceil(s/ds))+1 # correction for the starting original point
+        idx>track.n_node ? idx=idx%track.n_node : nothing
+        # println(idx)
+        # println(track.n_node)
 
         x_track=track.xy[idx,1]; y_track=track.xy[idx,2]; theta=track.theta[idx]
         x=x_track+ey*cos(theta+pi/2); y=y_track+ey*sin(theta+pi/2)
@@ -366,6 +369,8 @@ function car_sim_kin(z::Array{Float64},u::Array{Float64},track::Track,modelParam
 
     idx=Int(ceil(z[1]/track.ds))+1 # correct the starting original point idx problem
     idx>track.n_node ? idx=idx%track.n_node : nothing
+    # println(idx)
+    # println(track.n_node)
     c=track.curvature[idx]
 
     bta = atan(L_a/(L_a+L_b)*tan(u[2]))
@@ -444,8 +449,15 @@ function car_sim_dyn(z::Array{Float64},u::Array{Float64},dt::Float64,track::Trac
     FyR = -pacejka(a_R)
 
     idx=Int(ceil(z[1]/track.ds))+1 # correct the starting original point idx problem
+    # println(z[1])
+    # println(idx)
     idx>track.n_node ? idx=idx%track.n_node : nothing
+    idx<=0 ? idx += track.n_node : nothing
+    # println(idx)
+    
+    # println(track.n_node)
     c=track.curvature[idx]
+    
 
     dsdt = (z[4]*cos(z[3]) - z[5]*sin(z[3]))/(1-z[2]*c)
 

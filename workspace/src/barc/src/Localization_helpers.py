@@ -171,18 +171,32 @@ class Localization(object):
         curvature = array([0])
 
         # TRACK DATA CALCULATION
-        track_data=[[80,0],
-                    [120,-pi/2],
-                    [80,0],
-                    [220,-pi*0.85],
-                    [105,pi/15],
-                    [300,pi*1.15],
-                    [240,-pi*0.865],
-                    [100,0],
-                    [120,-pi/2],
-                    [153,0],
-                    [120,-pi/2],
-                    [211,0]]
+        # track_data=[[80,0],
+        #             [120,-pi/2],
+        #             [80,0],
+        #             [220,-pi*0.85],
+        #             [105,pi/15],
+        #             [300,pi*1.15],
+        #             [240,-pi*0.865],
+        #             [100,0],
+        #             [120,-pi/2],
+        #             [153,0],
+        #             [120,-pi/2],
+        #             [211,0]]
+        num = 60
+        track_data=[[80 ,0],
+                    [num, -pi/2],
+                    [80 ,0],
+                    [num, -pi/2],
+                    [50 ,0],
+                    [num, -pi/2],
+                    [4  , 0],
+                    [num, pi/2],
+                    [30 ,0],
+                    [num, -pi/2],
+                    [4 ,0],
+                    [num, -pi/2],
+                    [71 ,0]]            
         for i in range(len(track_data)):
             num = track_data[i][0]
             angle = track_data[i][1]

@@ -83,18 +83,33 @@ function main()
     #             153 0;
     #             120 -pi/2;
     #             211 0]
+    # EXPERIEMENT TRACK DATA
+    num = 60
+    track_data=[80 0;
+                num -pi/2;
+                80 0;
+                num -pi/2;
+                50 0;
+                num -pi/2;
+                4 0;
+                num pi/2;
+                30 0;
+                num -pi/2;
+                4 0;
+                num -pi/2;
+                71 0]
     # FEATURE TRACK DATA
-    v = 2.5
-    max_a=7.6;
-    R=v^2/max_a
-    max_c=1/R
-    angle=(pi+pi/2)-0.105
-    R_kin = 0.8
-    num_kin = Int(round(angle/ ( 0.03/R_kin ) * 2))
-    num = max(Int(round(angle/ ( 0.03/R ) * 2)),num_kin)
-    # num*=2
-    track_data=[num -angle;
-                num  angle]
+    # v = 2.5
+    # max_a=7.6;
+    # R=v^2/max_a
+    # max_c=1/R
+    # angle=(pi+pi/2)-0.105
+    # R_kin = 0.8
+    # num_kin = Int(round(angle/ ( 0.03/R_kin ) * 2))
+    # num = max(Int(round(angle/ ( 0.03/R ) * 2)),num_kin)
+    # # num*=2
+    # track_data=[num -angle;
+    #             num  angle]
     track            = Track(track_data)
     oldTraj          = OldTrajectory()
     posInfo          = PosInfo();  posInfo.s_target=track.s;
@@ -147,8 +162,8 @@ function main()
     # posInfo.s_target        = 19.11 #17.91 #19.14#17.94#17.76#24.0
     
     mpcSol.z = zeros(11,4)
-    mpcSol.u = zeros(10,2)
-    mpcSol.z[1,4] = 1.1 # give the vehcile some initial speed to simulate forward
+    mpcSol.u = hcat(0.5*ones(10),zeros(10))
+    mpcSol.z[1,4] = 1.0 # give the vehcile some initial speed to simulate forward
     for i in 2:11
         mpcSol.z[i,:]=car_sim_kin(mpcSol.z[i-1,:],mpcSol.u[i-1,:],track,modelParams)
     end
@@ -169,7 +184,7 @@ function main()
     (iden_z,iden_u)=find_feature_dist(feature_z,feature_u,z,u)
     (c_Vx,c_Vy,c_Psi)=coeff_iden_dist(iden_z,iden_u)
     (~,~,~)=solveMpcProblem_convhull_dyn_iden(mdl_convhull,mpcParams,mpcCoeff,lapStatus_dummy,rand(6),rand(11,6),rand(10,2),selectedStates_dummy,track)    
-    (~,~,~)=car_pre_dyn(rand(1,6),rand(10,2),track,modelParams,6)
+    (~,~,~)=car_pre_dyn(rand(1,6)+1,rand(10,2),track,modelParams,6)
 
     while ! is_shutdown()
         if z_est[6] > 0    
@@ -218,12 +233,12 @@ function main()
                 u_prev = u_sol
                 println("LMPC solver status is = $sol_status")
             else
-                tic()
+                # tic()
                 # lapStatus.currentLap = 4
                 # ESTIMATED STATES PARSING
                 # (xDot, yDot, psiDot, ePsi, eY, s, acc_f)
                 z_curr = [z_est[6],z_est[5],z_est[4],z_est[1],z_est[2],z_est[3]]
-                println("s:", z_curr[1], " x:", x_est[1], " y:", x_est[2])
+                # println("s:", z_curr[1], " x:", x_est[1], " y:", x_est[2])
                 # SAFESET POINT SELECTION
                 selectedStates=find_SS(oldSS,selectedStates,z_prev,lapStatus,modelParams,mpcParams,track)
 
@@ -241,23 +256,23 @@ function main()
                     (iden_z,iden_u)=find_feature_dist(feature_z,feature_u,z,u)
                     (mpcCoeff.c_Vx[i,:],mpcCoeff.c_Vy[i,:],mpcCoeff.c_Psi[i,:])=coeff_iden_dist(iden_z,iden_u)
                 end
-                t = toc()
-                println("elapse time: $t")
-                tic()
+                # t = toc()
+                # println("elapse time: $t")
+                # tic()
                 # LMPC CONTROLLER OPTIMIZATION
-                # println("mpcCoeff.Vx: $(mpcCoeff.c_Vx)")
-                # println("mpcCoeff.Vy: $(mpcCoeff.c_Vy)")
-                # println("mpcCoeff.Psi: $(mpcCoeff.c_Psi)")
+                println("mpcCoeff.Vx: $(mpcCoeff.c_Vx)")
+                println("mpcCoeff.Vy: $(mpcCoeff.c_Vy)")
+                println("mpcCoeff.Psi: $(mpcCoeff.c_Psi)")
                 println("z_curr: $z_curr")
                 # println("z_prev: $z_prev")
-                println("u: $(u_prev[2,:])")
-                # println("SelectedState: $selectedStates")
+                # println("u: $(u_prev[2,:])")
+                println("SelectedState: $selectedStates")
                 # println("mpcParams: $mpcParams")
                 (z_sol,u_sol,sol_status)=solveMpcProblem_convhull_dyn_iden(mdl_convhull,mpcParams,mpcCoeff,lapStatus,z_curr,z_prev,u_prev,selectedStates,track)
                 # In case it is not optimal solution
                 # save("$(homedir())/status.jld","sol_status",sol_status)
-                t = toc()
-                println("elapse time: $t")
+                # t = toc()
+                # println("elapse time: $t")
 
                 sol_status_dummy = "$sol_status"
                 if sol_status_dummy[1] != 'O'
@@ -279,6 +294,9 @@ function main()
             (z_x,z_y) = trackFrame_to_xyFrame(z_sol,track)
             mpcSol_to_pub.z_x = z_x
             mpcSol_to_pub.z_y = z_y
+            (SS_x,SS_y) = trackFrame_to_xyFrame(selectedStates.selStates,track)
+            mpcSol_to_pub.SS_x = SS_x
+            mpcSol_to_pub.SS_y = SS_y
 
             # DATA WRITING AND COUNTER UPDATE
             log_cvx[lapStatus.currentIt,:,:,lapStatus.currentLap]         = mpcCoeff.c_Vx       

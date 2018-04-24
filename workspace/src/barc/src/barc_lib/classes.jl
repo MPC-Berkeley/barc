@@ -143,8 +143,8 @@ type Track
         track=new()
 
         xy=[0.0 0.0] # 1.x 2.y
-        # theta=[0.0]
-        theta=[pi/4]
+        theta=[0.0]
+        # theta=[pi/4]
         curvature=[0.0]
         ds=0.03 # length of each segment
         width=0.8
