@@ -145,9 +145,9 @@ type MpcModel_convhull_dyn_iden
         # u_ub       = mpcParams.u_ub              # upper bounds for the control inputs
         # z_lb       = mpcParams.z_lb              # lower bounds for the states
         # z_ub       = mpcParams.z_ub              # upper bounds for the states
-        u_lb = [-1    -18/180*pi]
+        u_lb = [ 0    -18/180*pi]
         u_ub = [ 2     18/180*pi]
-        z_lb = [-Inf -Inf -Inf -0.5 -Inf -Inf] # 1.s 2.ey 3.epsi 4.vx 5.vy 6.psi_dot
+        z_lb = [-Inf -Inf -Inf  0.5 -Inf -Inf] # 1.s 2.ey 3.epsi 4.vx 5.vy 6.psi_dot
         z_ub = [ Inf  Inf  Inf  2.5  Inf  Inf] # 1.s 2.ey 3.epsi 4.vx 5.vy 6.psi_dot
 
         ey_max      = 0.8/2           # bound for the state ey (distance from the center track). It is set as half of the width of the track for obvious reasons

@@ -31,6 +31,19 @@ type OldTrajectory      # information about previous trajectories
     OldTrajectory(oldTraj=Float64[],oldInput=Float64[],oldTimes=Float64[],oldCost=Float64[],count=Int64[],idx_start=Int64[],idx_end=Int64[]) = new(oldTraj,oldInput,oldTimes,oldCost,count,idx_start,idx_end)
 end
 
+type SolHistory
+    u::Array{Float64,4}
+    z::Array{Float64,4}
+    cost::Array{Float64,1}
+    function SolHistory(bufferSize::Int64,N::Int64,n_state::Int64,n_lap::Int64)
+        solHistory=new()
+        solHistory.u=zeros(bufferSize,n_lap,N,2)
+        solHistory.z=zeros(bufferSize,n_lap,N+1,n_state)
+        solHistory.cost=zeros(n_lap)
+        return solHistory
+    end
+end
+
 # To make the data structure to be compatible with my own simulation code, idx_start and idx_end in SafeSetData are acturally not used, since I am using other way to cantacate the laps.
 type SafeSetData
     oldSS::Array{Float64}           # contains data from previous laps usefull to build the safe set

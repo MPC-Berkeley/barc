@@ -125,6 +125,7 @@ function main()
     x_est            = zeros(4)          # (x, y, psi, v)
     cmd              = ECU()             # CONTROL SIGNAL MESSAGE INITIALIZATION
     mpcSol_to_pub    = mpc_solution()    # MPC SOLUTION PUBLISHING MESSAGE INITIALIZATION
+    solHistory = SolHistory(500,10,6,32)
 
     # FEATURE DATA READING
     data = load("$(homedir())/simulations/Feature_Data/FeatureDataCollecting.jld")
@@ -173,7 +174,8 @@ function main()
     u_prev = mpcSol.u
 
     # Just for LMPC quick syntax debugging
-    
+    data = load("$(homedir())/simulations/oldSS.jld")
+    oldSS = data["oldSS"]
 
     # FUNCTION DUMMY CALLS: this is important to call all the functions that will be used before for initial compiling
     data = load("$(homedir())/simulations/oldSS.jld")
@@ -248,15 +250,34 @@ function main()
                     z_prev = hcat(z_prev,zeros(size(z_prev,1),2))
                 end
 
-                # FEATURE POINT SELECTION AND SYS_ID
+                # # FEATURE POINT SELECTION AND SYS_ID
+                # z_to_iden = vcat(z_curr',z_prev[3:end,:])
+                # u_to_iden = vcat(u_prev[2:end,:],u_prev[end,:])
+                # # TV SYS_ID
+                # for i in 1:mpcParams.N
+                #     z = z_to_iden[i,:]
+                #     u = u_to_iden[i,:]
+                #     (iden_z,iden_u)=find_feature_dist(feature_z,feature_u,z,u)
+                #     (mpcCoeff.c_Vx[i,:],mpcCoeff.c_Vy[i,:],mpcCoeff.c_Psi[i,:])=coeff_iden_dist(iden_z,iden_u)
+                # end
+                # println(hcat(z_curr[4:6]',u_prev[2,:]))
+                # println(hcat(iden_z[:,:,1],iden_u))
+
+                # TI SYS_ID
                 z_to_iden = vcat(z_curr',z_prev[3:end,:])
                 u_to_iden = vcat(u_prev[2:end,:],u_prev[end,:])
-                for i in 1:mpcParams.N
-                    z = z_to_iden[i,:]
-                    u = u_to_iden[i,:]
-                    (iden_z,iden_u)=find_feature_dist(feature_z,feature_u,z,u)
-                    (mpcCoeff.c_Vx[i,:],mpcCoeff.c_Vy[i,:],mpcCoeff.c_Psi[i,:])=coeff_iden_dist(iden_z,iden_u)
+                z = z_to_iden[1,:]
+                u = u_to_iden[1,:]
+                (iden_z,iden_u)=find_feature_dist(feature_z,feature_u,z,u)
+                println(hcat(z_curr[4:6]',u_prev[2,:]))
+                println(hcat(iden_z[:,:,1],iden_u))
+                (mpcCoeff.c_Vx[1,:],mpcCoeff.c_Vy[1,:],mpcCoeff.c_Psi[1,:])=coeff_iden_dist(iden_z,iden_u)
+                for i in 2:mpcParams.N
+                    mpcCoeff.c_Vx[i,:]=mpcCoeff.c_Vx[1,:]
+                    mpcCoeff.c_Vy[i,:]=mpcCoeff.c_Vy[1,:]
+                    mpcCoeff.c_Psi[i,:]=mpcCoeff.c_Psi[1,:]
                 end
+
                 # t = toc()
                 # println("elapse time: $t")
                 # tic()
@@ -266,7 +287,7 @@ function main()
                 # println("mpcCoeff.Psi: $(mpcCoeff.c_Psi)")
                 # println("z_curr: $z_curr")
                 # println("z_prev: $z_prev")
-                # println("u: $(u_prev[2,:])")
+                println("u: $(u_prev[2,:])")
                 # println("SelectedState: $selectedStates")
                 # println("mpcParams: $mpcParams")
                 (z_sol,u_sol,sol_status)=solveMpcProblem_convhull_dyn_iden(mdl_convhull,mpcParams,mpcCoeff,lapStatus,z_curr,z_prev,u_prev,selectedStates,track)
@@ -287,9 +308,18 @@ function main()
                 z_prev = z_sol
                 u_prev = u_sol
                 println("LMPC solver status is = $sol_status")
+                solHistory.z[lapStatus.currentIt,lapStatus.currentLap,:,:]=z_sol
+                solHistory.u[lapStatus.currentIt,lapStatus.currentLap,:,:]=u_sol
+                (z_fore,~,~) = car_pre_dyn(z_curr,u_sol,track,modelParams,6)
+                (z_fore_x,z_fore_y) = trackFrame_to_xyFrame(z_fore,track)
+                mpcSol_to_pub.z_fore_x = z_fore_x
+                mpcSol_to_pub.z_fore_y = z_fore_y
             end
             cmd.motor = convert(Float32,mpcSol.a_x)
             cmd.servo = convert(Float32,mpcSol.d_f)
+            # cmd.header.stamp = get_rostime()
+            # publish(pub, cmd)
+
 
             # VISUALIZATION COORDINATE CALCULATION FOR view_trajectory.jl NODE
             (z_x,z_y) = trackFrame_to_xyFrame(z_sol,track)
@@ -298,13 +328,18 @@ function main()
             (SS_x,SS_y) = trackFrame_to_xyFrame(selectedStates.selStates,track)
             mpcSol_to_pub.SS_x = SS_x
             mpcSol_to_pub.SS_y = SS_y
-
+            mpcSol_to_pub.z_vx = z_sol[:,4]
+            mpcSol_to_pub.SS_vx = selectedStates.selStates[:,4]
+            mpcSol_to_pub.z_s = z_sol[:,1]
+            mpcSol_to_pub.SS_s = selectedStates.selStates[:,1]
+            # mpcSol_to_pub.header.stamp = get_rostime()     
+            # publish(mpcSol_pub, mpcSol_to_pub)
+            
             # DATA WRITING AND COUNTER UPDATE
             log_cvx[lapStatus.currentIt,:,:,lapStatus.currentLap]         = mpcCoeff.c_Vx       
             log_cvy[lapStatus.currentIt,:,:,lapStatus.currentLap]         = mpcCoeff.c_Vy       
             log_cpsi[lapStatus.currentIt,:,:,lapStatus.currentLap]        = mpcCoeff.c_Psi
-            log_status[lapStatus.currentIt,lapStatus.currentLap]        = mpcSol.solverStatus
-            
+            log_status[lapStatus.currentIt,lapStatus.currentLap]          = mpcSol.solverStatus
 
             # SAFESET DATA SAVING BASED ON CONTROLLER'S FREQUENCY
             oldSS.oldSS[lapStatus.currentIt,:,lapStatus.currentLap]=[z_est[6],z_est[5],z_est[4],z_est[1],z_est[2],z_est[3]]
@@ -316,13 +351,13 @@ function main()
         rossleep(loop_rate)
     end # END OF THE WHILE LOOP
     # DATA SAVING
-    # log_path = "$(homedir())/simulations/LMPC-$(run_id[1:4]).jld"
-    # if isfile(log_path)
-    #     log_path = "$(homedir())/simulations/LMPC-$(run_id[1:4])-2.jld"
-    #     warn("Warning: File already exists.")
-    # end
-    # save(log_path,"feature_z",feature_z,"feature_u",feature_u)
-    # println("Exiting LMPC node. Saved data to $log_path.")
+    log_path = "$(homedir())/simulations/LMPC-$(run_id[1:4]).jld"
+    if isfile(log_path)
+        log_path = "$(homedir())/simulations/LMPC-$(run_id[1:4])-2.jld"
+        warn("Warning: File already exists.")
+    end
+    save(log_path,"log_cvx",log_cvx,"log_cvy",log_cvy,"log_cpsi",log_cpsi,"oldSS",oldSS,"solHistory",solHistory)
+    println("Exiting LMPC node. Saved data to $log_path.")
 end
 
 

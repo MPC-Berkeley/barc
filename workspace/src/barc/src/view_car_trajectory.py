@@ -33,15 +33,15 @@ import numpy as np
 global gps_x_vals, gps_y_vals, gps_x_prev, gps_y_prev
 global pos_info_x_vals, pos_info_y_vals, pos_info_s
 global v_vals, t_vals, psi_vals
-global z_x, z_y, SS_x, SS_y# x and y for mpcSol prediction
+global z_x, z_y, SS_x, SS_y, z_vx, SS_vx, z_s, SS_s, z_fore_x, z_fore_y # x and y for mpcSol prediction
 
 gps_x_vals = []
 gps_y_vals = []
 gps_x_prev = 0.0
 gps_y_prev = 0.0
 
-pos_info_x_vals = []
-pos_info_y_vals = []
+pos_info_x_vals = [0]
+pos_info_y_vals = [0]
 pos_info_s      = 0
 
 v_vals = []
@@ -50,13 +50,20 @@ psi_curr = 0.0
 
 z_x = ones(11)
 z_y = ones(11)
+z_fore_x = ones(11)
+z_fore_y = ones(11)
 
 SS_x = zeros(20)
 SS_y = zeros(20)
 
+z_vx = zeros(11)
+z_s = zeros(11)
+SS_vx = zeros(20)
+SS_s = zeros(20)
+
 
 def gps_callback(data):
-    global gps_x_vals, gps_y_vals, gps_x_prev, gps_y_prev
+    global gps_x_vals, gps_y_vals, gps_x_prev, gps_y_prev, z_vx, SS_vx
 
     dist = (gps_x_prev - data.x_m)**2 + (gps_y_prev - data.y_m)**2
     if dist < 1:
@@ -82,11 +89,18 @@ def pos_info_callback(data):
     psi_curr = data.psi
 
 def mpcSol_callback(data):
-    global z_x, z_y, SS_x, SS_y
+    global z_x, z_y, SS_x, SS_y, z_vx, SS_vx, z_s, SS_s, z_fore_x, z_fore_y
     z_x = data.z_x
     z_y = data.z_y 
     SS_x = data.SS_x
     SS_y = data.SS_y
+    z_vx = data.z_vx
+    SS_vx = data.SS_vx
+    z_s = data.z_s
+    SS_s = data.SS_s
+    z_fore_x = data.z_fore_x
+    z_fore_y = data.z_fore_y
+
 
 # def show():
 #     plt.show()
@@ -96,7 +110,7 @@ def view_trajectory():
     global gps_x_vals, gps_y_vals, gps_x_prev, gps_y_prev
     global pos_info_x_vals, pos_info_y_vals, pos_info_s
     global v_vals, t_vals, psi_curr
-    global z_x, z_y, SS_x, SS_y
+    global z_x, z_y, SS_x, SS_y, z_vx, SSvx, z_s, SS_s, z_fore_x, z_fore_y
 
     rospy.init_node("car_view_trajectory_node", anonymous=True)
     # rospy.on_shutdown(show)
@@ -118,13 +132,13 @@ def view_trajectory():
     ax1.plot(l.nodes_bound2[0,:],l.nodes_bound2[1,:],"r-")
     ax1.grid('on')
     ax1.axis('equal')
-    ax1.set_ylim([-5.5,1])
+    # ax1.set_ylim([-5.5,1])
 
     loop_rate = 50
     rate = rospy.Rate(loop_rate)
 
-    car_dx = 0.306
-    car_dy = 0.177
+    car_dx = 0.3
+    car_dy = 0.12
 
     car_xs_origin = [car_dx, car_dx, -car_dx, -car_dx, car_dx]
     car_ys_origin = [car_dy, -car_dy, -car_dy, car_dy, car_dy]
@@ -132,15 +146,23 @@ def view_trajectory():
     car_center_plot, = ax1.plot(0,0,"ko",alpha=0.4)
     pre_plot, = ax1.plot([0 for i in range(11)],[0 for i in range(11)],"b-*")
     SS_plot, = ax1.plot([0 for i in range(20)],[0 for i in range(20)],"ro",alpha=0.2)
+    fore_plot, = ax1.plot([0 for i in range(11)],[0 for i in range(11)],"k.")
     # num = min(len(gps_x_vals),len(gps_y_vals))
     # GPS_plot, = ax1.plot(gps_x_vals, gps_y_vals, 'b-', label="GPS data path")
     num = min(len(pos_info_x_vals),len(pos_info_y_vals))
     pos_plot, = ax1.plot(pos_info_x_vals[:num], pos_info_y_vals[:num], 'g-', label="pos data path")
 
-    t_vals_zeroed = [t - t_vals[0] for t in t_vals]
-    num = min(len(t_vals_zeroed),len(v_vals))
+    # ax2 PLOT CHOICE 1: V_X HISTORY PLOT
+    # t_vals_zeroed = [t - t_vals[0] for t in t_vals]
+    # num = min(len(t_vals_zeroed),len(v_vals))
     # v_plot, = ax2.plot(t_vals_zeroed[:num], v_vals[:num], 'm-')
     # ax2.set_ylim([0,2.5])
+
+    # ax2 PLOT CHOICE 2: V_X SS AND PREDICTION PLOT
+    # v_plot, = ax2.plot(z_s,z_vx,"b-")
+    # SS_v_plot, = ax2.plot(SS_s,SS_vx,"k*")
+    # ax2.set_xlim([min(z_s), max(SS_s)])
+    # ax2.set_ylim([min(min(z_vx),min(SS_vx)), max(max(z_vx),max(SS_vx))])
 
     plt.show()
     car_frame = np.vstack((np.array(car_xs_origin), np.array(car_ys_origin)))
@@ -151,18 +173,7 @@ def view_trajectory():
             gps_y_vals = [0,gps_y_vals[-1]]
             pos_info_x_vals = [0,pos_info_x_vals[-1]]
             pos_info_y_vals = [0,pos_info_y_vals[-1]]
-        # ax1 = fig.add_subplot(1, 1, 1)
-        # # ax2 = fig.add_subplot(2, 1, 2)
-        # ax1.plot(l.nodes[0,:],l.nodes[1,:],"r-")
-        # ax1.grid('on')
-        # ax1.axis('equal')
         
-        # if (gps_x_vals and gps_y_vals):
-        #     ax1.plot(gps_x_vals[:len(gps_x_vals)-1], gps_y_vals[:len(gps_y_vals)-1], 'b-', label="GPS data path")
-        #     ax1.plot(gps_x_vals[len(gps_x_vals)-1], gps_y_vals[len(gps_y_vals)-1], 'b*',label="Car current GPS Pos")
-       
-        # if (pos_info_x_vals and pos_info_y_vals):
-            # ax1.plot(pos_info_x_vals[:len(pos_info_x_vals)-1], pos_info_y_vals[:len(pos_info_y_vals)-1], 'g-', label="Car path")
 
         x = pos_info_x_vals[len(pos_info_x_vals)-1]
         y = pos_info_y_vals[len(pos_info_y_vals)-1]
@@ -175,9 +186,6 @@ def view_trajectory():
         car_xs = np.array(rotated_car_frame[0,:])[0] + x
         car_ys = np.array(rotated_car_frame[1,:])[0] + y
 
-        # front_car_segment_x = np.array([car_xs[0], car_xs[1]]) + x
-        # front_car_segment_y = np.array([car_ys[0], car_ys[1]]) + y
-
         car_plot.set_data([car_xs[i] for i in range(5)], [car_ys[i] for i in range(5)])
         car_center_plot.set_data(x,y)
         # num = min(len(gps_x_vals),len(gps_y_vals))
@@ -185,30 +193,22 @@ def view_trajectory():
         num = min(len(pos_info_x_vals),len(pos_info_y_vals))
         pos_plot.set_data(pos_info_x_vals[:num], pos_info_y_vals[:num])
 
-        # ax1.plot(front_car_segment_x, front_car_segment_y, 'y-')
-        #plt.plot(np.array(car_xs_origin) + x, np.array(car_ys_origin) + y, 'k-')
+        # ax2 PLOT CHOICE 1: V_X HISTORY PLOT
+        # v_plot.set_data(z_vx)
 
-        # if (v_vals):
-        #     t_vals_zeroed = [t - t_vals[0] for t in t_vals]
-        #     ax2.plot(t_vals_zeroed, v_vals, 'm-')
-
-        # t_vals_zeroed = [t - t_vals[0] for t in t_vals]
-        # num = min(len(t_vals_zeroed),len(v_vals))
-        # v_plot.set_data(t_vals_zeroed[:num], v_vals[:num])
-        # ax2.set_xlim([0,t_vals_zeroed[num-1]])
-        
-
-        # ax2.set_ylim([min(0, min(v_vals)), max(v_vals)])
-        # ax1.set_title("Green: Data from POS_INFO, Blue: Data from GPS")
-
-        # ax2.set_xlabel("Time (s)")
-        # ax2.set_ylabel("Velocity (m/s)")
+        # ax2 PLOT CHOICE 2: V_X SS AND PREDICTION PLOT
+        # v_plot.set_data(z_s,z_vx)
+        # SS_v_plot.set_data(SS_s,SS_vx)
+        # if len(z_s) == 0:
+        #     pass
+        # else:
+        #     ax2.set_xlim([min(z_s), max(SS_s)])
+        #     ax2.set_ylim([min(min(z_vx),min(SS_vx)), max(max(z_vx),max(SS_vx))])
 
         pre_plot.set_data(z_x,z_y)
+        fore_plot.set_data(z_fore_x,z_fore_y)
         SS_plot.set_data(SS_x,SS_y)
-        # ax1.set_ylim([-5.5,1])
         fig.canvas.draw()
-        # plt.draw()
         rate.sleep()
 
         # plt.gcf().clear()

@@ -47,6 +47,7 @@ end
 function find_idx(z::Array{Float64,2},track::Track)
     idx = Int(ceil(z[1]/track.ds)+1)
     idx>track.n_node ? idx=idx%track.n_node : nothing
+    idx<0 ? idx+=track.n_node : nothing
     return idx
 end
 
@@ -101,15 +102,15 @@ function find_feature_dist(z_feature::Array{Float64,3},u_feature::Array{Float64,
     # norm_state=[0.5 1 0.1 1 1 0.3] # [1 0.1 1] are the normed state, the first state is for "s", which is for putting some weight on the track place
     curr_state=hcat(z_curr[4:6]',u_curr)
 
-    norm_state=[1 0.1 1 1 0.3] # [1 0.1 1] are the normed state, the first state is for "s", which is for putting some weight on the track place
+    norm_state=[1 0.1 1 1/2 1/2] # [1 0.1 1] are the normed state, the first state is for "s", which is for putting some weight on the track place
     dummy_state=z_feature[:,:,1]
     dummy_input=u_feature
     # cal_state=Float64[] # stored for normalization calculation
     cal_state=hcat(dummy_state,dummy_input)
     dummy_norm=zeros(size(dummy_state,1),2)
 
-    norm_dist=(curr_state.-cal_state[:,vcat(4:8),1]) #./norm_state
-    dummy_norm[:,1]=norm_dist[:,1].^2+norm_dist[:,2].^2+norm_dist[:,3].^2+norm_dist[:,4].^2
+    norm_dist=(curr_state.-cal_state[:,vcat(4:8),1])./norm_state
+    dummy_norm[:,1]=norm_dist[:,1].^2+norm_dist[:,4].^2+norm_dist[:,5].^2+norm_dist[:,5].^2 #+norm_dist[:,5].^2
     dummy_norm[:,2]=1:size(dummy_state,1)
     dummy_norm=sortrows(dummy_norm) # pick up the first minimum Np points
     # println(dummy_norm[1:Np,:])
@@ -283,13 +284,14 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_pF::MpcParams,model
         mpcParams.Q_term            = 1.0*[20.0,1.0,10.0,20.0,50.0]   # weights for terminal constraints (LMPC, for xDot,yDot,psiDot,ePsi,eY).Not used if using convex hull
         mpcParams.R                 = 0*[10.0,10.0]                 # put weights on a and d_f
         mpcParams.QderivZ           = 10.0*[1,1,1,1,1,1]             # cost matrix for derivative cost of states
-        mpcParams.QderivU           = 1.0*[1,1.0] #NOTE Set this to [5.0, 0/40.0]              # cost matrix for derivative cost of inputs
+        mpcParams.QderivU           = 1.0*[1.0,1.0] #NOTE Set this to [5.0, 0/40.0]              # cost matrix for derivative cost of inputs
         mpcParams.Q_term_cost       = 0.5                        # scaling of Q-function
         mpcParams.delay_df          = 3                             # steering delay
         mpcParams.delay_a           = 1                             # acceleration delay
-        mpcParams.Q_lane            = 1                      # weight on the soft constraint for the lane
+        mpcParams.Q_lane            = 10                      # weight on the soft constraint for the lane
         mpcParams.Q_vel             = 1                    # weight on the soft constraint for the maximum velocity
-        mpcParams.Q_slack           = 1*[20.0,1.0,10.0,30.0,80.0,50.0]#[20.0,10.0,10.0,30.0,80.0,50.0]  #vx,vy,psiDot,ePsi,eY,s
+        # mpcParams.Q_slack           = 1*[20.0,1.0,10.0,30.0,80.0,50.0]#[20.0,10.0,10.0,30.0,80.0,50.0]  #vx,vy,psiDot,ePsi,eY,s
+        mpcParams.Q_slack           = 1.0*[50.0,80.0,30.0,20.0,1.0,10.0]#[20.0,10.0,10.0,30.0,80.0,50.0]  #vx,vy,psiDot,ePsi,eY,s
         mpcParams.Q_obs             = ones(Nl*selectedStates.Np)# weight to esclude some of the old trajectories    
     end
 
@@ -314,7 +316,7 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_pF::MpcParams,model
     modelParams.c_f             = 0.5                   # friction coefficient: xDot = - c_f*xDot (aerodynamic+tire)
 
     # posInfo.s_target            = 19.11
-    num_lap = 40
+    num_lap = 100
     oldTraj.oldTraj             = NaN*ones(buffersize,7,num_lap)
     oldTraj.oldInput            = zeros(buffersize,2,num_lap)
     oldTraj.oldTimes            = NaN*ones(buffersize,num_lap)
@@ -369,6 +371,8 @@ function car_sim_kin(z::Array{Float64},u::Array{Float64},track::Track,modelParam
 
     idx=Int(ceil(z[1]/track.ds))+1 # correct the starting original point idx problem
     idx>track.n_node ? idx=idx%track.n_node : nothing
+    idx<0 ? idx+=track.n_node : nothing
+
     # println(idx)
     # println(track.n_node)
     c=track.curvature[idx]
@@ -414,10 +418,10 @@ function car_sim_dyn_exact(z::Array{Float64,2},u::Array{Float64,2},track::Track,
     # This function uses smaller steps to achieve higher fidelity than we would achieve using longer timesteps
     z_final = copy(z)
     Fy=zeros(2); a_slip=zeros(2);
-    u[1] = min(u[1],3)
-    u[1] = max(u[1],-3)
-    u[2] = min(u[2],pi/6)
-    u[2] = max(u[2],-pi/6)
+    u[1] = min(u[1],2)
+    u[1] = max(u[1],-1)
+    u[2] = min(u[2],0.1*pi)
+    u[2] = max(u[2],-0.1*pi)
     dt=modelParams.dt; dtn=dt/10
     for i=1:10
         (z_final, Fy, a_slip)= car_sim_dyn(z_final,u,dtn,track,modelParams)
