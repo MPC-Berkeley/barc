@@ -183,10 +183,10 @@ class Localization(object):
         #             [153,0],
         #             [120,-pi/2],
         #             [211,0]]
-        num = 60
+        num = 100
         track_data=[[80 ,0],
                     [num, -pi/2],
-                    [80 ,0],
+                    [80+47 ,0],
                     [num, -pi/2],
                     [50 ,0],
                     [num, -pi/2],
@@ -196,7 +196,7 @@ class Localization(object):
                     [num, -pi/2],
                     [4 ,0],
                     [num, -pi/2],
-                    [71 ,0]]            
+                    [71+48 ,0]]            
         for i in range(len(track_data)):
             num = track_data[i][0]
             angle = track_data[i][1]

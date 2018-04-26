@@ -10,3 +10,5 @@ float64[] SS_vx
 float64[] SS_s
 float64[] z_fore_x
 float64[] z_fore_y
+float64[] z_iden_x
+float64[] z_iden_y

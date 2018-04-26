@@ -33,7 +33,7 @@ import numpy as np
 global gps_x_vals, gps_y_vals, gps_x_prev, gps_y_prev
 global pos_info_x_vals, pos_info_y_vals, pos_info_s
 global v_vals, t_vals, psi_vals
-global z_x, z_y, SS_x, SS_y, z_vx, SS_vx, z_s, SS_s, z_fore_x, z_fore_y # x and y for mpcSol prediction
+global z_x, z_y, SS_x, SS_y, z_vx, SS_vx, z_s, SS_s, z_fore_x, z_fore_y, z_iden_x, z_iden_y # x and y for mpcSol prediction
 
 gps_x_vals = []
 gps_y_vals = []
@@ -61,6 +61,8 @@ z_s = zeros(11)
 SS_vx = zeros(20)
 SS_s = zeros(20)
 
+z_iden_x = zeros(30)
+z_iden_y = zeros(30)
 
 def gps_callback(data):
     global gps_x_vals, gps_y_vals, gps_x_prev, gps_y_prev, z_vx, SS_vx
@@ -89,7 +91,7 @@ def pos_info_callback(data):
     psi_curr = data.psi
 
 def mpcSol_callback(data):
-    global z_x, z_y, SS_x, SS_y, z_vx, SS_vx, z_s, SS_s, z_fore_x, z_fore_y
+    global z_x, z_y, SS_x, SS_y, z_vx, SS_vx, z_s, SS_s, z_fore_x, z_fore_y, z_iden_x, z_iden_y
     z_x = data.z_x
     z_y = data.z_y 
     SS_x = data.SS_x
@@ -100,7 +102,8 @@ def mpcSol_callback(data):
     SS_s = data.SS_s
     z_fore_x = data.z_fore_x
     z_fore_y = data.z_fore_y
-
+    z_iden_x = data.z_iden_x
+    z_iden_y = data.z_iden_y
 
 # def show():
 #     plt.show()
@@ -110,7 +113,7 @@ def view_trajectory():
     global gps_x_vals, gps_y_vals, gps_x_prev, gps_y_prev
     global pos_info_x_vals, pos_info_y_vals, pos_info_s
     global v_vals, t_vals, psi_curr
-    global z_x, z_y, SS_x, SS_y, z_vx, SSvx, z_s, SS_s, z_fore_x, z_fore_y
+    global z_x, z_y, SS_x, SS_y, z_vx, SSvx, z_s, SS_s, z_fore_x, z_fore_y, z_iden_x, z_iden_y
 
     rospy.init_node("car_view_trajectory_node", anonymous=True)
     # rospy.on_shutdown(show)
@@ -147,6 +150,7 @@ def view_trajectory():
     pre_plot, = ax1.plot([0 for i in range(11)],[0 for i in range(11)],"b-*")
     SS_plot, = ax1.plot([0 for i in range(20)],[0 for i in range(20)],"ro",alpha=0.2)
     fore_plot, = ax1.plot([0 for i in range(11)],[0 for i in range(11)],"k.")
+    iden_plot, = ax1.plot([0 for i in range(30)],[0 for i in range(30)],"go",alpha=0.3)
     # num = min(len(gps_x_vals),len(gps_y_vals))
     # GPS_plot, = ax1.plot(gps_x_vals, gps_y_vals, 'b-', label="GPS data path")
     num = min(len(pos_info_x_vals),len(pos_info_y_vals))
@@ -207,6 +211,7 @@ def view_trajectory():
 
         pre_plot.set_data(z_x,z_y)
         fore_plot.set_data(z_fore_x,z_fore_y)
+        iden_plot.set_data(z_iden_x,z_iden_y)
         SS_plot.set_data(SS_x,SS_y)
         fig.canvas.draw()
         rate.sleep()

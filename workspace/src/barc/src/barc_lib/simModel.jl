@@ -123,6 +123,7 @@ function simDynModel_xy(z::Array{Float64},u::Array{Float64},dt::Float64,modelPar
 
     FyF = -pacejka(a_F)
     FyR = -pacejka(a_R)
+    # println("FyF",FyF,"FyR",FyR)
 
     if abs(a_F) > 30/180*pi || abs(a_R) > 30/180*pi
         warn("Large slip angles in simulation: a_F = $a_F, a_R = $a_R")

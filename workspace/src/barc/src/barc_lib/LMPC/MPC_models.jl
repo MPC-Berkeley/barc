@@ -145,12 +145,12 @@ type MpcModel_convhull_dyn_iden
         # u_ub       = mpcParams.u_ub              # upper bounds for the control inputs
         # z_lb       = mpcParams.z_lb              # lower bounds for the states
         # z_ub       = mpcParams.z_ub              # upper bounds for the states
-        u_lb = [ 0    -18/180*pi]
-        u_ub = [ 2     18/180*pi]
-        z_lb = [-Inf -Inf -Inf  0.5 -Inf -Inf] # 1.s 2.ey 3.epsi 4.vx 5.vy 6.psi_dot
-        z_ub = [ Inf  Inf  Inf  2.5  Inf  Inf] # 1.s 2.ey 3.epsi 4.vx 5.vy 6.psi_dot
+        u_lb = [ -0.5    -18/180*pi]
+        u_ub = [    2     18/180*pi]
+        z_lb = [-Inf -0.6 -pi    0 -1 -2*pi] # 1.s 2.ey 3.epsi 4.vx 5.vy 6.psi_dot
+        z_ub = [ Inf  0.6  pi  2.5  1  2*pi] # 1.s 2.ey 3.epsi 4.vx 5.vy 6.psi_dot
 
-        ey_max      = 0.8/2           # bound for the state ey (distance from the center track). It is set as half of the width of the track for obvious reasons
+        ey_max      = 0.6/2           # bound for the state ey (distance from the center track). It is set as half of the width of the track for obvious reasons
 
         N          = mpcParams.N                           # Prediction horizon
         QderivZ    = mpcParams.QderivZ::Array{Float64,1}   # weights for the derivative cost on the states
@@ -213,6 +213,7 @@ type MpcModel_convhull_dyn_iden
             @NLconstraint(mdl, z_Ol[i+1,2]  == z_Ol[i,2] + dt * (z_Ol[i,4]*sin(z_Ol[i,3]) + z_Ol[i,5]*cos(z_Ol[i,3])))  # eY
             @NLconstraint(mdl, z_Ol[i+1,3]  == z_Ol[i,3] + dt * (z_Ol[i,6]-dsdt[i]*c[i]))                               # ePsi
             @NLconstraint(mdl, z_Ol[i+1,4]  == z_Ol[i,4] + c_Vx[i,1]*z_Ol[i,5]*z_Ol[i,6] + c_Vx[i,2]*z_Ol[i,4] + c_Vx[i,3]*u_Ol[i,1])                                         # vx
+            # @NLconstraint(mdl, z_Ol[i+1,4]  == z_Ol[i,4] + 0.1*z_Ol[i,5]*z_Ol[i,6] + c_Vx[i,2]*z_Ol[i,4] + c_Vx[i,3]*u_Ol[i,1])                                         # vx
             @NLconstraint(mdl, z_Ol[i+1,5]  == z_Ol[i,5] + c_Vy[i,1]*z_Ol[i,5]/z_Ol[i,4] + c_Vy[i,2]*z_Ol[i,4]*z_Ol[i,6] + c_Vy[i,3]*z_Ol[i,6]/z_Ol[i,4] + c_Vy[i,4]*u_Ol[i,2]) # vy
             @NLconstraint(mdl, z_Ol[i+1,6]  == z_Ol[i,6] + c_Psi[i,1]*z_Ol[i,6]/z_Ol[i,4] + c_Psi[i,2]*z_Ol[i,5]/z_Ol[i,4] + c_Psi[i,3]*u_Ol[i,2])                            # psiDot
         end

@@ -39,7 +39,7 @@ type SolHistory
         solHistory=new()
         solHistory.u=zeros(bufferSize,n_lap,N,2)
         solHistory.z=zeros(bufferSize,n_lap,N+1,n_state)
-        solHistory.cost=zeros(n_lap)
+        solHistory.cost=2*ones(n_lap)
         return solHistory
     end
 end

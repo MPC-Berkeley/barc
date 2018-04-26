@@ -101,12 +101,12 @@ function main()
 
     # FEATURE DATA INITIALIZATION
     # 100000 IS THE BUFFER FOR FEATURE DATA
-    v_ref_dummy = [i for i in 0.6:0.1:2.5]
-    # v_ref = vcat([0.6],v_ref)
-    v_ref = [0.6]
-    for v in v_ref_dummy
-        v_ref = vcat(v_ref,[v,v])
-    end
+    # v_ref_dummy = [i for i in 0.6:0.1:2.5]
+    v_ref = vcat([1.5],1.5:0.05:2.5)
+    # v_ref = [1]
+    # for v in v_ref_dummy
+    #     v_ref = vcat(v_ref,[v,v])
+    # end
 
     num_lap = length(v_ref)
     feature_z = zeros(100000,6,2)
@@ -165,6 +165,7 @@ function main()
                 feature_z[k,:,1] = [z_est[6],z_est[5],z_est[4],z_est[1],z_est[2],z_est[3]]
                 feature_u[k,:] = u_sol[2,:]
                 feature_z[k-1,:,2] = [z_est[6],z_est[5],z_est[4],z_est[1],z_est[2],z_est[3]]
+                println("Vy: $(z_est[2]) psi_dot: $(z_est[3])")
                 # So bsides the zeros tail, the first and last points will be removed.
                 # if lapStatus.currentLap==length(v_ref) && z_est[6] > track.s[end]-0.5
                 #     log_path = "$(homedir())/simulations/Feature_Data/FeatureDataCollecting.jld"
@@ -210,12 +211,12 @@ function main()
             (z_sol,u_sol,sol_status)=solveMpcProblem_featureData(mdl_pF,mpcParams_pF,modelParams,z_curr,z_prev,u_prev,track,v_ref[lapStatus.currentLap])
             mpcSol.z = z_sol
             mpcSol.u = u_sol
-            if rand() > 0.3
+            # if rand() > 0.3
+            #     mpcSol.a_x = u_sol[2,1]
+            # else
+                # u_sol[2,1] = -rand()
                 mpcSol.a_x = u_sol[2,1]
-            else
-                u_sol[2,1] = -rand()
-                mpcSol.a_x = u_sol[2,1]
-            end
+            # end
             mpcSol.d_f = u_sol[2,2]
             z_prev = z_sol
             u_prev = u_sol
