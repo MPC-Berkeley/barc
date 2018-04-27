@@ -307,8 +307,8 @@ function find_SS(safeSetData::SafeSetData,selectedStates::SelectedStates,
 end
 
 # FUNCTION FOR PARAMETERS INITIALIZATION
-function InitializeParameters(mpcParams::MpcParams,mpcParams_pF::MpcParams,modelParams::ModelParams,
-                              posInfo::PosInfo,oldTraj::OldTrajectory,mpcCoeff::MpcCoeff,lapStatus::LapStatus,buffersize::Int64,
+function InitializeParameters(mpcParams::MpcParams,mpcParams_4s::MpcParams,mpcParams_pF::MpcParams,modelParams::ModelParams,
+                              posInfo::PosInfo,oldTraj::OldTrajectory,mpcCoeff::MpcCoeff,mpcCoeff_dummy::MpcCoeff,lapStatus::LapStatus,buffersize::Int64,
                               selectedStates::SelectedStates,oldSS::SafeSetData)
 
     simulator_flag = true     # set this to TRUE if SIMULATOR is in use, set this to FALSE if BARC is in use
@@ -370,7 +370,19 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_pF::MpcParams,model
         mpcParams.Q_vel             = 1                    # weight on the soft constraint for the maximum velocity
         # mpcParams.Q_slack           = 1*[20.0,1.0,10.0,30.0,80.0,50.0]#[20.0,10.0,10.0,30.0,80.0,50.0]  #vx,vy,psiDot,ePsi,eY,s
         mpcParams.Q_slack           = 50.0*[1.0,1.0,1.0,1.0,1.0,1.0]#[20.0,10.0,10.0,30.0,80.0,50.0]  #s,ey,epsi,vx,vy,psiDot
-        mpcParams.Q_obs             = ones(Nl*selectedStates.Np)# weight to esclude some of the old trajectories    
+        mpcParams.Q_obs             = ones(Nl*selectedStates.Np)# weight to esclude some of the old trajectories 
+
+        mpcParams_4s.N              = 10
+        mpcParams_4s.R              = 0.0*[1,1]
+        mpcParams_4s.QderivZ        = 1.0*[0,0.1,0.1,2]
+        mpcParams_4s.QderivU        = 1.0*[1,1]
+        mpcParams_4s.Q_term_cost    = 3e-1 # scaling of Q-function
+        mpcParams_4s.Q_lane         = 100.0 # weight on the soft constraint for the lane bounds
+        mpcParams_4s.Q_slack        = 5.0*[1,1,1,1]
+        # mpcParams_4s.z_lb           = [-Inf -Inf -Inf -0.5] # 1.s 2.ey 3.epsi 4.v
+        # mpcParams_4s.z_ub           = [ Inf  Inf  Inf  3.0] # 1.s 2.ey 3.epsi 4.v
+        # mpcParams_4s.u_lb           = [-1    -18/180*pi]
+        # mpcParams_4s.u_ub           = [ 2     18/180*pi]
     end
 
     mpcParams_pF.N              = 10
@@ -423,6 +435,10 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_pF::MpcParams,model
     mpcCoeff.c_Vy               = zeros(mpcParams.N,4)
     mpcCoeff.c_Psi              = zeros(mpcParams.N,3)
 
+    mpcCoeff_dummy.c_Vx         = zeros(1,3)
+    mpcCoeff_dummy.c_Vy         = zeros(1,4)
+    mpcCoeff_dummy.c_Psi        = zeros(1,3)
+
     lapStatus.currentLap        = 1         # initialize lap number
     lapStatus.currentIt         = 1         # current iteration in lap
 
@@ -432,10 +448,10 @@ end
 function s6_to_s4(z::Array{Float64})
     if size(z,1)==1
         z=vcat(z[1:3],sqrt(z[4]^2+z[5]^2))
-    elseif size(z,1)==2
+    else # size(z,1)==2
         z=hcat(z[:,1:3],sqrt(z[:,4].^2+z[:,5].^2))
-    else
-        error("Please check the input dimension of function \"6s_to_4s\" ")
+    # else
+    #     error("Please check the input dimension of function \"6s_to_4s\" ")
     end
     return z
 end
@@ -565,4 +581,33 @@ function pacejka(a)
     D = mu * m * g/2
     C_alpha_f = D*sin.(C*atan.(B*a))
     return C_alpha_f
+end
+
+function car_sim_iden_tv(z::Array{Float64},u::Array{Float64},dt::Float64,mpcCoeff::MpcCoeff,modelParams::ModelParams,track::Track)
+    L_f = modelParams.l_A
+    L_r = modelParams.l_B
+    m   = modelParams.m
+    I_z = modelParams.I_z
+    c_f = modelParams.c_f
+
+    c_Vx=mpcCoeff.c_Vx
+    c_Vy=mpcCoeff.c_Vy
+    c_Psi=mpcCoeff.c_Psi
+
+    idx=Int(ceil(z[1]/track.ds))+1 # correct the starting original point idx problem
+    idx>track.n_node ? idx=idx%track.n_node : nothing
+    idx<0 ? idx+=track.n_node : nothing
+
+    c=track.curvature[idx]
+    dsdt = (z[4]*cos(z[3]) - z[5]*sin(z[3]))/(1-z[2]*c)
+
+    z_next=copy(z)
+
+    z_next[1]  = z_next[1] + dt * dsdt                                # s
+    z_next[2]  = z_next[2] + dt * (z[4]*sin(z[3]) + z[5]*cos(z[3]))   # eY
+    z_next[3]  = z_next[3] + dt * (z[6]-dsdt*c)                       # ePsi
+    z_next[4]  = z_next[4] + c_Vx[1]*z[5]*z[6] + c_Vx[2]*z[4] + c_Vx[3]*u[1]                           # vx
+    z_next[5]  = z_next[5] + c_Vy[1]*z[5]/z[4] + c_Vy[2]*z[4]*z[6] + c_Vy[3]*z[6]/z[4] + c_Vy[4]*u[2]  # vy
+    z_next[6]  = z_next[6] + c_Psi[1]*z[6]/z[4] + c_Psi[2]*z[5]/z[4] + c_Psi[3]*u[2]                   # psiDot
+    return z_next
 end

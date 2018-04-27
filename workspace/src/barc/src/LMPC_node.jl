@@ -145,11 +145,13 @@ function main()
     oldTraj          = OldTrajectory()
     posInfo          = PosInfo();  posInfo.s_target=track.s;
     mpcCoeff         = MpcCoeff()
+    mpcCoeff_dummy   = MpcCoeff()
     lapStatus        = LapStatus(1,1,false,false,0.3)
     mpcSol           = MpcSol()
     modelParams      = ModelParams()
     mpcParams_pF     = MpcParams()
     mpcParams        = MpcParams()  # a dummy parameter in feature data collecting
+    mpcParams_4s     = MpcParams()  # For kin_lin LMPC
     selectedStates   = SelectedStates()
     oldSS            = SafeSetData()
     z_est            = zeros(7)          # (xDot, yDot, psiDot, ePsi, eY, s, acc_f)
@@ -169,7 +171,7 @@ function main()
     # selStates_log    = zeros(selectedStates.Nl*selectedStates.Np,6,buffersize,30)
     # statesCost_log   = zeros(selectedStates.Nl*selectedStates.Np,buffersize,30)
     num_lap = 32
-    InitializeParameters(mpcParams,mpcParams_pF,modelParams,posInfo,oldTraj,mpcCoeff,lapStatus,buffersize,selectedStates,oldSS)
+    InitializeParameters(mpcParams,mpcParams_4s,mpcParams_pF,modelParams,posInfo,oldTraj,mpcCoeff,mpcCoeff_dummy,lapStatus,buffersize,selectedStates,oldSS)
     log_cvx                     = zeros(buffersize,mpcParams.N,3,num_lap)
     log_cvy                     = zeros(buffersize,mpcParams.N,4,num_lap)
     log_cpsi                    = zeros(buffersize,mpcParams.N,3,num_lap)
@@ -179,6 +181,8 @@ function main()
     # MODEL INITIALIZATION
     mdl_pF           = MpcModel_pF(mpcParams_pF,modelParams)
     mdl_convhull     = MpcModel_convhull_dyn_iden(mpcParams,modelParams)
+    mdl_kin_lin      = MpcModel_convhull_kin_linear(mpcParams_4s,modelParams)
+
     
     # NODE INITIALIZATION
     init_node("mpc_traj")
@@ -218,7 +222,9 @@ function main()
     z = rand(1,6); u = rand(1,2)
     (iden_z,iden_u)=find_feature_dist(feature_z,feature_u,z,u)
     (c_Vx,c_Vy,c_Psi)=coeff_iden_dist(iden_z,iden_u)
-    (~,~,~)=solveMpcProblem_convhull_dyn_iden(mdl_convhull,mpcParams,mpcCoeff,lapStatus_dummy,rand(6),rand(11,6),rand(10,2),selectedStates_dummy,track)    
+    (~,~,~)=solveMpcProblem_convhull_dyn_iden(mdl_convhull,mpcParams,mpcCoeff,lapStatus_dummy,rand(6),rand(11,6),rand(10,2),selectedStates_dummy,track)
+    selectedStates_dummy.selStates=s6_to_s4(selectedStates_dummy.selStates)
+    (~,~,~)=solveMpcProblem_convhull_kin_linear(mdl_kin_lin,mpcParams_4s,modelParams,lapStatus,rand(11,4),rand(10,2),rand(11,6),rand(10,2),selectedStates_dummy,track)
     (~,~,~)=car_pre_dyn(rand(1,6)+1,rand(10,2),track,modelParams,6)
     (~,~,~)=find_SS_dist(solHistory,rand(1,6),rand(1,2),lapStatus)
 
@@ -281,114 +287,99 @@ function main()
                 u_prev = u_sol
                 println("LMPC solver status is = $sol_status")
             else
-                # save("$(homedir())/simulations/oldSS.jld","oldSS",oldSS)
-                # tic()
-                # lapStatus.currentLap = 4
-                # ESTIMATED STATES PARSING
-                
+                tic()
                 # (xDot, yDot, psiDot, ePsi, eY, s, acc_f)
                 z_curr = [z_est[6],z_est[5],z_est[4],z_est[1],z_est[2],z_est[3]]
-                # z_curr = [z_est[6],z_est[5],z_est[4],z_true[1],z_true[2],z_true[3]]
+                
+                ######################################################################
+                ############### CHOICE 1: DO MPC ON SYS_ID MODEL #####################
+                ######################################################################
+                # # SAFESET POINT SELECTION
+                # selectedStates=find_SS(oldSS,selectedStates,z_prev,lapStatus,modelParams,mpcParams,track)
+                # # Temperal solution: will be improved
+                # if size(z_prev,2)==4
+                #     z_prev = hcat(z_prev,zeros(size(z_prev,1),2))
+                # end
+        
+                # # # TV SYS_ID                
+                # # z_to_iden = vcat(z_curr',z_prev[3:end,:])
+                # # u_to_iden = vcat(u_prev[2:end,:],u_prev[end,:])
+                # # for i in 1:mpcParams.N
+                # #     z = z_to_iden[i,:]
+                # #     u = u_to_iden[i,:]
+                # #     (iden_z,iden_u)=find_feature_dist(feature_z,feature_u,z,u)
+                # #     (mpcCoeff.c_Vx[i,:],mpcCoeff.c_Vy[i,:],mpcCoeff.c_Psi[i,:])=coeff_iden_dist(iden_z,iden_u)
+                # # end
 
-
-                # println("s:", z_curr[1], " x:", x_est[1], " y:", x_est[2])
-                # SAFESET POINT SELECTION
-                selectedStates=find_SS(oldSS,selectedStates,z_prev,lapStatus,modelParams,mpcParams,track)
-
-                # Temperal solution: will be improved
-                if size(z_prev,2)==4
-                    z_prev = hcat(z_prev,zeros(size(z_prev,1),2))
-                end
-
-                # # TV SYS_ID                
-                # # FEATURE POINT SELECTION AND SYS_ID
+                # # TI SYS_ID
                 # z_to_iden = vcat(z_curr',z_prev[3:end,:])
                 # u_to_iden = vcat(u_prev[2:end,:],u_prev[end,:])
-                # for i in 1:mpcParams.N
-                #     z = z_to_iden[i,:]
-                #     u = u_to_iden[i,:]
-                #     (iden_z,iden_u)=find_feature_dist(feature_z,feature_u,z,u)
-                #     (mpcCoeff.c_Vx[i,:],mpcCoeff.c_Vy[i,:],mpcCoeff.c_Psi[i,:])=coeff_iden_dist(iden_z,iden_u)
-                # end
-                # # println(hcat(z_curr[4:6]',u_prev[2,:]))
-                # # println(hcat(iden_z[:,:,1],iden_u))
+                # z = z_to_iden[1,:]
+                # u = u_to_iden[1,:]
 
+                # # SELECTING THE FEATURE POINTS FROM DATASET
+                # (iden_z,iden_u,z_iden_plot)=find_feature_dist(feature_z,feature_u,z,u)
+                # # # SELECTING THE FEATURE POINTS FROM HISTORY
+                # # (iden_z,iden_u,z_iden_plot)=find_SS_dist(solHistory,z_curr',u_prev[2,:],lapStatus)
 
-
-                # TI SYS_ID
-                z_to_iden = vcat(z_curr',z_prev[3:end,:])
-                u_to_iden = vcat(u_prev[2:end,:],u_prev[end,:])
-                z = z_to_iden[1,:]
-                u = u_to_iden[1,:]
-
-
-                # SELECTING THE FEATURE POINTS FROM DATASET
-                (iden_z,iden_u,z_iden_plot)=find_feature_dist(feature_z,feature_u,z,u)
-                # # SELECTING THE FEATURE POINTS FROM HISTORY
-                # (iden_z,iden_u,z_iden_plot)=find_SS_dist(solHistory,z_curr',u_prev[2,:],lapStatus)
-
-
-                (z_iden_x, z_iden_y) = trackFrame_to_xyFrame(z_iden_plot,track)
-                mpcSol_to_pub.z_iden_x = z_iden_x
-                mpcSol_to_pub.z_iden_y = z_iden_y
-                # println(hcat(z_curr[4:6]',u_prev[2,:]))
-                # println(hcat(iden_z[1:5,:,1],iden_u[1:5,:]))
-                # println(hcat(iden_z[1:5,:,2],iden_u[1:5,:]))
-                (mpcCoeff.c_Vx[1,:],mpcCoeff.c_Vy[1,:],mpcCoeff.c_Psi[1,:])=coeff_iden_dist(iden_z,iden_u)
-                for i in 2:mpcParams.N
-                    mpcCoeff.c_Vx[i,:]=mpcCoeff.c_Vx[1,:]
-                    mpcCoeff.c_Vy[i,:]=mpcCoeff.c_Vy[1,:]
-                    mpcCoeff.c_Psi[i,:]=mpcCoeff.c_Psi[1,:]
-                end
-
-
-
-                # t = toc()
-                # println("elapse time: $t")
-                # tic()
-                # LMPC CONTROLLER OPTIMIZATION
-                # println("mpcCoeff.Vx: $(mpcCoeff.c_Vx)")
-                # println("mpcCoeff.Vy: $(mpcCoeff.c_Vy)")
-                # println("mpcCoeff.Psi: $(mpcCoeff.c_Psi)")
-                # println("z_curr: $z_curr")
-                # println("z_prev: $z_prev")
-                # println("u: $(u_prev)")
-                # println("mpcParams: $mpcParams")
-                (z_sol,u_sol,sol_status)=solveMpcProblem_convhull_dyn_iden(mdl_convhull,mpcParams,mpcCoeff,lapStatus,z_curr,z_prev,u_prev,selectedStates,track)
+                # (z_iden_x, z_iden_y) = trackFrame_to_xyFrame(z_iden_plot,track)
+                # mpcSol_to_pub.z_iden_x = z_iden_x
+                # mpcSol_to_pub.z_iden_y = z_iden_y
                 
-                # # ADDITIONAL NOISE ADDING 
-                # n=randn(2)
-                # n_thre = [0.01,0.002]
-                # n.*=n_thre
-                # n=min(n,n_thre)
-                # n=max(n,[0,-0.002])
-                # u_sol[2,:]+=n'
-
-                # println("z_sol: $z_sol")
-                # println("u_sol: $u_sol")
-                # In case it is not optimal solution
-                # save("$(homedir())/status.jld","sol_status",sol_status)
+                # (mpcCoeff.c_Vx[1,:],mpcCoeff.c_Vy[1,:],mpcCoeff.c_Psi[1,:])=coeff_iden_dist(iden_z,iden_u)
+                # for i in 2:mpcParams.N
+                #     mpcCoeff.c_Vx[i,:]=mpcCoeff.c_Vx[1,:]
+                #     mpcCoeff.c_Vy[i,:]=mpcCoeff.c_Vy[1,:]
+                #     mpcCoeff.c_Psi[i,:]=mpcCoeff.c_Psi[1,:]
+                # end
                 # t = toc()
-                # println("elapse time: $t")
+                # println("Elapsed preparation time: $t")
+                # tic()
 
-                # aa = getvalue(mdl_convhull.alpha)
-                # alpha_to_check = hcat(aa,selectedStates.selStates)
-                # println("$alpha_to_check")
-                # println("SelectedState: $selectedStates.selStates")
+                # (z_sol,u_sol,sol_status)=solveMpcProblem_convhull_dyn_iden(mdl_convhull,mpcParams,mpcCoeff,lapStatus,z_curr,z_prev,u_prev,selectedStates,track)
 
+                ######################################################################
+                ############### CHOICE 1: DO MPC ON KIN_LIN MODEL ####################
+                ######################################################################
+                z_linear=zeros(mpcParams_4s.N+1,4)
+                z_linear[1,:]=s6_to_s4(z_curr')
+                u_linear=vcat(u_prev[2:end,:],u_prev[end,:])
+                z_dummy=copy(z_curr) # 6-dimension state is needed for forecasting forward
+                for i=1:size(z_linear,1)-1
+                    (iden_z,iden_u,z_iden_plot)=find_feature_dist(feature_z,feature_u,z_dummy',u_linear[i,:])
+                    (mpcCoeff_dummy.c_Vx,mpcCoeff_dummy.c_Vy,mpcCoeff_dummy.c_Psi)=coeff_iden_dist(iden_z,iden_u)
+                    z_dummy=car_sim_iden_tv(z_dummy,u_linear[i,:],0.1,mpcCoeff_dummy,modelParams,track)
+                    z_linear[i+1,:]=s6_to_s4(z_dummy')
+                end
+                # Safe set selection
+                selectedStates=find_SS(oldSS,selectedStates,z_prev,lapStatus,modelParams,mpcParams_4s,track)
+                selectedStates_kin=deepcopy(selectedStates)
+                selectedStates_kin.selStates=s6_to_s4(selectedStates_kin.selStates)
+                t = toc()
+                println("elapse prepare time: $t")
+
+                tic()
+                (z_sol,u_sol,sol_status)=solveMpcProblem_convhull_kin_linear(mdl_kin_lin,mpcParams_4s,modelParams,lapStatus,z_linear,u_linear,z_prev,u_prev,selectedStates_kin,track)
+                t = toc()
+                println("elapse MPC time: $t")
+
+                ###############################################################
+                ###################### DATA WRITING ###########################
+                ###############################################################
                 sol_status_dummy = "$sol_status"
                 if sol_status_dummy[1] != 'O'
                     u_sol=copy(u_prev)
                     (z_sol,~,~)=car_pre_dyn(z_curr,u_sol,track,modelParams,6)
                 end
-                mpcSol.z = z_sol
+                n_state = size(z_sol,2)
+                mpcSol.z[:,1:n_state] = z_sol
                 mpcSol.u = u_sol
                 mpcSol.a_x = u_sol[2,1] 
                 mpcSol.d_f = u_sol[2,2]
-                z_prev = z_sol
-                u_prev = u_sol
+                z_prev = copy(z_sol)
+                u_prev = copy(u_sol)
                 # println("LMPC solver status is = $sol_status")
-                solHistory.z[lapStatus.currentIt,lapStatus.currentLap,:,:]=z_sol
+                solHistory.z[lapStatus.currentIt,lapStatus.currentLap,:,1:n_state]=z_sol
                 solHistory.z[lapStatus.currentIt,lapStatus.currentLap,1,4:6]=z_true
                 solHistory.u[lapStatus.currentIt,lapStatus.currentLap,:,:]=u_sol
                 (z_fore,~,~) = car_pre_dyn(z_curr,u_sol,track,modelParams,6)
