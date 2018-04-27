@@ -25,15 +25,18 @@ function SE_callback(msg::pos_info,acc_f::Array{Float64},lapStatus::LapStatus,po
     z_est[:]                  = [msg.v_x,msg.v_y,msg.psiDot,msg.epsi,msg.ey,msg.s,acc_f[1]] # the last variable is filtered acceleration
     x_est[:]                  = [msg.x,msg.y,msg.psi,msg.v]
     
-    # ADDITIONAL NOISE ADDING
-    n=randn(6)
-    n_thre = [0.001,0.005,0.005,0.02,0.005,0.05]
-    # s # 2.5% ey: 0.4 is set as the track width # epsi: 1.8 degree # vx # vy: on the track, max vy can be 0.1 # psidot: on the track, max psidot can be 1
-    n.*=n_thre
-    n=min(n, n_thre)
-    n=max(n,vcat(0,-n_thre[2:end]))
-    # println(size(n),size(z_current[i,1:6]))
-    z_est[1:6]+=n
+    # # ADDITIONAL NOISE ADDING
+    # n=randn(6)
+    # # n_thre = [0.001,0.005,0.005,0.02,0.005,0.05]
+    # # IMPORTANT!!!: THE DATA NEEDS TO BE IN THE SAME ORDER AS Z_EST
+    # n_thre = 0.01*[0.02,0.005,0.05,0.005,0.005,0.001]
+    # # s # 2.5% ey: 0.4 is set as the track width # epsi: 1.8 degree # vx # vy: on the track, max vy can be 0.1 # psidot: on the track, max psidot can be 1
+    # n.*=n_thre
+    # n=min(n, n_thre)
+    # n=max(n,vcat(0,-n_thre[2:5],0))
+    # # println(size(n),size(z_current[i,1:6]))
+    # println("n:",n," z_est:",z_est)
+    # z_est[1:6]+=n
 
 
     # check if lap needs to be switched
@@ -72,6 +75,23 @@ function SE_callback(msg::pos_info,acc_f::Array{Float64},lapStatus::LapStatus,po
         oldTraj.count[lapStatus.currentLap+1] += 1
         oldTraj.idx_start[lapStatus.currentLap+1] = oldTraj.count[lapStatus.currentLap+1]
     end
+end
+
+function ST_callback(msg::pos_info,z_true::Array{Float64,1})
+    z_true[:] = [msg.v_x,msg.v_y,msg.psiDot]
+    
+    # # ADDITIONAL NOISE ADDING
+    # n=randn(3)
+    # n_thre = [0.02,0.005,0.05]
+    # # IMPORTANT!!!: THE DATA NEEDS TO BE IN THE SAME ORDER AS Z_EST
+    # # n_thre = 0.01*[0.02,0.005,0.05,0.005,0.005,0.001]
+    # # s # 2.5% ey: 0.4 is set as the track width # epsi: 1.8 degree # vx # vy: on the track, max vy can be 0.1 # psidot: on the track, max psidot can be 1
+    # n.*=n_thre
+    # n=min(n, n_thre)
+    # n=max(n,-n_thre)
+    # # println(size(n),size(z_current[i,1:6]))
+    # # println("n:",n," z_est:",z_est)
+    # z_true[:] = [msg.v_x,msg.v_y,msg.psiDot] + n
 end
 
 # This is the main function, it is called when the node is started.
@@ -133,6 +153,7 @@ function main()
     selectedStates   = SelectedStates()
     oldSS            = SafeSetData()
     z_est            = zeros(7)          # (xDot, yDot, psiDot, ePsi, eY, s, acc_f)
+    z_true           = zeros(3)          # (xDot, yDot, psiDot)
     x_est            = zeros(4)          # (x, y, psi, v)
     cmd              = ECU()             # CONTROL SIGNAL MESSAGE INITIALIZATION
     mpcSol_to_pub    = mpc_solution()    # MPC SOLUTION PUBLISHING MESSAGE INITIALIZATION
@@ -166,7 +187,8 @@ function main()
     mpcSol_pub = Publisher("mpc_solution", mpc_solution, queue_size=1)::RobotOS.Publisher{barc.msg.mpc_solution}
     # The subscriber passes arguments (coeffCurvature and z_est) which are updated by the callback function:
     acc_f = [0.0]
-    s1 = Subscriber("pos_info", pos_info, SE_callback, (acc_f,lapStatus,posInfo,mpcSol,oldTraj,z_est,x_est),queue_size=50)::RobotOS.Subscriber{barc.msg.pos_info}
+    s1 = Subscriber("pos_info", pos_info, SE_callback, (acc_f,lapStatus,posInfo,mpcSol,oldTraj,z_est,x_est),queue_size=1)::RobotOS.Subscriber{barc.msg.pos_info}
+    s2 = Subscriber("real_val", pos_info, ST_callback, (z_true,), queue_size=1)::RobotOS.Subscriber{barc.msg.pos_info}
     # Note: Choose queue size long enough so that no pos_info packets get lost! They are important for system ID!
     run_id = get_param("run_id")
     println("Finished initialization.")
@@ -214,6 +236,8 @@ function main()
                 # SAFE SET COST UPDATE
                 # log_final_counter[lapStatus.currentLap-1] = k
                 oldSS.oldCost[lapStatus.currentLap] = lapStatus.currentIt-1
+                # println("Swithcing lap, lapStatus:",lapStatus)
+                # println("Swithcing lap, cost:",oldSS.oldCost[1:5])
                 solHistory.cost[lapStatus.currentLap] = lapStatus.currentIt-1
                 # cost2target                           = zeros(buffersize) # array containing the cost to arrive from each point of the old trajectory to the target            
                 # for j = 1:buffersize
@@ -241,13 +265,13 @@ function main()
                 z_curr = [z_est[6],z_est[5],z_est[4],sqrt(z_est[1]^2+z_est[2]^2)]
                 (z_sol,u_sol,sol_status)=solveMpcProblem_pathFollow(mdl_pF,mpcParams_pF,modelParams,z_curr,z_prev,u_prev,track)
 
-                # ADDITIONAL NOISE ADDING 
-                n=randn(2)
-                n_thre = [0.001,0.002]
-                n.*=n_thre
-                n=min(n,n_thre)
-                n=max(n,[0,-0.002])
-                u_sol[2,:]+=n'
+                # # ADDITIONAL NOISE ADDING 
+                # n=randn(2)
+                # n_thre = [0.01,0.002]
+                # n.*=n_thre
+                # n=min(n,n_thre)
+                # n=max(n,[0,-0.002])
+                # u_sol[2,:]+=n'
                 
                 mpcSol.z = z_sol
                 mpcSol.u = u_sol
@@ -261,8 +285,12 @@ function main()
                 # tic()
                 # lapStatus.currentLap = 4
                 # ESTIMATED STATES PARSING
+                
                 # (xDot, yDot, psiDot, ePsi, eY, s, acc_f)
                 z_curr = [z_est[6],z_est[5],z_est[4],z_est[1],z_est[2],z_est[3]]
+                # z_curr = [z_est[6],z_est[5],z_est[4],z_true[1],z_true[2],z_true[3]]
+
+
                 # println("s:", z_curr[1], " x:", x_est[1], " y:", x_est[2])
                 # SAFESET POINT SELECTION
                 selectedStates=find_SS(oldSS,selectedStates,z_prev,lapStatus,modelParams,mpcParams,track)
@@ -272,39 +300,48 @@ function main()
                     z_prev = hcat(z_prev,zeros(size(z_prev,1),2))
                 end
 
+                # # TV SYS_ID                
                 # # FEATURE POINT SELECTION AND SYS_ID
                 # z_to_iden = vcat(z_curr',z_prev[3:end,:])
                 # u_to_iden = vcat(u_prev[2:end,:],u_prev[end,:])
-                # # TV SYS_ID
                 # for i in 1:mpcParams.N
                 #     z = z_to_iden[i,:]
                 #     u = u_to_iden[i,:]
                 #     (iden_z,iden_u)=find_feature_dist(feature_z,feature_u,z,u)
                 #     (mpcCoeff.c_Vx[i,:],mpcCoeff.c_Vy[i,:],mpcCoeff.c_Psi[i,:])=coeff_iden_dist(iden_z,iden_u)
                 # end
-                # println(hcat(z_curr[4:6]',u_prev[2,:]))
-                # println(hcat(iden_z[:,:,1],iden_u))
+                # # println(hcat(z_curr[4:6]',u_prev[2,:]))
+                # # println(hcat(iden_z[:,:,1],iden_u))
+
+
 
                 # TI SYS_ID
                 z_to_iden = vcat(z_curr',z_prev[3:end,:])
                 u_to_iden = vcat(u_prev[2:end,:],u_prev[end,:])
                 z = z_to_iden[1,:]
                 u = u_to_iden[1,:]
-                # # SELECTING THE FEATURE POINTS FROM DATASET
-                # (iden_z,iden_u)=find_feature_dist(feature_z,feature_u,z,u)
-                # SELECTING THE FEATURE POINTS FROM HISTORY
-                (iden_z,iden_u,z_iden_plot)=find_SS_dist(solHistory,z_curr',u_prev[2,:],lapStatus)
+
+
+                # SELECTING THE FEATURE POINTS FROM DATASET
+                (iden_z,iden_u,z_iden_plot)=find_feature_dist(feature_z,feature_u,z,u)
+                # # SELECTING THE FEATURE POINTS FROM HISTORY
+                # (iden_z,iden_u,z_iden_plot)=find_SS_dist(solHistory,z_curr',u_prev[2,:],lapStatus)
+
+
                 (z_iden_x, z_iden_y) = trackFrame_to_xyFrame(z_iden_plot,track)
                 mpcSol_to_pub.z_iden_x = z_iden_x
                 mpcSol_to_pub.z_iden_y = z_iden_y
                 # println(hcat(z_curr[4:6]',u_prev[2,:]))
-                # println(hcat(iden_z[:,:,1],iden_u))
+                # println(hcat(iden_z[1:5,:,1],iden_u[1:5,:]))
+                # println(hcat(iden_z[1:5,:,2],iden_u[1:5,:]))
                 (mpcCoeff.c_Vx[1,:],mpcCoeff.c_Vy[1,:],mpcCoeff.c_Psi[1,:])=coeff_iden_dist(iden_z,iden_u)
                 for i in 2:mpcParams.N
                     mpcCoeff.c_Vx[i,:]=mpcCoeff.c_Vx[1,:]
                     mpcCoeff.c_Vy[i,:]=mpcCoeff.c_Vy[1,:]
                     mpcCoeff.c_Psi[i,:]=mpcCoeff.c_Psi[1,:]
                 end
+
+
 
                 # t = toc()
                 # println("elapse time: $t")
@@ -319,13 +356,13 @@ function main()
                 # println("mpcParams: $mpcParams")
                 (z_sol,u_sol,sol_status)=solveMpcProblem_convhull_dyn_iden(mdl_convhull,mpcParams,mpcCoeff,lapStatus,z_curr,z_prev,u_prev,selectedStates,track)
                 
-                # ADDITIONAL NOISE ADDING 
-                n=randn(2)
-                n_thre = [0.001,0.002]
-                n.*=n_thre
-                n=min(n,n_thre)
-                n=max(n,[0,-0.002])
-                u_sol[2,:]+=n'
+                # # ADDITIONAL NOISE ADDING 
+                # n=randn(2)
+                # n_thre = [0.01,0.002]
+                # n.*=n_thre
+                # n=min(n,n_thre)
+                # n=max(n,[0,-0.002])
+                # u_sol[2,:]+=n'
 
                 # println("z_sol: $z_sol")
                 # println("u_sol: $u_sol")
@@ -352,6 +389,7 @@ function main()
                 u_prev = u_sol
                 # println("LMPC solver status is = $sol_status")
                 solHistory.z[lapStatus.currentIt,lapStatus.currentLap,:,:]=z_sol
+                solHistory.z[lapStatus.currentIt,lapStatus.currentLap,1,4:6]=z_true
                 solHistory.u[lapStatus.currentIt,lapStatus.currentLap,:,:]=u_sol
                 (z_fore,~,~) = car_pre_dyn(z_curr,u_sol,track,modelParams,6)
                 (z_fore_x,z_fore_y) = trackFrame_to_xyFrame(z_fore,track)

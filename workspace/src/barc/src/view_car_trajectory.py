@@ -211,7 +211,7 @@ def view_trajectory():
 
         pre_plot.set_data(z_x,z_y)
         fore_plot.set_data(z_fore_x,z_fore_y)
-        iden_plot.set_data(z_iden_x,z_iden_y)
+        # iden_plot.set_data(z_iden_x,z_iden_y)
         SS_plot.set_data(SS_x,SS_y)
         fig.canvas.draw()
         rate.sleep()

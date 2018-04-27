@@ -65,6 +65,10 @@ function SE_callback(msg::pos_info,acc_f::Array{Float64},lapStatus::LapStatus,po
     end
 end
 
+function ST_callback(msg::pos_info,z_true::Array{Float64,1})
+    z_true[:] = [msg.v_x,msg.v_y,msg.psiDot]
+end
+
 # This is the main function, it is called when the node is started.
 function main()
     println("Starting LMPC_Feature_Collecting node.")
@@ -95,6 +99,7 @@ function main()
     selectedStates   = SelectedStates()
     oldSS            = SafeSetData()
     z_est            = zeros(7)          # (xDot, yDot, psiDot, ePsi, eY, s, acc_f)
+    z_true           = zeros(3)
     x_est            = zeros(4)          # (x, y, psi, v)
     cmd              = ECU()             # CONTROL SIGNAL MESSAGE INITIALIZATION
     mpcSol_to_pub    = mpc_solution()    # MPC SOLUTION PUBLISHING MESSAGE INITIALIZATION
@@ -102,7 +107,7 @@ function main()
     # FEATURE DATA INITIALIZATION
     # 100000 IS THE BUFFER FOR FEATURE DATA
     # v_ref_dummy = [i for i in 0.6:0.1:2.5]
-    v_ref = vcat([1.5],1.5:0.05:2.5)
+    v_ref = vcat([0.8],0.8:0.05:2.5)
     # v_ref = [1]
     # for v in v_ref_dummy
     #     v_ref = vcat(v_ref,[v,v])
@@ -134,6 +139,7 @@ function main()
     # The subscriber passes arguments (coeffCurvature and z_est) which are updated by the callback function:
     acc_f = [0.0]
     s1 = Subscriber("pos_info", pos_info, SE_callback, (acc_f,lapStatus,posInfo,mpcSol,oldTraj,z_est,x_est),queue_size=50)::RobotOS.Subscriber{barc.msg.pos_info}
+    s2 = Subscriber("real_val", pos_info, ST_callback, (z_true,), queue_size=1)::RobotOS.Subscriber{barc.msg.pos_info}
     # Note: Choose queue size long enough so that no pos_info packets get lost! They are important for system ID!
     run_id = get_param("run_id")
     println("Finished initialization.")
@@ -161,11 +167,19 @@ function main()
             # TRACK FEATURE DATA COLLECTING: it is important to put this at the beginning of the iteration to make the data consistant
             if lapStatus.currentLap>1
                 k = k + 1 # start counting from the second lap.
+                
+                # # (xDot, yDot, psiDot, ePsi, eY, s, acc_f)
+                # feature_z[k,:,1] = [z_est[6],z_est[5],z_est[4],z_est[1],z_est[2],z_est[3]]
+                # feature_u[k,:] = u_sol[2,:]
+                # feature_z[k-1,:,2] = [z_est[6],z_est[5],z_est[4],z_est[1],z_est[2],z_est[3]]
+
                 # (xDot, yDot, psiDot, ePsi, eY, s, acc_f)
-                feature_z[k,:,1] = [z_est[6],z_est[5],z_est[4],z_est[1],z_est[2],z_est[3]]
+                feature_z[k,:,1] = [z_est[6],z_est[5],z_est[4],z_true[1],z_true[2],z_true[3]]
                 feature_u[k,:] = u_sol[2,:]
-                feature_z[k-1,:,2] = [z_est[6],z_est[5],z_est[4],z_est[1],z_est[2],z_est[3]]
-                println("Vy: $(z_est[2]) psi_dot: $(z_est[3])")
+                feature_z[k-1,:,2] = [z_est[6],z_est[5],z_est[4],z_true[1],z_true[2],z_true[3]]
+                
+
+                # println("Vy: $(z_est[2]) psi_dot: $(z_est[3])")
                 # So bsides the zeros tail, the first and last points will be removed.
                 # if lapStatus.currentLap==length(v_ref) && z_est[6] > track.s[end]-0.5
                 #     log_path = "$(homedir())/simulations/Feature_Data/FeatureDataCollecting.jld"
@@ -211,6 +225,15 @@ function main()
             (z_sol,u_sol,sol_status)=solveMpcProblem_featureData(mdl_pF,mpcParams_pF,modelParams,z_curr,z_prev,u_prev,track,v_ref[lapStatus.currentLap])
             mpcSol.z = z_sol
             mpcSol.u = u_sol
+
+            # ADDITIONAL NOISE ADDING 
+            n=randn(2)
+            n_thre = [0.01,0.002]
+            n.*=n_thre
+            n=min(n,n_thre)
+            n=max(n,[0,-0.002])
+            u_sol[2,:]+=n'
+            
             # if rand() > 0.3
             #     mpcSol.a_x = u_sol[2,1]
             # else

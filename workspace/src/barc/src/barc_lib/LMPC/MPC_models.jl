@@ -196,6 +196,7 @@ type MpcModel_convhull_dyn_iden
         @NLparameter(mdl, statesCost[1:Nl*Np] == 0)      # costs of the states selected in "convhullStates"
 
         @NLconstraint(mdl, [i=1:n_state], z_Ol[1,i] == z0[i])
+        @NLconstraint(mdl, [i=1:n_input], u_Ol[1,i] == uPrev[2,i])
 
         @NLconstraint(mdl, [i=2:N+1], z_Ol[i,2] <= ey_max + eps_lane[i-1])
         @NLconstraint(mdl, [i=2:N+1], z_Ol[i,2] >= -ey_max - eps_lane[i-1])

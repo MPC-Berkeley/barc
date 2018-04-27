@@ -127,7 +127,8 @@ function main()
         # end
         # update current state with a new row vector
         
-        z_current[i,:],slip_ang[i,:]  = simDynModel_exact_xy(z_current[i-1,:], u_current', dt, modelParams)
+        # z_current[i,:],slip_ang[i,:]  = simDynModel_exact_xy(z_current[i-1,:], u_current', dt, modelParams)
+        z_current[i,:],slip_ang[i,:]  = simDynModel_xy(z_current[i-1,:], u_current', dt, modelParams)
 
         z_real.t_msg[i] = t
         z_real.t[i]     = t
@@ -144,7 +145,7 @@ function main()
                 rand_yaw=-0.1
             end
 
-            yaw         = z_current[i,5] + imu_drift + rand_yaw#+ 0.002*randn() 
+            yaw         = z_current[i,5] + imu_drift #+ rand_yaw#+ 0.002*randn() 
 
             rand_psiDot = 0.01*randn()
             if rand_psiDot > 0.1
@@ -152,7 +153,7 @@ function main()
             elseif rand_psiDot<-0.1
                 rand_psiDot=-0.1
             end
-            psiDot      = z_current[i,6] +rand_psiDot#+ 0.001*randn()
+            psiDot      = z_current[i,6] #+rand_psiDot#+ 0.001*randn()
             imu_meas.t_msg[imu_meas.i] = t
             imu_meas.t[imu_meas.i] = t
             imu_meas.z[imu_meas.i,:] = [yaw psiDot]
@@ -184,10 +185,19 @@ function main()
 
         # real values
         if i%2 == 0
-            real_data.psiDot = z_current[i,6]
+            # ADDITIONAL NOISE ADDING
+            n=randn(3)
+            n_thre = [0.02,0.005,0.05]*0.1
+            # IMPORTANT!!!: THE DATA NEEDS TO BE IN THE SAME ORDER AS Z_EST
+            # n_thre = 0.01*[0.02,0.005,0.05,0.005,0.005,0.001]
+            # s # 2.5% ey: 0.4 is set as the track width # epsi: 1.8 degree # vx # vy: on the track, max vy can be 0.1 # psidot: on the track, max psidot can be 1
+            n.*=n_thre
+            n=min(n, n_thre)
+            n=max(n,-n_thre)
+            real_data.psiDot = z_current[i,6] + n[3]
             real_data.psi    = z_current[i,5]
-            real_data.v_x    = z_current[i,3]
-            real_data.v_y    = z_current[i,4]
+            real_data.v_x    = z_current[i,3] + n[1]
+            real_data.v_y    = z_current[i,4] + n[2]
             real_data.x      = z_current[i,1]
             real_data.y      = z_current[i,2]
             publish(real_val,real_data)
@@ -218,7 +228,7 @@ function main()
                 rand_x=-0.1
             end
 
-            x = round(z_current[i,1] +  rand_x,2)#0.002*randn(),2)       # Indoor gps measures, rounded on cm
+            x = round(z_current[i,1],2)# +  rand_x,2)#0.002*randn(),2)       # Indoor gps measures, rounded on cm
 
             rand_y = 0.01*randn()
             if rand_y > 0.1
@@ -227,7 +237,7 @@ function main()
                 rand_y=-0.1
             end
 
-            y = round(z_current[i,2] + rand_y,2)#0.002*randn(),2)
+            y = round(z_current[i,2],2)# + rand_y,2)#0.002*randn(),2)
 
             if randn()>10            # simulate gps-outlier (probability about 0.13% for randn()>3, 0.62% for randn()>2.5, 2.3% for randn()>2.0 )
                 x += 1#randn()        # add random value to x and y

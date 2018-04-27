@@ -112,6 +112,7 @@ function simDynModel_xy(z::Array{Float64},u::Array{Float64},dt::Float64,modelPar
     L_r = modelParams.l_B
     m   = modelParams.m
     I_z = modelParams.I_z
+    c_f = modelParams.c_f
 
     a_F = 0.0
     a_R = 0.0
@@ -131,16 +132,16 @@ function simDynModel_xy(z::Array{Float64},u::Array{Float64},dt::Float64,modelPar
 
     zNext = copy(z)
     # compute next state
-    zNext[1]        = zNext[1]       + dt * (cos(z[5])*z[3] - sin(z[5])*z[4])               # x
-    zNext[2]        = zNext[2]       + dt * (sin(z[5])*z[3] + cos(z[5])*z[4])               # y
-    # zNext[3]        = zNext[3]       + dt * (z[7] + z[4]*z[6] - 0.5*z[3])                   # v_x
-    zNext[3]        = zNext[3]       + dt * (u[1] + z[4]*z[6] - 0.5*z[3])                   # v_x
+    zNext[1]        = z[1]       + dt * (cos(z[5])*z[3] - sin(z[5])*z[4])               # x
+    zNext[2]        = z[2]       + dt * (sin(z[5])*z[3] + cos(z[5])*z[4])               # y
+    # zNext[3]        = zNext[3]       + dt * (z[7] + z[4]*z[6] - c_f*z[3])                   # v_x
+    zNext[3]        = z[3]       + dt * (u[1] + z[4]*z[6] - c_f*z[3])                   # v_x
     # zNext[4]        = zNext[4]       + dt * (1/m*(FyF*cos(z[8]) + FyR) - z[6]*z[3])         # v_y
-    zNext[4]        = zNext[4]       + dt * (1/m*(FyF*cos(u[2]) + FyR) - z[6]*z[3])         # v_y
-    zNext[5]        = zNext[5]       + dt * (z[6])                                          # psi
-    zNext[6]        = zNext[6]       + dt * (1/I_z*(L_f*FyF*cos(u[2]) - L_r*FyR))                     # psiDot
-    zNext[7]        = zNext[7]       + dt * (u[1]-z[7])*100                                 # a
-    zNext[8]        = zNext[8]       + dt * (u[2]-z[8])*100                                 # d_f
+    zNext[4]        = z[4]       + dt * (1/m*(FyF*cos(u[2]) + FyR) - z[6]*z[3])         # v_y
+    zNext[5]        = z[5]       + dt * (z[6])                                          # psi
+    zNext[6]        = z[6]       + dt * (1/I_z*(L_f*FyF*cos(u[2]) - L_r*FyR))                     # psiDot
+    zNext[7]        = z[7]       + dt * (u[1]-z[7])*100                                 # a
+    zNext[8]        = z[8]       + dt * (u[2]-z[8])*100                                 # d_f
 
     zNext[3] = max(0,zNext[3])              # limit speed to positive values (BARC specific)
     return zNext, [a_F a_R]

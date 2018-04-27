@@ -96,6 +96,7 @@ function find_feature_dist(z_feature::Array{Float64,3},u_feature::Array{Float64,
     Np=40 # Just to make life easier, we directly put a specific number here
     # Clear the safe set data of previous iteration
     iden_z=zeros(Np,3,2)
+    iden_z_plot=zeros(Np,6)
     iden_u=zeros(Np,2)
 
     # curr_state=hcat(z_curr[1],z_curr[4:6]',u_curr')
@@ -109,27 +110,27 @@ function find_feature_dist(z_feature::Array{Float64,3},u_feature::Array{Float64,
     cal_state=hcat(dummy_state,dummy_input)
     dummy_norm=zeros(size(dummy_state,1),2)
 
-    norm_dist=(curr_state.-cal_state[:,4:8])./norm_state
-    dummy_norm[:,1]=norm_dist[:,1].^2+norm_dist[:,2].^2+norm_dist[:,3].^2+norm_dist[:,4].^2+norm_dist[:,5].^2
+    norm_dist=(curr_state.-cal_state[:,4:8])#./norm_state
+    dummy_norm[:,1]=norm_dist[:,1].^2+norm_dist[:,3].^2#+norm_dist[:,3].^2+norm_dist[:,4].^2+norm_dist[:,5].^2
     dummy_norm[:,2]=1:size(dummy_state,1)
     dummy_norm=sortrows(dummy_norm) # pick up the first minimum Np points
     # println(dummy_norm[1:Np,:])
     for i=1:Np
         iden_z[i,:,1]=z_feature[Int(dummy_norm[i,2]),4:6,1]
         iden_z[i,:,2]=z_feature[Int(dummy_norm[i,2]),4:6,2]
-        # iden_z_plot[i,:]=dummy_state[Int(dummy_norm[i,2]),:,1]
+        iden_z_plot[i,:]=dummy_state[Int(dummy_norm[i,2]),:,1]
         iden_u[i,:]=dummy_input[Int(dummy_norm[i,2]),:]
     end
 
     # iden_z: Npx3x2 states selected for system identification
     # iden_u: Npx2 inputs selected for system identification
-    return iden_z, iden_u
+    return iden_z, iden_u, iden_z_plot
 end
 
 # THE DIFFERENCE TO THE FUNCTON ABOVE IS THAT THIS ONE IS SELECTING THE FEATURE POINTS FROM THE HISTORY
 function find_SS_dist(solHistory::SolHistory,z_curr::Array{Float64,2},u_curr::Array{Float64,2},lapStatus::LapStatus)
 
-    Nl=2; Np=30
+    Nl=2; Np=50
     # Clear the safe set data of previous iteration
     iden_z=zeros(Np,3,2)
     iden_z_plot=zeros(Np,6)
@@ -153,7 +154,9 @@ function find_SS_dist(solHistory::SolHistory,z_curr::Array{Float64,2},u_curr::Ar
     dummy_norm=zeros(size(dummy_state,1)-1,2)
     for i=1:size(dummy_state,1)-1 # The last state point will be removed
         # dummy_norm[i,1]=norm((curr_state-cal_state[i,vcat(1,4:8)]')./norm_state) # this is the state after normalization
-        dummy_norm[i,1]=norm((curr_state-cal_state[i,4:8])./norm_state) # this is the state after normalization
+        norm_dist=(curr_state.-cal_state[i,4:8])./norm_state
+        dummy_norm[i,1]=norm_dist[1]^2+norm_dist[2]^2+norm_dist[3]^2+norm_dist[4]^2+norm_dist[5]^2
+        # dummy_norm[i,1]=norm((curr_state-cal_state[i,4:8])./norm_state) # this is the state after normalization
         dummy_norm[i,2]=i
     end
 
@@ -269,16 +272,21 @@ function find_SS(safeSetData::SafeSetData,selectedStates::SelectedStates,
         # println(size(SScost_curr))
         
         if idx_s_start<1
+            # println("lapStatus:",lapStatus)
+            # println("oldCost:",safeSetData.oldCost[1:5])
+            # println("<1:","idx_start:",idx_s_start," idx_end:",idx_s_end)
             SS_curr[1:idx_s_end,1]+=track.s # correction when switching lap
             selectedStates.selStates=vcat(selectedStates.selStates,SS_curr[cost+idx_s_start:cost,:],SS_curr[1:idx_s_end,:])
             SScost_curr[1:idx_s_end]-=cost # correction when switching lap
             selectedStates.statesCost=vcat(selectedStates.statesCost,SScost_curr[cost+idx_s_start:cost],SScost_curr[1:idx_s_end])
         elseif idx_s_end>cost
+            # println(">cost:","idx_start:",idx_s_start," idx_end:",idx_s_end)
             SS_curr[1:idx_s_end-cost,1]+=track.s
             selectedStates.selStates=vcat(selectedStates.selStates,SS_curr[idx_s_start:cost,:],SS_curr[1:idx_s_end-cost,:])
             SScost_curr[1:idx_s_end-cost]-=cost
             selectedStates.statesCost=vcat(selectedStates.statesCost,SScost_curr[idx_s_start:cost],SScost_curr[1:idx_s_end-cost])
         else
+            # println("else:","idx_start:",idx_s_start," idx_end:",idx_s_end)
             if s>track.s-v*dt*(N)
                 SS_curr[idx_s_start:idx_s_end,1]+=track.s
                 selectedStates.selStates=vcat(selectedStates.selStates,SS_curr[idx_s_start:idx_s_end,:])
@@ -370,7 +378,7 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_pF::MpcParams,model
     mpcParams_pF.R              = 0*[1.0,1.0]               # put weights on a and d_f
     mpcParams_pF.QderivZ        = 0.0*[0.0,0,1.0,0]           # cost matrix for derivative cost of states
     mpcParams_pF.QderivU        = 1*[1,1]                # cost matrix for derivative cost of inputs
-    mpcParams_pF.vPathFollowing = 1.3                       # reference speed for first lap of path following
+    mpcParams_pF.vPathFollowing = 1.0                       # reference speed for first lap of path following
     mpcParams_pF.delay_df       = 3                         # steering delay (number of steps)
     mpcParams_pF.delay_a        = 1                         # acceleration delay
 
@@ -383,7 +391,7 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_pF::MpcParams,model
     modelParams.dt              = 0.1                   # sampling time, also controls the control loop, affects delay_df and Qderiv
     modelParams.m               = 1.98
     modelParams.I_z             = 0.03
-    modelParams.c_f             = 0.5                   # friction coefficient: xDot = - c_f*xDot (aerodynamic+tire)
+    modelParams.c_f             = 0.05                   # friction coefficient: xDot = - c_f*xDot (aerodynamic+tire)
 
     # posInfo.s_target            = 19.11
     num_lap = 100
