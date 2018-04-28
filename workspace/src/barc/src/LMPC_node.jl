@@ -22,6 +22,7 @@ include("barc_lib/simModel.jl")
 # It saves this estimate in oldTraj and uses it in the MPC formulation (see in main)
 function SE_callback(msg::pos_info,acc_f::Array{Float64},lapStatus::LapStatus,posInfo::PosInfo,mpcSol::MpcSol,oldTraj::OldTrajectory,z_est::Array{Float64,1},x_est::Array{Float64,1})         # update current position and track data
     # update mpc initial condition
+    # println("hahaha")
     z_est[:]                  = [msg.v_x,msg.v_y,msg.psiDot,msg.epsi,msg.ey,msg.s,acc_f[1]] # the last variable is filtered acceleration
     x_est[:]                  = [msg.x,msg.y,msg.psi,msg.v]
     
@@ -49,32 +50,32 @@ function SE_callback(msg::pos_info,acc_f::Array{Float64},lapStatus::LapStatus,po
         lapStatus.switchLap = true
     end
 
-    # save current state in oldTraj
-    oldTraj.oldTraj[oldTraj.count[lapStatus.currentLap],:,lapStatus.currentLap] = z_est
-    oldTraj.oldInput[oldTraj.count[lapStatus.currentLap],:,lapStatus.currentLap] = [msg.u_a,msg.u_df]
-    oldTraj.oldTimes[oldTraj.count[lapStatus.currentLap],lapStatus.currentLap] = to_sec(msg.header.stamp)
-    oldTraj.count[lapStatus.currentLap] += 1
+    # # save current state in oldTraj
+    # oldTraj.oldTraj[oldTraj.count[lapStatus.currentLap],:,lapStatus.currentLap] = z_est
+    # oldTraj.oldInput[oldTraj.count[lapStatus.currentLap],:,lapStatus.currentLap] = [msg.u_a,msg.u_df]
+    # oldTraj.oldTimes[oldTraj.count[lapStatus.currentLap],lapStatus.currentLap] = to_sec(msg.header.stamp)
+    # oldTraj.count[lapStatus.currentLap] += 1
 
-    # if necessary: append to end of previous lap
-    if lapStatus.currentLap > 1 && z_est[6] < 18.0
-        oldTraj.oldTraj[oldTraj.count[lapStatus.currentLap-1],:,lapStatus.currentLap-1] = z_est
-        oldTraj.oldTraj[oldTraj.count[lapStatus.currentLap-1],6,lapStatus.currentLap-1] += posInfo.s_target
-        oldTraj.oldInput[oldTraj.count[lapStatus.currentLap-1],:,lapStatus.currentLap-1] = [msg.u_a,msg.u_df]
-        #oldTraj.oldInput[oldTraj.count[lapStatus.currentLap-1],:,lapStatus.currentLap-1] += 0.5*([msg.u_a msg.u_df]-oldTraj.oldInput[oldTraj.count[lapStatus.currentLap-1]-1,:,lapStatus.currentLap-1])
-        oldTraj.oldTimes[oldTraj.count[lapStatus.currentLap-1],lapStatus.currentLap-1] = to_sec(msg.header.stamp)
-        oldTraj.count[lapStatus.currentLap-1] += 1
-    end
+    # # if necessary: append to end of previous lap
+    # if lapStatus.currentLap > 1 && z_est[6] < 18.0
+    #     oldTraj.oldTraj[oldTraj.count[lapStatus.currentLap-1],:,lapStatus.currentLap-1] = z_est
+    #     oldTraj.oldTraj[oldTraj.count[lapStatus.currentLap-1],6,lapStatus.currentLap-1] += posInfo.s_target
+    #     oldTraj.oldInput[oldTraj.count[lapStatus.currentLap-1],:,lapStatus.currentLap-1] = [msg.u_a,msg.u_df]
+    #     #oldTraj.oldInput[oldTraj.count[lapStatus.currentLap-1],:,lapStatus.currentLap-1] += 0.5*([msg.u_a msg.u_df]-oldTraj.oldInput[oldTraj.count[lapStatus.currentLap-1]-1,:,lapStatus.currentLap-1])
+    #     oldTraj.oldTimes[oldTraj.count[lapStatus.currentLap-1],lapStatus.currentLap-1] = to_sec(msg.header.stamp)
+    #     oldTraj.count[lapStatus.currentLap-1] += 1
+    # end
 
-    #if necessary: append to beginning of next lap
-    if z_est[6] > posInfo.s_target - 18.0
-        oldTraj.oldTraj[oldTraj.count[lapStatus.currentLap+1],:,lapStatus.currentLap+1] = z_est
-        oldTraj.oldTraj[oldTraj.count[lapStatus.currentLap+1],6,lapStatus.currentLap+1] -= posInfo.s_target
-        oldTraj.oldInput[oldTraj.count[lapStatus.currentLap+1],:,lapStatus.currentLap+1] = [msg.u_a,msg.u_df]
-        #oldTraj.oldInput[oldTraj.count[lapStatus.currentLap+1],:,lapStatus.currentLap+1] += 0.5*([msg.u_a msg.u_df]-oldTraj.oldInput[oldTraj.count[lapStatus.currentLap+1]-1,:,lapStatus.currentLap+1])
-        oldTraj.oldTimes[oldTraj.count[lapStatus.currentLap+1],lapStatus.currentLap+1] = to_sec(msg.header.stamp)
-        oldTraj.count[lapStatus.currentLap+1] += 1
-        oldTraj.idx_start[lapStatus.currentLap+1] = oldTraj.count[lapStatus.currentLap+1]
-    end
+    # #if necessary: append to beginning of next lap
+    # if z_est[6] > posInfo.s_target - 18.0
+    #     oldTraj.oldTraj[oldTraj.count[lapStatus.currentLap+1],:,lapStatus.currentLap+1] = z_est
+    #     oldTraj.oldTraj[oldTraj.count[lapStatus.currentLap+1],6,lapStatus.currentLap+1] -= posInfo.s_target
+    #     oldTraj.oldInput[oldTraj.count[lapStatus.currentLap+1],:,lapStatus.currentLap+1] = [msg.u_a,msg.u_df]
+    #     #oldTraj.oldInput[oldTraj.count[lapStatus.currentLap+1],:,lapStatus.currentLap+1] += 0.5*([msg.u_a msg.u_df]-oldTraj.oldInput[oldTraj.count[lapStatus.currentLap+1]-1,:,lapStatus.currentLap+1])
+    #     oldTraj.oldTimes[oldTraj.count[lapStatus.currentLap+1],lapStatus.currentLap+1] = to_sec(msg.header.stamp)
+    #     oldTraj.count[lapStatus.currentLap+1] += 1
+    #     oldTraj.idx_start[lapStatus.currentLap+1] = oldTraj.count[lapStatus.currentLap+1]
+    # end
 end
 
 function ST_callback(msg::pos_info,z_true::Array{Float64,1})
@@ -163,9 +164,25 @@ function main()
 
     # FEATURE DATA READING
     data = load("$(homedir())/simulations/Feature_Data/FeatureDataCollecting.jld")
-    
     feature_z = data["feature_z"]
-    feature_u = data["feature_u"]    
+    feature_u = data["feature_u"]
+
+    # FEATURE DATA READING FOR GPR
+    data = load("$(homedir())/simulations/Feature_Data/FeatureData_GP.jld")
+    num_spare = 30
+    feature_GP_z         = data["feature_GP_z"]
+    feature_GP_u         = data["feature_GP_u"]
+    feature_GP_vy_e      = data["feature_GP_vy_e"]
+    feature_GP_psidot_e  = data["feature_GP_psidot_e"]
+    feature_GP_z         = feature_GP_z[1:num_spare:end,:]
+    feature_GP_u         = feature_GP_u[1:num_spare:end,:]
+    feature_GP_vy_e      = feature_GP_vy_e[1:num_spare:end]
+    feature_GP_psidot_e  = feature_GP_psidot_e[1:num_spare:end]
+
+    GP_e_vy_prepare      = GP_prepare(feature_GP_vy_e,feature_GP_z,feature_GP_u)
+    GP_e_psi_dot_prepare = GP_prepare(feature_GP_psidot_e,feature_GP_z,feature_GP_u)
+    println(GP_e_vy_prepare')
+    GP_feature = hcat(feature_GP_z,feature_GP_u)
 
     # DATA LOGGING VARIABLE INITIALIZATION
     # selStates_log    = zeros(selectedStates.Nl*selectedStates.Np,6,buffersize,30)
@@ -215,7 +232,7 @@ function main()
     oldSS = data["oldSS"]
 
     # FUNCTION DUMMY CALLS: this is important to call all the functions that will be used before for initial compiling
-    data = load("$(homedir())/simulations/oldSS.jld")
+    # data = load("$(homedir())/simulations/oldSS.jld")
     oldSS_dummy = data["oldSS"]
     lapStatus_dummy = LapStatus(3,1,false,false,0.3)
     selectedStates_dummy=find_SS(oldSS_dummy,selectedStates,z_prev,lapStatus_dummy,modelParams,mpcParams,track)
@@ -233,6 +250,7 @@ function main()
             # CONTROL SIGNAL PUBLISHING
             cmd.header.stamp = get_rostime()
             mpcSol_to_pub.header.stamp = get_rostime()     
+            # println(cmd.motor)
             publish(pub, cmd)
             publish(mpcSol_pub, mpcSol_to_pub)
 
@@ -332,7 +350,7 @@ function main()
                 #     mpcCoeff.c_Vy[i,:]=mpcCoeff.c_Vy[1,:]
                 #     mpcCoeff.c_Psi[i,:]=mpcCoeff.c_Psi[1,:]
                 # end
-                # t = toc()
+                # t = toc();
                 # println("Elapsed preparation time: $t")
                 # tic()
 
@@ -345,22 +363,53 @@ function main()
                 z_linear[1,:]=s6_to_s4(z_curr')
                 u_linear=vcat(u_prev[2:end,:],u_prev[end,:])
                 z_dummy=copy(z_curr) # 6-dimension state is needed for forecasting forward
+                
+                # TV SYS_ID
+                # for i=1:size(z_linear,1)-1
+                #     (iden_z,iden_u,z_iden_plot)=find_feature_dist(feature_z,feature_u,z_dummy',u_linear[i,:])
+                #     (mpcCoeff_dummy.c_Vx,mpcCoeff_dummy.c_Vy,mpcCoeff_dummy.c_Psi)=coeff_iden_dist(iden_z,iden_u)
+                #     z_dummy=car_sim_iden_tv(z_dummy,u_linear[i,:],0.1,mpcCoeff_dummy,modelParams,track)
+                #     z_linear[i+1,:]=s6_to_s4(z_dummy')
+                # end
+
+                # TI SYS_ID
+                (iden_z,iden_u,z_iden_plot)=find_feature_dist(feature_z,feature_u,z_dummy',u_linear[1,:])
+                (mpcCoeff_dummy.c_Vx,mpcCoeff_dummy.c_Vy,mpcCoeff_dummy.c_Psi)=coeff_iden_dist(iden_z,iden_u)
+                tic()
                 for i=1:size(z_linear,1)-1
-                    (iden_z,iden_u,z_iden_plot)=find_feature_dist(feature_z,feature_u,z_dummy',u_linear[i,:])
-                    (mpcCoeff_dummy.c_Vx,mpcCoeff_dummy.c_Vy,mpcCoeff_dummy.c_Psi)=coeff_iden_dist(iden_z,iden_u)
+                    # # LOCAL GP
+                    # GP_e_vy      = regre(z_dummy,u_linear[i,:],feature_GP_vy_e,feature_GP_z,feature_GP_u)
+                    # GP_e_psi_dot = regre(z_dummy,u_linear[i,:],feature_GP_vy_e,feature_GP_z,feature_GP_u)
+                    
+                    # FULL GP
+                    GP_e_vy      = GP_full(z_dummy,u_linear[i,:],GP_feature,GP_e_vy_prepare)
+                    GP_e_psi_dot = GP_full(z_dummy,u_linear[i,:],GP_feature,GP_e_psi_dot_prepare)
+                    
+                    # THRESHOLDING
+                    GP_e_vy      = min(0.025,GP_e_vy)
+                    GP_e_vy      = max(-0.025,GP_e_vy)
+                    GP_e_psi_dot = min(0.1,GP_e_psi_dot)
+                    GP_e_psi_dot = max(-0.1,GP_e_psi_dot)
+
                     z_dummy=car_sim_iden_tv(z_dummy,u_linear[i,:],0.1,mpcCoeff_dummy,modelParams,track)
+                    println("GP_e_vy",GP_e_vy)
+                    z_dummy[5] += GP_e_vy[1]
+                    z_dummy[6] += GP_e_psi_dot[1]
                     z_linear[i+1,:]=s6_to_s4(z_dummy')
-                end
+                end   
+                t = toc();
+                println("GP time is", t)             
+
                 # Safe set selection
                 selectedStates=find_SS(oldSS,selectedStates,z_prev,lapStatus,modelParams,mpcParams_4s,track)
                 selectedStates_kin=deepcopy(selectedStates)
                 selectedStates_kin.selStates=s6_to_s4(selectedStates_kin.selStates)
-                t = toc()
-                println("elapse prepare time: $t")
+                # t = toc();
+                # println("elapse prepare time: $t")
 
-                tic()
+                tic();
                 (z_sol,u_sol,sol_status)=solveMpcProblem_convhull_kin_linear(mdl_kin_lin,mpcParams_4s,modelParams,lapStatus,z_linear,u_linear,z_prev,u_prev,selectedStates_kin,track)
-                t = toc()
+                t = toc();
                 println("elapse MPC time: $t")
 
                 ###############################################################
@@ -372,7 +421,8 @@ function main()
                     (z_sol,~,~)=car_pre_dyn(z_curr,u_sol,track,modelParams,6)
                 end
                 n_state = size(z_sol,2)
-                mpcSol.z[:,1:n_state] = z_sol
+                # mpcSol.z[:,1:n_state] = z_sol
+                mpcSol.z = z_sol
                 mpcSol.u = u_sol
                 mpcSol.a_x = u_sol[2,1] 
                 mpcSol.d_f = u_sol[2,2]

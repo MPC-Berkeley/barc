@@ -611,3 +611,84 @@ function car_sim_iden_tv(z::Array{Float64},u::Array{Float64},dt::Float64,mpcCoef
     z_next[6]  = z_next[6] + c_Psi[1]*z[6]/z[4] + c_Psi[2]*z[5]/z[4] + c_Psi[3]*u[2]                   # psiDot
     return z_next
 end
+
+# FUNCTIONS FOR GP REGRESSION
+function covar_fun(z1::Array{Float64,2},z2::Array{Float64,2})
+    # input: [vx,vy,psi_dot,a,df]
+    z = z1-z2
+    # L[1,1]=0.1;
+    # L[2,2]=5;
+    # L[3,3]=5;
+    # L[4,4]=0.1;
+    # L[5,5]=5
+    k = exp(-0.5*(0.1*z[1]^2+5*z[2]^2+5*z[3]^2+0.1*z[4]^2+5*z[5]^2))
+    return k
+end
+
+function regre(z::Array{Float64,1},u::Array{Float64,2},e::Array{Float64,1},s::Array{Float64,2},i::Array{Float64,2})
+    # find the closest local feature points
+    dummy_norm = zeros(size(s,1),2)
+    state = vcat(z,u')
+    feature_state = hcat(s,i)
+    dist = state[4:8]'.-feature_state[:,4:8]
+    # We have 5 dimensions for distance calculation
+    dummy_norm[:,1] = dist[:,1].^2+(5*dist[:,5]).^2#+dist[:,3].^2+dist[:,4].^2+dist[:,5].^2
+    dummy_norm[:,2] = 1:size(dummy_norm,1)
+    dummy_norm=sortrows(dummy_norm) # pick up the first minimum Np points
+
+    # do local GP
+    # pick the first 20 points for local GP
+    num = 20
+    K=zeros(num,num)
+    k=zeros(num)
+    y=zeros(num)
+    for i = 1:num
+        for j=1:num
+            z = feature_state[Int(dummy_norm[i,2]),4:8] - feature_state[Int(dummy_norm[j,2]),4:8]
+            K[i,j] = exp(-0.5*(0.1*z[1]^2+5*z[2]^2+5*z[3]^2+0.1*z[4]^2+5*z[5]^2))
+            # K[i,j]=covar_fun(feature_state[Int(dummy_norm[i,2]),4:8],feature_state[Int(dummy_norm[j,2]),4:8])
+        end
+        z = feature_state[Int(dummy_norm[i,2]),4:8]-state[4:8]'
+        k[i] = exp(-0.5*(0.1*z[1]^2+5*z[2]^2+5*z[3]^2+0.1*z[4]^2+5*z[5]^2))
+        # k[i]=covar_fun(feature_state[Int(dummy_norm[i,2]),4:8],state[4:8]')
+        y[i]=e[Int(dummy_norm[i,2])]
+        # println(feature_state[Int(dummy_norm[i,2]),4:8])
+    end
+
+    local_e = k'*(K\y)
+    return local_e
+end
+
+function GP_prepare(e::Array{Float64,1},s::Array{Float64,2},i::Array{Float64,2})
+    # find the closest local feature points
+    feature_state = hcat(s,i) 
+    num = size(feature_state,1)
+    # pick the first 20 points for local GP
+    # y=zeros(num)
+    # L = eye(5);
+    # L[1,1]=0.1;
+    # L[2,2]=5;
+    # L[3,3]=5;
+    # L[4,4]=0.1;
+    # L[5,5]=5
+    Z=zeros(num,num)
+    for i = 1:num
+        for j=1:num
+            z = feature_state[i,4:8]-feature_state[j,4:8]
+            Z[i,j] = (0.5*z[1]^2+5*z[2]^2+5*z[3]^2+0.5*z[4]^2+5*z[5]^2)
+        end
+        # y[i]=e[i]
+    end
+    K=exp(-0.5*Z)
+    return K\e
+end
+
+function GP_full(z::Array{Float64,1},u::Array{Float64,2},feature_state::Array{Float64,2},GP_prepare::Array{Float64,1})
+    state = [z;u']
+    z = feature_state[:,4:8].-state[4:8]'
+    Z = 0.5*z[:,1].^2+5*z[:,2].^2+5*z[:,3].^2+0.5*z[:,4].^2+5*z[:,5].^2
+    # Z = z[:,1].^2+z[:,2].^2+z[:,3].^2+z[:,4].^2+z[:,5].^2
+    k = exp(-0.5*Z)
+    GP_e = k'*GP_prepare
+    return GP_e
+end

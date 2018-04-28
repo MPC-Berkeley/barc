@@ -347,7 +347,7 @@ type MpcModel_convhull_kin_linear
         Np         = 10              # how many states to select
         Nl         = 2               # how many previous laps to select
 
-        mdl = Model(solver = IpoptSolver(print_level=0,linear_solver="ma27")) #,max_cpu_time=0.09))#,check_derivatives_for_naninf="yes"))#,linear_solver="ma57",print_user_options="yes"))
+        mdl = Model(solver = IpoptSolver(print_level=0,linear_solver="ma27",max_cpu_time=0.09))#,check_derivatives_for_naninf="yes"))#,linear_solver="ma57",print_user_options="yes"))
 
         @NLparameter( mdl, zPrev[1:N+1,1:n_state] == 0)
         @NLparameter( mdl, uPrev[1:N,1:n_input] == 0)
