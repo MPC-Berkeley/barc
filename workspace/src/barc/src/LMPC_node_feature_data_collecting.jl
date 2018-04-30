@@ -91,18 +91,21 @@ function main()
     oldTraj          = OldTrajectory()
     posInfo          = PosInfo();  posInfo.s_target=track.s;
     mpcCoeff         = MpcCoeff()
+    mpcCoeff_dummy   = MpcCoeff()
     lapStatus        = LapStatus(1,1,false,false,0.3)
     mpcSol           = MpcSol()
     modelParams      = ModelParams()
     mpcParams_pF     = MpcParams()
     mpcParams        = MpcParams()  # a dummy parameter in feature data collecting
+    mpcParams_4s     = MpcParams()  # For kin_lin LMPC
     selectedStates   = SelectedStates()
     oldSS            = SafeSetData()
     z_est            = zeros(7)          # (xDot, yDot, psiDot, ePsi, eY, s, acc_f)
-    z_true           = zeros(3)
+    z_true           = zeros(3)          # (xDot, yDot, psiDot)
     x_est            = zeros(4)          # (x, y, psi, v)
     cmd              = ECU()             # CONTROL SIGNAL MESSAGE INITIALIZATION
     mpcSol_to_pub    = mpc_solution()    # MPC SOLUTION PUBLISHING MESSAGE INITIALIZATION
+    solHistory = SolHistory(500,10,6,32)
 
     # FEATURE DATA INITIALIZATION
     # 100000 IS THE BUFFER FOR FEATURE DATA
@@ -126,7 +129,7 @@ function main()
     log_status                  = Array(Symbol,buffersize,num_lap)
     k = 1 # counter initialization, k is the counter from the beginning of the experiment
 
-    InitializeParameters(mpcParams,mpcParams_pF,modelParams,posInfo,oldTraj,mpcCoeff,lapStatus,buffersize,selectedStates,oldSS)
+    InitializeParameters(mpcParams,mpcParams_4s,mpcParams_pF,modelParams,posInfo,oldTraj,mpcCoeff,mpcCoeff_dummy,lapStatus,buffersize,selectedStates,oldSS)
 
     # MODEL INITIALIZATION
     mdl_pF           = MpcModel_pF(mpcParams_pF,modelParams)

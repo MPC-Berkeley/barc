@@ -116,22 +116,34 @@ function main()
     #             120 -pi/2;
     #             211 0]
     # EXPERIEMENT TRACK DATA
-    num = 100
-    track_data=[80 0;
-                num -pi/2;
-                80+47 0;
-                num -pi/2;
-                50 0;
-                num -pi/2;
-                4 0;
-                num pi/2;
-                30 0;
-                num -pi/2;
-                4 0;
-                num -pi/2;
-                71+48 0]
+    # num = 100
+    # track_data=[80 0;
+    #             num -pi/2;
+    #             80+47 0;
+    #             num -pi/2;
+    #             50 0;
+    #             num -pi/2;
+    #             4 0;
+    #             num pi/2;
+    #             30 0;
+    #             num -pi/2;
+    #             4 0;
+    #             num -pi/2;
+    #             71+48 0]
+    # Basic experiment track
+    track_data = [60 0;
+                  80 -pi/2;
+                  20 0;
+                  80 -pi/2;
+                  40 pi/10;
+                  60 -pi/5;
+                  40 pi/10;
+                  80 -pi/2;
+                  20 0;
+                  80 -pi/2;
+                  75 0]
     # FEATURE TRACK DATA
-    # v = 2.5
+    # v = 2.5    
     # max_a=7.6;
     # R=v^2/max_a
     # max_c=1/R
@@ -181,7 +193,7 @@ function main()
 
     GP_e_vy_prepare      = GP_prepare(feature_GP_vy_e,feature_GP_z,feature_GP_u)
     GP_e_psi_dot_prepare = GP_prepare(feature_GP_psidot_e,feature_GP_z,feature_GP_u)
-    println(GP_e_vy_prepare')
+    # println(GP_e_vy_prepare')
     GP_feature = hcat(feature_GP_z,feature_GP_u)
 
     # DATA LOGGING VARIABLE INITIALIZATION
@@ -375,40 +387,42 @@ function main()
                 # TI SYS_ID
                 (iden_z,iden_u,z_iden_plot)=find_feature_dist(feature_z,feature_u,z_dummy',u_linear[1,:])
                 (mpcCoeff_dummy.c_Vx,mpcCoeff_dummy.c_Vy,mpcCoeff_dummy.c_Psi)=coeff_iden_dist(iden_z,iden_u)
-                tic()
+                
+                # tic()
                 for i=1:size(z_linear,1)-1
-                    # # LOCAL GP
-                    # GP_e_vy      = regre(z_dummy,u_linear[i,:],feature_GP_vy_e,feature_GP_z,feature_GP_u)
-                    # GP_e_psi_dot = regre(z_dummy,u_linear[i,:],feature_GP_vy_e,feature_GP_z,feature_GP_u)
+                #     # # LOCAL GP
+                #     # GP_e_vy      = regre(z_dummy,u_linear[i,:],feature_GP_vy_e,feature_GP_z,feature_GP_u)
+                #     # GP_e_psi_dot = regre(z_dummy,u_linear[i,:],feature_GP_vy_e,feature_GP_z,feature_GP_u)
                     
-                    # FULL GP
-                    GP_e_vy      = GP_full(z_dummy,u_linear[i,:],GP_feature,GP_e_vy_prepare)
-                    GP_e_psi_dot = GP_full(z_dummy,u_linear[i,:],GP_feature,GP_e_psi_dot_prepare)
+                #     # FULL GP
+                #     GP_e_vy      = GP_full(z_dummy,u_linear[i,:],GP_feature,GP_e_vy_prepare)
+                #     GP_e_psi_dot = GP_full(z_dummy,u_linear[i,:],GP_feature,GP_e_psi_dot_prepare)
                     
-                    # THRESHOLDING
-                    GP_e_vy      = min(0.025,GP_e_vy)
-                    GP_e_vy      = max(-0.025,GP_e_vy)
-                    GP_e_psi_dot = min(0.1,GP_e_psi_dot)
-                    GP_e_psi_dot = max(-0.1,GP_e_psi_dot)
+                #     # THRESHOLDING
+                #     GP_e_vy      = min(0.025,GP_e_vy)
+                #     GP_e_vy      = max(-0.025,GP_e_vy)
+                #     GP_e_psi_dot = min(0.1,GP_e_psi_dot)
+                #     GP_e_psi_dot = max(-0.1,GP_e_psi_dot)
 
                     z_dummy=car_sim_iden_tv(z_dummy,u_linear[i,:],0.1,mpcCoeff_dummy,modelParams,track)
-                    println("GP_e_vy",GP_e_vy)
-                    z_dummy[5] += GP_e_vy[1]
-                    z_dummy[6] += GP_e_psi_dot[1]
+                #     println("GP_e_vy",GP_e_vy)
+                #     z_dummy[5] += GP_e_vy[1]
+                #     z_dummy[6] += GP_e_psi_dot[1]
                     z_linear[i+1,:]=s6_to_s4(z_dummy')
                 end   
-                t = toc();
-                println("GP time is", t)             
+                # t = toc();
+                # println("GP time is", t)             
 
                 # Safe set selection
                 selectedStates=find_SS(oldSS,selectedStates,z_prev,lapStatus,modelParams,mpcParams_4s,track)
-                selectedStates_kin=deepcopy(selectedStates)
-                selectedStates_kin.selStates=s6_to_s4(selectedStates_kin.selStates)
+                # selectedStates_kin=deepcopy(selectedStates)
+                selectedStates.selStates=s6_to_s4(selectedStates.selStates)
+                
                 # t = toc();
                 # println("elapse prepare time: $t")
 
                 tic();
-                (z_sol,u_sol,sol_status)=solveMpcProblem_convhull_kin_linear(mdl_kin_lin,mpcParams_4s,modelParams,lapStatus,z_linear,u_linear,z_prev,u_prev,selectedStates_kin,track)
+                (z_sol,u_sol,sol_status)=solveMpcProblem_convhull_kin_linear(mdl_kin_lin,mpcParams_4s,modelParams,lapStatus,z_linear,u_linear,z_prev,u_prev,selectedStates,track)
                 t = toc();
                 println("elapse MPC time: $t")
 
