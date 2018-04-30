@@ -24,7 +24,7 @@
     <!--DYNAMIC OBSERVER-->
     <!--node pkg="barc" type="state_estimation_KinBkMdl_mixed.py" name="state_estimation_dynamic" output="screen"-->
     <!--node pkg="barc" type="state_estimation_SensorKinematicModel_sim.py" name="state_estimation_dynamic" output="screen"-->
-    <node pkg="barc" type="state_estimation_SensorKinematicModel.py" name="state_estimation_dynamic" output="screen">
+    <node pkg="barc" type="state_estimation_SensorKinematicModel_old.py" name="state_estimation_dynamic" output="screen">
         <!-- ekf properties -->
         <param name="q_std" type="double" value="0.1" />
 

@@ -14,7 +14,7 @@
 =# 
 
 using RobotOS
-@rosimport barc.msg: ECU, Vel_est, pos_info
+@rosimport barc.msg: ECU, Vel_est, pos_info, xy_prediction
 @rosimport geometry_msgs.msg: Vector3
 @rosimport sensor_msgs.msg: Imu
 @rosimport marvelmind_nav.msg: hedge_pos
@@ -53,8 +53,14 @@ function ECU_callback(msg::ECU,u_current::Array{Float64},cmd_log::Measurements)
     cmd_log.i += 1
 end
 
+function input_callback(msg::xy_prediction, input_pred::Array{Float64})
+    input_pred[:, 1] = msg.acc
+    input_pred[:, 2] = msg.steering
+end
+
 function main() 
     u_current = zeros(Float64,2)      # msg ECU is Float32 !
+    input_pred = zeros(10, 2)
 
     buffersize = 60000
     gps_meas = Measurements{Float64}(1,zeros(buffersize),zeros(buffersize),zeros(buffersize,2))
@@ -72,8 +78,12 @@ function main()
 
     s1  = Subscriber("ecu", ECU, ECU_callback, (u_current,cmd_log,), queue_size=1)::RobotOS.Subscriber{barc.msg.ECU}
 
+    # input_pred_sub = Subscriber("xy_prediction", xy_prediction, input_callback, (input_pred, ),
+    #                           queue_size=1)::RobotOS.Subscriber{barc.msg.xy_prediction}
+
     z_current = zeros(60000,8)
     z_current[1,:] = [0.1 0.0 0.0 0.0 0.0 0.0 0.0 0.0]
+    # z_current[1, :] = [2.85 (-4.15) 0.0 0.0 0.0 0.0 0.0 0.0]
     slip_ang = zeros(60000,2)
 
     dt = 0.01
@@ -106,7 +116,8 @@ function main()
     t0          = to_sec(get_rostime())
     gps_data    = hedge_pos()
     real_data   = pos_info()
-    
+
+    const NOISE = true
 
     z_real.t_msg[1] = t0
     slip_a.t_msg[1] = t0
@@ -127,29 +138,50 @@ function main()
         # update current state with a new row vector
         z_current[i,:],slip_ang[i,:]  = simDynModel_exact_xy(z_current[i-1,:], u_current', dt, modelParams)
 
+        #=
+        if sumabs(input_pred) > 0.1
+            actual_prediction = copy(z_current[i - 1, :])
+            println("ACTUAL PREDICTION")
+            for i = 1 : 10
+                actual_prediction, = simDynModel_exact_xy(actual_prediction, input_pred[i, :], dt, modelParams)
+                println(actual_prediction)
+            end
+        end
+        =#
+
         z_real.t_msg[i] = t
         z_real.t[i]     = t
         slip_a.t_msg[i] = t
         slip_a.t[i]     = t
 
         # IMU measurements
-        if i%2 == 0                 # 50 Hz
-            imu_drift   = 1+(t-t0)/100#sin(t/100*pi/2)     # drifts to 1 in 100 seconds (and add random start value 1)
-            rand_yaw = 0.05*randn()
-            if rand_yaw > 0.1
-                rand_yaw = 0.1
-            elseif rand_yaw<-0.1
-                rand_yaw=-0.1
+        if i%2 == 0                 # 50 Hz            
+            if NOISE
+                imu_drift   = 1+(t-t0)/100#sin(t/100*pi/2)     # drifts to 1 in 100 seconds (and add random start value 1)
+                rand_yaw = 0.05*randn()
+                if rand_yaw > 0.1
+                    rand_yaw = 0.1
+                elseif rand_yaw<-0.1
+                    rand_yaw=-0.1
+                end
+            else 
+                imu_drift = 0.0
+                rand_yaw = 0.0
             end
 
             yaw         = z_current[i,5] + imu_drift + rand_yaw#+ 0.002*randn() 
 
-            rand_psiDot = 0.01*randn()
-            if rand_psiDot > 0.1
-                rand_psiDot = 0.1
-            elseif rand_psiDot<-0.1
-                rand_psiDot=-0.1
+            if NOISE
+                rand_psiDot = 0.01*randn()
+                if rand_psiDot > 0.1
+                    rand_psiDot = 0.1
+                elseif rand_psiDot<-0.1
+                    rand_psiDot=-0.1
+                end
+            else
+                rand_psiDot = 0.0
             end
+
             psiDot      = z_current[i,6] +rand_psiDot#+ 0.001*randn()
             imu_meas.t_msg[imu_meas.i] = t
             imu_meas.t[imu_meas.i] = t
@@ -159,20 +191,28 @@ function main()
             imu_data.angular_velocity = Vector3(0,0,psiDot)
             imu_data.header.stamp = t_ros
 
-            rand_accX = 0.01*randn()
-            if rand_accX > 0.1
-                rand_accX = 0.1
-            elseif rand_accX<-0.1
-                rand_accX=-0.1
+            if NOISE
+                rand_accX = 0.01*randn()
+                if rand_accX > 0.1
+                    rand_accX = 0.1
+                elseif rand_accX<-0.1
+                    rand_accX=-0.1
+                end
+            else
+                rand_accX = 0.0
             end
 
             imu_data.linear_acceleration.x = diff(z_current[i-1:i,3])[1]/dt - z_current[i,6]*z_current[i,4] #+rand_accX#+ randn()*0.3*1.0
 
-            rand_accY = 0.01*randn()
-            if rand_accY > 0.1
-                rand_accY = 0.1
-            elseif rand_accY<-0.1
-                rand_accY=-0.1
+            if NOISE
+                rand_accY = 0.01*randn()
+                if rand_accY > 0.1
+                    rand_accY = 0.1
+                elseif rand_accY<-0.1
+                    rand_accY=-0.1
+                end
+            else
+                rand_accY = 0.0
             end
 
             imu_data.linear_acceleration.y = diff(z_current[i-1:i,4])[1]/dt + z_current[i,6]*z_current[i,3] #+rand_accY#+ randn()*0.3*1.0
@@ -195,6 +235,7 @@ function main()
         dist_traveled += norm(diff(z_current[i-1:i,1:2]))
         if i%5 == 0                 # 20 Hz
             if sum(dist_traveled .>= vel_dist_update)>=1 && z_current[i,3] > 0.1     # only update if at least one of the magnets has passed the sensor
+            # if true
                 dist_traveled[dist_traveled.>=vel_dist_update] = 0
                 vel_est.vel_est = convert(Float32,norm(z_current[i,3:4]))#+0.00*randn())
                 vel_est.vel_fl = convert(Float32,0)
@@ -209,31 +250,42 @@ function main()
         # GPS measurements
         if i%6 == 0               # 16 Hz
 
-            rand_x = 0.01*randn()
-            if rand_x > 0.1
-                rand_x = 0.1
-            elseif rand_x<-0.1
-                rand_x=-0.1
+            if NOISE
+                rand_x = 0.01*randn()
+                if rand_x > 0.1
+                    rand_x = 0.1
+                elseif rand_x<-0.1
+                    rand_x=-0.1
+                end
+            else
+                rand_x = 0.0
             end
 
             x = round(z_current[i,1] +  rand_x,2)#0.002*randn(),2)       # Indoor gps measures, rounded on cm
 
-            rand_y = 0.01*randn()
-            if rand_y > 0.1
-                rand_y = 0.1
-            elseif rand_y<-0.1
-                rand_y=-0.1
+            if NOISE
+                rand_y = 0.01*randn()
+                if rand_y > 0.1
+                    rand_y = 0.1
+                elseif rand_y<-0.1
+                    rand_y=-0.1
+                end
+            else
+                rand_y = 0.0
             end
 
             y = round(z_current[i,2] + rand_y,2)#0.002*randn(),2)
 
-            if randn()>10            # simulate gps-outlier (probability about 0.13% for randn()>3, 0.62% for randn()>2.5, 2.3% for randn()>2.0 )
-                x += 1#randn()        # add random value to x and y
-                y -= 1#randn()
-                #sim_gps_interrupt = 6       # also do a little interruption
-            elseif randn()>10 && sim_gps_interrupt < 0
-                sim_gps_interrupt = 10      # simulate gps-interrupt (10 steps at 25 Hz is 0.4 seconds)
+            if NOISE
+                if randn()>10            # simulate gps-outlier (probability about 0.13% for randn()>3, 0.62% for randn()>2.5, 2.3% for randn()>2.0 )
+                    x += 1#randn()        # add random value to x and y
+                    y -= 1#randn()
+                    #sim_gps_interrupt = 6       # also do a little interruption
+                elseif randn()>10 && sim_gps_interrupt < 0
+                    sim_gps_interrupt = 10      # simulate gps-interrupt (10 steps at 25 Hz is 0.4 seconds)
+                end
             end
+
             if sim_gps_interrupt < 0
                 gps_meas.t_msg[gps_meas.i] = t
                 gps_meas.t[gps_meas.i] = t

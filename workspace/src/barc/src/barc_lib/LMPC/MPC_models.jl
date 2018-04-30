@@ -265,7 +265,7 @@ type MpcModel_pF
         u_Ref       = zeros(N,2)
 
         # Create Model
-        mdl = Model(solver = IpoptSolver(print_level=0,max_cpu_time=0.09))#,linear_solver="ma57",print_user_options="yes"))
+        mdl = Model(solver = IpoptSolver(print_level=0,max_cpu_time=0.09, linear_solver="ma27"))#,linear_solver="ma57",print_user_options="yes"))
 
         # Create variables (these are going to be optimized)
         @variable( mdl, z_Ol[1:(N+1),1:5], start = 0)          # z = s, ey, epsi, v
@@ -448,7 +448,7 @@ type MpcModel_convhull
         acc_f           = 1.0
 
 
-        mdl = Model(solver = IpoptSolver(print_level=0,max_cpu_time=0.09))#,check_derivatives_for_naninf="yes"))#,linear_solver="ma57",print_user_options="yes"))
+        mdl = Model(solver = IpoptSolver(print_level=0,max_cpu_time=0.09, linear_solver="ma27"))#,check_derivatives_for_naninf="yes"))#,linear_solver="ma57",print_user_options="yes"))
 
         @variable( mdl, z_Ol[1:(N+1),1:7])
         @variable( mdl, u_Ol[1:N,1:2])
@@ -497,6 +497,13 @@ type MpcModel_convhull
         @NLconstraint(mdl, [i=2:N+1], z_Ol[i,5] >= -ey_max - eps_lane[i])
         #@NLconstraint(mdl,[i = 1:(N+1)], z_Ol[i,4] <= v_max + eps_vel[i] )      # soft constraint on maximum velocity
         @NLconstraint(mdl, sum{alpha[i],i=1:Nl*Np} == 1)                        # constraint on the coefficients of the convex hull
+        
+        #=
+        for i = 1 : 6                                                                                                       
+            @NLconstraint(mdl, z_Ol[N + 1, i] == sum{alpha[j] * selStates[j, i], 
+                                                         j = 1 : Nl * Np})         
+        end 
+        =#
 
         #for n = 1:6
             #@NLconstraint(mdl,z_Ol[N+1,n] == sum{alpha[j]*selStates[j,n],j=1:Nl*Np})  # terminal constraint
@@ -608,7 +615,7 @@ type MpcModel_convhull
 
         #@NLobjective(mdl, Min, derivCost + laneCost + controlCost + terminalCost )#+ slackCost)#+ velocityCost)
 
-        @NLobjective(mdl, Min, derivCost + laneCost +  terminalCost + Q_slack[1]*slackVx + Q_slack[2]*slackVy + Q_slack[3]*slackPsidot + Q_slack[4]*slackEpsi + Q_slack[5]*slackEy + Q_slack[6]*slackS) #+ controlCost
+        @NLobjective(mdl, Min, derivCost + laneCost +  terminalCost + controlCost + Q_slack[1]*slackVx + Q_slack[2]*slackVy + Q_slack[3]*slackPsidot + Q_slack[4]*slackEpsi + Q_slack[5]*slackEy + Q_slack[6]*slackS) #+ controlCost
 
 
         sol_stat=solve(mdl)
@@ -643,7 +650,6 @@ type MpcModel_convhull
         m.slackEpsi   = slackEpsi
         m.slackEy     = slackEy
         m.slackS      = slackS
-
 
         return m
     end
@@ -736,7 +742,7 @@ type MpcModel_obstacle
         acc_f           = 1.0
 
 
-        mdl = Model(solver = IpoptSolver(print_level=0,max_cpu_time=0.09))#,check_derivatives_for_naninf="yes"))#,linear_solver="ma57",print_user_options="yes"))
+        mdl = Model(solver = IpoptSolver(print_level=0,max_cpu_time=0.09, linear_solver="ma27"))#,check_derivatives_for_naninf="yes"))#,linear_solver="ma57",print_user_options="yes"))
 
         @variable( mdl, z_Ol[1:(N+1),1:7])
         @variable( mdl, u_Ol[1:N,1:2])

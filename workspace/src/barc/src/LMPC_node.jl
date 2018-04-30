@@ -1,7 +1,7 @@
 #!/usr/bin/env julia
 
 using RobotOS
-@rosimport barc.msg: ECU, pos_info, prediction
+@rosimport barc.msg: ECU, pos_info
 @rosimport geometry_msgs.msg: Vector3
 rostypegen()
 using barc.msg
@@ -65,13 +65,8 @@ function SE_callback(msg::pos_info,acc_f::Array{Float64},lapStatus::LapStatus,po
         oldTraj.count[lapStatus.currentLap+1] += 1
         oldTraj.idx_start[lapStatus.currentLap+1] = oldTraj.count[lapStatus.currentLap+1]
     end
-end
 
-function obstacle_callback(msg::prediction, obstacle::Obstacle, dummy::Int64)         # update current position and track data
-#function obstacle_callback(msg::prediction, obstacle::Obstacle)
-    obstacle.prediction[:, 1] = msg.s
-    obstacle.prediction[:, 2] = msg.ey
-    obstacle.prediction[:, 3] = msg.v
+    println("oldTraj Counter: ", oldTraj.count[lapStatus.currentLap])
 end
 
 # This is the main function, it is called when the node is started.
@@ -117,9 +112,6 @@ function main()
     coeffX                      = zeros(9)          # buffer for coeffX (only logging)
     coeffY                      = zeros(9)          # buffer for coeffY (only logging)
     cmd                         = ECU()             # command type
-    agents_predictions          = prediction()
-    # obstacle_predictions        = prediction()
-    obstacle.prediction         = zeros(mpcParams.N + 1, 3)
     coeffCurvature_update       = zeros(trackCoeff.nPolyCurvature+1)
 
     # Logging variables
@@ -165,16 +157,9 @@ function main()
     init_node("mpc_traj")
     loop_rate = Rate(1/modelParams.dt)
     pub = Publisher("ecu", ECU, queue_size=1)::RobotOS.Publisher{barc.msg.ECU}
-    pub_prediction = Publisher("prediction", prediction, queue_size=1)::RobotOS.Publisher{barc.msg.prediction}
     # The subscriber passes arguments (coeffCurvature and z_est) which are updated by the callback function:
     s1 = Subscriber("pos_info", pos_info, SE_callback, (acc_f,lapStatus,posInfo,mpcSol,oldTraj,trackCoeff,z_est,x_est),queue_size=50)::RobotOS.Subscriber{barc.msg.pos_info}
     # Note: Choose queue size long enough so that no pos_info packets get lost! They are important for system ID!
-
-    #sub_obstacle = Subscriber("obs_prediction", prediction, obstacle_callback, callback_args=(obstacle), 
-    #                          queue_size=1)::RobotOS.Subscriber{barc.msg.prediction}
-    dummy = 0
-    s2 = Subscriber("obs_prediction", prediction, obstacle_callback, (obstacle, dummy), queue_size=1)::RobotOS.Subscriber{barc.msg.prediction}
-
 
     run_id = get_param("run_id")
     println("Finished initialization.")
@@ -427,11 +412,8 @@ function main()
             end
 
             ## if obstacles are on the track, find the nearest one
-            println(obstacle.prediction[:, 1])
 
             if obstacle.obstacle_active == true
-                # take the first input from the obstacle prediction
-                obs_curr[lapStatus.currentIt, :, 1] = obstacle.prediction[1, :]
 
                 obs_temp = obs_curr[lapStatus.currentIt,:,:]
 
@@ -448,7 +430,6 @@ function main()
                 dist,index=findmin(sqrt((obs_temp[1,1,:]-zCurr[lapStatus.currentIt,6]).^2 + (obs_temp[1,2,:]-zCurr[lapStatus.currentIt,5]).^2))  # find the closest obstacle using the equation of the ellipse. Closest in terms of s and e_y!!
 
                 obs_near = obs_temp[1,:,index]
-                obs_near = obstacle.prediction
 
                 # println("current s= ",posInfo.s)
                 # println("closest obstacle= ",obs_near[1,1,1])
@@ -500,18 +481,9 @@ function main()
             log_t_solv[k+1] = toq()
             #println("time= ",log_t_solv[k+1])
 
-            agents_predictions.header.stamp = get_rostime()
-            agents_predictions.s = mpcSol.z[:, 1]
-            agents_predictions.ey = mpcSol.z[:, 2]
-            agents_predictions.epsi = mpcSol.z[:, 3]
-            agents_predictions.v = mpcSol.z[:, 4]
-            publish(pub_prediction, agents_predictions)
-
-            #=
             if obstacle.obstacle_active == true
-                # obs_curr[lapStatus.currentIt+1,:,:] = obstaclePosition(obs_curr[i,:,:],modelParams,obstacle,posInfo)            end
+                obs_curr[lapStatus.currentIt+1,:,:] = obstaclePosition(obs_curr[i,:,:],modelParams,obstacle,posInfo)
             end
-            =#
 
             # Send command immediately, only if it is optimal!
             #if mpcSol.solverStatus == :Optimal

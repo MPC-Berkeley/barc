@@ -14,7 +14,7 @@
 # ---------------------------------------------------------------------------
 
 import rospy
-# from Localization_helpers import Localization
+from Localization_helpers import Localization
 from barc.msg import ECU, pos_info, Vel_est
 from sensor_msgs.msg import Imu
 from marvelmind_nav.msg import hedge_pos
@@ -228,8 +228,8 @@ def state_estimation():
     #         x,y,v,psi,psiDot,a_x,a_y, x, y, psi, v
 
     # Set up track parameters
-    # l = Localization()
-    # l.create_track()
+    l = Localization()
+    l.create_track()
     #l.prepare_trajectory(0.06)
 
     d_f_hist = [0.0]*10       # assuming that we are running at 50Hz, array of 10 means 0.2s lag
@@ -262,11 +262,7 @@ def state_estimation():
         d_f_lp = d_f_lp + 0.5*(se.cmd_servo-d_f_lp) # low pass filter on steering
         a_lp = a_lp + 1.0*(se.cmd_motor-a_lp)       # low pass filter on acceleration
         #u = [a_lp, d_f_hist.pop(0)]
-
-        # Steering delay
-        # u = [se.cmd_motor, d_f_hist.pop(0)]
-        # No steering delay
-        u = [se.cmd_motor, se.cmd_servo]
+        u = [se.cmd_motor, d_f_hist.pop(0)]
 
         bta = 0.5 * u[1]
 
@@ -292,27 +288,22 @@ def state_estimation():
         #print "V_x and V_y : (%f, %f)" % (v_x_est, v_y_est)
 
         # Update track position
-        # l.set_pos(x_est_2, y_est_2, psi_est_2, v_x_est, v_y_est, psi_dot_est)
+        l.set_pos(x_est_2, y_est_2, psi_est_2, v_x_est, v_y_est, psi_dot_est)
 
 
         # Calculate new s, ey, epsi (only 12.5 Hz, enough for controller that runs at 10 Hz)
-        # if est_counter%4 == 0:
-        #     l.find_s()
+        if est_counter%4 == 0:
+            l.find_s()
         #l.s = 0
         #l.epsi = 0
         #l.s_start = 0
 
         # and then publish position info
         ros_t = rospy.get_rostime()
-
-        # state_pub_pos.publish(pos_info(Header(stamp=ros_t), l.s, l.ey, l.epsi, v_est_2, l.s_start, l.x, l.y, l.v_x, l.v_y,
-        #                                l.psi, l.psiDot, se.x_meas, se.y_meas, se.yaw_meas, se.vel_meas, se.psiDot_meas,
-        #                                psi_drift_est, a_x_est, a_y_est, se.a_x_meas, se.a_y_meas, se.cmd_motor, se.cmd_servo,
-        #                                (0,), (0,), (0,), l.coeffCurvature.tolist()))
-        state_pub_pos.publish(pos_info(Header(stamp=ros_t), 0., 0., 0., 0., 0., x_est_2, y_est_2, v_x_est, v_y_est,
-                                       psi_est_2, psi_dot_est, se.x_meas, se.y_meas, se.yaw_meas, se.vel_meas, se.psiDot_meas,
+        state_pub_pos.publish(pos_info(Header(stamp=ros_t), l.s, l.ey, l.epsi, v_est_2, l.s_start, l.x, l.y, l.v_x, l.v_y,
+                                       l.psi, l.psiDot, se.x_meas, se.y_meas, se.yaw_meas, se.vel_meas, se.psiDot_meas,
                                        psi_drift_est, a_x_est, a_y_est, se.a_x_meas, se.a_y_meas, se.cmd_motor, se.cmd_servo,
-                                       (0,), (0,), (0,), [0.]))
+                                       (0,), (0,), (0,), l.coeffCurvature.tolist()))
 
         # wait
         est_counter += 1

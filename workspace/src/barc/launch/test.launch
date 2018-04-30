@@ -1,0 +1,65 @@
+<launch>
+
+    <!-- SYSTEM MODEL -->
+    <!-- vehicle parameters -->
+    <param name="L_a" type="double" value="0.125" />
+    <param name="L_b" type="double" value="0.125" />
+    <param name="m" type="double" value="1.98" />
+    <param name="I_z" type="double" value="0.24" />
+    <param name="dt" type="double" value="0.1" />
+
+    <!-- MACHINES -->
+    <machine name="yoga" address="127.0.0.1" user="lukas" timeout="20.0" env-loader="/home/lukas/barc/env_loader_yoga.sh" />
+    <!-- <machine name="yoga" address="192.168.10.74" user="lukas" timeout="20.0" env-loader="/home/lukas/barc/env_loader_yoga.sh" /> -->
+    <machine name="this-pc" address="192.168.10.147" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc.sh"/>
+
+    <!-- AGENT 1 NODES-->
+    <!-- AGENT-NODE 1-->
+    <node machine="yoga" pkg="barc" type="agent_node.jl" name="agent_1" output="screen">
+        <param name="index" type="int" value="1" />
+        <param name="color" type="str" value="red" />
+        <param name="mass" type="double" value="1.98" />
+        <param name="time_offset" type="double" value="0.0" />
+
+        <remap from="pos_info" to="agent_1/pos_info" />
+        <remap from="ecu" to="agent_1/ecu" />
+        <remap from="xy_prediction" to="agent_1/xy_prediction" />
+        <remap from="selected_states" to="agent_1/selected_states" />
+        <remap from="prediction" to="agent_1/prediction" />
+        <remap from="adv_prediction" to="agent_2/prediction" />
+        <remap from="ecu_pwm" to="agent_1/ecu_pwm" />
+    </node>
+
+    <!--DYNAMIC OBSERVER-->
+    <node machine="yoga" pkg="barc" type="state_estimation_SensorKinematicModel.py" name="state_estimation_dynamic_1" output="screen">
+        <!-- ekf properties -->
+        <param name="q_std" type="double" value="0.1" />
+        <param name="psi_std" type="double" value="0.5" />
+        <param name="v_std" type="double" value="0.5" />
+        <param name="gps_std" type="double" value="0.8" />
+        <param name="ang_v_std" type="double" value="0.8" />
+        <param name="est_mode" type="double" value="1" />
+
+        <remap from="hedge_pos" to="agent_1/hedge_pos" />
+        <remap from="imu/data" to="agent_1/imu/data" />
+        <remap from="vel_est" to="agent_1/vel_est" />
+        <remap from="pos_info" to="agent_1/pos_info" />
+        <remap from="ecu" to="agent_1/ecu" />
+    </node>
+
+    <!-- SIMULATOR -->
+    <node machine="yoga" pkg="barc" type="barc_simulator_dyn.jl" name="barc_sim_1" output="screen">
+        <remap from="hedge_pos" to="agent_1/hedge_pos" />
+        <remap from="imu/data" to="agent_1/imu/data" />
+        <remap from="vel_est" to="agent_1/vel_est" />
+        <remap from="real_val" to="agent_1/real_val" />
+        <remap from="ecu" to="agent_1/ecu" />
+    </node>   
+    <!-- AGENT 1 NODES-->
+
+    <!-- VISUALIZATION -->
+    <node machine="yoga" pkg="barc" type="plotter.py" name="visualization" output="screen">
+        <param name="num_agents" type="int" value="1" />
+    </node>  
+
+</launch>

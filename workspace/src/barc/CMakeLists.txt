@@ -51,6 +51,9 @@ add_message_files(
    ECU.msg
    Vel_est.msg
    prediction.msg
+   selected_states.msg
+   xy_prediction.msg
+   theta.msg
 )
 
 ## Generate services in the 'srv' folder

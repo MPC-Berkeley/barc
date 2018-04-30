@@ -185,8 +185,7 @@ function solveMpcProblem_obstacle(m::MpcModel_obstacle,mpcSol::MpcSol,mpcCoeff::
     Q_obs           = mpcParams.Q_obs::Array{Float64,1}
 
 #    println("Q_obs= ",Q_obs)
-    
-    #=
+
     obs      = zeros(mpcParams.N+1,3)
     obs[1,:] = obs_now
 
@@ -197,10 +196,8 @@ function solveMpcProblem_obstacle(m::MpcModel_obstacle,mpcSol::MpcSol,mpcCoeff::
         obs[i+1,2] = obs[i,2]
         obs[i+1,3] = obs[i,3]
     end
-    =#
 
-    obs = obs_now
-    println("obstacle= ",obs)
+   # println("obstacle= ",obs)
 
     # Update current initial condition, curvature and System ID coefficients
     setvalue(m.z0,zCurr)

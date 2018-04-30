@@ -215,11 +215,7 @@ function coeffConstraintCost(oldTraj::OldTrajectory, mpcCoeff::MpcCoeff, posInfo
     olda_sID            = oldTraj.oldInput[:,1,selected_laps_sID]::Array{Float64,3}
     olddF_sID           = oldTraj.oldInput[:,2,selected_laps_sID]::Array{Float64,3}
 
-
-    oldS_sID           = oldTraj.oldTraj[:,6,selected_laps_sID]::Array{Float64,3}
-
     DistS_sID = ( s_total - oldS_sID ).^2
-
 
     idx_s_sID = findmin(DistS_sID,1)[2]              
 
@@ -320,10 +316,14 @@ function coeffConstraintCost(oldTraj::OldTrajectory, mpcCoeff::MpcCoeff, posInfo
     # mpcCoeff.c_Vx = zeros(4)
     # mpcCoeff.c_Vy = zeros(4)
 
-    mpcCoeff.c_Psi = (A_psi'*A_psi + lambda1*eye(size(A_psi'*A_psi)[1],size(A_psi'*A_psi)[2]) )\A_psi'*y_psi
-    mpcCoeff.c_Vx  = (A_xDot'*A_xDot + lambda2*eye(size(A_xDot'*A_xDot)[1],size(A_xDot'*A_xDot)[2]) )\A_xDot'*y_xDot         # the identity matrix is used to scale the coefficients
-    mpcCoeff.c_Vy  = (A_yDot'*A_yDot + lambda3*eye(size(A_yDot'*A_yDot)[1],size(A_yDot'*A_yDot)[2]) )\A_yDot'*y_yDot
-    
+    # mpcCoeff.c_Psi = (A_psi'*A_psi + lambda1*eye(size(A_psi'*A_psi)[1],size(A_psi'*A_psi)[2]) )\A_psi'*y_psi
+    # mpcCoeff.c_Vx  = (A_xDot'*A_xDot + lambda2*eye(size(A_xDot'*A_xDot)[1],size(A_xDot'*A_xDot)[2]) )\A_xDot'*y_xDot         # the identity matrix is used to scale the coefficients
+    # mpcCoeff.c_Vy  = (A_yDot'*A_yDot + lambda3*eye(size(A_yDot'*A_yDot)[1],size(A_yDot'*A_yDot)[2]) )\A_yDot'*y_yDot
+
+    mpcCoeff.c_Psi = inv(A_psi' * A_psi) * A_psi' * y_psi
+    mpcCoeff.c_Vx  = inv(A_xDot' * A_xDot) * A_xDot' * y_xDot 
+    mpcCoeff.c_Vy  = inv(A_yDot' * A_yDot) * A_yDot' * y_yDot
+
     # if det(A_psi'*A_psi) != 0
     # else
     #     println("det y_psi = 0")
