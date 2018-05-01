@@ -43,26 +43,26 @@ function SE_callback(msg::pos_info,acc_f::Array{Float64},lapStatus::LapStatus,po
     oldTraj.oldTimes[oldTraj.count[lapStatus.currentLap],lapStatus.currentLap] = to_sec(msg.header.stamp)
     oldTraj.count[lapStatus.currentLap] += 1
 
-    # if necessary: append to end of previous lap
-    if lapStatus.currentLap > 1 && z_est[6] < 18.0
-        oldTraj.oldTraj[oldTraj.count[lapStatus.currentLap-1],:,lapStatus.currentLap-1] = z_est
-        oldTraj.oldTraj[oldTraj.count[lapStatus.currentLap-1],6,lapStatus.currentLap-1] += posInfo.s_target
-        oldTraj.oldInput[oldTraj.count[lapStatus.currentLap-1],:,lapStatus.currentLap-1] = [msg.u_a,msg.u_df]
-        #oldTraj.oldInput[oldTraj.count[lapStatus.currentLap-1],:,lapStatus.currentLap-1] += 0.5*([msg.u_a msg.u_df]-oldTraj.oldInput[oldTraj.count[lapStatus.currentLap-1]-1,:,lapStatus.currentLap-1])
-        oldTraj.oldTimes[oldTraj.count[lapStatus.currentLap-1],lapStatus.currentLap-1] = to_sec(msg.header.stamp)
-        oldTraj.count[lapStatus.currentLap-1] += 1
-    end
+    # # if necessary: append to end of previous lap
+    # if lapStatus.currentLap > 1 && z_est[6] < 18.0
+    #     oldTraj.oldTraj[oldTraj.count[lapStatus.currentLap-1],:,lapStatus.currentLap-1] = z_est
+    #     oldTraj.oldTraj[oldTraj.count[lapStatus.currentLap-1],6,lapStatus.currentLap-1] += posInfo.s_target
+    #     oldTraj.oldInput[oldTraj.count[lapStatus.currentLap-1],:,lapStatus.currentLap-1] = [msg.u_a,msg.u_df]
+    #     #oldTraj.oldInput[oldTraj.count[lapStatus.currentLap-1],:,lapStatus.currentLap-1] += 0.5*([msg.u_a msg.u_df]-oldTraj.oldInput[oldTraj.count[lapStatus.currentLap-1]-1,:,lapStatus.currentLap-1])
+    #     oldTraj.oldTimes[oldTraj.count[lapStatus.currentLap-1],lapStatus.currentLap-1] = to_sec(msg.header.stamp)
+    #     oldTraj.count[lapStatus.currentLap-1] += 1
+    # end
 
-    #if necessary: append to beginning of next lap
-    if z_est[6] > posInfo.s_target - 18.0
-        oldTraj.oldTraj[oldTraj.count[lapStatus.currentLap+1],:,lapStatus.currentLap+1] = z_est
-        oldTraj.oldTraj[oldTraj.count[lapStatus.currentLap+1],6,lapStatus.currentLap+1] -= posInfo.s_target
-        oldTraj.oldInput[oldTraj.count[lapStatus.currentLap+1],:,lapStatus.currentLap+1] = [msg.u_a,msg.u_df]
-        #oldTraj.oldInput[oldTraj.count[lapStatus.currentLap+1],:,lapStatus.currentLap+1] += 0.5*([msg.u_a msg.u_df]-oldTraj.oldInput[oldTraj.count[lapStatus.currentLap+1]-1,:,lapStatus.currentLap+1])
-        oldTraj.oldTimes[oldTraj.count[lapStatus.currentLap+1],lapStatus.currentLap+1] = to_sec(msg.header.stamp)
-        oldTraj.count[lapStatus.currentLap+1] += 1
-        oldTraj.idx_start[lapStatus.currentLap+1] = oldTraj.count[lapStatus.currentLap+1]
-    end
+    # #if necessary: append to beginning of next lap
+    # if z_est[6] > posInfo.s_target - 18.0
+    #     oldTraj.oldTraj[oldTraj.count[lapStatus.currentLap+1],:,lapStatus.currentLap+1] = z_est
+    #     oldTraj.oldTraj[oldTraj.count[lapStatus.currentLap+1],6,lapStatus.currentLap+1] -= posInfo.s_target
+    #     oldTraj.oldInput[oldTraj.count[lapStatus.currentLap+1],:,lapStatus.currentLap+1] = [msg.u_a,msg.u_df]
+    #     #oldTraj.oldInput[oldTraj.count[lapStatus.currentLap+1],:,lapStatus.currentLap+1] += 0.5*([msg.u_a msg.u_df]-oldTraj.oldInput[oldTraj.count[lapStatus.currentLap+1]-1,:,lapStatus.currentLap+1])
+    #     oldTraj.oldTimes[oldTraj.count[lapStatus.currentLap+1],lapStatus.currentLap+1] = to_sec(msg.header.stamp)
+    #     oldTraj.count[lapStatus.currentLap+1] += 1
+    #     oldTraj.idx_start[lapStatus.currentLap+1] = oldTraj.count[lapStatus.currentLap+1]
+    # end
 end
 
 function ST_callback(msg::pos_info,z_true::Array{Float64,1})
@@ -225,7 +225,7 @@ function main()
             # println("s: ", z_curr[1], "x: ", x_est[1], "y: ", x_est[2])
             # println("ey: ",z_est[5])
 
-            (z_sol,u_sol,sol_status)=solveMpcProblem_featureData(mdl_pF,mpcParams_pF,modelParams,z_curr,z_prev,u_prev,track,v_ref[lapStatus.currentLap])
+            (z_sol,u_sol,sol_status)=solveMpcProblem_featureData(mdl_pF,mpcParams_pF,modelParams,mpcSol,z_curr,z_prev,u_prev,track,v_ref[lapStatus.currentLap])
             mpcSol.z = z_sol
             mpcSol.u = u_sol
 

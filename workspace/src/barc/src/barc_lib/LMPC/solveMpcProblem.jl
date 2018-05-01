@@ -15,7 +15,7 @@
 # i = 5 -> eY
 # i = 6 -> s
 
-function solveMpcProblem_pathFollow(mdl::MpcModel_pF,mpcParams_pF::MpcParams,modelParams::ModelParams,
+function solveMpcProblem_pathFollow(mdl::MpcModel_pF,mpcParams_pF::MpcParams,modelParams::ModelParams,mpcSol::MpcSol,
                                     z_curr::Array{Float64,1},
                                     z_prev::Array{Float64,2},u_prev::Array{Float64,2},track::Track)
 
@@ -41,17 +41,21 @@ function solveMpcProblem_pathFollow(mdl::MpcModel_pF,mpcParams_pF::MpcParams,mod
     setvalue(mdl.z0,z_curr)
     setvalue(mdl.c,curvature)
     setvalue(mdl.uPrev,u_prev)
+    setvalue(mdl.df_his,mpcSol.df_his)
     setvalue(mdl.z_Ref,z_ref)
 
     # Solve Problem and return solution
     sol_status  = solve(mdl.mdl)
     sol_u       = getvalue(mdl.u_Ol)
     sol_z       = getvalue(mdl.z_Ol)
-    println("Solved, status = $sol_status")
+    # INPUT DELAY HISTORY UPDATE
+    mpcSol.df_his[1:end-1] = mpcSol.df_his[2:end]
+    mpcSol.df_his[end] = sol_u[2,2]
+    # println("Solved, status = $sol_status")
     return sol_z,sol_u,sol_status
 end
 
-function solveMpcProblem_featureData(mdl::MpcModel_pF,mpcParams_pF::MpcParams,modelParams::ModelParams,
+function solveMpcProblem_featureData(mdl::MpcModel_pF,mpcParams_pF::MpcParams,modelParams::ModelParams,mpcSol::MpcSol,
                                      z_curr::Array{Float64,1},
                                      z_prev::Array{Float64,2},u_prev::Array{Float64,2},track::Track,v_ref::Float64)
 
@@ -67,6 +71,7 @@ function solveMpcProblem_featureData(mdl::MpcModel_pF,mpcParams_pF::MpcParams,mo
     # Update current initial condition, curvature and previous input
     setvalue(mdl.z0,z_curr)
     setvalue(mdl.c,curvature)
+    setvalue(mdl.df_his,mpcSol.df_his)
     setvalue(mdl.uPrev,u_prev)
     setvalue(mdl.z_Ref,z_ref)
 
@@ -74,11 +79,14 @@ function solveMpcProblem_featureData(mdl::MpcModel_pF,mpcParams_pF::MpcParams,mo
     sol_status  = solve(mdl.mdl)
     sol_u       = getvalue(mdl.u_Ol)
     sol_z       = getvalue(mdl.z_Ol)
+    # INPUT DELAY HISTORY UPDATE
+    mpcSol.df_his[1:end-1] = mpcSol.df_his[2:end]
+    mpcSol.df_his[end] = sol_u[2,2]
     # println("Solved, status = $sol_status")
     return sol_z,sol_u,sol_status
 end
 
-function solveMpcProblem_convhull_dyn_iden(mdl::MpcModel_convhull_dyn_iden,mpcParams::MpcParams,
+function solveMpcProblem_convhull_dyn_iden(mdl::MpcModel_convhull_dyn_iden,mpcParams::MpcParams,mpcSol::MpcSol,
                                            mpcCoeff::MpcCoeff,lapStatus::LapStatus,zCurr::Array{Float64,1},
                                            zPrev::Array{Float64,2},uPrev::Array{Float64,2},selectedStates::SelectedStates,track::Track)
 
@@ -105,6 +113,7 @@ function solveMpcProblem_convhull_dyn_iden(mdl::MpcModel_convhull_dyn_iden,mpcPa
    # Update current initial condition, curvature and System ID coefficients
    setvalue(mdl.z0,zCurr)
    setvalue(mdl.uPrev,uPrev)
+   setvalue(mdl.df_his,mpcSol.df_his)
    setvalue(mdl.c,curvature)       # Track curvature
    setvalue(mdl.c_Vx,mpcCoeff.c_Vx)         # System ID coefficients
    setvalue(mdl.c_Vy,mpcCoeff.c_Vy)
@@ -116,6 +125,9 @@ function solveMpcProblem_convhull_dyn_iden(mdl::MpcModel_convhull_dyn_iden,mpcPa
    sol_status  = solve(mdl.mdl)
    sol_u       = getvalue(mdl.u_Ol)
    sol_z       = getvalue(mdl.z_Ol)
+   # INPUT DELAY HISTORY UPDATE
+   mpcSol.df_his[1:end-1] = mpcSol.df_his[2:end]
+   mpcSol.df_his[end] = sol_u[2,2]
    println("Solved, status = $sol_status")
    return sol_z,sol_u,sol_status
 end

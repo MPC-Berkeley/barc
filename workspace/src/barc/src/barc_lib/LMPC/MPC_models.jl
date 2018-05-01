@@ -15,6 +15,7 @@ type MpcModel_pF
     controlCost::JuMP.NonlinearExpression   # soft constraints cost
 
     uPrev::Array{JuMP.NonlinearParameter,2}
+    df_his::Array{JuMP.NonlinearParameter,1}
 
     function MpcModel_pF(mpcParams_pF::MpcParams,modelParams::ModelParams)
         m = new()
@@ -67,11 +68,17 @@ type MpcModel_pF
         @NLparameter(mdl, z_Ref[1:N+1,1:4]==0); setvalue(z_Ref,hcat(zeros(N+1,3),v_ref*ones(N+1,1)))
         @NLparameter(mdl, z0[i=1:4]==0);        setvalue(z0[4],v_ref) # initial speed for first initial solution
         @NLparameter(mdl, uPrev[1:N,1:2]==0)
+        @NLparameter(mdl, df_his[1:3] == 0)
         @NLparameter(mdl, zPrev[1:N+1,1:4]==0)
         @NLparameter(mdl, c[1:N+1]==0)
 
         # System dynamics
         @NLconstraint(mdl, [i=1:4], z_Ol[1,i] == z0[i])         # initial condition
+        # THIS IS FOR SIMULATION
+        @NLconstraint(mdl, u_Ol[1,2] == uPrev[2,2]) # steering delay is 1 for simulation and 3 for experiment
+        # # THIS IS FOR EXPERIEMNT
+        # @NLconstraint(mdl, [i=1:3], u_Ol[i,2] == df_his[i]) # steering delay is 1 for simulation and 3 for experiment
+
         for i=1:N
             @NLexpression(mdl, bta[i],atan( L_a / (L_a + L_b) * tan(u_Ol[i,2])))
             @NLexpression(mdl, dsdt[i], z_Ol[i,4]*cos(z_Ol[i,3]+bta[i])/(1-z_Ol[i,2]*c[i]))
@@ -97,6 +104,7 @@ type MpcModel_pF
         m.z0=z0; m.z_Ref=z_Ref; m.c=c;
         m.z_Ol=z_Ol; m.u_Ol = u_Ol
         m.uPrev=uPrev
+        m.df_his = df_his
         m.derivCost=derivCost; m.costZ=costZ; m.controlCost=controlCost
         return m
     end
@@ -114,6 +122,7 @@ type MpcModel_convhull_dyn_iden
     c_Vy::Array{JuMP.NonlinearParameter,2}
     c_Psi::Array{JuMP.NonlinearParameter,2}
     uPrev::Array{JuMP.NonlinearParameter,2}
+    df_his::Array{JuMP.NonlinearParameter,1}
 
     eps_lane::Array{JuMP.Variable,1}
     alpha::Array{JuMP.Variable,1}
@@ -192,11 +201,17 @@ type MpcModel_convhull_dyn_iden
         @NLparameter(mdl, c_Vy[1:N,1:4]  == 0)    # system identification parameters
         @NLparameter(mdl, c_Psi[1:N,1:3] == 0)    # system identification parameters
         @NLparameter(mdl, uPrev[1:N,1:2] == 0)
+        @NLparameter(mdl, df_his[1:3] == 0)
         @NLparameter(mdl, selStates[1:Nl*Np,1:n_state] == 0)   # states from the previous trajectories selected in "convhullStates"
         @NLparameter(mdl, statesCost[1:Nl*Np] == 0)      # costs of the states selected in "convhullStates"
 
         @NLconstraint(mdl, [i=1:n_state], z_Ol[1,i] == z0[i])
-        @NLconstraint(mdl, [i=1:n_input], u_Ol[1,i] == uPrev[2,i])
+        # THIS INPUT CONSTRAINT IS FOR SYSTEM DELAY
+        @NLconstraint(mdl, u_Ol[1,1] == uPrev[2,1]) # acceleration delay is 1
+        # # THIS IS FOR SIMULATION
+        # @NLconstraint(mdl, u_Ol[1,2] == uPrev[2,2]) # steering delay is 1 for simulation and 3 for experiment
+        # THIS IS FOR EXPERIEMNT
+        @NLconstraint(mdl, [i=1:3], u_Ol[i,2] == df_his[i]) # steering delay is 1 for simulation and 3 for experiment
 
         @NLconstraint(mdl, [i=2:N+1], z_Ol[i,2] <= ey_max + eps_lane[i-1])
         @NLconstraint(mdl, [i=2:N+1], z_Ol[i,2] >= -ey_max - eps_lane[i-1])
@@ -266,6 +281,7 @@ type MpcModel_convhull_dyn_iden
         m.c_Vy = c_Vy
         m.c_Psi = c_Psi
         m.uPrev = uPrev
+        m.df_his = df_his
 
         m.derivCost = derivCost
         # m.controlCost = controlCost

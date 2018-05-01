@@ -100,7 +100,8 @@ type MpcSol             # MPC solution output
     cost::Array{Float64}
     eps_alpha::Array{Float64}
     costSlack::Array{Float64}
-    MpcSol(a_x=0.0,d_f=0.0,solverStatus=Symbol(),u=Float64[],z=Float64[],cost=Float64[],eps_alpha=Float64[],costSlack=Float64[]) = new(a_x,d_f,solverStatus,u,z,cost,eps_alpha,costSlack)
+    df_his::Array{Float64,1}
+    MpcSol(a_x=0.0,d_f=0.0,solverStatus=Symbol(),u=Float64[],z=Float64[],cost=Float64[],eps_alpha=Float64[],costSlack=Float64[],df_his=zeros(3)) = new(a_x,d_f,solverStatus,u,z,cost,eps_alpha,costSlack,df_his)
 end
 
 type ModelParams
@@ -156,8 +157,8 @@ type Track
         track=new()
 
         xy=[0.0 0.0] # 1.x 2.y
-        theta=[0.0]
-        # theta=[pi/4]
+        # theta=[0.0]
+        theta=[pi/4]
         curvature=[0.0]
         ds=0.03 # length of each segment
         width=0.8
