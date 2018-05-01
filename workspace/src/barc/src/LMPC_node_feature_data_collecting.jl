@@ -237,13 +237,9 @@ function main()
             n=max(n,[0,-0.002])
             u_sol[2,:]+=n'
             
-            # if rand() > 0.3
-            #     mpcSol.a_x = u_sol[2,1]
-            # else
-                # u_sol[2,1] = -rand()
-                mpcSol.a_x = u_sol[2,1]
-            # end
-            mpcSol.d_f = u_sol[2,2]
+            mpcSol.a_x = u_sol[1+mpcParams.delay_a,1] 
+            mpcSol.d_f = u_sol[1+mpcParams.delay_df,2]
+            
             z_prev = z_sol
             u_prev = u_sol
             println("Feature collecting solver status is = $sol_status")
