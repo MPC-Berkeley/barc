@@ -2,12 +2,12 @@
 # local start up script when opening bash session
 
 # set environment variable for python 
-export WORKON_HOME=$HOME/.virtualenvs
-export VIRTUALENVWRAPPER_PYTHON=/usr/bin/python
-export VIRTUALENVWRAPPER_VIRTUALENV=/usr/local/bin/virtualenv
-export VIRTUALENVWRAPPER_VIRTUALENV_ARGS='--no-site-packages'
-source /usr/local/bin/virtualenvwrapper.sh
-workon barc
+#export WORKON_HOME=$HOME/.virtualenvs
+#export VIRTUALENVWRAPPER_PYTHON=/usr/bin/python
+#export VIRTUALENVWRAPPER_VIRTUALENV=/usr/local/bin/virtualenv
+#export VIRTUALENVWRAPPER_VIRTUALENV_ARGS='--no-site-packages'
+#source /usr/local/bin/virtualenvwrapper.sh
+#workon barc
 
 # set environment variables for ROS
 source $HOME/barc/workspace/devel/setup.bash

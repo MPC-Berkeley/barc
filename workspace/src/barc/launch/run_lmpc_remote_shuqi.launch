@@ -9,7 +9,7 @@
     <!-- Machines -->
     <machine name="odroid" address="192.168.10.213" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_shuqi.sh"/>
 
-    <machine name="this-pc" address="192.168.10.144" timeout="20.0" env-loader="/home/shuqi/barc/env_loader_pc_shuqi.sh"/>
+    <machine name="this-pc" address="192.168.10.147" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc_shuqi.sh"/>
     
     <!-- START NODES -->
     <!-- Simulator -->
