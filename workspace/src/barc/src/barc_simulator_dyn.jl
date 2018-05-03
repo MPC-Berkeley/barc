@@ -73,8 +73,8 @@ function main()
     s1  = Subscriber("ecu", ECU, ECU_callback, (u_current,cmd_log,), queue_size=1)::RobotOS.Subscriber{barc.msg.ECU}
 
     z_current = zeros(60000,8)
-    # z_current[1,:] = [0.1 0.0 0.0 0.0 0.0 0.0 0.0 0.0]
-    z_current[1,:] = [0.1 0.0 0.0 0.0 pi/4 0.0 0.0 0.0]
+    z_current[1,:] = [0.1 0.0 0.0 0.0 0.0 0.0 0.0 0.0]
+    # z_current[1,:] = [0.1 0.0 0.0 0.0 pi/4 0.0 0.0 0.0]
     slip_ang = zeros(60000,2)
 
     dt = 0.01
@@ -117,17 +117,27 @@ function main()
 
     sim_gps_interrupt   = 0                 # counter if gps interruption is simulated
     vel_dist_update     = 2*pi*0.036/2      # distance to travel until velocity is updated (half wheel rotation)
+    d_f_his = zeros(20)                     # The hardware has around 0.2 s delay and this node is 100Hz, which is about an array with length 20.
 
     gps_header = Header()
     while ! is_shutdown()
         t_ros   = get_rostime()
         t       = to_sec(t_ros)
-        # if sizeof(cmd_log.z[t.>cmd_log.t+0.2,2]) >= 1
-        #    u_current[2] = cmd_log.z[t.>=cmd_log.t+0.2,2][end]       # artificial steering input delay
-        # end
+        # print(t)
+        if sizeof(cmd_log.z[t.>cmd_log.t+0.2,2]) >= 1
+           u_current[2] = cmd_log.z[t.>=cmd_log.t+0.2,2][end]       # artificial steering input delay
+        end
         # update current state with a new row vector
         
         # z_current[i,:],slip_ang[i,:]  = simDynModel_exact_xy(z_current[i-1,:], u_current', dt, modelParams)
+        
+        # # THIS PART CREATED A 0.2S DELAY IN THE SIMULATOR
+        # u_temp = d_f_his[1]
+        # d_f_his[1:end-1] = d_f_his[2:end]
+        # d_f_his[end] = u_current[2]
+        # u_current[2] = u_temp
+
+        # println(d_f_his)
         z_current[i,:],slip_ang[i,:]  = simDynModel_xy(z_current[i-1,:], u_current', dt, modelParams)
 
         z_real.t_msg[i] = t

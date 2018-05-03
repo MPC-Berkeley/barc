@@ -149,9 +149,10 @@ function main()
 
     # posInfo.s_target        = 19.11 #17.91 #19.14#17.94#17.76#24.0
     
-    mpcSol.z = zeros(11,4)
-    mpcSol.u = zeros(10,2)
-    for i in 2:11
+    mpcSol.df_his = zeros(mpcParams.delay_df)
+    mpcSol.z = zeros(mpcParams_pF.N+1,4)
+    mpcSol.u = zeros(mpcParams_pF.N,2)
+    for i in 2:mpcParams_pF.N+1
         mpcSol.z[i,:]=car_sim_kin(mpcSol.z[i-1,:],mpcSol.u[i-1,:],track,modelParams)
     end
     mpcSol.a_x = 0
@@ -178,10 +179,10 @@ function main()
 
                 # (xDot, yDot, psiDot, ePsi, eY, s, acc_f)
                 feature_z[k,:,1] = [z_est[6],z_est[5],z_est[4],z_true[1],z_true[2],z_true[3]]
-                feature_u[k,:] = u_sol[2,:]
+                feature_u[k,1] = u_sol[2,1] # acceleration delay is from MPC itself
+                feature_u[k+mpcParams.delay_df-1,2] = u_sol[1+mpcSol.delay_df,2] # another 2 steps delay is from the system
                 feature_z[k-1,:,2] = [z_est[6],z_est[5],z_est[4],z_true[1],z_true[2],z_true[3]]
                 
-
                 # println("Vy: $(z_est[2]) psi_dot: $(z_est[3])")
                 # So bsides the zeros tail, the first and last points will be removed.
                 # if lapStatus.currentLap==length(v_ref) && z_est[6] > track.s[end]-0.5
@@ -239,6 +240,12 @@ function main()
             
             mpcSol.a_x = u_sol[1+mpcParams.delay_a,1] 
             mpcSol.d_f = u_sol[1+mpcParams.delay_df,2]
+            if length(mpcSol.df_his)!=0
+                # INPUT DELAY HISTORY UPDATE
+                mpcSol.df_his[1:end-1] = mpcSol.df_his[2:end]
+                mpcSol.df_his[end] = u_sol[1+mpcParams_pF.delay_df,2]
+            end
+            # println(mpcParams.delay_df)
             
             z_prev = z_sol
             u_prev = u_sol

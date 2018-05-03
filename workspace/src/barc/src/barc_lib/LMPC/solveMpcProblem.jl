@@ -79,9 +79,6 @@ function solveMpcProblem_featureData(mdl::MpcModel_pF,mpcParams_pF::MpcParams,mo
     sol_status  = solve(mdl.mdl)
     sol_u       = getvalue(mdl.u_Ol)
     sol_z       = getvalue(mdl.z_Ol)
-    # INPUT DELAY HISTORY UPDATE
-    mpcSol.df_his[1:end-1] = mpcSol.df_his[2:end]
-    mpcSol.df_his[end] = sol_u[2,2]
     # println("Solved, status = $sol_status")
     return sol_z,sol_u,sol_status
 end

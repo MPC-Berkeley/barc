@@ -262,14 +262,14 @@ def state_estimation():
         se.vel_updated = False
 
         # define input
-        # d_f_hist.append(se.cmd_servo)           # this is for a 0.2 seconds delay of steering
+        d_f_hist.append(se.cmd_servo)           # this is for a 0.2 seconds delay of steering
         # d_f_lp = d_f_lp + 0.5*(se.cmd_servo-d_f_lp) # low pass filter on steering
         # a_lp = a_lp + 1.0*(se.cmd_motor-a_lp)       # low pass filter on acceleration
-        #u = [a_lp, d_f_hist.pop(0)]
-        # u = [se.cmd_motor, d_f_hist.pop(0)]
-        
-        # define input without delay
-        u = [se.cmd_motor, se.cmd_servo]
+        # u = [a_lp, d_f_hist.pop(0)]
+        u = [se.cmd_motor, d_f_hist.pop(0)]     # this is with 0.2s delay for steering without low pass filter
+        # print(d_f_hist)
+        # # define input without delay
+        # u = [se.cmd_motor, se.cmd_servo]
 
         bta = 0.5 * u[1]
 

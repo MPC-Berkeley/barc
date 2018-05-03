@@ -68,7 +68,7 @@ type MpcModel_pF
         @NLparameter(mdl, z_Ref[1:N+1,1:4]==0); setvalue(z_Ref,hcat(zeros(N+1,3),v_ref*ones(N+1,1)))
         @NLparameter(mdl, z0[i=1:4]==0);        setvalue(z0[4],v_ref) # initial speed for first initial solution
         @NLparameter(mdl, uPrev[1:N,1:2]==0)
-        @NLparameter(mdl, df_his[1:3] == 0)
+        @NLparameter(mdl, df_his[1:mpcParams_pF.delay_df] == 0)
         @NLparameter(mdl, zPrev[1:N+1,1:4]==0)
         @NLparameter(mdl, c[1:N+1]==0)
 
@@ -77,7 +77,8 @@ type MpcModel_pF
         # # THIS IS FOR SIMULATION
         # @NLconstraint(mdl, u_Ol[1,2] == uPrev[2,2]) # steering delay is 1 for simulation and 3 for experiment
         # THIS IS FOR EXPERIEMNT
-        @NLconstraint(mdl, [i=1:3], u_Ol[i,2] == df_his[i]) # steering delay is 1 for simulation and 3 for experiment
+        @NLconstraint(mdl, u_Ol[1,1] == uPrev[2,1]) # steering delay is 1 for simulation and 3 for experiment
+        @NLconstraint(mdl, [i=1:mpcParams_pF.delay_df], u_Ol[i,2] == df_his[i]) # steering delay is 1 for simulation and 3 for experiment
 
         for i=1:N
             @NLexpression(mdl, bta[i],atan( L_a / (L_a + L_b) * tan(u_Ol[i,2])))

@@ -377,7 +377,7 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_4s::MpcParams,mpcPa
         mpcParams.QderivZ           = 1.0*[0,0.1,0.1,0.2,0.1,0.0]             # cost matrix for derivative cost of states
         mpcParams.QderivU           = 1.0*[1.0,1.0] #NOTE Set this to [5.0, 0/40.0]              # cost matrix for derivative cost of inputs
         mpcParams.Q_term_cost       = 0.05                        # scaling of Q-function
-        mpcParams.delay_df          = 1                             # steering delay
+        mpcParams.delay_df          = 3                             # steering delay
         mpcParams.delay_a           = 1                             # acceleration delay
         mpcParams.Q_lane            = 100                      # weight on the soft constraint for the lane
         mpcParams.Q_vel             = 1                    # weight on the soft constraint for the maximum velocity
