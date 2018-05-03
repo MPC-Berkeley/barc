@@ -32,7 +32,7 @@
     </node>
 
     <!-- MPC CONTROL -->
-    <node machine="this-pc" pkg="barc" type="LMPC_node.jl" name="MPC" output="screen" /> 
+    <node machine="this-pc" pkg="barc" type="LMPC_node_feature_data_collecting.jl" name="MPC" output="screen" /> 
 
 
     <!-- LOW LEVEL CONTROLLER -->
