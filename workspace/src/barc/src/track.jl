@@ -130,41 +130,50 @@ function create_track!(track::Track)
 end
 
 function oval_track!(track::Track)
+	add_segment!(track, 1.0, 0.0)
+	add_segment!(track, 4.5, - pi)
+	add_segment!(track, 2.0, 0.0)
+	add_segment!(track, 4.5, - pi)
+	add_segment!(track, 1.0, 0.0)
+
+	#=
 	add_segment!(track, 6.0, 0.0)
 	add_segment!(track, 14.0, - pi)
 	add_segment!(track, 12.0, 0.0)
 	add_segment!(track, 14.0, - pi)
 	add_segment!(track, 6.0, 0.0)
+	=#
 end
 
 function track_3!(track::Track)
 	denom = 3.5
-
-	#=
-	add_segment!(track, 1.7, 0.0)
-    add_segment!(track, 2.0, - pi / 2)
-    add_segment!(track, 0.5, 0.0)
-    add_segment!(track, 2.0, - pi / 2)
-    add_segment!(track, 1.2, pi / (2 * denom))
-    add_segment!(track, 1.2, - pi / denom)
-    add_segment!(track, 1.2, pi / (2 * denom))
-    add_segment!(track, 2.0, - pi / 2)
-    add_segment!(track, 0.5, 0.0)
-    add_segment!(track, 2.0, - pi / 2)
-    add_segment!(track, 1.8, 0.0)
-  	=#
-    
-	add_segment!(track, 3.0, 0.0)
-    add_segment!(track, 2.0, - pi / 2)
-    add_segment!(track, 2.0, 0.0)
-    add_segment!(track, 2.0, - pi / 2)
-    add_segment!(track, 2.0, pi / (2 * denom))
-    add_segment!(track, 2.0, - pi / denom)
-    add_segment!(track, 2.0, pi / (2 * denom))
-    add_segment!(track, 2.0, - pi / 2)
-    add_segment!(track, 2.0, 0.0)
-    add_segment!(track, 2.0, - pi / 2)
-    add_segment!(track, 2.8, 0.0)
+	small = true
+	
+	if small
+		add_segment!(track, 1.7, 0.0)
+	    add_segment!(track, 2.0, - pi / 2)
+	    add_segment!(track, 0.5, 0.0)
+	    add_segment!(track, 2.0, - pi / 2)
+	    add_segment!(track, 1.2, pi / (2 * denom))
+	    add_segment!(track, 1.2, - pi / denom)
+	    add_segment!(track, 1.2, pi / (2 * denom))
+	    add_segment!(track, 2.0, - pi / 2)
+	    add_segment!(track, 0.5, 0.0)
+	    add_segment!(track, 2.0, - pi / 2)
+	    add_segment!(track, 1.8, 0.0)
+  	else
+		add_segment!(track, 3.0, 0.0)
+	    add_segment!(track, 2.0, - pi / 2)
+	    add_segment!(track, 2.0, 0.0)
+	    add_segment!(track, 2.0, - pi / 2)
+	    add_segment!(track, 2.0, pi / (2 * denom))
+	    add_segment!(track, 2.0, - pi / denom)
+	    add_segment!(track, 2.0, pi / (2 * denom))
+	    add_segment!(track, 2.0, - pi / 2)
+	    add_segment!(track, 2.0, 0.0)
+	    add_segment!(track, 2.0, - pi / 2)
+	    add_segment!(track, 2.8, 0.0)
+	end
 end
 
 function add_segment!(track::Track, length::Float64, angle::Float64)

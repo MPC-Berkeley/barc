@@ -1,4 +1,7 @@
+using Polynomials
+
 include("optimizer.jl")
+
 
 type MpcModel_pF
     mdl::JuMP.Model
@@ -30,9 +33,9 @@ type MpcModel_pF
         # QderivZ = 10.0 * [1, 1, 1, 1, 1, 1]  # cost matrix for derivative cost of states
         QderivZ = 0.1 * [0, 1, 1, 1, 1, 1]  # cost matrix for derivative cost of states
         QderivU = 0.1 * [1, 10]  #NOTE Set this to [5.0, 0/40.0]              # cost matrix for derivative cost of inputs
-        # delay_df = 3  # steering delay
+        delay_df = 3  # steering delay
         # delay_a = 1  # acceleration delay
-        delay_df = 1  # steering delay
+        # delay_df = 1  # steering delay
         delay_a = 1  # acceleration delay
 
         vPathFollowing = 1.0  # reference speed for first lap of path following
@@ -90,14 +93,18 @@ type MpcModel_pF
         # @NLparameter(mdl, z0[i = 1 : 5] == 0)
         @NLparameter(mdl, z0[i = 1 : 4] == 0)
         @NLparameter(mdl, uPrev[1 : 10, 1 : 2] == 0)
-        @NLparameter(mdl, curvature[i = 1 : N] == 0)
 
         # Curvature
         # kappa = zeros(N)
         # @NLparameter(mdl, c[1 : N] == 0)
-        # @NLparameter(mdl, coeff[i = 1 : n_poly_curv + 1] == 0)
-        # @NLexpression(mdl, c[i = 1 : N], sum{coeff[j] * z_Ol[i,1]^(n_poly_curv - j + 1),
-        #                                j=1 : n_poly_curv} + coeff[n_poly_curv + 1])
+        if POLYNOMIAL_CURVATURE
+            @NLparameter(mdl, coeff[i = 1 : 5 + 1] == 0)
+            @NLexpression(mdl, curvature[i = 1 : N], 
+                          sum{coeff[j] * z_Ol[i, 1]^(j - 1),
+                          j = 2 : 6} + coeff[1])
+        else
+            @NLparameter(mdl, curvature[i = 1 : N] == 0)
+        end
 
         # System dynamics
         setvalue(z0[4], v_ref)
@@ -182,7 +189,11 @@ type MpcModel_pF
         m.mdl = mdl
         m.z0 = z0
         m.z_Ref = z_Ref
-        m.curvature = curvature
+        if POLYNOMIAL_CURVATURE
+            m.curvature = coeff
+        else
+            m.curvature = curvature
+        end
         m.z_Ol = z_Ol
         m.u_Ol = u_Ol
         m.uPrev = uPrev
@@ -254,18 +265,18 @@ type MpcModel_convhull
         QderivZ = 1.0 * [1, 1, 1, 1, 1, 1]  # cost matrix for derivative cost of states
         # QderivZ = 10.0 * [0, 0, 1, 1, 1, 1.0]  # cost matrix for derivative cost of states
         # QderivU = 0.1 * [1, 1]  #NOTE Set this to [5.0, 0/40.0]              # cost matrix for derivative cost of inputs
-        QderivU = 2.0 * [1.0, 1.0]
+        QderivU = 4.0 * [2.0, 1.0]
         # delay_df = 3  # steering delay
-        delay_df = 1
+        delay_df = 0
         # delay_a = 1  # acceleration delay
-        delay_a = 1 # acceleration delay
+        delay_a = 0 # acceleration delay
 
         vPathFollowing = 1.0  # reference speed for first lap of path following
         # Q_term = 1.0 * [20.0, 1.0, 10.0, 20.0, 50.0]  # weights for terminal constraints (LMPC, for xDot,yDot,psiDot,ePsi,eY).Not used if using convex hull
         
         # Q_term_cost = 3  # scaling of Q-function
         # Q_lane = 100.0  # weight on the soft constraint for the lane
-        Q_lane = 2.0
+        Q_lane = 4.0
         # Q_vel = 1  # weight on the soft constraint for the maximum velocity
         # Q_slack = 1 * [20.0, 1.0, 10.0, 30.0, 80.0, 50.0]  #[20.0,10.0,10.0,30.0,80.0,50.0]  #vx,vy,psiDot,ePsi,eY,s
         Q_slack = 1 * [20.0, 1.0, 10.0, 30.0, 80.0, 50.0]
@@ -313,7 +324,6 @@ type MpcModel_convhull
 
         # @NLparameter(mdl, z0[i = 1 : 7] == 0)
         @NLparameter(mdl, z0[i = 1 : 6] == 0)
-        @NLparameter(mdl, curvature[i = 1 : N] == 0)
         @NLparameter(mdl, c_Vx[i = 1 : 3]  == 0)
         @NLparameter(mdl, c_Vy[i = 1 : 4]  == 0)
         @NLparameter(mdl, c_Psi[i = 1 : 3] == 0)
@@ -321,6 +331,15 @@ type MpcModel_convhull
         @NLparameter(mdl, selStates[1 : num_considered_states, 1 : 6] == 0)  # states from the previous trajectories selected in "convhullStates"
         @NLparameter(mdl, statesCost[1 : num_considered_states] == 0)  # costs of the states selected in "convhullStates"
         
+        if POLYNOMIAL_CURVATURE
+            @NLparameter(mdl, coeff[i = 1 : 5 + 1] == 0)
+            @NLexpression(mdl, curvature[i = 1 : N], 
+                          sum{coeff[j] * z_Ol[i, 1]^(j - 1),
+                          j = 2 : 6} + coeff[1])
+        else
+            @NLparameter(mdl, curvature[i = 1 : N] == 0)
+        end
+
         # Conditions for first solve:
         setvalue(z0[1], 1)
         setvalue(c_Vx[3], 0.1)
@@ -444,15 +463,13 @@ type MpcModel_convhull
         end
         =#
 
-        #=
-        @NLconstraint(mdl, u_Ol[1, 2] - uPrev[1, 2] <= 0.06)
-        @NLconstraint(mdl, u_Ol[1, 2] - uPrev[1, 2] >= - 0.06)
+        @NLconstraint(mdl, u_Ol[1, 2] - uPrev[1, 2] <= 0.12)
+        @NLconstraint(mdl, u_Ol[1, 2] - uPrev[1, 2] >= - 0.12)
 
         for i = 1 : N - 1 # Constraints on u:
-            @NLconstraint(mdl, u_Ol[i + 1, 2] - u_Ol[i, 2] <= 0.06)
-            @NLconstraint(mdl, u_Ol[i + 1, 2] - u_Ol[i, 2] >= - 0.06)
+            @NLconstraint(mdl, u_Ol[i + 1, 2] - u_Ol[i, 2] <= 0.12)
+            @NLconstraint(mdl, u_Ol[i + 1, 2] - u_Ol[i, 2] >= - 0.12)
         end
-        =#
 
         # Cost functions
         # Derivative cost
@@ -467,8 +484,8 @@ type MpcModel_convhull
                                         R[2] * sum{(u_Ol[i, 2])^2, i = 1 : N - delay_df})
 
         # Lane cost (soft)
-        @NLexpression(mdl, laneCost, Q_lane * sum{10.0 * eps_lane[i] + 
-                                                  100.0 * eps_lane[i]^2, 
+        @NLexpression(mdl, laneCost, Q_lane * sum{1.0 * eps_lane[i] + 
+                                                  10.0 * eps_lane[i]^2, 
                                                   i = 2 : N + 1})
 
         # Terminal Cost
@@ -512,7 +529,11 @@ type MpcModel_convhull
 
         m.mdl = mdl
         m.z0 = z0
-        m.curvature = curvature
+        if POLYNOMIAL_CURVATURE
+            m.curvature = coeff
+        else
+            m.curvature = curvature
+        end
         m.z_Ol = z_Ol
         m.u_Ol = u_Ol
         m.c_Vx = c_Vx
@@ -546,7 +567,6 @@ end
 #                                    modelParams::ModelParams,zCurr::Array{Float64},uPrev::Array{Float64},lapStatus::LapStatus)
 function solveMpcProblem_pathFollow(mdl::MpcModel_pF, optimizer::Optimizer, agent::Agent, 
                                     track::Track, reference::Array{Float64})
-
     # Load Parameters
     # v_ref = 1.0
     # ey_ref = 0.0 # 0.35
@@ -554,17 +574,6 @@ function solveMpcProblem_pathFollow(mdl::MpcModel_pF, optimizer::Optimizer, agen
     kappa = zeros(N)
     dt = agent.dt
     num_considered_states = size(agent.selected_states_s)[1]
-
-    for i = 1 : N - 1
-        kappa[i] = get_curvature(track, agent.predicted_s[i + 1, 1])
-    end
-    if size(agent.predicted_s, 2) == 6
-        kappa[end] = get_curvature(track, agent.predicted_s[end, 1] +
-                                   dt * agent.predicted_s[end, 5])
-    else
-        kappa[end] = get_curvature(track, agent.predicted_s[end, 1] +
-                                   dt * agent.predicted_s[end, 4])
-    end
 
     iteration = agent.current_iteration
     current_s = agent.states_s[iteration, :]
@@ -608,6 +617,80 @@ function solveMpcProblem_pathFollow(mdl::MpcModel_pF, optimizer::Optimizer, agen
     uPrev = u_prev
     # println(uPrev)
 
+    if POLYNOMIAL_CURVATURE
+        order = 5
+        n_prev = 20
+        n_after = 40
+        total_num = n_prev + 1 + n_after
+        num_coords = size(track.s_coord, 1)
+        # s = 4
+        # s = 5.746450616402124
+        track_index = findmin(abs(track.s_coord - s))[2]
+        println("Closest s: ", track.s_coord[track_index])
+        s_data = zeros(total_num)
+        kappa_data = zeros(total_num)
+
+        if track_index - n_prev < 1
+            difference = abs(track_index - n_prev)
+            s_part_1 = track.s_coord[end - difference : end] - track.total_length
+            s_part_2 = track.s_coord[1 : total_num - difference - 1]
+            s_data = [s_part_1; s_part_2]
+            kappa_part_1 = track.curvature[end - difference : end]
+            kappa_part_2 = track.curvature[1 : total_num - difference - 1]
+            kappa_data = [kappa_part_1; kappa_part_2]
+        elseif track_index + n_after > num_coords
+            difference = track_index + n_after - num_coords
+            s_part_1 = track.s_coord[track_index - n_prev : end]
+            s_part_2 = track.s_coord[1 : difference] + track.total_length
+            s_data = [s_part_1; s_part_2]
+            kappa_part_1 = track.curvature[track_index - n_prev : end]
+            kappa_part_2 = track.curvature[1 : difference]
+            kappa_data = [kappa_part_1; kappa_part_2]
+        else 
+            s_data = track.s_coord[track_index - n_prev : track_index + n_after]
+            kappa_data = track.curvature[track_index - n_prev : track_index + n_after]
+        end
+
+        curvature_approx = polyfit(s_data, kappa_data, order)
+        indeces = collect(track_index - n_prev : track_index + n_after)
+        kappa = coeffs(curvature_approx)
+        println("coefficents: ", kappa)
+        println(curvature_approx)
+
+        #=
+        app_curvature = zeros(indeces, Float64)
+        counter = 1
+        for i = track_index - n_prev : track_index + n_after
+            evaluated_poly = polyval(curvature_approx, i * 0.1)
+            # println("app curvautre: ", typeof(app_curvature[counter]))
+            # println(typeof(evaluated_poly))
+            app_curvature[counter] = evaluated_poly
+            # println("Error: ", abs(evaluated_poly - track.curvature[i]))
+            counter += 1
+        end
+        
+        println("CURVATURE APPRXOIMATION: ", kappa)
+        figure("test")
+        println(size(indeces * 0.1))
+        println(size(kappa_data))
+        plot(indeces * 0.1, kappa_data, "ro")
+        plot(indeces * 0.1, app_curvature, "bo")
+        plt[:show]()
+        =#
+
+    else
+        for i = 1 : N - 1
+            kappa[i] = get_curvature(track, agent.predicted_s[i + 1, 1])
+        end
+        if size(agent.predicted_s, 2) == 6
+            kappa[end] = get_curvature(track, agent.predicted_s[end, 1] +
+                                       dt * agent.predicted_s[end, 5])
+        else
+            kappa[end] = get_curvature(track, agent.predicted_s[end, 1] +
+                                       dt * agent.predicted_s[end, 4])
+        end
+    end
+
     # z_ref1 = cat(2, zeros(N + 1, 3), v_ref * ones(N + 1, 1))
     # z_ref1 = [0.0 ey_ref 0.0 v_ref] .* ones(N + 1, 4)
     z_ref1 = reference .* ones(N + 1, 4)
@@ -641,6 +724,17 @@ function solveMpcProblem_pathFollow(mdl::MpcModel_pF, optimizer::Optimizer, agen
     sol_status = solve(mdl.mdl)
     sol_u = getvalue(mdl.u_Ol)
     sol_z = getvalue(mdl.z_Ol)
+
+    curvature_values = zeros(N + 1)
+    if POLYNOMIAL_CURVATURE
+        println("Coefficents after: ", getvalue(mdl.curvature))
+        polynom = Poly(getvalue(mdl.curvature))
+        println(polynom)
+        for i = 1 : N + 1
+            curvature_values[i] = polyval(polynom, sol_z[i, 1])
+        end
+        println("Curvature: ", curvature_values)
+    end
 
     # mpcSol.a_x = sol_u[1, 1]
     # mpcSol.d_f = sol_u[1, 2]
@@ -680,17 +774,6 @@ function solveMpcProblem_convhull(m::MpcModel_convhull, optimizer::Optimizer,
     N = size(agent.optimal_inputs, 1) 
     kappa = zeros(N)
     dt = agent.dt
-
-    for i = 1 : N - 1
-        kappa[i] = get_curvature(track, agent.predicted_s[i + 1, 1])
-    end
-    if size(agent.predicted_s, 2) == 6
-        kappa[end] = get_curvature(track, agent.predicted_s[end, 1] +
-                                   dt * agent.predicted_s[end, 5])
-    else
-        kappa[end] = get_curvature(track, agent.predicted_s[end, 1] +
-                                   dt * agent.predicted_s[end, 4])
-    end
 
     # selStates = selectedStates.selStates::Array{Float64,2}
     # statesCost = selectedStates.statesCost::Array{Float64,1}
@@ -746,6 +829,77 @@ function solveMpcProblem_convhull(m::MpcModel_convhull, optimizer::Optimizer,
 
     uPrev = u_prev
 
+    if POLYNOMIAL_CURVATURE
+        order = 5
+        n_prev = 20
+        n_after = 40
+        total_num = n_prev + 1 + n_after
+        num_coords = size(track.s_coord, 1)
+        track_index = findmin(abs(track.s_coord - s))[2]
+        println("Closest s: ", track.s_coord[track_index])
+        s_data = zeros(total_num)
+        kappa_data = zeros(total_num)
+
+        if track_index - n_prev < 1
+            difference = abs(track_index - n_prev)
+            s_part_1 = track.s_coord[end - difference : end] - track.total_length
+            s_part_2 = track.s_coord[1 : total_num - difference - 1]
+            s_data = [s_part_1; s_part_2]
+            kappa_part_1 = track.curvature[end - difference : end]
+            kappa_part_2 = track.curvature[1 : total_num - difference - 1]
+            kappa_data = [kappa_part_1; kappa_part_2]
+        elseif track_index + n_after > num_coords
+            difference = track_index + n_after - num_coords
+            s_part_1 = track.s_coord[track_index - n_prev : end]
+            s_part_2 = track.s_coord[1 : difference] + track.total_length
+            s_data = [s_part_1; s_part_2]
+            kappa_part_1 = track.curvature[track_index - n_prev : end]
+            kappa_part_2 = track.curvature[1 : difference]
+            kappa_data = [kappa_part_1; kappa_part_2]
+        else 
+            s_data = track.s_coord[track_index - n_prev : track_index + n_after]
+            kappa_data = track.curvature[track_index - n_prev : track_index + n_after]
+        end
+
+        curvature_approx = polyfit(s_data, kappa_data, order)
+        indeces = collect(track_index - n_prev : track_index + n_prev)
+        kappa = coeffs(curvature_approx)
+        println("coefficents: ", kappa)
+        
+        #=
+        app_curvature = zeros(indeces, Float64)
+        counter = 1
+        for i = track_index - n_prev : track_index + n_prev
+            println("i: ", i)
+            evaluated_poly = polyval(curvature_approx, track.s_coord[i])
+            println("app curvautre: ", typeof(app_curvature[counter]))
+            println(typeof(evaluated_poly))
+            app_curvature[counter] = evaluated_poly
+            println("Error: ", abs(evaluated_poly - track.curvature[i]))
+            counter += 1
+        end
+        =#
+
+        #=
+        println("CURVATURE APPRXOIMATION: ", kappa)
+        figure("test")
+        plot(track.s_coord[indeces], track.curvature[indeces], "ro")
+        plot(track.s_coord[indeces], app_curvature, "bo")
+        plt[:show]()
+        =#
+    else
+        for i = 1 : N - 1
+            kappa[i] = get_curvature(track, agent.predicted_s[i + 1, 1])
+        end
+        if size(agent.predicted_s, 2) == 6
+            kappa[end] = get_curvature(track, agent.predicted_s[end, 1] +
+                                       dt * agent.predicted_s[end, 5])
+        else
+            kappa[end] = get_curvature(track, agent.predicted_s[end, 1] +
+                                       dt * agent.predicted_s[end, 4])
+        end
+    end
+
     # Update current initial condition, curvature and System ID coefficients
     setvalue(m.z0, zCurr)
     setvalue(m.uPrev, uPrev)
@@ -760,6 +914,16 @@ function solveMpcProblem_convhull(m::MpcModel_convhull, optimizer::Optimizer,
     sol_status = solve(m.mdl)
     sol_u = getvalue(m.u_Ol)
     sol_z = getvalue(m.z_Ol)
+
+    curvature_values = zeros(N + 1)
+    if POLYNOMIAL_CURVATURE
+        println("Coefficents after: ", getvalue(m.curvature))
+        polynom = Poly(getvalue(m.curvature))
+        for i = 1 : N + 1
+            curvature_values[i] = polyval(polynom, sol_z[i, 1])
+        end
+        println("Curvature: ", curvature_values)
+    end
 
     backward_mapping = [6, 5, 4, 3, 1, 2]
     optimizer.solution_inputs = sol_u

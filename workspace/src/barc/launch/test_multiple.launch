@@ -63,7 +63,7 @@
         <param name="index" type="int" value="2" />
         <param name="color" type="str" value="blue" />
         <param name="mass" type="double" value="1.98" />
-        <param name="time_offset" type="double" value="3.0" />
+        <param name="time_offset" type="double" value="5.0" />
 
         <remap from="pos_info" to="agent_2/pos_info" />
         <remap from="ecu" to="agent_2/ecu" />

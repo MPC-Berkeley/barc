@@ -264,9 +264,9 @@ def state_estimation():
         #u = [a_lp, d_f_hist.pop(0)]
 
         # Steering delay
-        # u = [se.cmd_motor, d_f_hist.pop(0)]
+        u = [se.cmd_motor, d_f_hist.pop(0)]
         # No steering delay
-        u = [se.cmd_motor, se.cmd_servo]
+        # u = [se.cmd_motor, se.cmd_servo]
 
         bta = 0.5 * u[1]
 

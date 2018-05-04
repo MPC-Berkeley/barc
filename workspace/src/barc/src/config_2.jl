@@ -13,7 +13,7 @@ const SYS_ID = true
 const INITIALIZATION_TYPE = "center"
 
 if LEARNING
-	const NUM_LAPS = 10
+	const NUM_LAPS = 15
 	const NUM_LOADED_LAPS = 5
 	const MODE = "learning" 
 else
@@ -23,7 +23,7 @@ else
 end
 
 const NUM_AGENTS = 1
-const HORIZON = 10
+const HORIZON = 8
 const NUM_CONSIDERED_LAPS = 5
 const NUM_CONSIDERED_STATES = 2 * HORIZON * NUM_CONSIDERED_LAPS
 const NUM_STATES_BUFFER = 60
@@ -36,17 +36,23 @@ const MAXIMUM_NUM_ITERATIONS = 2000
 const INIT_STATES = [0.0 0.0 0.0 0.0 0.0 0.0]
 const V_MAX = [2.0; 2.5]
 const COLOR = ["red"; "blue"]
-const TRACK_NAME = "track_3"
-# const TRACK_NAME = "oval"
-const TRACK_WIDTH = 1.0
+# const TRACK_NAME = "track_3"
+const TRACK_NAME = "oval"
+const TRACK_WIDTH = 0.8
 const TRACK_DIR = "/home/lukas/barc/workspace/src/barc/tracks"
+const POLYNOMIAL_CURVATURE = false
+
+V_INIT = 1.0
+EY_CENTER = 0.0
+EY_INNER = - 0.35
+EY_OUTER = 0.35
 
 if INITIALIZATION_TYPE == "center"
-	const CURRENT_REFERENCE = [0.0 0.0 0.0 1.0]
+	const CURRENT_REFERENCE = [0.0 EY_CENTER 0.0 V_INIT]
 elseif INITIALIZATION_TYPE == "inner"
-	const CURRENT_REFERENCE = [0.0 -0.35 0.0 1.0]
+	const CURRENT_REFERENCE = [0.0 EY_INNER 0.0 V_INIT]
 elseif INITIALIZATION_TYPE == "outer"
-	const CURRENT_REFERENCE = [0.0 0.35 0.0 1.0]
+	const CURRENT_REFERENCE = [0.0 EY_OUTER 0.0 V_INIT]
 else
 	error("INITIALIZATION_TYPE not avialable")
 end

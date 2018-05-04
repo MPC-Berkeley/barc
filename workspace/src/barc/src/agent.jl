@@ -11,6 +11,7 @@ using Distances
 
 include("track.jl")
 include("transformations.jl")
+include("filesystem_helpers.jl")
 
 
 type Agent
@@ -74,6 +75,9 @@ type Agent
 	selected_states_s::Array{Float64}
 	selected_states_xy::Array{Float64}
 	selected_states_cost::Array{Float64}
+
+	all_selected_states::Dict{Int64,Array{Tuple{Int64,UnitRange{Int64}},1}}
+	all_predictions::Array{Float64}
 
 	num_loaded_laps::Int64
 	color::AbstractString
@@ -160,6 +164,10 @@ function init!(agent::Agent, index::Int64, track::Track,
 	agent.selected_states_xy = zeros(num_considered_states, 6)
 	agent.selected_states_cost = zeros(num_considered_states)
 
+	# agent.all_selected_states = Dict([i => (0, 1 : 10) for i = 1 : 6000]) 
+	agent.all_selected_states = Dict([i => [(j, 1 : 10) for j = 1 : NUM_CONSIDERED_LAPS] for i = 1 : 6000])
+	agent.all_predictions = zeros(6000, horizon + 1, 6)
+
 	agent.num_loaded_laps = num_loaded_laps
 
 	agent.current_session = 1
@@ -168,9 +176,12 @@ function init!(agent::Agent, index::Int64, track::Track,
 	agent.dynamics = zeros(agent.num_sessions, 6000, 5)
 
 	if MODE == "learning"
-		filename = "/home/lukas/simulations/" * get_name() * 
-				   "_path_following_" * INITIALIZATION_TYPE * ".jld"
+		filename = get_most_recent(node_name[2 : end], "path_following", 
+								   INITIALIZATION_TYPE)
+		# filename = "/home/lukas/simulations/" * get_name() * 
+		#		   "_path_following_" * INITIALIZATION_TYPE * ".jld"
 		# filename = "/home/lukas/simulations/lmpc_test.jld"
+		println("LOADING: ", filename)
 		load_trajectories!(agent, filename)
 	end
 
@@ -296,6 +307,8 @@ function save_trajectories(agent::Agent, filename::ASCIIString)
 	    JLD.write(file, "trajectories_xy", agent.trajectories_xy[1 : num_recorded_laps, :, :])
 	    JLD.write(file, "previous_inputs", agent.previous_inputs[1 : num_recorded_laps, :, :])
 	    JLD.write(file, "dynamics", agent.dynamics)
+	    JLD.write(file, "all_selected_states", agent.all_selected_states)
+	    JLD.write(file, "all_predictions", agent.all_predictions)
 	end
 end
 
@@ -314,7 +327,6 @@ function load_trajectories!(agent::Agent, filename::ASCIIString)
     agent.counter[end] = 1
     for i = 1 : agent.num_sessions - 1
     	agent.counter[i] = findmin(sumabs(agent.dynamics[i, :, :], 3))[2]
-    	println(agent.counter[i])
     end
     determine_needed_iterations!(agent)
  end
@@ -559,6 +571,7 @@ function select_states(agent::Agent)
 	=#
  
 	counter = 1
+	iteration_number = 1
 	for i in selected_laps
 		agent.selected_states_s[counter : counter + 2 * horizon - 1, :] = 
 			squeeze(agent.trajectories_s[i, 
@@ -573,7 +586,11 @@ function select_states(agent::Agent)
 		agent.selected_states_cost[counter : counter + 2 * horizon - 1, :] = 
 			collect(agent.iterations_needed[i] - closest_index[i] + num_buffer : - 1 : 
 					agent.iterations_needed[i] - closest_index[i] + num_buffer - 2 * horizon + 1)
+		
+		agent.all_selected_states[agent.counter[end]][iteration_number] = (i, closest_index[i] : closest_index[i] + 2 * horizon - 1)
+
 		counter += 2 * horizon
+		iteration_number += 1		
 	end
 
 	# println("COST: ", agent.selected_states_cost)

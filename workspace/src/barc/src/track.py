@@ -106,38 +106,48 @@ class Track:
         self.s_coords = np.cumsum(self.s_coords)
 
     def oval_track(self):
+        self.add_segment(1.0, 0.0)
+        self.add_segment(4.5, - np.pi)
+        self.add_segment(2.0, 0.0)
+        self.add_segment(4.5, - np.pi)
+        self.add_segment(1.0, 0.0)
+
+        """
         self.add_segment(6.0, 0.0)
         self.add_segment(14.0, - np.pi)
         self.add_segment(12.0, 0.0)
         self.add_segment(14.0, - np.pi)
         self.add_segment(6.0, 0.0)
+        """
 
     def test_track(self):
         denominator = 3.5
-        """
-        self.add_segment(1.7, 0.0)
-        self.add_segment(2.0, - np.pi / 2)
-        self.add_segment(0.5, 0.0)
-        self.add_segment(2.0, - np.pi / 2)
-        self.add_segment(1.2, np.pi / (2 * denominator))
-        self.add_segment(1.2, - np.pi / denominator)
-        self.add_segment(1.2, np.pi / (2 * denominator))
-        self.add_segment(2.0, - np.pi / 2)
-        self.add_segment(0.5, 0.0)
-        self.add_segment(2.0, - np.pi / 2)
-        self.add_segment(1.8, 0.0)
-        """
-        self.add_segment(3.0, 0.0)
-        self.add_segment(2.0, - np.pi / 2)
-        self.add_segment(2.0, 0.0)
-        self.add_segment(2.0, - np.pi / 2)
-        self.add_segment(2.0, np.pi / (2 * denominator))
-        self.add_segment(2.0, - np.pi / denominator)
-        self.add_segment(2.0, np.pi / (2 * denominator))
-        self.add_segment(2.0, - np.pi / 2)
-        self.add_segment(2.0, 0.0)
-        self.add_segment(2.0, - np.pi / 2)
-        self.add_segment(2.8, 0.0)
+        small = True
+
+        if small:
+            self.add_segment(1.7, 0.0)
+            self.add_segment(2.0, - np.pi / 2)
+            self.add_segment(0.5, 0.0)
+            self.add_segment(2.0, - np.pi / 2)
+            self.add_segment(1.2, np.pi / (2 * denominator))
+            self.add_segment(1.2, - np.pi / denominator)
+            self.add_segment(1.2, np.pi / (2 * denominator))
+            self.add_segment(2.0, - np.pi / 2)
+            self.add_segment(0.5, 0.0)
+            self.add_segment(2.0, - np.pi / 2)
+            self.add_segment(1.8, 0.0)
+        else:
+            self.add_segment(3.0, 0.0)
+            self.add_segment(2.0, - np.pi / 2)
+            self.add_segment(2.0, 0.0)
+            self.add_segment(2.0, - np.pi / 2)
+            self.add_segment(2.0, np.pi / (2 * denominator))
+            self.add_segment(2.0, - np.pi / denominator)
+            self.add_segment(2.0, np.pi / (2 * denominator))
+            self.add_segment(2.0, - np.pi / 2)
+            self.add_segment(2.0, 0.0)
+            self.add_segment(2.0, - np.pi / 2)
+            self.add_segment(2.8, 0.0)
 
     def add_segment(self, length, angle):
         num_pieces = int(round(length / self.ds))
@@ -183,8 +193,8 @@ class Track:
 if __name__ == "__main__":
     import matplotlib.pyplot as plt
 
-    # track = Track(1. / 10, "test", 0.8)
-    track = Track.from_json("track.json")
+    track = Track(1. / 10, "oval", 0.8)
+    # track = Track.from_json("track.json")
 
     # plt.plot(track.xy_coords[:, 0], track.xy_coords[:, 1], "ro")
     # plt.plot(track.xy_inner[:, 0], track.xy_inner[:, 1], "bo")

@@ -31,6 +31,10 @@ include("mpc_test.jl")
 
 
 function race(num_laps::Int64)
+	# Create strings for the current date
+	hour_minute_second = Libc.strftime("%H%M%S", time())
+	month_day = Libc.strftime("%m%d", time()) 
+
 	# Initialize ROS node"
 	init_node("agent_node")
     # init_node("agent_node_" * string(agent.index))
@@ -176,17 +180,19 @@ function race(num_laps::Int64)
 		else
 			race_lap!(agent, optimizer, low_level_controller, track ,xy_pub, 
 					  theta_pub, selection_pub, input_pub, mpc_model_convhull)
-			#=
-			if agent.current_iteration > 30
-				filename = "/home/lukas/simulations/states_infeasible.jld"
-				jldopen(filename, "w") do file
-				    JLD.write(file, "trajectories_s", agent.states_s[1 : agent.current_iteration , :])
-				    JLD.write(file, "previous_inputs", agent.inputs[1 : agent.current_iteration, :])
-				end
-				exit()
-			end
-			=#
 		end
+	end
+
+	# Set motor to neutral on shutdown. Stopping the Barc.
+    neutralize!(low_level_controller)
+
+	# Create a folder for every day, if it does not exist yet: 
+	cd("/home/lukas/simulations")  # move into simulations folder
+	try 
+		cd(month_day)
+	catch
+		println("Creating a new folder for today: ", month_day)
+		mkdir(month_day)
 	end
 
 	filename = "/home/lukas/simulations/theta.jld"
@@ -199,18 +205,25 @@ function race(num_laps::Int64)
 	    JLD.write(file, "psi_dot", agent.t_psi_log)
 	end
 
+	node_name = (get_name())[2 : end]
 	if MODE == "path_following"
-		save_trajectories(agent, "/home/lukas/simulations/" * get_name() * 
+		save_trajectories(agent, "/home/lukas/simulations/" * month_day * "/" * 
+								 hour_minute_second * "_" * node_name * 
 								 "_path_following_" * INITIALIZATION_TYPE * ".jld")
 		# save_trajectories(agent, "/home/lukas/simulations/lmpc.jld")
 	elseif MODE == "learning"
-		save_trajectories(agent, "/home/lukas/simulations/" * get_name() * 
-								 "_lmpc_theta_test_" * INITIALIZATION_TYPE * ".jld")
+		save_trajectories(agent, "/home/lukas/simulations/" * month_day * "/" * 
+								 hour_minute_second * "_" * node_name * 
+								 "_lmpc_" * INITIALIZATION_TYPE * ".jld")
 		# save_trajectories(agent, "/home/lukas/simulations/lmpc_2.jld")
+	elseif MODE == "racing"
+		save_trajectories(agent, "/home/lukas/simulations/" * month_day * "/" * 
+								 hour_minute_second * "_" * node_name * 
+								 "_racing.jld")
+	else 
+		error("MODE $(MODE) is not defined. Please choose one of the following: 
+			   path_following, learning or racing.")
 	end
-
-    # Set motor to neutral on shutdown
-    neutralize!(low_level_controller)
 end
 
 
@@ -347,6 +360,12 @@ function race_lap!(agent::Agent, optimizer::Optimizer,
 		end
 		=#
 
+		if LEARNING && agent.current_lap > 1
+			agent.all_predictions[agent.counter[end], :, :] = agent.predicted_s
+		else
+			agent.all_predictions[agent.counter[end], :, [1, 2, 3, 5]] = agent.predicted_s
+		end
+
 		agent_counter = agent.counter[agent.current_session]
 		current_dynamics = [agent.states_s[current_iteration, mapping] agent.inputs[current_iteration, :]]
 		agent.dynamics[agent.num_sessions, agent_counter, :] = current_dynamics
@@ -398,10 +417,12 @@ function race_lap!(agent::Agent, optimizer::Optimizer,
 
 			agent.current_lap += 1
 
+			#=
 			agent_counter = agent.counter[agent.current_session]
 			current_dynamics = [agent.states_s[1, mapping] agent.inputs[1, :]]
 			agent.dynamics[agent.num_sessions, agent_counter, :] = current_dynamics
 			agent.counter[agent.current_session] += 1
+			=#
 
 			# Set iteration to 2, because the next lap has already been 
 			# reached
@@ -474,7 +495,8 @@ function race_iteration!(agent::Agent, optimizer::Optimizer,
 
 		tic()
 		if agent.current_lap <= 1
-			solveMpcProblem_pathFollow(mpc_model, optimizer, agent, track, CURRENT_REFERENCE)
+			solveMpcProblem_pathFollow(mpc_model, optimizer, agent, track, 
+									   CURRENT_REFERENCE)
 			# solve_path_following!(optimizer, track, CURRENT_REFERENCE)
 		else 
 			if NUM_AGENTS == 1
@@ -517,7 +539,8 @@ function race_iteration!(agent::Agent, optimizer::Optimizer,
 		end
 		=#
 
-		solveMpcProblem_pathFollow(mpc_model, optimizer, agent, track, CURRENT_REFERENCE)
+		solveMpcProblem_pathFollow(mpc_model, optimizer, agent, track, 
+								   CURRENT_REFERENCE)
 		# solve_path_following!(optimizer, track, CURRENT_REFERENCE)
 	end
 

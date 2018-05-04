@@ -132,7 +132,7 @@ function main()
     while ! is_shutdown()
         t_ros   = get_rostime()
         t       = to_sec(t_ros)
-        # if sizeof(cmd_log.z[t.>cmd_log.t+0.2,2]) >= 1
+        # if sizeof(cmd_log.z[t .> cmd_log.t + 0.2,2]) >= 1
         #    u_current[2] = cmd_log.z[t.>=cmd_log.t+0.2,2][end]       # artificial steering input delay
         # end
         # update current state with a new row vector

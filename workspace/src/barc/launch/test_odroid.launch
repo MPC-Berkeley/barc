@@ -19,7 +19,7 @@
     <!-- AGENT-NODE 1-->
     <node machine="yoga" pkg="barc" type="agent_node.jl" name="agent_1" output="screen">
         <param name="index" type="int" value="1" />
-        <param name="color" type="str" value="red" />
+        <param name="color" type="str" value="blue" />
         <param name="mass" type="double" value="1.98" />
         <param name="time_offset" type="double" value="0.0" />
 
@@ -31,7 +31,7 @@
         <remap from="adv_prediction" to="agent_2/prediction" />
         <remap from="ecu_pwm" to="agent_1/ecu_pwm" />
     </node>
-
+    
     <!--DYNAMIC OBSERVER-->
     <node machine="yoga" pkg="barc" type="state_estimation_SensorKinematicModel.py" name="state_estimation_dynamic_1" output="screen">
         <!-- ekf properties -->
@@ -49,19 +49,38 @@
         <remap from="ecu" to="agent_1/ecu" />
     </node>
 
-    <!-- SIMULATOR -->
-    <node machine="yoga" pkg="barc" type="barc_simulator_dyn.jl" name="barc_sim_1" output="screen">
-        <remap from="hedge_pos" to="agent_1/hedge_pos" />
+    <!-- IMU -->
+    <node machine="odroid" pkg="myahrs_driver" type="myahrs_driver" name="myahrs_driver">
+        <param name="port" value="/dev/ttyACM0" />
+        <param name="baud_rate" value="115200" />
+
         <remap from="imu/data" to="agent_1/imu/data" />
+        <remap from="imu/data_raw" to="agent_1/imu/data_raw" />
+        <remap from="imu/mag" to="agent_1/imu/mag" />
+        <remap from="imu/temperature" to="agent_1/imu/temperature" />
+        <remap from="tf" to="agent_1/tf" />
+    </node>
+
+    <!-- GPS -->
+    <node machine="odroid" pkg="marvelmind_nav" type="hedge_rcv_bin" name="indoor_gps" args="/dev/ttyACM1" >
+        <remap from="beacons_pos_a" to="agent_1/beacons_pos_a" />
+        <remap from="hedge_pos" to="agent_1/hedge_pos" />
+        <remap from="hedge_pos_a" to="agent_1/hedge_pos_a" />
+    </node>
+    
+    <!-- ARDUINO -->
+    <!--  * encoders and ultrasound sensors -->
+    <node machine="odroid" pkg="rosserial_python" type="serial_node.py" name="arduino_node" >
+        <param name="port" value="/dev/ttyUSB0" />
         <remap from="vel_est" to="agent_1/vel_est" />
-        <remap from="real_val" to="agent_1/real_val" />
-        <remap from="ecu" to="agent_1/ecu" />
-    </node>   
+        <remap from="ecu_pwm" to="agent_1/ecu_pwm" />
+        <remap from="diagnostics" to="agent_1/diagnostics" />
+    </node>
     <!-- AGENT 1 NODES-->
 
     <!-- VISUALIZATION -->
-    <node machine="yoga" pkg="barc" type="plotter.py" name="visualization" output="screen">
-        <param name="num_agents" type="int" value="1" />
-    </node>  
+    <!--<node machine="yoga" pkg="barc" type="plotter.py" name="visualization" output="screen"> -->
+        <!-- <param name="num_agents" type="int" value="1" /> -->
+    <!-- </node>  -->
 
 </launch>
