@@ -141,7 +141,7 @@ type MpcModel_convhull_dyn_iden
     # slackEy::JuMP.NonlinearExpression
     # slackS::JuMP.NonlinearExpression
 
-    function MpcModel_convhull_dyn_iden(mpcParams::MpcParams,modelParams::ModelParams)
+    function MpcModel_convhull_dyn_iden(mpcParams::MpcParams,modelParams::ModelParams,selectedStates::SelectedStates)
         m = new()
         n_state=6; n_input=2
         #### Initialize parameters
@@ -152,12 +152,11 @@ type MpcModel_convhull_dyn_iden
         # u_ub       = mpcParams.u_ub              # upper bounds for the control inputs
         # z_lb       = mpcParams.z_lb              # lower bounds for the states
         # z_ub       = mpcParams.z_ub              # upper bounds for the states
-        u_lb = [ -0.5    -18/180*pi]
-        u_ub = [    2     18/180*pi]
-        z_lb = [-Inf -0.6 -pi    0 -1 -2*pi] # 1.s 2.ey 3.epsi 4.vx 5.vy 6.psi_dot
-        z_ub = [ Inf  0.6  pi  2.5  1  2*pi] # 1.s 2.ey 3.epsi 4.vx 5.vy 6.psi_dot
-
-        ey_max      = 0.6/2           # bound for the state ey (distance from the center track). It is set as half of the width of the track for obvious reasons
+        ey_max  = 0.6/2
+        u_lb    = [ -0.5    -18/180*pi]
+        u_ub    = [    2     18/180*pi]
+        z_lb    = [-Inf -ey_max -pi    0 -1 -2*pi] # 1.s 2.ey 3.epsi 4.vx 5.vy 6.psi_dot
+        z_ub    = [ Inf  ey_max  pi  2.5  1  2*pi] # 1.s 2.ey 3.epsi 4.vx 5.vy 6.psi_dot
 
         N          = mpcParams.N                           # Prediction horizon
         QderivZ    = mpcParams.QderivZ::Array{Float64,1}   # weights for the derivative cost on the states
@@ -168,8 +167,8 @@ type MpcModel_convhull_dyn_iden
         Q_lane     = mpcParams.Q_lane::Float64             # weight on the soft constraint on the lane
         Q_slack    = mpcParams.Q_slack
 
-        Np         = 10
-        Nl         = 2
+        Np         = selectedStates.Np
+        Nl         = selectedStates.Nl
 
         mdl = Model(solver = IpoptSolver(print_level=0,max_cpu_time=0.09)) #,linear_solver="ma27"))#,check_derivatives_for_naninf="yes"))#,linear_solver="ma57",print_user_options="yes"))
         # 
@@ -323,7 +322,7 @@ type MpcModel_convhull_kin_linear
     # slackEpsi
     # slackV
 
-    function MpcModel_convhull_kin_linear(mpcParams::MpcParams,modelParams::ModelParams)
+    function MpcModel_convhull_kin_linear(mpcParams::MpcParams,modelParams::ModelParams,selectedStates::SelectedStates)
         m = new(); n_state=4; n_input=2
         # A big difference in this model is that the first state vector is fixed variable, which is intialized individually
         # So the dimensions of value assignment need to match and be paied attention
@@ -355,8 +354,8 @@ type MpcModel_convhull_kin_linear
         Q_vel      = mpcParams.Q_vel::Float64             # weight on the soft constraint for the max velocity
         Q_slack    = mpcParams.Q_slack
 
-        Np         = 10              # how many states to select
-        Nl         = 2               # how many previous laps to select
+        Np         = selectedStates.Np              # how many states to select
+        Nl         = selectedStates.Nl               # how many previous laps to select
 
         mdl = Model(solver = IpoptSolver(print_level=0,linear_solver="ma27",max_cpu_time=0.09))#,check_derivatives_for_naninf="yes"))#,linear_solver="ma57",print_user_options="yes"))
 

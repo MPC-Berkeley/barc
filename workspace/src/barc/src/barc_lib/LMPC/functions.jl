@@ -308,104 +308,76 @@ end
 
 # FUNCTION FOR PARAMETERS INITIALIZATION
 function InitializeParameters(mpcParams::MpcParams,mpcParams_4s::MpcParams,mpcParams_pF::MpcParams,modelParams::ModelParams,
-                              posInfo::PosInfo,oldTraj::OldTrajectory,mpcCoeff::MpcCoeff,mpcCoeff_dummy::MpcCoeff,lapStatus::LapStatus,buffersize::Int64,
+                              posInfo::PosInfo,oldTraj::OldTrajectory,mpcCoeff::MpcCoeff,mpcCoeff_dummy::MpcCoeff,buffersize::Int64,
                               selectedStates::SelectedStates,oldSS::SafeSetData)
 
     simulator_flag = true     # set this to TRUE if SIMULATOR is in use, set this to FALSE if BARC is in use
-
+    N = 10
+    delay_df = 3
+    delay_a = 1
     if simulator_flag == false   # if the BARC is in use
 
         selectedStates.Np           = 10        # please select an even number
         selectedStates.Nl           = 2         # Number of previous laps to include in the convex hull
-        # selectedStates.Nl_sID       = 3
-        # selectedStates.lambda1      = 1
-        # selectedStates.lambda2      = 1
-        # selectedStates.lambda3      = 1
-        # selectedStates.shift        = 8
-        Nl                          = selectedStates.Nl
-        selectedStates.selStates    = zeros(Nl*selectedStates.Np,6)  
-        selectedStates.statesCost   = zeros(Nl*selectedStates.Np)
-        # selectedStates.version      = false
+        selectedStates.selStates    = zeros(selectedStates.Nl*selectedStates.Np,6)  
+        selectedStates.statesCost   = zeros(selectedStates.Nl*selectedStates.Np)
 
-        mpcParams.N                 = 10
+        mpcParams.N                 = N
         mpcParams.Q                 = [5.0,0.0,0.0,0.1,50.0,0.0]   # Q (only for path following mode)
         mpcParams.vPathFollowing    = 1.0                           # reference speed for first lap of path following
-        mpcParams.Q_term            = 1.0*[20.0,1.0,10.0,20.0,50.0]   # weights for terminal constraints (LMPC, for xDot,yDot,psiDot,ePsi,eY).Not used if using convex hull
         mpcParams.R                 = 0*[10.0,10.0]                 # put weights on a and d_f
         mpcParams.QderivZ           = 1.0*[0,0.1,0.1,2,0.1,0.0]             # cost matrix for derivative cost of states
         mpcParams.QderivU           = 1.0*[1.0,1.0] #NOTE Set this to [5.0, 0/40.0]              # cost matrix for derivative cost of inputs
         mpcParams.Q_term_cost       = 0.05                        # scaling of Q-function
-        mpcParams.delay_df          = 3                             # steering delay
-        mpcParams.delay_a           = 1                             # acceleration delay
+        mpcParams.delay_df          = delay_df                             # steering delay
+        mpcParams.delay_a           = delay_a                             # acceleration delay
         mpcParams.Q_lane            = 100                      # weight on the soft constraint for the lane
-        mpcParams.Q_vel             = 1                    # weight on the soft constraint for the maximum velocity
-        # mpcParams.Q_slack           = 1*[20.0,1.0,10.0,30.0,80.0,50.0]#[20.0,10.0,10.0,30.0,80.0,50.0]  #vx,vy,psiDot,ePsi,eY,s
         mpcParams.Q_slack           = 50.0*[1.0,1.0,1.0,1.0,1.0,1.0]#[20.0,10.0,10.0,30.0,80.0,50.0]  #s,ey,epsi,vx,vy,psiDot
-        mpcParams.Q_obs             = ones(Nl*selectedStates.Np)# weight to esclude some of the old trajectories 
 
-        mpcParams_4s.N              = 10
+        mpcParams_4s.N              = N
         mpcParams_4s.R              = 0.0*[1,1]
         mpcParams_4s.QderivZ        = 1.0*[0,0.1,0.1,2]
         mpcParams_4s.QderivU        = 1.0*[1,1]
         mpcParams_4s.Q_term_cost    = 3e-1 # scaling of Q-function
         mpcParams_4s.Q_lane         = 100.0 # weight on the soft constraint for the lane bounds
         mpcParams_4s.Q_slack        = 5.0*[1,1,1,1]
-        # mpcParams_4s.z_lb           = [-Inf -Inf -Inf -0.5] # 1.s 2.ey 3.epsi 4.v
-        # mpcParams_4s.z_ub           = [ Inf  Inf  Inf  3.0] # 1.s 2.ey 3.epsi 4.v
-        # mpcParams_4s.u_lb           = [-1    -18/180*pi]
-        # mpcParams_4s.u_ub           = [ 2     18/180*pi]
     
     elseif simulator_flag == true  # if the simulator is in use
 
-        selectedStates.Np           = 10        # please select an even number
-        selectedStates.Nl           = 2         # Number of previous laps to include in the convex hull
-        # selectedStates.Nl_sID       = 3
-        # selectedStates.lambda1      = 1
-        # selectedStates.lambda2      = 1
-        # selectedStates.lambda3      = 1
-        # selectedStates.shift        = 8
-        Nl                          = selectedStates.Nl
-        selectedStates.selStates    = zeros(Nl*selectedStates.Np,6)  
-        selectedStates.statesCost   = zeros(Nl*selectedStates.Np)
-        # selectedStates.version      = false
+        selectedStates.Np           = 16        # please select an even number
+        selectedStates.Nl           = 3         # Number of previous laps to include in the convex hull
+        selectedStates.selStates    = zeros(selectedStates.Nl*selectedStates.Np,6)  
+        selectedStates.statesCost   = zeros(selectedStates.Nl*selectedStates.Np)
 
-        mpcParams.N                 = 15
+        mpcParams.N                 = N
         mpcParams.Q                 = [5.0,0.0,0.0,0.1,50.0,0.0]   # Q (only for path following mode)
         mpcParams.vPathFollowing    = 1.0                           # reference speed for first lap of path following
-        mpcParams.Q_term            = 1.0*[20.0,1.0,10.0,20.0,50.0]   # weights for terminal constraints (LMPC, for xDot,yDot,psiDot,ePsi,eY).Not used if using convex hull
         mpcParams.R                 = 0*[10.0,10.0]                 # put weights on a and d_f
         mpcParams.QderivZ           = 1.0*[0,0.1,0.1,0.2,0.1,0.0]             # cost matrix for derivative cost of states
         mpcParams.QderivU           = 1.0*[1.0,1.0] #NOTE Set this to [5.0, 0/40.0]              # cost matrix for derivative cost of inputs
         mpcParams.Q_term_cost       = 0.05                        # scaling of Q-function
-        mpcParams.delay_df          = 3                             # steering delay
-        mpcParams.delay_a           = 1                             # acceleration delay
-        mpcParams.Q_lane            = 100                      # weight on the soft constraint for the lane
-        mpcParams.Q_vel             = 1                    # weight on the soft constraint for the maximum velocity
-        # mpcParams.Q_slack           = 1*[20.0,1.0,10.0,30.0,80.0,50.0]#[20.0,10.0,10.0,30.0,80.0,50.0]  #vx,vy,psiDot,ePsi,eY,s
+        mpcParams.delay_df          = delay_df                             # steering delay
+        mpcParams.delay_a           = delay_a                             # acceleration delay
+        mpcParams.Q_lane            = 10                      # weight on the soft constraint for the lane
         mpcParams.Q_slack           = 50.0*[1.0,1.0,1.0,1.0,1.0,1.0]#[20.0,10.0,10.0,30.0,80.0,50.0]  #s,ey,epsi,vx,vy,psiDot
-        mpcParams.Q_obs             = ones(Nl*selectedStates.Np)# weight to esclude some of the old trajectories 
 
-        mpcParams_4s.N              = 15
+        mpcParams_4s.N              = N
         mpcParams_4s.R              = 0.0*[1,1]
         mpcParams_4s.QderivZ        = 1.0*[0,0.1,0.1,2]
         mpcParams_4s.QderivU        = 1.0*[1,1]
         mpcParams_4s.Q_term_cost    = 3e-1 # scaling of Q-function
-        mpcParams_4s.Q_lane         = 100.0 # weight on the soft constraint for the lane bounds
+        mpcParams_4s.Q_lane         = 10.0 # weight on the soft constraint for the lane bounds
         mpcParams_4s.Q_slack        = 5.0*[1,1,1,1]
-        # mpcParams_4s.z_lb           = [-Inf -Inf -Inf -0.5] # 1.s 2.ey 3.epsi 4.v
-        # mpcParams_4s.z_ub           = [ Inf  Inf  Inf  3.0] # 1.s 2.ey 3.epsi 4.v
-        # mpcParams_4s.u_lb           = [-1    -18/180*pi]
-        # mpcParams_4s.u_ub           = [ 2     18/180*pi]
     end
 
-    mpcParams_pF.N              = 10
+    mpcParams_pF.N              = N
     mpcParams_pF.Q              = [0.0,20.0,10.0,10.0]
     mpcParams_pF.R              = 0*[1.0,1.0]               # put weights on a and d_f
     mpcParams_pF.QderivZ        = 0.0*[0.0,0,1.0,0]           # cost matrix for derivative cost of states
     mpcParams_pF.QderivU        = 1*[1,1]                # cost matrix for derivative cost of inputs
     mpcParams_pF.vPathFollowing = 1.0                       # reference speed for first lap of path following
-    mpcParams_pF.delay_df       = 3                         # steering delay (number of steps)
-    mpcParams_pF.delay_a        = 1                         # acceleration delay
+    mpcParams_pF.delay_df       = delay_df                         # steering delay (number of steps)
+    mpcParams_pF.delay_a        = delay_a                         # acceleration delay
 
     # trackCoeff.nPolyCurvature   = 8                         # 4th order polynomial for curvature approximation
     # trackCoeff.coeffCurvature   = zeros(trackCoeff.nPolyCurvature+1)         # polynomial coefficients for curvature approximation (zeros for straight line)
@@ -452,8 +424,8 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_4s::MpcParams,mpcPa
     mpcCoeff_dummy.c_Vy         = zeros(1,4)
     mpcCoeff_dummy.c_Psi        = zeros(1,3)
 
-    lapStatus.currentLap        = 1         # initialize lap number
-    lapStatus.currentIt         = 1         # current iteration in lap
+    # lapStatus.currentLap        = 1         # initialize lap number
+    # lapStatus.currentIt         = 1         # current iteration in lap
 
 end
 

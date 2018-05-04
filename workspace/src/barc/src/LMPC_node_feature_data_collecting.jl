@@ -88,7 +88,7 @@ function main()
     # DATA LOGGING VARIABLE INITIALIZATION
     k = 1 # counter initialization, k is the counter from the beginning of the experiment
 
-    InitializeParameters(mpcParams,mpcParams_4s,mpcParams_pF,modelParams,posInfo,oldTraj,mpcCoeff,mpcCoeff_dummy,lapStatus,buffersize,selectedStates,oldSS)
+    InitializeParameters(mpcParams,mpcParams_4s,mpcParams_pF,modelParams,posInfo,oldTraj,mpcCoeff,mpcCoeff_dummy,buffersize,selectedStates,oldSS)
 
     # MODEL INITIALIZATION
     mdl_pF           = MpcModel_pF(mpcParams_pF,modelParams)
@@ -207,6 +207,17 @@ function main()
         end
         rossleep(loop_rate)
     end # END OF THE WHILE LOOP
+    # DATA SAVING, trying to save as much as feature data as possible to do sys_id
+    log_path = "$(homedir())/simulations/Feature_Data/FeatureDataCollecting-$(run_id[1:4]).jld"
+    if isfile(log_path)
+        log_path = "$(homedir())/simulations/Feature_Data/FeatureDataCollecting-$(run_id[1:4])-2.jld"
+        warn("Warning: File already exists.")
+    end
+    # CUT THE FRONT AND REAR TAIL BEFORE SAVING THE DATA
+    feature_z = feature_z[2+mpcParams.delay_df-1:k-1,:,:]
+    feature_u = feature_u[2+mpcParams.delay_df-1:k-1,:]
+    # DATA SAVING
+    save(log_path,"feature_z",feature_z,"feature_u",feature_u)
 end
 
 

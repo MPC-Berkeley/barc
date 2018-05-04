@@ -198,17 +198,23 @@ class Localization(object):
         #             [num, -pi/2],
         #             [71+48 ,0]]  
         # Basic track for experiment          
-        track_data = [[60, 0],
-                      [80, -pi/2],
+        # track_data = [[60, 0],
+        #               [80, -pi/2],
+        #               [20, 0],
+        #               [80, -pi/2],
+        #               [40, pi/10],
+        #               [60, -pi/5],
+        #               [40, pi/10],
+        #               [80, -pi/2],
+        #               [20, 0],
+        #               [80, -pi/2],
+        #               [75, 0]]
+        # TRACK FOR THE SMALL EXPERIMENT ROOM
+        track_data = [[10, 0],
+                      [140, -pi],
                       [20, 0],
-                      [80, -pi/2],
-                      [40, pi/10],
-                      [60, -pi/5],
-                      [40, pi/10],
-                      [80, -pi/2],
-                      [20, 0],
-                      [80, -pi/2],
-                      [75, 0]]
+                      [140, -pi],
+                      [10, 0]]
                       
         for i in range(len(track_data)):
             num = track_data[i][0]

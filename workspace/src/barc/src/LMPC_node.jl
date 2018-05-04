@@ -77,17 +77,24 @@ function main()
     #             num -pi/2;
     #             71+48 0]
     # Basic experiment track
-    track_data = [60 0;
-                  80 -pi/2;
+    # track_data = [60 0;
+    #               80 -pi/2;
+    #               20 0;
+    #               80 -pi/2;
+    #               40 pi/10;
+    #               60 -pi/5;
+    #               40 pi/10;
+    #               80 -pi/2;
+    #               20 0;
+    #               80 -pi/2;
+    #               75 0]
+
+    # TRACK TO USE IN THE SMALL EXPERIMENT ROOM
+    track_data = [10 0;
+                  140 -pi;
                   20 0;
-                  80 -pi/2;
-                  40 pi/10;
-                  60 -pi/5;
-                  40 pi/10;
-                  80 -pi/2;
-                  20 0;
-                  80 -pi/2;
-                  75 0]
+                  140 -pi;
+                  10 0]
     # FEATURE TRACK DATA
     # v = 2.5    
     # max_a=7.6;
@@ -105,7 +112,6 @@ function main()
     posInfo          = PosInfo();  posInfo.s_target=track.s;
     mpcCoeff         = MpcCoeff()
     mpcCoeff_dummy   = MpcCoeff()
-    lapStatus        = LapStatus(1,1,false,false,0.3)
     mpcSol           = MpcSol()
     modelParams      = ModelParams()
     mpcParams_pF     = MpcParams()
@@ -141,9 +147,10 @@ function main()
     # GP_feature           = hcat(feature_GP_z,feature_GP_u)
 
     # DATA LOGGING VARIABLE INITIALIZATION
-    num_lap             = 32 # TOTAL NUMBER OF LAPS TO RUN, THE FIRST FEW LAPS DATA MIGHT BE EMEPTY FOR SYS_ID RELATED DATA SAVING
-    InitializeParameters(mpcParams,mpcParams_4s,mpcParams_pF,modelParams,posInfo,oldTraj,mpcCoeff,mpcCoeff_dummy,lapStatus,buffersize,selectedStates,oldSS)
+    InitializeParameters(mpcParams,mpcParams_4s,mpcParams_pF,modelParams,posInfo,oldTraj,mpcCoeff,mpcCoeff_dummy,buffersize,selectedStates,oldSS)
     # THOSE INITIALIZATIONS ARE DONE HERE BECAUSE WE NEED INFORMATION FROM THE PARAMETER INITIALIZATION, LIKE PREDICTION HORIZON
+    lapStatus           = LapStatus(1,1,false,false,0.3) # 1 WHEN IT IS DOING PATH FOLLOWING, selectedStates.Nl when it is doing LMPC
+    num_lap             = 30+1+selectedStates.Nl # TOTAL NUMBER OF LAPS TO RUN, THE FIRST FEW LAPS DATA MIGHT BE EMEPTY FOR SYS_ID RELATED DATA SAVING
     log_cvx             = zeros(buffersize,mpcParams.N,3,num_lap)
     log_cvy             = zeros(buffersize,mpcParams.N,4,num_lap)
     log_cpsi            = zeros(buffersize,mpcParams.N,3,num_lap)
@@ -153,8 +160,8 @@ function main()
 
     # MODEL INITIALIZATION
     mdl_pF           = MpcModel_pF(mpcParams_pF,modelParams)
-    mdl_convhull     = MpcModel_convhull_dyn_iden(mpcParams,modelParams)
-    mdl_kin_lin      = MpcModel_convhull_kin_linear(mpcParams_4s,modelParams)
+    mdl_convhull     = MpcModel_convhull_dyn_iden(mpcParams,modelParams,selectedStates)
+    mdl_kin_lin      = MpcModel_convhull_kin_linear(mpcParams_4s,modelParams,selectedStates)
 
     # NODE INITIALIZATION
     init_node("mpc_traj")
@@ -182,13 +189,10 @@ function main()
     z_prev      = mpcSol.z
     u_prev      = mpcSol.u
 
-    # Just for LMPC quick syntax dsebugging
-    data = load("$(homedir())/simulations/oldSS.jld")
-    oldSS = data["oldSS"]
-
     # FUNCTION DUMMY CALLS: this is important to call all the functions that will be used before for initial compiling
+    data = load("$(homedir())/simulations/oldSS.jld") # oldSS.jld is a dummy data for initialization
     oldSS_dummy = data["oldSS"]
-    lapStatus_dummy = LapStatus(3,1,false,false,0.3)
+    lapStatus_dummy = LapStatus(1+selectedStates.Nl,1,false,false,0.3)
     selectedStates_dummy=find_SS(oldSS_dummy,selectedStates,z_prev,lapStatus_dummy,modelParams,mpcParams,track)
     z = rand(1,6); u = rand(1,2)
     (iden_z,iden_u)=find_feature_dist(feature_z,feature_u,z,u)
@@ -198,6 +202,10 @@ function main()
     (~,~,~)=solveMpcProblem_convhull_kin_linear(mdl_kin_lin,mpcParams_4s,modelParams,lapStatus,rand(mpcParams.N+1,4),rand(mpcParams.N,2),rand(mpcParams.N+1,6),rand(mpcParams.N,2),selectedStates_dummy,track)
     (~,~,~)=car_pre_dyn(rand(1,6)+1,rand(mpcParams.N,2),track,modelParams,6)
     (~,~,~)=find_SS_dist(solHistory,rand(1,6),rand(1,2),lapStatus)
+    
+    # # FOR quick LMPC
+    # data        = load("$(homedir())/simulations/path_following.jld")
+    # oldSS       = data["oldSS"]
 
     while ! is_shutdown()
         if z_est[6] > 0    
@@ -228,7 +236,7 @@ function main()
 
             # OPTIMIZATION
             println("Current Lap: ", lapStatus.currentLap, ", It: ", lapStatus.currentIt, " v: $(z_est[1])")
-            if lapStatus.currentLap<=selectedStates.Nl+1 # 1 IS FOR THE FIRST WARM UP LAPS
+            if lapStatus.currentLap<=1+selectedStates.Nl # 1 IS FOR THE FIRST WARM UP LAPS
                 # (xDot, yDot, psiDot, ePsi, eY, s, acc_f)
                 z_curr = [z_est[6],z_est[5],z_est[4],sqrt(z_est[1]^2+z_est[2]^2)]
                 (z_sol,u_sol,sol_status)=solveMpcProblem_pathFollow(mdl_pF,mpcParams_pF,modelParams,mpcSol,z_curr,z_prev,u_prev,track)
@@ -237,7 +245,9 @@ function main()
                 mpcSol.u = u_sol
                 mpcSol.a_x = u_sol[1+mpcParams_pF.delay_a,1]
                 mpcSol.d_f = u_sol[1+mpcParams_pF.delay_df,2]
-                if length(mpcSol.df_his)!=1
+                if length(mpcSol.df_his)==1
+                    mpcSol.df_his[1] = u_sol[1+mpcParams_pF.delay_df,2]
+                else
                     # INPUT DELAY HISTORY UPDATE
                     mpcSol.df_his[1:end-1] = mpcSol.df_his[2:end]
                     mpcSol.df_his[end] = u_sol[1+mpcParams_pF.delay_df,2]
@@ -246,6 +256,9 @@ function main()
                 u_prev = u_sol
                 println("LMPC solver status is = $sol_status")
             else
+                # FOR QUICK LMPC STARTING, the next time, change the path following lap number to 1 and change the initial lapStatus to selectedStates.
+                save("$(homedir())/simulations/path_following.jld","oldSS",oldSS)
+
                 tic()
                 # (xDot, yDot, psiDot, ePsi, eY, s, acc_f)
                 z_curr = [z_est[6],z_est[5],z_est[4],z_est[1],z_est[2],z_est[3]]
@@ -293,13 +306,10 @@ function main()
                     mpcCoeff.c_Vy[i,:]=mpcCoeff.c_Vy[1,:]
                     mpcCoeff.c_Psi[i,:]=mpcCoeff.c_Psi[1,:]
                 end
-
-                t = toc();
-                println("Elapsed preparation time: $t")
+                toc()
                 tic()
-
                 (z_sol,u_sol,sol_status)=solveMpcProblem_convhull_dyn_iden(mdl_convhull,mpcParams,mpcSol,mpcCoeff,lapStatus,z_curr,z_prev,u_prev,selectedStates,track)
-
+                toc()
                 ######################################################################
                 ############### CHOICE 1: DO MPC ON KIN_LIN MODEL ####################
                 ######################################################################
@@ -367,21 +377,22 @@ function main()
                     (z_sol,~,~)=car_pre_dyn(z_curr,u_sol,track,modelParams,6)
                 end
                 n_state = size(z_sol,2)
-                # mpcSol.z[:,1:n_state] = z_sol
+
                 mpcSol.z = z_sol
                 mpcSol.u = u_sol
                 mpcSol.a_x = u_sol[1+mpcParams.delay_a,1] 
                 mpcSol.d_f = u_sol[1+mpcParams.delay_df,2]
-                if length(mpcSol.df_his)!=1
+                if length(mpcSol.df_his)==1
+                    mpcSol.df_his[1] = u_sol[1+mpcParams_pF.delay_df,2]
+                else
                     # INPUT DELAY HISTORY UPDATE
                     mpcSol.df_his[1:end-1] = mpcSol.df_his[2:end]
-                    mpcSol.df_his[end] = u_sol[1+mpcParams.delay_df,2]
+                    mpcSol.df_his[end] = u_sol[1+mpcParams_pF.delay_df,2]
                 end
                 z_prev = copy(z_sol)
                 u_prev = copy(u_sol)
-                # println("LMPC solver status is = $sol_status")
+
                 solHistory.z[lapStatus.currentIt,lapStatus.currentLap,:,1:n_state]=z_sol
-                # solHistory.z[lapStatus.currentIt,lapStatus.currentLap,1,4:6]=z_true # THIS LINE IS NEEDED WHEN KIN_LIN WITH SYS_ID MODEL IS USED
                 solHistory.u[lapStatus.currentIt,lapStatus.currentLap,:,:]=u_sol
                 (z_fore,~,~) = car_pre_dyn(z_curr,u_sol,track,modelParams,6)
                 (z_fore_x,z_fore_y) = trackFrame_to_xyFrame(z_fore,track)
@@ -390,9 +401,6 @@ function main()
             end
             cmd.motor = convert(Float32,mpcSol.a_x)
             cmd.servo = convert(Float32,mpcSol.d_f)
-            # cmd.header.stamp = get_rostime()
-            # publish(pub, cmd)
-
 
             # VISUALIZATION COORDINATE CALCULATION FOR view_trajectory.jl NODE
             (z_x,z_y) = trackFrame_to_xyFrame(z_sol,track)
@@ -405,9 +413,6 @@ function main()
             mpcSol_to_pub.SS_vx = selectedStates.selStates[:,4]
             mpcSol_to_pub.z_s = z_sol[:,1]
             mpcSol_to_pub.SS_s = selectedStates.selStates[:,1]
-            
-            # mpcSol_to_pub.header.stamp = get_rostime()     
-            # publish(mpcSol_pub, mpcSol_to_pub)
             
             # DATA WRITING AND COUNTER UPDATE
             log_cvx[lapStatus.currentIt,:,:,lapStatus.currentLap]         = mpcCoeff.c_Vx       
