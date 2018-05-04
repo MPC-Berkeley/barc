@@ -170,7 +170,10 @@ def view_trajectory():
 
     plt.show()
     car_frame = np.vstack((np.array(car_xs_origin), np.array(car_ys_origin)))
+    counter_buffer = 600
+    counter = 1
     while not rospy.is_shutdown():
+        # if counter < counter_buffer:
         if (pos_info_s>0 and pos_info_s<0.5):
             # lap switching trajectory cleaning
             gps_x_vals = [0,gps_x_vals[-1]]
@@ -214,9 +217,11 @@ def view_trajectory():
         # iden_plot.set_data(z_iden_x,z_iden_y)
         SS_plot.set_data(SS_x,SS_y)
         fig.canvas.draw()
+        counter+=1
+        # print(counter)
         rate.sleep()
 
-        # plt.gcf().clear()
+
     # plt.ioff()
     # plt.show()
     

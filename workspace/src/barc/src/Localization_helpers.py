@@ -252,9 +252,12 @@ class Localization(object):
         self.psiDot = psiDot
 
     def find_s(self):
-        if self.s > self.track_s[-1]-0.3:
-            idx_candidate_1 = (self.track_s+0.3>=self.track_s[-1])
-            idx_candidate_2 = (self.track_s<=0.3)
+        # SINCE THE TRACK FOR COLLECTING THE FEATURE DATA HAS OVERLAPPING PART, ONLY A LIMITED A MOUNT OF DATA FROM THE TRACK IS USED TO DO LOCALIZATION FOR S
+        # IN THE EXPERIMENT, THE LENGTH OF THE LOCALIZAITON CANDIDATES MIGHT BE LONGER
+        l_ran = 2 # LOCALIZATION RANGE
+        if self.s > self.track_s[-1]-l_ran:
+            idx_candidate_1 = (self.track_s+l_ran>=self.track_s[-1])
+            idx_candidate_2 = (self.track_s<=l_ran)
             x_candidate = hstack((self.nodes[0,:][idx_candidate_1],self.nodes[0,:][idx_candidate_2]))
             y_candidate = hstack((self.nodes[1,:][idx_candidate_1],self.nodes[1,:][idx_candidate_2]))
             nodes_candidate = array([x_candidate,y_candidate])
@@ -263,7 +266,7 @@ class Localization(object):
             
         else:
             dist_s = self.track_s - self.s
-            idx_candidate = (dist_s>=0) & (dist_s<0.3) # the car can travel 0.3m maximumly within 0.1s  
+            idx_candidate = (dist_s>=0) & (dist_s<l_ran) # the car can travel 0.3m maximumly within 0.1s  
             x_candidate = self.nodes[0,:][idx_candidate]
             y_candidate = self.nodes[1,:][idx_candidate]
             nodes_candidate = array([x_candidate,y_candidate])

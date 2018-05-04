@@ -27,8 +27,6 @@ function SE_callback(msg::pos_info,acc_f::Array{Float64},lapStatus::LapStatus,po
 
     # check if lap needs to be switched
     if z_est[6] <= lapStatus.s_lapTrigger && lapStatus.switchLap
-        oldTraj.idx_end[lapStatus.currentLap] = oldTraj.count[lapStatus.currentLap]
-        oldTraj.oldCost[lapStatus.currentLap] = oldTraj.idx_end[lapStatus.currentLap] - oldTraj.idx_start[lapStatus.currentLap]
         lapStatus.currentLap += 1
         lapStatus.currentIt = 1
         lapStatus.nextLap = true
@@ -36,37 +34,10 @@ function SE_callback(msg::pos_info,acc_f::Array{Float64},lapStatus::LapStatus,po
     elseif z_est[6] > lapStatus.s_lapTrigger
         lapStatus.switchLap = true
     end
-
-    # save current state in oldTraj
-    oldTraj.oldTraj[oldTraj.count[lapStatus.currentLap],:,lapStatus.currentLap] = z_est
-    oldTraj.oldInput[oldTraj.count[lapStatus.currentLap],:,lapStatus.currentLap] = [msg.u_a,msg.u_df]
-    oldTraj.oldTimes[oldTraj.count[lapStatus.currentLap],lapStatus.currentLap] = to_sec(msg.header.stamp)
-    oldTraj.count[lapStatus.currentLap] += 1
-
-    # # if necessary: append to end of previous lap
-    # if lapStatus.currentLap > 1 && z_est[6] < 18.0
-    #     oldTraj.oldTraj[oldTraj.count[lapStatus.currentLap-1],:,lapStatus.currentLap-1] = z_est
-    #     oldTraj.oldTraj[oldTraj.count[lapStatus.currentLap-1],6,lapStatus.currentLap-1] += posInfo.s_target
-    #     oldTraj.oldInput[oldTraj.count[lapStatus.currentLap-1],:,lapStatus.currentLap-1] = [msg.u_a,msg.u_df]
-    #     #oldTraj.oldInput[oldTraj.count[lapStatus.currentLap-1],:,lapStatus.currentLap-1] += 0.5*([msg.u_a msg.u_df]-oldTraj.oldInput[oldTraj.count[lapStatus.currentLap-1]-1,:,lapStatus.currentLap-1])
-    #     oldTraj.oldTimes[oldTraj.count[lapStatus.currentLap-1],lapStatus.currentLap-1] = to_sec(msg.header.stamp)
-    #     oldTraj.count[lapStatus.currentLap-1] += 1
-    # end
-
-    # #if necessary: append to beginning of next lap
-    # if z_est[6] > posInfo.s_target - 18.0
-    #     oldTraj.oldTraj[oldTraj.count[lapStatus.currentLap+1],:,lapStatus.currentLap+1] = z_est
-    #     oldTraj.oldTraj[oldTraj.count[lapStatus.currentLap+1],6,lapStatus.currentLap+1] -= posInfo.s_target
-    #     oldTraj.oldInput[oldTraj.count[lapStatus.currentLap+1],:,lapStatus.currentLap+1] = [msg.u_a,msg.u_df]
-    #     #oldTraj.oldInput[oldTraj.count[lapStatus.currentLap+1],:,lapStatus.currentLap+1] += 0.5*([msg.u_a msg.u_df]-oldTraj.oldInput[oldTraj.count[lapStatus.currentLap+1]-1,:,lapStatus.currentLap+1])
-    #     oldTraj.oldTimes[oldTraj.count[lapStatus.currentLap+1],lapStatus.currentLap+1] = to_sec(msg.header.stamp)
-    #     oldTraj.count[lapStatus.currentLap+1] += 1
-    #     oldTraj.idx_start[lapStatus.currentLap+1] = oldTraj.count[lapStatus.currentLap+1]
-    # end
 end
 
 function ST_callback(msg::pos_info,z_true::Array{Float64,1})
-    z_true[:] = [msg.v_x,msg.v_y,msg.psiDot]
+    z_true[:] = [msg.v_x,msg.v_y,msg.psiDot] # signal before the estimator
 end
 
 # This is the main function, it is called when the node is started.
@@ -108,25 +79,13 @@ function main()
     solHistory = SolHistory(500,10,6,32)
 
     # FEATURE DATA INITIALIZATION
-    # 100000 IS THE BUFFER FOR FEATURE DATA
-    # v_ref_dummy = [i for i in 0.6:0.1:2.5]
     v_ref = vcat([0.8],0.8:0.05:2.5)
-    # v_ref = [1]
-    # for v in v_ref_dummy
-    #     v_ref = vcat(v_ref,[v,v])
-    # end
 
-    num_lap = length(v_ref)
-    feature_z = zeros(100000,6,2)
-    feature_u = zeros(100000,2)
+    num_lap     = length(v_ref)
+    feature_z   = zeros(100000,6,2)
+    feature_u   = zeros(100000,2)
 
     # DATA LOGGING VARIABLE INITIALIZATION
-    # selStates_log    = zeros(selectedStates.Nl*selectedStates.Np,6,buffersize,30)
-    # statesCost_log   = zeros(selectedStates.Nl*selectedStates.Np,buffersize,30)
-    log_cvx                     = zeros(buffersize,3,num_lap)
-    log_cvy                     = zeros(buffersize,4,num_lap)
-    log_cpsi                    = zeros(buffersize,3,num_lap)
-    log_status                  = Array(Symbol,buffersize,num_lap)
     k = 1 # counter initialization, k is the counter from the beginning of the experiment
 
     InitializeParameters(mpcParams,mpcParams_4s,mpcParams_pF,modelParams,posInfo,oldTraj,mpcCoeff,mpcCoeff_dummy,lapStatus,buffersize,selectedStates,oldSS)
@@ -146,8 +105,6 @@ function main()
     # Note: Choose queue size long enough so that no pos_info packets get lost! They are important for system ID!
     run_id = get_param("run_id")
     println("Finished initialization.")
-
-    # posInfo.s_target        = 19.11 #17.91 #19.14#17.94#17.76#24.0
     
     mpcSol.df_his = zeros(mpcParams.delay_df)
     mpcSol.z = zeros(mpcParams_pF.N+1,4)
@@ -172,44 +129,17 @@ function main()
             if lapStatus.currentLap>1
                 k = k + 1 # start counting from the second lap.
                 
-                # # (xDot, yDot, psiDot, ePsi, eY, s, acc_f)
-                # feature_z[k,:,1] = [z_est[6],z_est[5],z_est[4],z_est[1],z_est[2],z_est[3]]
-                # feature_u[k,:] = u_sol[2,:]
-                # feature_z[k-1,:,2] = [z_est[6],z_est[5],z_est[4],z_est[1],z_est[2],z_est[3]]
-
                 # (xDot, yDot, psiDot, ePsi, eY, s, acc_f)
-                feature_z[k,:,1] = [z_est[6],z_est[5],z_est[4],z_true[1],z_true[2],z_true[3]]
+                feature_z[k,:,1] = [z_est[6],z_est[5],z_est[4],z_est[1],z_est[2],z_est[3]]
                 feature_u[k,1] = u_sol[2,1] # acceleration delay is from MPC itself
-                feature_u[k+mpcParams.delay_df-1,2] = u_sol[1+mpcSol.delay_df,2] # another 2 steps delay is from the system
-                feature_z[k-1,:,2] = [z_est[6],z_est[5],z_est[4],z_true[1],z_true[2],z_true[3]]
-                
-                # println("Vy: $(z_est[2]) psi_dot: $(z_est[3])")
-                # So bsides the zeros tail, the first and last points will be removed.
-                # if lapStatus.currentLap==length(v_ref) && z_est[6] > track.s[end]-0.5
-                #     log_path = "$(homedir())/simulations/Feature_Data/FeatureDataCollecting.jld"
-                #     if isfile(log_path)
-                #         log_path = "$(homedir())/simulations/Feature_Data/FeatureDataCollecting-2.jld"
-                #         warn("Warning: File already exists.")
-                #     end
-                #     # CUT THE FRONT AND REAR TAIL BEFORE SAVING THE DATA
-                #     feature_z = feature_z[2:k-1,:,:]
-                #     feature_u = feature_u[2:k-1,:]
-                #     # DATA SAVING
-                #     save(log_path,"feature_z",feature_z,"feature_u",feature_u)
-                # end
+                feature_u[k+mpcParams.delay_df-1,2] = u_sol[1+mpcParams.delay_df,2] # another 2 steps delay is from the system
+                feature_z[k-1,:,2] = [z_est[6],z_est[5],z_est[4],z_est[1],z_est[2],z_est[3]]
+                # println("feature_u from MPC",feature_u[k,:])
             end
 
             # LAP SWITCHING
             if lapStatus.nextLap
                 println("Finishing one lap at iteration ",lapStatus.currentIt)
-                # SAFE SET COST UPDATE
-                # log_final_counter[lapStatus.currentLap-1] = k
-                oldSS.oldCost[lapStatus.currentLap-1] = lapStatus.currentIt
-                cost2target                           = zeros(buffersize) # array containing the cost to arrive from each point of the old trajectory to the target            
-                for j = 1:buffersize
-                    cost2target[j] = (lapStatus.currentIt-j+1)  
-                end
-                oldSS.cost2target[:,lapStatus.currentLap-1] = cost2target
                 lapStatus.nextLap = false
                 if mpcSol.z[1,1]>posInfo.s_target
                     # WARM START SWITCHING
@@ -223,30 +153,28 @@ function main()
 
             # (xDot, yDot, psiDot, ePsi, eY, s, acc_f)
             z_curr = [z_est[6],z_est[5],z_est[4],sqrt(z_est[1]^2+z_est[2]^2)]
-            # println("s: ", z_curr[1], "x: ", x_est[1], "y: ", x_est[2])
-            # println("ey: ",z_est[5])
-
+ 
             (z_sol,u_sol,sol_status)=solveMpcProblem_featureData(mdl_pF,mpcParams_pF,modelParams,mpcSol,z_curr,z_prev,u_prev,track,v_ref[lapStatus.currentLap])
             mpcSol.z = z_sol
             mpcSol.u = u_sol
 
-            # ADDITIONAL NOISE ADDING 
+            # ADDITIONAL NOISE ADDING, WHICH IS ONLY FOR SIMULATION
             n=randn(2)
-            n_thre = [0.01,0.002]
+            n_thre = [0.01,0.00001]
             n.*=n_thre
             n=min(n,n_thre)
-            n=max(n,[0,-0.002])
-            u_sol[2,:]+=n'
+            n=max(n,[0,-0.00001])
+            u_sol[1+mpcParams_pF.delay_a,1]+=n[1]
+            # u_sol[1+mpcParams_pF.delay_df,2]+=n[2]
             
-            mpcSol.a_x = u_sol[1+mpcParams.delay_a,1] 
-            mpcSol.d_f = u_sol[1+mpcParams.delay_df,2]
+            mpcSol.a_x = u_sol[1+mpcParams_pF.delay_a,1] 
+            mpcSol.d_f = u_sol[1+mpcParams_pF.delay_df,2]
             if length(mpcSol.df_his)!=0
                 # INPUT DELAY HISTORY UPDATE
                 mpcSol.df_his[1:end-1] = mpcSol.df_his[2:end]
                 mpcSol.df_his[end] = u_sol[1+mpcParams_pF.delay_df,2]
             end
-            # println(mpcParams.delay_df)
-            
+
             z_prev = z_sol
             u_prev = u_sol
             println("Feature collecting solver status is = $sol_status")
@@ -259,33 +187,19 @@ function main()
             mpcSol_to_pub.z_x = z_x
             mpcSol_to_pub.z_y = z_y
 
-            # # DATA WRITING AND COUNTER UPDATE
-            # log_cvx[lapStatus.currentIt,:,lapStatus.currentLap]         = mpcCoeff.c_Vx       
-            # log_cvy[lapStatus.currentIt,:,lapStatus.currentLap]         = mpcCoeff.c_Vy       
-            # log_cpsi[lapStatus.currentIt,:,lapStatus.currentLap]        = mpcCoeff.c_Psi
-            # log_status[lapStatus.currentIt,lapStatus.currentLap]        = mpcSol.solverStatus
-
             # TRACK FEATURE DATA COLLECTING
-            # if lapStatus.currentLap>1
-            #     k = k + 1 # start counting from the second lap.
-            #     # (xDot, yDot, psiDot, ePsi, eY, s, acc_f)
-            #     feature_z[k,:,1] = [z_est[6],z_est[5],z_est[4],z_est[1],z_est[2],z_est[3]]
-            #     feature_u[k,:] = u_sol[2,:]
-            #     feature_z[k-1,:,2] = [z_est[6],z_est[5],z_est[4],z_est[1],z_est[2],z_est[3]]
-            #     # So bsides the zeros tail, the first and last points will be removed.
             if lapStatus.currentLap==length(v_ref) && z_est[6] > track.s[end]-0.5
-                log_path = "$(homedir())/simulations/Feature_Data/FeatureDataCollecting.jld"
+                log_path = "$(homedir())/simulations/Feature_Data/FeatureDataCollecting-$(run_id[1:4]).jld"
                 if isfile(log_path)
-                    log_path = "$(homedir())/simulations/Feature_Data/FeatureDataCollecting-2.jld"
+                    log_path = "$(homedir())/simulations/Feature_Data/FeatureDataCollecting-$(run_id[1:4])-2.jld"
                     warn("Warning: File already exists.")
                 end
                 # CUT THE FRONT AND REAR TAIL BEFORE SAVING THE DATA
-                feature_z = feature_z[2:k-1,:,:]
-                feature_u = feature_u[2:k-1,:]
+                feature_z = feature_z[2+mpcParams.delay_df-1:k-1,:,:]
+                feature_u = feature_u[2+mpcParams.delay_df-1:k-1,:]
                 # DATA SAVING
                 save(log_path,"feature_z",feature_z,"feature_u",feature_u)
             end
-            # end
 
             lapStatus.currentIt += 1
         else
@@ -293,14 +207,6 @@ function main()
         end
         rossleep(loop_rate)
     end # END OF THE WHILE LOOP
-    # DATA SAVING
-    # log_path = "$(homedir())/simulations/Feature_Data/FeatureDataCollecting-$(run_id[1:4]).jld"
-    # if isfile(log_path)
-    #     log_path = "$(homedir())/simulations/Feature_Data/FeatureDataCollecting-$(run_id[1:4])-2.jld"
-    #     warn("Warning: File already exists.")
-    # end
-    # save(log_path,"feature_z",feature_z,"feature_u",feature_u)
-    # println("Exiting LMPC node. Saved data to $log_path.")
 end
 
 

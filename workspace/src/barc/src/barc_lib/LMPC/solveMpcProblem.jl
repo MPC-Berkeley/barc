@@ -48,9 +48,6 @@ function solveMpcProblem_pathFollow(mdl::MpcModel_pF,mpcParams_pF::MpcParams,mod
     sol_status  = solve(mdl.mdl)
     sol_u       = getvalue(mdl.u_Ol)
     sol_z       = getvalue(mdl.z_Ol)
-    # INPUT DELAY HISTORY UPDATE
-    mpcSol.df_his[1:end-1] = mpcSol.df_his[2:end]
-    mpcSol.df_his[end] = sol_u[2,2]
     # println("Solved, status = $sol_status")
     return sol_z,sol_u,sol_status
 end
@@ -122,9 +119,6 @@ function solveMpcProblem_convhull_dyn_iden(mdl::MpcModel_convhull_dyn_iden,mpcPa
    sol_status  = solve(mdl.mdl)
    sol_u       = getvalue(mdl.u_Ol)
    sol_z       = getvalue(mdl.z_Ol)
-   # INPUT DELAY HISTORY UPDATE
-   mpcSol.df_his[1:end-1] = mpcSol.df_his[2:end]
-   mpcSol.df_his[end] = sol_u[2,2]
    println("Solved, status = $sol_status")
    return sol_z,sol_u,sol_status
 end
@@ -159,6 +153,7 @@ function solveMpcProblem_convhull_kin_linear(mdl::MpcModel_convhull_kin_linear,m
     # for j=1:n_state
     #     JuMP.fix(mdl.z_linear[mpcParams.N+1,j],z_linear[mpcParams.N+1,j])
     # end
+    println(size(mdl.z_linear),size(z_linear))
     setvalue(mdl.z_linear,z_linear)
     setvalue(mdl.u_linear,u_linear)
 

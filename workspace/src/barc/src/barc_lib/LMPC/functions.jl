@@ -111,7 +111,7 @@ function find_feature_dist(z_feature::Array{Float64,3},u_feature::Array{Float64,
     dummy_norm=zeros(size(dummy_state,1),2)
 
     norm_dist=(curr_state.-cal_state[:,4:8])#./norm_state
-    dummy_norm[:,1]=norm_dist[:,1].^2+norm_dist[:,3].^2#+norm_dist[:,3].^2+norm_dist[:,4].^2+norm_dist[:,5].^2
+    dummy_norm[:,1]=norm_dist[:,1].^2+norm_dist[:,2].^2+norm_dist[:,3].^2+norm_dist[:,4].^2+norm_dist[:,5].^2
     dummy_norm[:,2]=1:size(dummy_state,1)
     dummy_norm=sortrows(dummy_norm) # pick up the first minimum Np points
     # println(dummy_norm[1:Np,:])
@@ -369,7 +369,7 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_4s::MpcParams,mpcPa
         selectedStates.statesCost   = zeros(Nl*selectedStates.Np)
         # selectedStates.version      = false
 
-        mpcParams.N                 = 10
+        mpcParams.N                 = 15
         mpcParams.Q                 = [5.0,0.0,0.0,0.1,50.0,0.0]   # Q (only for path following mode)
         mpcParams.vPathFollowing    = 1.0                           # reference speed for first lap of path following
         mpcParams.Q_term            = 1.0*[20.0,1.0,10.0,20.0,50.0]   # weights for terminal constraints (LMPC, for xDot,yDot,psiDot,ePsi,eY).Not used if using convex hull
@@ -385,7 +385,7 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_4s::MpcParams,mpcPa
         mpcParams.Q_slack           = 50.0*[1.0,1.0,1.0,1.0,1.0,1.0]#[20.0,10.0,10.0,30.0,80.0,50.0]  #s,ey,epsi,vx,vy,psiDot
         mpcParams.Q_obs             = ones(Nl*selectedStates.Np)# weight to esclude some of the old trajectories 
 
-        mpcParams_4s.N              = 10
+        mpcParams_4s.N              = 15
         mpcParams_4s.R              = 0.0*[1,1]
         mpcParams_4s.QderivZ        = 1.0*[0,0.1,0.1,2]
         mpcParams_4s.QderivU        = 1.0*[1,1]

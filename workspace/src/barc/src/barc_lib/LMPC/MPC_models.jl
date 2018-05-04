@@ -74,9 +74,6 @@ type MpcModel_pF
 
         # System dynamics
         @NLconstraint(mdl, [i=1:4], z_Ol[1,i] == z0[i])         # initial condition
-        # # THIS IS FOR SIMULATION
-        # @NLconstraint(mdl, u_Ol[1,2] == uPrev[2,2]) # steering delay is 1 for simulation and 3 for experiment
-        # THIS IS FOR EXPERIEMNT
         @NLconstraint(mdl, u_Ol[1,1] == uPrev[2,1]) # steering delay is 1 for simulation and 3 for experiment
         @NLconstraint(mdl, [i=1:mpcParams_pF.delay_df], u_Ol[i,2] == df_his[i]) # steering delay is 1 for simulation and 3 for experiment
 
@@ -202,17 +199,14 @@ type MpcModel_convhull_dyn_iden
         @NLparameter(mdl, c_Vy[1:N,1:4]  == 0)    # system identification parameters
         @NLparameter(mdl, c_Psi[1:N,1:3] == 0)    # system identification parameters
         @NLparameter(mdl, uPrev[1:N,1:2] == 0)
-        @NLparameter(mdl, df_his[1:3] == 0)
+        @NLparameter(mdl, df_his[1:mpcParams.delay_df] == 0)
         @NLparameter(mdl, selStates[1:Nl*Np,1:n_state] == 0)   # states from the previous trajectories selected in "convhullStates"
         @NLparameter(mdl, statesCost[1:Nl*Np] == 0)      # costs of the states selected in "convhullStates"
 
         @NLconstraint(mdl, [i=1:n_state], z_Ol[1,i] == z0[i])
         # THIS INPUT CONSTRAINT IS FOR SYSTEM DELAY
         @NLconstraint(mdl, u_Ol[1,1] == uPrev[2,1]) # acceleration delay is 1
-        # # THIS IS FOR SIMULATION
-        # @NLconstraint(mdl, u_Ol[1,2] == uPrev[2,2]) # steering delay is 1 for simulation and 3 for experiment
-        # THIS IS FOR EXPERIEMNT
-        @NLconstraint(mdl, [i=1:3], u_Ol[i,2] == df_his[i]) # steering delay is 1 for simulation and 3 for experiment
+        @NLconstraint(mdl, [i=1:mpcParams.delay_df], u_Ol[i,2] == df_his[i]) # steering delay is 1 for simulation and 3 for experiment
 
         @NLconstraint(mdl, [i=2:N+1], z_Ol[i,2] <= ey_max + eps_lane[i-1])
         @NLconstraint(mdl, [i=2:N+1], z_Ol[i,2] >= -ey_max - eps_lane[i-1])

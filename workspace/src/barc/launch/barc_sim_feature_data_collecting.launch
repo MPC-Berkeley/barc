@@ -15,7 +15,7 @@
     <!--node pkg="barc" type="open_loop.jl" name="control" output="screen" /-->
 
     <!-- VISUALIZATION -->
-    <node pkg="barc" type="view_car_trajectory.py" name="visualization" />
+    <node pkg="barc" type="view_car_trajectory.py" name="visualization" output="screen" />
 
 
     <!-- SIMULATOR -->
