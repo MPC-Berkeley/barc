@@ -50,8 +50,6 @@ type SafeSetData
     cost2target::Array{Float64}     # cost to arrive at the target, i.e. how many iterations from the start to the end of the lap
     oldCost::Array{Int64}               # contains costs of laps
     count::Array{Int64}                 # contains the counter for each lap
-    idx_start::Array{Int64}             # index of the first measurement with s > 0
-    idx_end::Array{Int64}               # index of the last measurement with s < s_target
     oldSS_xy::Array{Float64}
     SafeSetData(oldSS=Float64[],cost2target=Float64[],oldCost=Int64[],count=Int64[],idx_start=Int64[],idx_end=Int64[],oldSS_xy=Float64[]) =
     new(oldSS,cost2target,oldCost,count,idx_start,idx_end,oldSS_xy)

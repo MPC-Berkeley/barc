@@ -133,9 +133,12 @@ function main()
                 feature_z[k,:,1] = [z_est[6],z_est[5],z_est[4],z_est[1],z_est[2],z_est[3]]
                 feature_u[k,1] = u_sol[2,1] # acceleration delay is from MPC itself
                 feature_u[k+mpcParams.delay_df-1,2] = u_sol[1+mpcParams.delay_df,2] # another 2 steps delay is from the system
+                # it should be the same to store the u_sol[2] to the current position, k, since it is fixed in the optimization problem.
                 feature_z[k-1,:,2] = [z_est[6],z_est[5],z_est[4],z_est[1],z_est[2],z_est[3]]
                 # println("feature_u from MPC",feature_u[k,:])
+                # println("current publishing u",u_sol[2,:])
             end
+
 
             # LAP SWITCHING
             if lapStatus.nextLap
@@ -169,7 +172,9 @@ function main()
             
             mpcSol.a_x = u_sol[1+mpcParams_pF.delay_a,1] 
             mpcSol.d_f = u_sol[1+mpcParams_pF.delay_df,2]
-            if length(mpcSol.df_his)!=0
+            if length(mpcSol.df_his)==1
+                mpcSol.df_his[1] = u_sol[1+mpcParams_pF.delay_df,2]
+            else
                 # INPUT DELAY HISTORY UPDATE
                 mpcSol.df_his[1:end-1] = mpcSol.df_his[2:end]
                 mpcSol.df_his[end] = u_sol[1+mpcParams_pF.delay_df,2]

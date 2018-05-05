@@ -92,7 +92,7 @@ function trackFrame_to_xyFrame(z_sol::Array{Float64,2},track::Track)
 end
 
 # FUNCTIONS FOR FEATURE DATA SELECTING AND SYS_ID
-function find_feature_dist(z_feature::Array{Float64,3},u_feature::Array{Float64,2},z_curr::Array{Float64,2},u_curr::Array{Float64,2},)
+function find_feature_dist(z_feature::Array{Float64,3},u_feature::Array{Float64,2},z_curr::Array{Float64,2},u_curr::Array{Float64,2})
     Np=40 # Just to make life easier, we directly put a specific number here
     # Clear the safe set data of previous iteration
     iden_z=zeros(Np,3,2)
@@ -307,20 +307,16 @@ function find_SS(safeSetData::SafeSetData,selectedStates::SelectedStates,
 end
 
 # FUNCTION FOR PARAMETERS INITIALIZATION
-function InitializeParameters(mpcParams::MpcParams,mpcParams_4s::MpcParams,mpcParams_pF::MpcParams,modelParams::ModelParams,
-                              posInfo::PosInfo,oldTraj::OldTrajectory,mpcCoeff::MpcCoeff,mpcCoeff_dummy::MpcCoeff,buffersize::Int64,
-                              selectedStates::SelectedStates,oldSS::SafeSetData)
+function InitializeParameters(mpcSol::MpcSol,mpcParams::MpcParams,mpcParams_4s::MpcParams,mpcParams_pF::MpcParams,modelParams::ModelParams,
+                              posInfo::PosInfo,mpcCoeff::MpcCoeff,mpcCoeff_dummy::MpcCoeff,buffersize::Int64,
+                              selectedStates::SelectedStates,oldSS::SafeSetData,LMPC_LAP::Int64)
 
-    simulator_flag = true     # set this to TRUE if SIMULATOR is in use, set this to FALSE if BARC is in use
-    N = 10
-    delay_df = 3
-    delay_a = 1
+    simulator_flag  = true     # set this to TRUE if SIMULATOR is in use, set this to FALSE if BARC is in use
+    N               = 16
+    delay_df        = 3
+    delay_a         = 1
+
     if simulator_flag == false   # if the BARC is in use
-
-        selectedStates.Np           = 10        # please select an even number
-        selectedStates.Nl           = 2         # Number of previous laps to include in the convex hull
-        selectedStates.selStates    = zeros(selectedStates.Nl*selectedStates.Np,6)  
-        selectedStates.statesCost   = zeros(selectedStates.Nl*selectedStates.Np)
 
         mpcParams.N                 = N
         mpcParams.Q                 = [5.0,0.0,0.0,0.1,50.0,0.0]   # Q (only for path following mode)
@@ -344,11 +340,6 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_4s::MpcParams,mpcPa
     
     elseif simulator_flag == true  # if the simulator is in use
 
-        selectedStates.Np           = 16        # please select an even number
-        selectedStates.Nl           = 3         # Number of previous laps to include in the convex hull
-        selectedStates.selStates    = zeros(selectedStates.Nl*selectedStates.Np,6)  
-        selectedStates.statesCost   = zeros(selectedStates.Nl*selectedStates.Np)
-
         mpcParams.N                 = N
         mpcParams.Q                 = [5.0,0.0,0.0,0.1,50.0,0.0]   # Q (only for path following mode)
         mpcParams.vPathFollowing    = 1.0                           # reference speed for first lap of path following
@@ -370,6 +361,11 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_4s::MpcParams,mpcPa
         mpcParams_4s.Q_slack        = 5.0*[1,1,1,1]
     end
 
+    selectedStates.Np           = 10        # please select an even number
+    selectedStates.Nl           = 2         # Number of previous laps to include in the convex hull
+    selectedStates.selStates    = zeros(selectedStates.Nl*selectedStates.Np,6)  
+    selectedStates.statesCost   = zeros(selectedStates.Nl*selectedStates.Np)
+
     mpcParams_pF.N              = N
     mpcParams_pF.Q              = [0.0,20.0,10.0,10.0]
     mpcParams_pF.R              = 0*[1.0,1.0]               # put weights on a and d_f
@@ -379,43 +375,21 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_4s::MpcParams,mpcPa
     mpcParams_pF.delay_df       = delay_df                         # steering delay (number of steps)
     mpcParams_pF.delay_a        = delay_a                         # acceleration delay
 
-    # trackCoeff.nPolyCurvature   = 8                         # 4th order polynomial for curvature approximation
-    # trackCoeff.coeffCurvature   = zeros(trackCoeff.nPolyCurvature+1)         # polynomial coefficients for curvature approximation (zeros for straight line)
-    # trackCoeff.width            = 0.6                       # width of the track (60cm)
-
     modelParams.l_A             = 0.125
     modelParams.l_B             = 0.125
-    modelParams.dt              = 0.1                   # sampling time, also controls the control loop, affects delay_df and Qderiv
+    modelParams.dt              = 0.1       
     modelParams.m               = 1.98
     modelParams.I_z             = 0.03
-    modelParams.c_f             = 0.05                   # friction coefficient: xDot = - c_f*xDot (aerodynamic+tire)
+    modelParams.c_f             = 0.05       
 
-    # posInfo.s_target            = 19.11
-    num_lap = 100
-    oldTraj.oldTraj             = NaN*ones(buffersize,7,num_lap)
-    oldTraj.oldInput            = zeros(buffersize,2,num_lap)
-    oldTraj.oldTimes            = NaN*ones(buffersize,num_lap)
-    oldTraj.count               = ones(num_lap)*2
-    oldTraj.oldCost             = ones(Int64,num_lap)                   # dummies for initialization
-    # oldTraj.prebuf              = 30
-    # oldTraj.postbuf             = 30
-    oldTraj.idx_start           = zeros(num_lap)
-    oldTraj.idx_end             = zeros(num_lap)
+    num_lap = 1 + selectedStates.Nl + LMPC_LAP
 
-    oldSS.oldSS                 = NaN*ones(buffersize,6,num_lap)          # contains data from previous laps usefull to build the safe set
+    oldSS.oldSS                 = NaN*ones(buffersize,6,num_lap)    # contains data from previous laps usefull to build the safe set
     oldSS.oldSS_xy              = NaN*ones(buffersize,4,num_lap)          
-    oldSS.cost2target           = zeros(buffersize,num_lap)     # cost to arrive at the target, i.e. how many iterations from the start to the end of the lap
-    oldSS.oldCost               = ones(Int64,num_lap)              # contains costs of laps
-    oldSS.count                 = ones(num_lap)*2               # contains the counter for each lap
-    # oldSS.prebuff                = 30
-    # oldSS.postbuff               = 50
-    oldSS.idx_start             = ones(num_lap)            # index of the first measurement with s > 0
-    oldSS.idx_end               = zeros(num_lap)              # index of the last measurement with s < s_target
+    oldSS.cost2target           = zeros(buffersize,num_lap)         # cost to arrive at the target, i.e. how many iterations from the start to the end of the lap
+    oldSS.oldCost               = ones(Int64,num_lap)               # contains costs of laps
+    oldSS.count                 = ones(num_lap)*2                   # contains the counter for each lap
 
-    # mpcCoeff.order              = 5
-    # mpcCoeff.coeffCost          = zeros(mpcCoeff.order+1,2)
-    # mpcCoeff.coeffConst         = zeros(mpcCoeff.order+1,2,5)
-    # mpcCoeff.pLength            = 5*2*mpcParams.N        # small values here may lead to numerical problems since the functions are only approximated in a short horizon
     mpcCoeff.c_Vx               = zeros(mpcParams.N,3)
     mpcCoeff.c_Vy               = zeros(mpcParams.N,4)
     mpcCoeff.c_Psi              = zeros(mpcParams.N,3)
@@ -424,9 +398,15 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_4s::MpcParams,mpcPa
     mpcCoeff_dummy.c_Vy         = zeros(1,4)
     mpcCoeff_dummy.c_Psi        = zeros(1,3)
 
-    # lapStatus.currentLap        = 1         # initialize lap number
-    # lapStatus.currentIt         = 1         # current iteration in lap
-
+    mpcSol.z    = zeros(N+1,4)
+    mpcSol.u    = hcat(0.5*ones(N),zeros(N))
+    mpcSol.z[1,4] = 1.0 # give the vehcile some initial speed to simulate forward
+    for i in 2:N+1
+        mpcSol.z[i,:]=car_sim_kin(mpcSol.z[i-1,:],mpcSol.u[i-1,:],track,modelParams)
+    end
+    mpcSol.a_x  = 0
+    mpcSol.d_f  = 0
+    mpcSol.df_his = zeros(delay_df) # DELAT COMES FROM TWO PARTS, ONLY THE SYSTEM DELAY NEEDS TO BE CONSIDERED
 end
 
 
@@ -676,4 +656,142 @@ function GP_full(z::Array{Float64,1},u::Array{Float64,2},feature_state::Array{Fl
     k = exp(-0.5*Z)
     GP_e = k'*GP_prepare
     return GP_e
+end
+
+function createTrack(name::ASCIIString)
+    # RACING TRACK DATA
+    if name == "race"
+        # TRACK USED IN MY SIMULATION
+        track_data=[80 0;
+                    120 -pi/2;
+                    80 0;
+                    220 -pi*0.85;
+                    105 pi/15;
+                    300  pi*1.15;
+                    240  -pi*0.865;
+                    100 0;
+                    120 -pi/2;
+                    153 0;
+                    120 -pi/2;
+                    211 0]
+    elseif name == "3110"
+        # EXPERIEMENT TRACK DATA
+        num = 100
+        track_data=[80 0;
+                    num -pi/2;
+                    80+47 0;
+                    num -pi/2;
+                    50 0;
+                    num -pi/2;
+                    4 0;
+                    num pi/2;
+                    30 0;
+                    num -pi/2;
+                    4 0;
+                    num -pi/2;
+                    71+48 0]
+    elseif name == "basic"
+        # Basic experiment track
+        track_data = [60 0;
+                      80 -pi/2;
+                      20 0;
+                      80 -pi/2;
+                      40 pi/10;
+                      60 -pi/5;
+                      40 pi/10;
+                      80 -pi/2;
+                      20 0;
+                      80 -pi/2;
+                      75 0]
+    elseif name == "MSC_lab"
+        # TRACK TO USE IN THE SMALL EXPERIMENT ROOM
+        track_data = [10 0;
+                      140 -pi;
+                      20 0;
+                      140 -pi;
+                      10 0]
+    elseif name == "feature"
+        # FEATURE TRACK DATA
+        v = 2.5    
+        max_a=7.6;
+        R=v^2/max_a
+        max_c=1/R
+        angle=(pi+pi/2)-0.105
+        R_kin = 0.8
+        num_kin = Int(round(angle/ ( 0.03/R_kin ) * 2))
+        num = max(Int(round(angle/ ( 0.03/R ) * 2)),num_kin)
+        # num*=2
+        track_data=[num -angle;
+                    num  angle]
+    else
+        error("Please input the correct track name")
+    end
+    return track_data
+end
+
+function mpcSolPub(mpcSol_to_pub::mpc_solution,track::Track,modelParams::ModelParams,mpcSol::MpcSol,selectedStates::SelectedStates,z_curr::Array{Float64,1})
+    # VISUALIZATION COORDINATE CALCULATION FOR view_trajectory.jl NODE
+    (z_x,z_y) = trackFrame_to_xyFrame(mpcSol.z,track)
+    mpcSol_to_pub.z_x = z_x
+    mpcSol_to_pub.z_y = z_y
+    (SS_x,SS_y) = trackFrame_to_xyFrame(selectedStates.selStates,track)
+    mpcSol_to_pub.SS_x = SS_x
+    mpcSol_to_pub.SS_y = SS_y
+    mpcSol_to_pub.z_vx = mpcSol.z[:,4]
+    mpcSol_to_pub.SS_vx = selectedStates.selStates[:,4]
+    mpcSol_to_pub.z_s = mpcSol.z[:,1]
+    mpcSol_to_pub.SS_s = selectedStates.selStates[:,1]
+
+    # FORECASTING POINTS FROM THE DYNAMIC MODEL
+    if length(z_curr)==6
+        (z_fore,~,~) = car_pre_dyn(z_curr,mpcSol.u,track,modelParams,6)
+        (z_fore_x,z_fore_y) = trackFrame_to_xyFrame(z_fore,track)
+        mpcSol_to_pub.z_fore_x = z_fore_x
+        mpcSol_to_pub.z_fore_y = z_fore_y
+    end
+end
+
+function saveData(mpcSol::MpcSol,mpcParams::MpcParams,lapStatus::LapStatus,solHistory::SolHistory,oldSS::SafeSetData,mpcCoeff::MpcCoeff)
+    # DATA WRITING AND COUNTER UPDATE
+    log_cvx[lapStatus.currentIt,:,:,lapStatus.currentLap]         = mpcCoeff.c_Vx       
+    log_cvy[lapStatus.currentIt,:,:,lapStatus.currentLap]         = mpcCoeff.c_Vy       
+    log_cpsi[lapStatus.currentIt,:,:,lapStatus.currentLap]        = mpcCoeff.c_Psi
+
+    n_state = size(mpcSol.z,2)
+
+    mpcSol.a_x = mpcSol.u[1+mpcParams.delay_a,1] 
+    mpcSol.d_f = mpcSol.u[1+mpcParams.delay_df,2]
+    if length(mpcSol.df_his)==1
+        mpcSol.df_his[1] = mpcSol.u[1+mpcParams.delay_df,2]
+    else
+        # INPUT DELAY HISTORY UPDATE
+        mpcSol.df_his[1:end-1] = mpcSol.df_his[2:end]
+        mpcSol.df_his[end] = mpcSol.u[1+mpcParams.delay_df,2]
+    end
+    
+    solHistory.z[lapStatus.currentIt,lapStatus.currentLap,:,1:n_state]=mpcSol.z
+    solHistory.u[lapStatus.currentIt,lapStatus.currentLap,:,:]=mpcSol.u
+
+    # SAFESET DATA SAVING BASED ON CONTROLLER'S FREQUENCY
+    oldSS.oldSS[lapStatus.currentIt,:,lapStatus.currentLap]=[z_est[6],z_est[5],z_est[4],z_est[1],z_est[2],z_est[3]]
+    oldSS.cost2target[lapStatus.currentIt,lapStatus.currentLap]=lapStatus.currentIt
+end
+
+function lapSwitchUpdate(oldSS::SafeSetData,lapStatus::LapStatus,solHistory::SolHistory,mdl_pF::MpcModel_pF,mdl_convhull::MpcModel_convhull_dyn_iden,z_prev::Array{Float64,2})
+    # SAFE SET COST UPDATE
+    oldSS.oldCost[lapStatus.currentLap]     = lapStatus.currentIt-1
+    solHistory.cost[lapStatus.currentLap]   = lapStatus.currentIt-1
+    oldSS.cost2target[:,lapStatus.currentLap] = lapStatus.currentIt - oldSS.cost2target[:,lapStatus.currentLap]
+
+    lapStatus.nextLap = false
+
+    setvalue(mdl_pF.z_Ol[1:mpcParams.N,1],mpcSol.z[2:mpcParams.N+1,1]-posInfo.s_target)
+    setvalue(mdl_pF.z_Ol[mpcParams.N+1,1],mpcSol.z[mpcParams.N+1,1]-posInfo.s_target)
+    setvalue(mdl_convhull.z_Ol[1:mpcParams.N,1],mpcSol.z[2:mpcParams.N+1,1]-posInfo.s_target)
+    setvalue(mdl_convhull.z_Ol[mpcParams.N+1,1],mpcSol.z[mpcParams.N+1,1]-posInfo.s_target)
+
+    z_prev[:,1] -= posInfo.s_target
+
+    lapStatus.currentLap += 1
+    lapStatus.currentIt = 1
 end
