@@ -12,8 +12,8 @@ using JLD
 
 # log msg
 include("barc_lib/classes.jl")
-include("barc_lib/LMPC/functions.jl")
 include("barc_lib/LMPC/MPC_models.jl")
+include("barc_lib/LMPC/functions.jl")
 include("barc_lib/LMPC/coeffConstraintCost.jl")
 include("barc_lib/LMPC/solveMpcProblem.jl")
 include("barc_lib/simModel.jl")
@@ -34,61 +34,56 @@ function SE_callback(msg::pos_info,acc_f::Array{Float64},lapStatus::LapStatus,po
     elseif z_est[6] > lapStatus.s_lapTrigger
         lapStatus.switchLap = true
     end
-end
 
-function ST_callback(msg::pos_info,z_true::Array{Float64,1})
-    z_true[:] = [msg.v_x,msg.v_y,msg.psiDot] # signal before the estimator
+    # save current state in oldTraj
+    oldTraj.oldTraj[oldTraj.count[lapStatus.currentLap],:,lapStatus.currentLap] = z_est
+    oldTraj.count[lapStatus.currentLap] += 1
 end
 
 # This is the main function, it is called when the node is started.
 function main()
     println("Starting LMPC_Feature_Collecting node.")
-
-    # PARAMETER INITILIZATION
-    buffersize       = 5000       # size of oldTraj buffers
-
-    v = 2.5
-    max_a=7.6;
-    R=v^2/max_a
-    max_c=1/R
-    angle=(pi+pi/2)-0.105
-    R_kin = 0.8
-    num_kin = Int(round(angle/ ( 0.03/R_kin ) * 2))
-    num = max(Int(round(angle/ ( 0.03/R ) * 2)),num_kin)
-    # num*=2
-    track_data=[num -angle;
-                num  angle]
+    const BUFFERSIZE       = 500
+    const LMPC_LAP         = 10
+    const PF_FLAG          = true   # true:only pF,     false:1 warm-up lap and LMPC
+    const LMPC_FLAG        = true   # true:IDEN_MODEL,  false:IDEN_KIN_LIN_MODEL
+    const FEATURE_FLAG     = false  # true:8-shape,     false:history (this requires the corresponding change in 3 palces)
+    const TI_TV_FLAG       = true   # true:TI,          false:TV
+    const GP_LOCAL_FLAG    = false  # true:local GPR
+    const GP_FULL_FLAG     = false  # true:full GPR
+    const N                = 16
+    const delay_df         = 3
+    const delay_a          = 1
+    track_data       = createTrack("feature")
     track            = Track(track_data)
     oldTraj          = OldTrajectory()
     posInfo          = PosInfo();  posInfo.s_target=track.s;
+    lapStatus        = LapStatus(1,1,false,false,0.3)
     mpcCoeff         = MpcCoeff()
     mpcCoeff_dummy   = MpcCoeff()
-    lapStatus        = LapStatus(1,1,false,false,0.3)
     mpcSol           = MpcSol()
     modelParams      = ModelParams()
     mpcParams_pF     = MpcParams()
-    mpcParams        = MpcParams()  # a dummy parameter in feature data collecting
-    mpcParams_4s     = MpcParams()  # For kin_lin LMPC
+    mpcParams        = MpcParams()
+    mpcParams_4s     = MpcParams()
     selectedStates   = SelectedStates()
     oldSS            = SafeSetData()
     z_est            = zeros(7)          # (xDot, yDot, psiDot, ePsi, eY, s, acc_f)
-    z_true           = zeros(3)          # (xDot, yDot, psiDot)
     x_est            = zeros(4)          # (x, y, psi, v)
     cmd              = ECU()             # CONTROL SIGNAL MESSAGE INITIALIZATION
     mpcSol_to_pub    = mpc_solution()    # MPC SOLUTION PUBLISHING MESSAGE INITIALIZATION
-    solHistory = SolHistory(500,10,6,32)
-
+    InitializeParameters(mpcParams,mpcParams_4s,mpcParams_pF,modelParams,mpcSol,
+                         selectedStates,oldSS,oldTraj,mpcCoeff,mpcCoeff_dummy,
+                         LMPC_LAP,delay_df,delay_a,N,BUFFERSIZE)
+    
     # FEATURE DATA INITIALIZATION
     v_ref = vcat([0.8],0.8:0.05:2.5)
 
-    num_lap     = length(v_ref)
     feature_z   = zeros(100000,6,2)
     feature_u   = zeros(100000,2)
 
     # DATA LOGGING VARIABLE INITIALIZATION
     k = 1 # counter initialization, k is the counter from the beginning of the experiment
-
-    InitializeParameters(mpcParams,mpcParams_4s,mpcParams_pF,modelParams,posInfo,oldTraj,mpcCoeff,mpcCoeff_dummy,buffersize,selectedStates,oldSS)
 
     # MODEL INITIALIZATION
     mdl_pF           = MpcModel_pF(mpcParams_pF,modelParams)
@@ -101,7 +96,6 @@ function main()
     # The subscriber passes arguments (coeffCurvature and z_est) which are updated by the callback function:
     acc_f = [0.0]
     s1 = Subscriber("pos_info", pos_info, SE_callback, (acc_f,lapStatus,posInfo,mpcSol,oldTraj,z_est,x_est),queue_size=50)::RobotOS.Subscriber{barc.msg.pos_info}
-    s2 = Subscriber("real_val", pos_info, ST_callback, (z_true,), queue_size=1)::RobotOS.Subscriber{barc.msg.pos_info}
     # Note: Choose queue size long enough so that no pos_info packets get lost! They are important for system ID!
     run_id = get_param("run_id")
     println("Finished initialization.")
@@ -161,14 +155,14 @@ function main()
             mpcSol.z = z_sol
             mpcSol.u = u_sol
 
-            # ADDITIONAL NOISE ADDING, WHICH IS ONLY FOR SIMULATION
-            n=randn(2)
-            n_thre = [0.01,0.00001]
-            n.*=n_thre
-            n=min(n,n_thre)
-            n=max(n,[0,-0.00001])
-            u_sol[1+mpcParams_pF.delay_a,1]+=n[1]
-            # u_sol[1+mpcParams_pF.delay_df,2]+=n[2]
+            # # ADDITIONAL NOISE ADDING, WHICH IS ONLY FOR SIMULATION
+            # n=randn(2)
+            # n_thre = [0.01,0.00001]
+            # n.*=n_thre
+            # n=min(n,n_thre)
+            # n=max(n,[0,-0.00001])
+            # u_sol[1+mpcParams_pF.delay_a,1]+=n[1]
+            # # u_sol[1+mpcParams_pF.delay_df,2]+=n[2]
             
             mpcSol.a_x = u_sol[1+mpcParams_pF.delay_a,1] 
             mpcSol.d_f = u_sol[1+mpcParams_pF.delay_df,2]
@@ -222,7 +216,7 @@ function main()
     feature_z = feature_z[2+mpcParams.delay_df-1:k-1,:,:]
     feature_u = feature_u[2+mpcParams.delay_df-1:k-1,:]
     # DATA SAVING
-    save(log_path,"feature_z",feature_z,"feature_u",feature_u)
+    save(log_path,"feature_z",feature_z,"feature_u",feature_u,"oldTraj",oldTraj)
 end
 
 

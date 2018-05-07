@@ -12,13 +12,13 @@ using JLD
 
 # log msg
 include("barc_lib/classes.jl")
-include("barc_lib/LMPC/functions.jl")
 include("barc_lib/LMPC/MPC_models.jl")
+include("barc_lib/LMPC/functions.jl")
 include("barc_lib/LMPC/coeffConstraintCost.jl")
 include("barc_lib/LMPC/solveMpcProblem.jl")
 include("barc_lib/simModel.jl")
 
-function SE_callback(msg::pos_info,acc_f::Array{Float64},lapStatus::LapStatus,posInfo::PosInfo,mpcSol::MpcSol,z_est::Array{Float64,1},x_est::Array{Float64,1})
+function SE_callback(msg::pos_info,acc_f::Array{Float64},lapStatus::LapStatus,posInfo::PosInfo,mpcSol::MpcSol,oldTraj::OldTrajectory,z_est::Array{Float64,1},x_est::Array{Float64,1})
     z_est[:]                  = [msg.v_x,msg.v_y,msg.psiDot,msg.epsi,msg.ey,msg.s,acc_f[1]] # the last variable is filtered acceleration
     x_est[:]                  = [msg.x,msg.y,msg.psi,msg.v]  
     
@@ -28,18 +28,36 @@ function SE_callback(msg::pos_info,acc_f::Array{Float64},lapStatus::LapStatus,po
     elseif z_est[6] > lapStatus.s_lapTrigger
         lapStatus.switchLap = true
     end
+
+    # save current state in oldTraj
+    oldTraj.oldTraj[oldTraj.count[lapStatus.currentLap],:,lapStatus.currentLap] = z_est
+    oldTraj.count[lapStatus.currentLap] += 1
 end
 
 # This is the main function, it is called when the node is started.
 function main()
     println("Starting LMPC node.")
-
     const BUFFERSIZE       = 500
     const LMPC_LAP         = 10
-    const PF_FLAG          = true
-
+    const PF_FLAG          = false  # true:only pF,     false:1 warm-up lap and LMPC
+    const LMPC_FLAG        = false   # true:IDEN_MODEL,  false:IDEN_KIN_LIN_MODEL(if both flags are false)
+    const LMPC_DYN_FLAG    = true   # true:DYN_LIN_MODEL, false:IDEN_KIN_LIN_MODEL(if both flags are false)
+    const FEATURE_FLAG     = false  # true:8-shape,     false:history (this requires the corresponding change in 3 palces)
+    const NORM_SPACE_FLAG  = false  # true:2-norm,      false: space critirion
+    const TI_TV_FLAG       = true   # true:TI,          false:TV
+    const GP_LOCAL_FLAG    = false  # true:local GPR
+    const GP_FULL_FLAG     = false  # true:full GPR
+    const N                = 10
+    const delay_df         = 3
+    const delay_a          = 1
+    PF_FLAG ? println("Path following") : println("Learning MPC")
+    FEATURE_FLAG ? println("Feature data: 8-shape database") : println("Feature data: History data base")
+    TI_TV_FLAG ? println("Time invariant SYS_ID") : println("Time variant SYS_ID")
+    println("N=$N, delay_df=$delay_df, delay_a=$delay_a")
+    
     track_data       = createTrack("MSC_lab")
     track            = Track(track_data)
+    oldTraj          = OldTrajectory()
     posInfo          = PosInfo();  posInfo.s_target=track.s;
     lapStatus        = LapStatus(1,1,false,false,0.3)
     mpcCoeff         = MpcCoeff()
@@ -55,41 +73,11 @@ function main()
     x_est            = zeros(4)          # (x, y, psi, v)
     cmd              = ECU()             # CONTROL SIGNAL MESSAGE INITIALIZATION
     mpcSol_to_pub    = mpc_solution()    # MPC SOLUTION PUBLISHING MESSAGE INITIALIZATION
-
-    InitializeParameters(mpcSol,mpcParams,mpcParams_4s,mpcParams_pF,modelParams,posInfo,mpcCoeff,mpcCoeff_dummy,BUFFERSIZE,selectedStates,oldSS,LMPC_LAP)
-    z_prev              = mpcSol.z
-    u_prev              = mpcSol.u
-  
-    num_lap             = LMPC_LAP+1+selectedStates.Nl
-    log_cvx             = zeros(BUFFERSIZE,mpcParams.N,3,num_lap)
-    log_cvy             = zeros(BUFFERSIZE,mpcParams.N,4,num_lap)
-    log_cpsi            = zeros(BUFFERSIZE,mpcParams.N,3,num_lap)
-    solHistory          = SolHistory(BUFFERSIZE,mpcParams.N,6,num_lap)
-    
-    mdl_pF           = MpcModel_pF(mpcParams_pF,modelParams)
-    mdl_convhull     = MpcModel_convhull_dyn_iden(mpcParams,modelParams,selectedStates)
-    mdl_kin_lin      = MpcModel_convhull_kin_linear(mpcParams_4s,modelParams,selectedStates)
-
-    # FEATURE DATA READING
-    data = load("$(homedir())/simulations/Feature_Data/FeatureDataCollecting.jld")
-    feature_z = data["feature_z"]
-    feature_u = data["feature_u"]
-
-    # FEATURE DATA READING FOR GPR # THIS PART NEEDS TO BE COMMENTED OUT FOR THE FIRST TIME LMPC FOR GP DATA COLLECTING
-    # data = load("$(homedir())/simulations/Feature_Data/FeatureData_GP.jld")
-    # num_spare            = 30 # THE NUMBER OF POINTS SELECTED FOR SPARE GP
-    # feature_GP_z         = data["feature_GP_z"]
-    # feature_GP_u         = data["feature_GP_u"]
-    # feature_GP_vy_e      = data["feature_GP_vy_e"]
-    # feature_GP_psidot_e  = data["feature_GP_psidot_e"]
-    # feature_GP_z         = feature_GP_z[1:num_spare:end,:]
-    # feature_GP_u         = feature_GP_u[1:num_spare:end,:]
-    # feature_GP_vy_e      = feature_GP_vy_e[1:num_spare:end]
-    # feature_GP_psidot_e  = feature_GP_psidot_e[1:num_spare:end]
-
-    # GP_e_vy_prepare      = GP_prepare(feature_GP_vy_e,feature_GP_z,feature_GP_u)
-    # GP_e_psi_dot_prepare = GP_prepare(feature_GP_psidot_e,feature_GP_z,feature_GP_u)
-    # GP_feature           = hcat(feature_GP_z,feature_GP_u)
+    InitializeParameters(mpcParams,mpcParams_4s,mpcParams_pF,modelParams,mpcSol,
+                         selectedStates,oldSS,oldTraj,mpcCoeff,mpcCoeff_dummy,
+                         LMPC_LAP,delay_df,delay_a,N,BUFFERSIZE)
+    z_prev           = mpcSol.z
+    u_prev           = mpcSol.u
 
     # NODE INITIALIZATION
     init_node("mpc_traj")
@@ -97,187 +85,404 @@ function main()
     pub         = Publisher("ecu", ECU, queue_size=1)::RobotOS.Publisher{barc.msg.ECU}
     mpcSol_pub  = Publisher("mpc_solution", mpc_solution, queue_size=1)::RobotOS.Publisher{barc.msg.mpc_solution}; acc_f = [0.0]
     s1          = Subscriber("pos_info", pos_info, SE_callback, (acc_f,lapStatus,posInfo,mpcSol,oldTraj,z_est,x_est),queue_size=1)::RobotOS.Subscriber{barc.msg.pos_info}
-    s2          = Subscriber("real_val", pos_info, ST_callback, (z_true,), queue_size=1)::RobotOS.Subscriber{barc.msg.pos_info}
 
-    println("Finished LMPC NODE initialization.")
-    # PRECOMPILE THE FUNCTIONS NEEDED
-    include("functions_dummy_calls.jl")
-    
+    num_lap             = LMPC_LAP+1+max(selectedStates.Nl,selectedStates.feature_Nl)
+    log_cvx             = zeros(BUFFERSIZE,mpcParams.N,3,num_lap)
+    log_cvy             = zeros(BUFFERSIZE,mpcParams.N,4,num_lap)
+    log_cpsi            = zeros(BUFFERSIZE,mpcParams.N,3,num_lap)
+    solHistory          = SolHistory(BUFFERSIZE,mpcParams.N,6,num_lap)
+
+    mdl_pF           = MpcModel_pF(mpcParams_pF,modelParams)
+    mdl_convhull     = MpcModel_convhull_dyn_iden(mpcParams,modelParams,selectedStates)
+    mdl_kin_lin      = MpcModel_convhull_kin_linear(mpcParams_4s,modelParams,selectedStates)
+    mdl_dyn_lin      = MpcModel_convhull_dyn_linear(mpcParams,modelParams,selectedStates)
+
     if !PF_FLAG
+        # FUNCTION DUMMY CALLS: this is important to call all the functions that will be used before for initial compiling
+        data = load("$(homedir())/simulations/dummy_function/oldSS.jld") # oldSS.jld is a dummy data for initialization
+        oldSS_dummy = data["oldSS"]
+        lapStatus_dummy = LapStatus(1+max(selectedStates.feature_Nl,selectedStates.Nl),1,false,false,0.3)
+        selectedStates_dummy=find_SS(oldSS_dummy,selectedStates,z_prev,lapStatus_dummy,modelParams,mpcParams,track)
+        z = rand(1,6); u = rand(1,2)
+        data = load("$(homedir())/simulations/dummy_function/FeatureDataCollecting.jld")
+        feature_z = data["feature_z"]
+        feature_u = data["feature_u"]
+        (iden_z,iden_u)=find_feature_dist(feature_z,feature_u,z,u)
+        data = load("$(homedir())/simulations/path_following.jld") # oldSS.jld is a dummy data for initialization
+        solHistory_dummy = data["solHistory"]
+        (~,~,~)=find_feature_space(solHistory_dummy,5*ones(1,6),rand(1,2),lapStatus_dummy,selectedStates,posInfo)
+        (c_Vx,c_Vy,c_Psi)=coeff_iden_dist(iden_z,iden_u)
+        (~,~,~)=solveMpcProblem_convhull_dyn_iden(mdl_convhull,mpcSol,mpcCoeff,rand(6),rand(mpcParams.N+1,6),rand(mpcParams.N,2),selectedStates_dummy,track,rand(mpcParams.N),rand(mpcParams.N))
+        selectedStates_dummy.selStates=s6_to_s4(selectedStates_dummy.selStates)
+        (~,~,~)=solveMpcProblem_convhull_kin_linear(mdl_kin_lin,mpcParams_4s,modelParams,rand(mpcParams.N+1,4),rand(mpcParams.N,2),rand(mpcParams.N+1,4),rand(mpcParams.N,2),selectedStates_dummy,track)
+        (~,~,~)=car_pre_dyn(rand(1,6)+1,rand(mpcParams.N,2),track,modelParams,6)
+        (~,~,~)=find_SS_dist(solHistory,rand(1,6),rand(1,2),lapStatus,selectedStates)
+        (~,~,~)=solveMpcProblem_convhull_dyn_linear(mdl_dyn_lin,mpcParams,modelParams,lapStatus,z_linear,u_linear,z_prev,u_prev,selectedStates,track,GP_e_vy,GP_e_psidot)
+    end
+
+    if FEATURE_FLAG
+        # FEATURE DATA READING
+        data = load("$(homedir())/simulations/Feature_Data/FeatureDataCollecting.jld")
+        feature_z = data["feature_z"]
+        feature_u = data["feature_u"]
+    end
+
+    if GP_LOCAL_FLAG || GP_FULL_FLAG
+        # FEATURE DATA READING FOR GPR # THIS PART NEEDS TO BE COMMENTED OUT FOR THE FIRST TIME LMPC FOR GP DATA COLLECTING
+        data = load("$(homedir())/simulations/Feature_Data/FeatureData_GP.jld")
+        num_spare            = 30 # THE NUMBER OF POINTS SELECTED FOR SPARE GP
+        feature_GP_z         = data["feature_GP_z"]
+        feature_GP_u         = data["feature_GP_u"]
+        feature_GP_vy_e      = data["feature_GP_vy_e"]
+        feature_GP_psidot_e  = data["feature_GP_psidot_e"]
+        feature_GP_z         = feature_GP_z[1:num_spare:end,:]
+        feature_GP_u         = feature_GP_u[1:num_spare:end,:]
+        feature_GP_vy_e      = feature_GP_vy_e[1:num_spare:end]
+        feature_GP_psidot_e  = feature_GP_psidot_e[1:num_spare:end]
+
+        GP_e_vy_prepare      = GP_prepare(feature_GP_vy_e,feature_GP_z,feature_GP_u)
+        GP_e_psi_dot_prepare = GP_prepare(feature_GP_psidot_e,feature_GP_z,feature_GP_u)
+        GP_feature           = hcat(feature_GP_z,feature_GP_u)
+
+        # GP RELATED FUNCTION DUMMY CALLING
+        regre(rand(1,6),rand(1,2),feature_GP_vy_e,feature_GP_z,feature_GP_u)
+        GP_full(rand(1,6),rand(1,2),GP_feature,GP_e_vy_prepare)
+    else # THIS IS FOR COLLECTING FEATURE DATA FOR GPR
+        feature_GP_z         = zeros(10000,6)
+        feature_GP_u         = zeros(10000,2)
+        feature_GP_vy_e      = zeros(10000)
+        feature_GP_psidot_e  = zeros(10000)
+        k = 1
+    end
+    
+    if PF_FLAG
+        lapStatus.currentLap = 1
+    else
+        lapStatus.currentLap = 1+selectedStates.feature_Nl
         data  = load("$(homedir())/simulations/path_following.jld")
         oldSS = data["oldSS"]
+        solHistory = data["solHistory"]
     end
+
+    println("Finished LMPC NODE initialization.")
 
     while ! is_shutdown()
         if z_est[6] > 0    
             # CONTROL SIGNAL PUBLISHING
             cmd.header.stamp            = get_rostime()
             mpcSol_to_pub.header.stamp  = get_rostime()     
-
             publish(pub, cmd)
             publish(mpcSol_pub, mpcSol_to_pub)
 
             # LAP SWITCHING
             if lapStatus.nextLap
                 println("Finishing one lap at iteration ",lapStatus.currentIt)
-                lapSwitchUpdate(oldSS,lapStatus,solHistory,mdl_pF,mdl_convhull,z_prev)
+                # SAFE SET COST UPDATE
+                oldSS.oldCost[lapStatus.currentLap]     = lapStatus.currentIt-1
+                solHistory.cost[lapStatus.currentLap]   = lapStatus.currentIt-1
+                oldSS.cost2target[:,lapStatus.currentLap] = lapStatus.currentIt - oldSS.cost2target[:,lapStatus.currentLap]
+
+                lapStatus.nextLap = false
+
+                setvalue(mdl_pF.z_Ol[1:mpcParams.N,1],mpcSol.z[2:mpcParams.N+1,1]-posInfo.s_target)
+                setvalue(mdl_pF.z_Ol[mpcParams.N+1,1],mpcSol.z[mpcParams.N+1,1]-posInfo.s_target)
+                setvalue(mdl_convhull.z_Ol[1:mpcParams.N,1],mpcSol.z[2:mpcParams.N+1,1]-posInfo.s_target)
+                setvalue(mdl_convhull.z_Ol[mpcParams.N+1,1],mpcSol.z[mpcParams.N+1,1]-posInfo.s_target)
+
+                z_prev[:,1] -= posInfo.s_target
+
+                lapStatus.currentLap += 1
+                lapStatus.currentIt = 1
             end
 
-            # OPTIMIZATION
-            println("$sol_status Current Lap: ", lapStatus.currentLap, ", It: ", lapStatus.currentIt, " v: $(z_est[1])")
-            if lapStatus.currentLap<=1+selectedStates.Nl
+            # MPC CONTROLLER OPTIMIZATION
+            if lapStatus.currentLap<=1+selectedStates.feature_Nl # pF CONTROLLER
                 # (xDot, yDot, psiDot, ePsi, eY, s, acc_f)
                 z_curr = [z_est[6],z_est[5],z_est[4],sqrt(z_est[1]^2+z_est[2]^2)]
                 (mpcSol.z,mpcSol.u,sol_status) = solveMpcProblem_pathFollow(mdl_pF,mpcParams_pF,modelParams,mpcSol,z_curr,z_prev,u_prev,track)
-                z_prev      = copy(mpcSol.z)
-                u_prev      = copy(mpcSol.u)
-            else
+            else # LMPC CONTROLLER
                 # FOR QUICK LMPC STARTING, the next time, change the path following lap number to 1 and change the initial lapStatus to selectedStates.
-                save("$(homedir())/simulations/path_following.jld","oldSS",oldSS)
-                tic()
+                if PF_FLAG
+                    save("$(homedir())/simulations/path_following.jld","oldSS",oldSS,"solHistory",solHistory)
+                end
+                
                 # (xDot, yDot, psiDot, ePsi, eY, s, acc_f)
                 z_curr = [z_est[6],z_est[5],z_est[4],z_est[1],z_est[2],z_est[3]]
                 
-                ######################################################################
-                ############### CHOICE 1: DO MPC ON SYS_ID MODEL #####################
-                ######################################################################
-                # SAFESET POINT SELECTION
-                selectedStates=find_SS(oldSS,selectedStates,z_prev,lapStatus,modelParams,mpcParams,track)
-                # PREPARE THE PREVIOUS SOLUTION FOR LMPC
-                if size(z_prev,2)==4
-                    z_prev = hcat(z_prev,zeros(size(z_prev,1),2))
-                end
-        
-                # # TV SYS_ID                
-                # z_to_iden = vcat(z_curr',z_prev[3:end,:])
-                # u_to_iden = vcat(u_prev[2:end,:],u_prev[end,:])
-                # for i in 1:mpcParams.N
-                #     z = z_to_iden[i,:]
-                #     u = u_to_iden[i,:]
-                #     (iden_z,iden_u)=find_feature_dist(feature_z,feature_u,z,u)
-                #     (mpcCoeff.c_Vx[i,:],mpcCoeff.c_Vy[i,:],mpcCoeff.c_Psi[i,:])=coeff_iden_dist(iden_z,iden_u)
-                # end
+                if LMPC_FLAG
+                    ######################################################################
+                    ############### CHOICE 1: DO MPC ON SYS_ID MODEL #####################
+                    ######################################################################
+                    tic()
+                    # PREPARE THE PREVIOUS SOLUTION FOR LMPC, WHEN SWITCHING FROM pF TO LMPC
+                    if size(z_prev,2)==4
+                        z_prev = hcat(z_prev,zeros(size(z_prev,1),2))
+                    end
+                    # SYS_ID
+                    if !TI_TV_FLAG
+                        # TV SYS_ID                
+                        z_to_iden = vcat(z_curr',z_prev[3:end,:])
+                        u_to_iden = vcat(u_prev[2:end,:],u_prev[end,:])
+                        for i in 1:mpcParams.N
+                            if FEATURE_FLAG
+                                # SELECTING THE FEATURE POINTS FROM DATASET
+                                (iden_z,iden_u,z_iden_plot)=find_feature_dist(feature_z,feature_u,z_to_iden[i,:],u_to_iden[i,:])
+                            else
+                                if NORM_SPACE_FLAG
+                                    # SELECTING THE FEATURE POINTS FROM HISTORY BASED ON 2-NORM CRITERION
+                                    (iden_z,iden_u,z_iden_plot)=find_SS_dist(solHistory,z_to_iden[i,:],u_to_iden[i,:],lapStatus,selectedStates)
+                                else
+                                    # SELECTING THE FEATURE POINTS FROM HISTORY BASED ON SPATIAL CRITERION
+                                    (iden_z,iden_u,z_iden_plot)=find_feature_space(solHistory,z_to_iden[i,:],u_to_iden[i,:],lapStatus,selectedStates,posInfo)
+                                end
+                            end
+                            (mpcCoeff.c_Vx[i,:],mpcCoeff.c_Vy[i,:],mpcCoeff.c_Psi[i,:])=coeff_iden_dist(iden_z,iden_u)
+                        end
+                    else
+                        # TI SYS_ID
+                        if FEATURE_FLAG
+                            # SELECTING THE FEATURE POINTS FROM DATASET
+                            (iden_z,iden_u,z_iden_plot)=find_feature_dist(feature_z,feature_u,z_curr',u_prev[2,:])
+                        else
+                            if NORM_SPACE_FLAG
+                                # SELECTING THE FEATURE POINTS FROM HISTORY
+                                (iden_z,iden_u,z_iden_plot)=find_SS_dist(solHistory,z_curr',u_prev[2,:],lapStatus,selectedStates)
+                            else
+                                (iden_z,iden_u,z_iden_plot)=find_feature_space(solHistory,z_curr',u_prev[2,:],lapStatus,selectedStates,posInfo)
+                            end
+                        end
+                        (mpcCoeff.c_Vx[1,:],mpcCoeff.c_Vy[1,:],mpcCoeff.c_Psi[1,:])=coeff_iden_dist(iden_z,iden_u)
+                        for i in 2:mpcParams.N
+                            mpcCoeff.c_Vx[i,:]=mpcCoeff.c_Vx[1,:]
+                            mpcCoeff.c_Vy[i,:]=mpcCoeff.c_Vy[1,:]
+                            mpcCoeff.c_Psi[i,:]=mpcCoeff.c_Psi[1,:]
+                        end
+                    end
+                    # GPR DISTURBANCE ID
+                    GP_e_vy     = zeros(mpcParams.N)
+                    GP_e_psidot = zeros(mpcParams.N)
+                    for i = 1:mpcParams.N
+                        if GP_LOCAL_FLAG
+                            GP_e_vy[i]      = regre(z_to_iden[i],u_to_iden[i,:],feature_GP_vy_e,feature_GP_z,feature_GP_u)
+                            GP_e_psidot[i]  = regre(z_to_iden[i],u_to_iden[i,:],feature_GP_vy_e,feature_GP_z,feature_GP_u)
+                        elseif GP_FULL_FLAG
+                            GP_e_vy[i]      = GP_full(z_to_iden[i],u_to_iden[i,:],GP_feature,GP_e_vy_prepare)
+                            GP_e_psidot[i]  = GP_full(z_to_iden[i],u_to_iden[i,:],GP_feature,GP_e_psi_dot_prepare)
+                        else
+                            GP_e_vy[i]      = 0
+                            GP_e_psidot[i]  = 0
+                        end
+                    end
 
-                # TI SYS_ID
-                z_to_iden = vcat(z_curr',z_prev[3:end,:])
-                u_to_iden = vcat(u_prev[2:end,:],u_prev[end,:])
-                z = z_to_iden[1,:]
-                u = u_to_iden[1,:]
-                # println("input from LMPC node",u)
-                # u[2] = mpcSol.df_his[1]
-
-                # SELECTING THE FEATURE POINTS FROM DATASET
-                (iden_z,iden_u,z_iden_plot)=find_feature_dist(feature_z,feature_u,z,u)
-                # println(z_curr)
-                # println(hcat(iden_z[:,:,1],iden_u))
-                # # SELECTING THE FEATURE POINTS FROM HISTORY
-                # (iden_z,iden_u,z_iden_plot)=find_SS_dist(solHistory,z_curr',u_prev[2,:],lapStatus)
-
-                (z_iden_x, z_iden_y) = trackFrame_to_xyFrame(z_iden_plot,track)
-                mpcSol_to_pub.z_iden_x = z_iden_x
-                mpcSol_to_pub.z_iden_y = z_iden_y
-                
-                (mpcCoeff.c_Vx[1,:],mpcCoeff.c_Vy[1,:],mpcCoeff.c_Psi[1,:])=coeff_iden_dist(iden_z,iden_u)
-                for i in 2:mpcParams.N
-                    mpcCoeff.c_Vx[i,:]=mpcCoeff.c_Vx[1,:]
-                    mpcCoeff.c_Vy[i,:]=mpcCoeff.c_Vy[1,:]
-                    mpcCoeff.c_Psi[i,:]=mpcCoeff.c_Psi[1,:]
-                end
-                toc()
-                tic()
-                (mpcSol.z,mpcSol.u,sol_status)=solveMpcProblem_convhull_dyn_iden(mdl_convhull,mpcParams,mpcSol,mpcCoeff,lapStatus,z_curr,z_prev,u_prev,selectedStates,track)
-                toc()
-                ######################################################################
-                ############### CHOICE 1: DO MPC ON KIN_LIN MODEL ####################
-                ######################################################################
-                # z_linear=zeros(mpcParams_4s.N+1,4)
-                # z_linear[1,:]=s6_to_s4(z_curr')
-                # u_linear=vcat(u_prev[2:end,:],u_prev[end,:])
-                # z_dummy=copy(z_curr) # 6-dimension state is needed for forecasting forward
-                
-                # # TV SYS_ID
-                # # for i=1:size(z_linear,1)-1
-                # #     (iden_z,iden_u,z_iden_plot)=find_feature_dist(feature_z,feature_u,z_dummy',u_linear[i,:])
-                # #     (mpcCoeff_dummy.c_Vx,mpcCoeff_dummy.c_Vy,mpcCoeff_dummy.c_Psi)=coeff_iden_dist(iden_z,iden_u)
-                # #     z_dummy=car_sim_iden_tv(z_dummy,u_linear[i,:],0.1,mpcCoeff_dummy,modelParams,track)
-                # #     z_linear[i+1,:]=s6_to_s4(z_dummy')
-                # # end
-
-                # # TI SYS_ID
-                # (iden_z,iden_u,z_iden_plot)=find_feature_dist(feature_z,feature_u,z_dummy',u_linear[1,:])
-                # (mpcCoeff_dummy.c_Vx,mpcCoeff_dummy.c_Vy,mpcCoeff_dummy.c_Psi)=coeff_iden_dist(iden_z,iden_u)
-                
-                # # tic()
-                # for i=1:size(z_linear,1)-1
-                # #     # # LOCAL GP
-                # #     # GP_e_vy      = regre(z_dummy,u_linear[i,:],feature_GP_vy_e,feature_GP_z,feature_GP_u)
-                # #     # GP_e_psi_dot = regre(z_dummy,u_linear[i,:],feature_GP_vy_e,feature_GP_z,feature_GP_u)
+                    # FEATURE POINTS VISUALIZATION
+                    (z_iden_x, z_iden_y) = trackFrame_to_xyFrame(z_iden_plot,track)
+                    mpcSol_to_pub.z_iden_x = z_iden_x
+                    mpcSol_to_pub.z_iden_y = z_iden_y
+                    toc() # TIME FOR PREPARATION
                     
-                # #     # FULL GP
-                # #     GP_e_vy      = GP_full(z_dummy,u_linear[i,:],GP_feature,GP_e_vy_prepare)
-                # #     GP_e_psi_dot = GP_full(z_dummy,u_linear[i,:],GP_feature,GP_e_psi_dot_prepare)
+                    # SAFESET POINT SELECTION
+                    selectedStates=find_SS(oldSS,selectedStates,z_prev,lapStatus,modelParams,mpcParams,track)
                     
-                # #     # THRESHOLDING
-                # #     GP_e_vy      = min(0.025,GP_e_vy)
-                # #     GP_e_vy      = max(-0.025,GP_e_vy)
-                # #     GP_e_psi_dot = min(0.1,GP_e_psi_dot)
-                # #     GP_e_psi_dot = max(-0.1,GP_e_psi_dot)
+                    tic()
+                    (mpcSol.z,mpcSol.u,sol_status)=solveMpcProblem_convhull_dyn_iden(mdl_convhull,mpcSol,mpcCoeff,z_curr,z_prev,u_prev,selectedStates,track,GP_e_vy,GP_e_psidot)
+                    toc() # TIME FOR OPTIMIZATION
+                elseif LMPC_DYN_FLAG # USING LINEARIZED DYNAMIC MODEL FOR LMPC, 6 STATES LMPC CONTROLLER 
+                    # PREPARE THE PREVIOUS SOLUTION FOR LMPC, WHEN SWITCHING FROM pF TO LMPC
+                    if size(z_prev,2)==4
+                        z_prev = hcat(z_prev,zeros(size(z_prev,1),2))
+                    end
+                    # SAFESET POINT SELECTION
+                    selectedStates=find_SS(oldSS,selectedStates,z_prev,lapStatus,modelParams,mpcParams,track)
 
-                #     z_dummy=car_sim_iden_tv(z_dummy,u_linear[i,:],0.1,mpcCoeff_dummy,modelParams,track)
-                # #     println("GP_e_vy",GP_e_vy)
-                # #     z_dummy[5] += GP_e_vy[1]
-                # #     z_dummy[6] += GP_e_psi_dot[1]
-                #     z_linear[i+1,:]=s6_to_s4(z_dummy')
-                # end   
-                # # t = toc();
-                # # println("GP time is", t)             
+                    # GPR DISTURBANCE ID
+                    GP_e_vy     = zeros(mpcParams.N)
+                    GP_e_psidot = zeros(mpcParams.N)
+                    for i = 1:mpcParams.N
+                        if GP_LOCAL_FLAG
+                            GP_e_vy[i]      = regre(z_to_iden[i],u_to_iden[i,:],feature_GP_vy_e,feature_GP_z,feature_GP_u)
+                            GP_e_psidot[i]  = regre(z_to_iden[i],u_to_iden[i,:],feature_GP_vy_e,feature_GP_z,feature_GP_u)
+                        elseif GP_FULL_FLAG
+                            GP_e_vy[i]      = GP_full(z_to_iden[i],u_to_iden[i,:],GP_feature,GP_e_vy_prepare)
+                            GP_e_psidot[i]  = GP_full(z_to_iden[i],u_to_iden[i,:],GP_feature,GP_e_psi_dot_prepare)
+                        else
+                            GP_e_vy[i]      = 0
+                            GP_e_psidot[i]  = 0
+                        end
+                    end
+                    solveMpcProblem_convhull_dyn_linear(mdl_dyn_lin,mpcParams,modelParams,lapStatus,z_linear,u_linear,z_prev,u_prev,selectedStates,track,GP_e_vy,GP_e_psidot)
 
-                # # Safe set selection
-                # selectedStates=find_SS(oldSS,selectedStates,z_prev,lapStatus,modelParams,mpcParams_4s,track)
-                # # selectedStates_kin=deepcopy(selectedStates)
-                # selectedStates.selStates=s6_to_s4(selectedStates.selStates)
+                else 
+                    ######################################################################
+                    ############### CHOICE 2: DO MPC ON KIN_LIN MODEL ####################
+                    ######################################################################
+                    tic()
+                    z_linear        = zeros(mpcParams_4s.N+1,4)
+                    z_linear[1,:]   = s6_to_s4(z_curr')
+                    u_linear        = vcat(u_prev[2:end,:],u_prev[end,:])
+                    z_dummy         = copy(z_curr) # 6-dimension state is needed for forecasting forward
+                    
+                    if !TI_TV_FLAG
+                        # TV SYS_ID
+                        for i=1:size(z_linear,1)-1 
+                            # LMS SYS ID
+                            if FEATURE_FLAG
+                                (iden_z,iden_u,z_iden_plot)=find_feature_dist(feature_z,feature_u,z_dummy',u_linear[i,:])
+                            else
+                                (iden_z,iden_u,z_iden_plot)=find_SS_dist(solHistory,z_dummy',u_linear[i,:],lapStatus,selectedStates)
+                            end
+                            (mpcCoeff_dummy.c_Vx,mpcCoeff_dummy.c_Vy,mpcCoeff_dummy.c_Psi)=coeff_iden_dist(iden_z,iden_u)
+                            z_dummy=car_sim_iden_tv(z_dummy,u_linear[i,:],0.1,mpcCoeff_dummy,modelParams,track)
+                            # GPR DISTURBANCE ID
+                            if GP_LOCAL_FLAG
+                                GP_e_vy      = regre(z_dummy,u_linear[i,:],feature_GP_vy_e,feature_GP_z,feature_GP_u)
+                                GP_e_psidot  = regre(z_dummy,u_linear[i,:],feature_GP_vy_e,feature_GP_z,feature_GP_u)
+                            elseif GP_FULL_FLAG
+                                GP_e_vy      = GP_full(z_dummy,u_linear[i,:],GP_feature,GP_e_vy_prepare)
+                                GP_e_psidot  = GP_full(z_dummy,u_linear[i,:],GP_feature,GP_e_psi_dot_prepare)
+                            else
+                                GP_e_vy      = 0
+                                GP_e_psidot  = 0
+                            end
+
+                            z_dummy[5] += GP_e_vy
+                            z_dummy[6] += GP_e_psidot
+                            z_linear[i+1,:]=s6_to_s4(z_dummy')
+                        end
+                    else
+                        # TI SYS_ID
+                        if FEATURE_FLAG # LMS SYS ID
+                            (iden_z,iden_u,z_iden_plot)=find_feature_dist(feature_z,feature_u,z_dummy',u_linear[1,:])
+                        else
+                            (iden_z,iden_u,z_iden_plot)=find_SS_dist(solHistory,z_dummy',u_linear[1,:],lapStatus,selectedStates)
+                        end
+                        (mpcCoeff_dummy.c_Vx,mpcCoeff_dummy.c_Vy,mpcCoeff_dummy.c_Psi)=coeff_iden_dist(iden_z,iden_u)
+                        
+                        for i=1:size(z_linear,1)-1 # GPR DISTURBANCE ID
+                            if GP_LOCAL_FLAG
+                                GP_e_vy      = regre(z_dummy,u_linear[i,:],feature_GP_vy_e,feature_GP_z,feature_GP_u)
+                                GP_e_psidot  = regre(z_dummy,u_linear[i,:],feature_GP_vy_e,feature_GP_z,feature_GP_u)
+                            elseif GP_FULL_FLAG
+                                GP_e_vy      = GP_full(z_dummy,u_linear[i,:],GP_feature,GP_e_vy_prepare)
+                                GP_e_psidot  = GP_full(z_dummy,u_linear[i,:],GP_feature,GP_e_psi_dot_prepare)
+                            else
+                                GP_e_vy      = 0
+                                GP_e_psidot  = 0
+                            end
+                            # THRESHOLDING
+                            GP_e_vy      = min(0.025,GP_e_vy)
+                            GP_e_vy      = max(-0.025,GP_e_vy)
+                            GP_e_psidot = min(0.1,GP_e_psidot)
+                            GP_e_psidot = max(-0.1,GP_e_psidot)
+
+                            z_dummy=car_sim_iden_tv(z_dummy,u_linear[i,:],0.1,mpcCoeff_dummy,modelParams,track)
+                            println("GP_e_vy",GP_e_vy)
+                            z_dummy[5] += GP_e_vy[1]
+                            z_dummy[6] += GP_e_psidot[1]
+                            z_linear[i+1,:] = s6_to_s4(z_dummy')
+                        end
+                    end # end of TI/TV
+                    # SAFESET SELECTION
+                    selectedStates=find_SS(oldSS,selectedStates,z_prev,lapStatus,modelParams,mpcParams_4s,track)
+                    selectedStates.selStates=s6_to_s4(selectedStates.selStates)
+                    toc()
+                    
+                    tic()
+                    (mpcSol.z,mpcSol.u,sol_status)=solveMpcProblem_convhull_kin_linear(mdl_kin_lin,mpcParams_4s,modelParams,lapStatus,z_linear,u_linear,z_prev,u_prev,selectedStates,track)
+                    toc()
+                end # end of IF:IDEN_MODEL/IDEN_KIN_LIN_MODEL
                 
-                # # t = toc();
-                # # println("elapse prepare time: $t")
-
-                # tic();
-                # (mpcSol.z,mpcSol.u,sol_status)=solveMpcProblem_convhull_kin_linear(mdl_kin_lin,mpcParams_4s,modelParams,lapStatus,z_linear,u_linear,z_prev,u_prev,selectedStates,track)
-                # t = toc();
-                # println("elapse MPC time: $t")
-
+                # BACK-UP FOR POSSIBLE NON-OPTIMAL SOLUTION
                 sol_status_dummy = "$sol_status"
                 if sol_status_dummy[1] != 'O'
                     mpcSol.u=copy(u_prev)
-                    (mpcSol.z,~,~)=car_pre_dyn(z_curr,mpcSol.u,track,modelParams,6)
+                    if LMPC_FLAG || LMPC_DYN_FLAG
+                        (mpcSol.z,~,~)=car_pre_dyn(z_curr,mpcSol.u,track,modelParams,6)
+                    else
+                        (mpcSol.z,~,~)=car_pre_dyn(z_curr,mpcSol.u,track,modelParams,4)
+                    end
                 end
+
+                # COLLECT ONE STEP PREDICTION ERROR FOR GPR 
+                if !GP_LOCAL_FLAG && !GP_FULL_FLAG
+                    feature_GP_z[k,:]       = z_prev[1,:]
+                    feature_GP_u[k,:]       = u_prev[1,:]
+                    feature_GP_vy_e[k]      = z_curr[5]-z_prev[2,5]
+                    feature_GP_psidot_e[k]  = z_curr[6]-z_prev[2,6]
+                    k += 1 
+                end
+            end # end of IF:pF/LMPC
+            # tic()
+            # DATA WRITING AND COUNTER UPDATE
+            log_cvx[lapStatus.currentIt,:,:,lapStatus.currentLap]   = mpcCoeff.c_Vx       
+            log_cvy[lapStatus.currentIt,:,:,lapStatus.currentLap]   = mpcCoeff.c_Vy       
+            log_cpsi[lapStatus.currentIt,:,:,lapStatus.currentLap]  = mpcCoeff.c_Psi
+
+            n_state = size(mpcSol.z,2)
+
+            mpcSol.a_x = mpcSol.u[1+mpcParams.delay_a,1] 
+            mpcSol.d_f = mpcSol.u[1+mpcParams.delay_df,2]
+            if length(mpcSol.df_his)==1
+                mpcSol.df_his[1] = mpcSol.u[1+mpcParams.delay_df,2]
+            else
+                # INPUT DELAY HISTORY UPDATE
+                mpcSol.df_his[1:end-1] = mpcSol.df_his[2:end]
+                mpcSol.df_his[end] = mpcSol.u[1+mpcParams.delay_df,2]
             end
             
-            # WRITE DATA TO BE SAVED AND UPDATE mpcSol
-            saveData(mpcSol,lapStatus,solHistory,oldSS,mpcCoeff)
-            # CALCULATE DATA TO BE PLOTTED
-            mpcSolPub(mpcSol_to_pub,track,modelParams,mpcSol,selectedStates)
+            solHistory.z[lapStatus.currentIt,lapStatus.currentLap,:,1:n_state]=mpcSol.z
+            solHistory.z[lapStatus.currentIt,lapStatus.currentLap,1,5:6]=[z_est[2],z_est[3]] # THIS LINE IS REALLY IMPORTANT FOR SYS_ID FROM pF
+            solHistory.u[lapStatus.currentIt,lapStatus.currentLap,:,:]=mpcSol.u
 
+            # SAFESET DATA SAVING BASED ON CONTROLLER'S FREQUENCY
+            oldSS.oldSS[lapStatus.currentIt,:,lapStatus.currentLap]=[z_est[6],z_est[5],z_est[4],z_est[1],z_est[2],z_est[3]]
+            oldSS.cost2target[lapStatus.currentIt,lapStatus.currentLap]=lapStatus.currentIt
+
+            # VISUALIZATION COORDINATE CALCULATION FOR view_trajectory.jl NODE
+            (z_x,z_y) = trackFrame_to_xyFrame(mpcSol.z,track)
+            mpcSol_to_pub.z_x = z_x
+            mpcSol_to_pub.z_y = z_y
+            (SS_x,SS_y) = trackFrame_to_xyFrame(selectedStates.selStates,track)
+            mpcSol_to_pub.SS_x = SS_x
+            mpcSol_to_pub.SS_y = SS_y
+            mpcSol_to_pub.z_vx = mpcSol.z[:,4]
+            mpcSol_to_pub.SS_vx = selectedStates.selStates[:,4]
+            mpcSol_to_pub.z_s = mpcSol.z[:,1]
+            mpcSol_to_pub.SS_s = selectedStates.selStates[:,1]
+            # FORECASTING POINTS FROM THE DYNAMIC MODEL
+            if length(z_curr)==6
+                (z_fore,~,~) = car_pre_dyn(z_curr,mpcSol.u,track,modelParams,6)
+                (z_fore_x,z_fore_y) = trackFrame_to_xyFrame(z_fore,track)
+                mpcSol_to_pub.z_fore_x = z_fore_x
+                mpcSol_to_pub.z_fore_y = z_fore_y
+            end
+
+            # DATA UPDATE
             cmd.motor   = convert(Float32,mpcSol.a_x)
             cmd.servo   = convert(Float32,mpcSol.d_f)
             z_prev      = copy(mpcSol.z)
             u_prev      = copy(mpcSol.u)
             lapStatus.currentIt += 1
+            # toc()
+            println("$sol_status Current Lap: ", lapStatus.currentLap, ", It: ", lapStatus.currentIt, " v: $(z_est[1])")
         else
             println("No estimation data received!")
         end
         rossleep(loop_rate)
     end # END OF THE WHILE LOOP
     # DATA SAVING
-    run_id      = get_param("run_id")
-    log_path = "$(homedir())/simulations/LMPC-$(run_id[1:4]).jld"
-    if isfile(log_path)
-        log_path = "$(homedir())/simulations/LMPC-$(run_id[1:4])-2.jld"
-        warn("Warning: File already exists.")
+    run_time = Dates.format(now(),"yyyy-mm-dd-H:M")
+    log_path = "$(homedir())/simulations/LMPC-$(run_time).jld"
+    save(log_path,"log_cvx",log_cvx,"log_cvy",log_cvy,"log_cpsi",log_cpsi,
+                  "oldTraj",oldTraj,"oldSS",oldSS,"solHistory",solHistory,
+                  "track_data",track_data)
+    # COLLECT ONE STEP PREDICTION ERROR FOR GPR 
+    if !GP_LOCAL_FLAG && !GP_FULL_FLAG
+        run_time = Dates.format(now(),"yyyy-mm-dd-H:M")
+        log_path = "$(homedir())/simulations/Feature_Data/FeatureData_GP-$(run_time).jld"
+        save(log_path,"feature_GP_z",feature_GP_z,"feature_GP_u",feature_GP_u,"feature_GP_vy_e",feature_GP_vy_e,"feature_GP_psidot_e",feature_GP_psidot_e) 
     end
-    save(log_path,"log_cvx",log_cvx,"log_cvy",log_cvy,"log_cpsi",log_cpsi,"oldSS",oldSS,"solHistory",solHistory,"track_data",track_data)
     println("Exiting LMPC node. Saved data to $log_path.")
 end
-
 
 if ! isinteractive()
     main()

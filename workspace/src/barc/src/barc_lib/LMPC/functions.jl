@@ -128,9 +128,10 @@ function find_feature_dist(z_feature::Array{Float64,3},u_feature::Array{Float64,
 end
 
 # THE DIFFERENCE TO THE FUNCTON ABOVE IS THAT THIS ONE IS SELECTING THE FEATURE POINTS FROM THE HISTORY
-function find_SS_dist(solHistory::SolHistory,z_curr::Array{Float64,2},u_curr::Array{Float64,2},lapStatus::LapStatus)
+function find_SS_dist(solHistory::SolHistory,z_curr::Array{Float64,2},u_curr::Array{Float64,2},lapStatus::LapStatus,selectedStates::SelectedStates)
 
-    Nl=2; Np=50
+    Nl=selectedStates.feature_Nl
+    Np=selectedStates.feature_Np
     # Clear the safe set data of previous iteration
     iden_z=zeros(Np,3,2)
     iden_z_plot=zeros(Np,6)
@@ -147,14 +148,14 @@ function find_SS_dist(solHistory::SolHistory,z_curr::Array{Float64,2},u_curr::Ar
     # collect out all the state and input history data
     # at maximum, Nl laps data will be collected, it was actually reshaped into the whole history
     for i=max(1,lapStatus.currentLap-Nl):max(1,(lapStatus.currentLap-1))
-        dummy_state=vcat(dummy_state,reshape(solHistory.z[1:Int(solHistory.cost[i]),i,1,:],Int(solHistory.cost[i]),6))
-        dummy_input=vcat(dummy_input,reshape(solHistory.u[1:Int(solHistory.cost[i]),i,1,:],Int(solHistory.cost[i]),2))
+        dummy_state=vcat(dummy_state,reshape(solHistory.z[2:Int(solHistory.cost[i]),i,1,:],Int(solHistory.cost[i])-1,6))
+        dummy_input=vcat(dummy_input,reshape(solHistory.u[1:Int(solHistory.cost[i])-1,i,2,:],Int(solHistory.cost[i])-1,2))
     end
     cal_state=vcat(cal_state,hcat(dummy_state,dummy_input))
     dummy_norm=zeros(size(dummy_state,1)-1,2)
     for i=1:size(dummy_state,1)-1 # The last state point will be removed
         # dummy_norm[i,1]=norm((curr_state-cal_state[i,vcat(1,4:8)]')./norm_state) # this is the state after normalization
-        norm_dist=(curr_state.-cal_state[i,4:8])./norm_state
+        norm_dist=(curr_state.-cal_state[i,4:8])#./norm_state
         dummy_norm[i,1]=norm_dist[1]^2+norm_dist[2]^2+norm_dist[3]^2+norm_dist[4]^2+norm_dist[5]^2
         # dummy_norm[i,1]=norm((curr_state-cal_state[i,4:8])./norm_state) # this is the state after normalization
         dummy_norm[i,2]=i
@@ -270,7 +271,6 @@ function find_SS(safeSetData::SafeSetData,selectedStates::SelectedStates,
         # println(size(SS_curr))
         # println("Size of SS_cost is")
         # println(size(SScost_curr))
-        
         if idx_s_start<1
             # println("lapStatus:",lapStatus)
             # println("oldCost:",safeSetData.oldCost[1:5])
@@ -306,15 +306,42 @@ function find_SS(safeSetData::SafeSetData,selectedStates::SelectedStates,
     return selectedStates
 end
 
-# FUNCTION FOR PARAMETERS INITIALIZATION
-function InitializeParameters(mpcSol::MpcSol,mpcParams::MpcParams,mpcParams_4s::MpcParams,mpcParams_pF::MpcParams,modelParams::ModelParams,
-                              posInfo::PosInfo,mpcCoeff::MpcCoeff,mpcCoeff_dummy::MpcCoeff,buffersize::Int64,
-                              selectedStates::SelectedStates,oldSS::SafeSetData,LMPC_LAP::Int64)
+function find_feature_space(solHistory::SolHistory,z_curr::Array{Float64,2},u_curr::Array{Float64,2},lapStatus::LapStatus,selectedStates::SelectedStates,posInfo::PosInfo)
+    n_front = Int(round(0.66*selectedStates.feature_Np))
+    n_rear  = Int(round(0.44*selectedStates.feature_Np))
+    Nl = selectedStates.feature_Nl
+    dummy_state=Array{Float64}(0,6)
+    dummy_input=Array{Float64}(0,2)
 
-    simulator_flag  = true     # set this to TRUE if SIMULATOR is in use, set this to FALSE if BARC is in use
-    N               = 16
-    delay_df        = 3
-    delay_a         = 1
+    iden_z      =zeros(Nl*(n_front+n_rear+1)-1,3,2)
+    iden_z_plot =zeros(Nl*(n_front+n_rear+1)-1,6)
+    iden_u      =zeros(Nl*(n_front+n_rear+1)-1,2)
+
+    for i = lapStatus.currentLap-Nl:lapStatus.currentLap-1
+        state=reshape(solHistory.z[2:Int(solHistory.cost[i]),i,1,:],Int(solHistory.cost[i])-1,6)
+        input=reshape(solHistory.u[1:Int(solHistory.cost[i])-1,i,2,:],Int(solHistory.cost[i])-1,2)
+        state_rear = state[end-n_rear:end,:]
+        state_rear[:,1] -= posInfo.s_target
+        state_front = state[1:n_front,:]
+        state_front[:,1] += posInfo.s_target
+        state=vcat(state_rear,state,state_front)
+        (~,idx)=findmin(abs(state[:,1]-z_curr[1]))
+        # println(state[1:20,1])
+        # println(z_curr)
+        dummy_state=vcat(dummy_state,state[idx-n_rear:idx+n_front,:])
+        dummy_input=vcat(dummy_input,input[idx-n_rear:idx+n_front,:])
+    end
+    iden_z[:,:,1] = dummy_state[1:end-1,4:6]
+    iden_z[:,:,1] = dummy_state[2:end,4:6]
+    iden_u[:,:] = dummy_input[1:end-1,:]
+    iden_z_plot[:,:] = dummy_state[1:end-1,:]
+    return iden_z, iden_u, iden_z_plot
+end
+
+function InitializeParameters(mpcParams::MpcParams,mpcParams_4s::MpcParams,mpcParams_pF::MpcParams,modelParams::ModelParams,mpcSol::MpcSol,
+                              selectedStates::SelectedStates,oldSS::SafeSetData,oldTraj::OldTrajectory,mpcCoeff::MpcCoeff,mpcCoeff_dummy::MpcCoeff,
+                              LMPC_LAP::Int64,delay_df::Int64,delay_a::Int64,N::Int64,BUFFERSIZE::Int64)
+    simulator_flag   = true
 
     if simulator_flag == false   # if the BARC is in use
 
@@ -337,7 +364,7 @@ function InitializeParameters(mpcSol::MpcSol,mpcParams::MpcParams,mpcParams_4s::
         mpcParams_4s.Q_term_cost    = 3e-1 # scaling of Q-function
         mpcParams_4s.Q_lane         = 100.0 # weight on the soft constraint for the lane bounds
         mpcParams_4s.Q_slack        = 5.0*[1,1,1,1]
-    
+
     elseif simulator_flag == true  # if the simulator is in use
 
         mpcParams.N                 = N
@@ -363,7 +390,9 @@ function InitializeParameters(mpcSol::MpcSol,mpcParams::MpcParams,mpcParams_4s::
 
     selectedStates.Np           = 10        # please select an even number
     selectedStates.Nl           = 2         # Number of previous laps to include in the convex hull
-    selectedStates.selStates    = zeros(selectedStates.Nl*selectedStates.Np,6)  
+    selectedStates.feature_Np   = 20        # Number of points from previous laps to do SYS_ID
+    selectedStates.feature_Nl   = 1         # Number of previous laps to do SYS_ID 
+    selectedStates.selStates    = zeros(selectedStates.Nl*selectedStates.Np,6)
     selectedStates.statesCost   = zeros(selectedStates.Nl*selectedStates.Np)
 
     mpcParams_pF.N              = N
@@ -384,11 +413,14 @@ function InitializeParameters(mpcSol::MpcSol,mpcParams::MpcParams,mpcParams_4s::
 
     num_lap = 1 + selectedStates.Nl + LMPC_LAP
 
-    oldSS.oldSS                 = NaN*ones(buffersize,6,num_lap)    # contains data from previous laps usefull to build the safe set
-    oldSS.oldSS_xy              = NaN*ones(buffersize,4,num_lap)          
-    oldSS.cost2target           = zeros(buffersize,num_lap)         # cost to arrive at the target, i.e. how many iterations from the start to the end of the lap
+    oldSS.oldSS                 = NaN*ones(BUFFERSIZE,6,num_lap)    # contains data from previous laps usefull to build the safe set
+    oldSS.oldSS_xy              = NaN*ones(BUFFERSIZE,4,num_lap)          
+    oldSS.cost2target           = zeros(BUFFERSIZE,num_lap)         # cost to arrive at the target, i.e. how many iterations from the start to the end of the lap
     oldSS.oldCost               = ones(Int64,num_lap)               # contains costs of laps
     oldSS.count                 = ones(num_lap)*2                   # contains the counter for each lap
+
+    oldTraj.oldTraj             = NaN*ones(5*BUFFERSIZE,7,num_lap)
+    oldTraj.count               = ones(num_lap)
 
     mpcCoeff.c_Vx               = zeros(mpcParams.N,3)
     mpcCoeff.c_Vy               = zeros(mpcParams.N,4)
@@ -402,13 +434,13 @@ function InitializeParameters(mpcSol::MpcSol,mpcParams::MpcParams,mpcParams_4s::
     mpcSol.u    = hcat(0.5*ones(N),zeros(N))
     mpcSol.z[1,4] = 1.0 # give the vehcile some initial speed to simulate forward
     for i in 2:N+1
-        mpcSol.z[i,:]=car_sim_kin(mpcSol.z[i-1,:],mpcSol.u[i-1,:],track,modelParams)
+        mpcSol.z[i,4]=1.0
+        mpcSol.z[i,1]=mpcSol.z[i-1,1]+0.1
     end
     mpcSol.a_x  = 0
     mpcSol.d_f  = 0
     mpcSol.df_his = zeros(delay_df) # DELAT COMES FROM TWO PARTS, ONLY THE SYSTEM DELAY NEEDS TO BE CONSIDERED
 end
-
 
 function s6_to_s4(z::Array{Float64})
     if size(z,1)==1
@@ -727,71 +759,4 @@ function createTrack(name::ASCIIString)
         error("Please input the correct track name")
     end
     return track_data
-end
-
-function mpcSolPub(mpcSol_to_pub::mpc_solution,track::Track,modelParams::ModelParams,mpcSol::MpcSol,selectedStates::SelectedStates,z_curr::Array{Float64,1})
-    # VISUALIZATION COORDINATE CALCULATION FOR view_trajectory.jl NODE
-    (z_x,z_y) = trackFrame_to_xyFrame(mpcSol.z,track)
-    mpcSol_to_pub.z_x = z_x
-    mpcSol_to_pub.z_y = z_y
-    (SS_x,SS_y) = trackFrame_to_xyFrame(selectedStates.selStates,track)
-    mpcSol_to_pub.SS_x = SS_x
-    mpcSol_to_pub.SS_y = SS_y
-    mpcSol_to_pub.z_vx = mpcSol.z[:,4]
-    mpcSol_to_pub.SS_vx = selectedStates.selStates[:,4]
-    mpcSol_to_pub.z_s = mpcSol.z[:,1]
-    mpcSol_to_pub.SS_s = selectedStates.selStates[:,1]
-
-    # FORECASTING POINTS FROM THE DYNAMIC MODEL
-    if length(z_curr)==6
-        (z_fore,~,~) = car_pre_dyn(z_curr,mpcSol.u,track,modelParams,6)
-        (z_fore_x,z_fore_y) = trackFrame_to_xyFrame(z_fore,track)
-        mpcSol_to_pub.z_fore_x = z_fore_x
-        mpcSol_to_pub.z_fore_y = z_fore_y
-    end
-end
-
-function saveData(mpcSol::MpcSol,mpcParams::MpcParams,lapStatus::LapStatus,solHistory::SolHistory,oldSS::SafeSetData,mpcCoeff::MpcCoeff)
-    # DATA WRITING AND COUNTER UPDATE
-    log_cvx[lapStatus.currentIt,:,:,lapStatus.currentLap]         = mpcCoeff.c_Vx       
-    log_cvy[lapStatus.currentIt,:,:,lapStatus.currentLap]         = mpcCoeff.c_Vy       
-    log_cpsi[lapStatus.currentIt,:,:,lapStatus.currentLap]        = mpcCoeff.c_Psi
-
-    n_state = size(mpcSol.z,2)
-
-    mpcSol.a_x = mpcSol.u[1+mpcParams.delay_a,1] 
-    mpcSol.d_f = mpcSol.u[1+mpcParams.delay_df,2]
-    if length(mpcSol.df_his)==1
-        mpcSol.df_his[1] = mpcSol.u[1+mpcParams.delay_df,2]
-    else
-        # INPUT DELAY HISTORY UPDATE
-        mpcSol.df_his[1:end-1] = mpcSol.df_his[2:end]
-        mpcSol.df_his[end] = mpcSol.u[1+mpcParams.delay_df,2]
-    end
-    
-    solHistory.z[lapStatus.currentIt,lapStatus.currentLap,:,1:n_state]=mpcSol.z
-    solHistory.u[lapStatus.currentIt,lapStatus.currentLap,:,:]=mpcSol.u
-
-    # SAFESET DATA SAVING BASED ON CONTROLLER'S FREQUENCY
-    oldSS.oldSS[lapStatus.currentIt,:,lapStatus.currentLap]=[z_est[6],z_est[5],z_est[4],z_est[1],z_est[2],z_est[3]]
-    oldSS.cost2target[lapStatus.currentIt,lapStatus.currentLap]=lapStatus.currentIt
-end
-
-function lapSwitchUpdate(oldSS::SafeSetData,lapStatus::LapStatus,solHistory::SolHistory,mdl_pF::MpcModel_pF,mdl_convhull::MpcModel_convhull_dyn_iden,z_prev::Array{Float64,2})
-    # SAFE SET COST UPDATE
-    oldSS.oldCost[lapStatus.currentLap]     = lapStatus.currentIt-1
-    solHistory.cost[lapStatus.currentLap]   = lapStatus.currentIt-1
-    oldSS.cost2target[:,lapStatus.currentLap] = lapStatus.currentIt - oldSS.cost2target[:,lapStatus.currentLap]
-
-    lapStatus.nextLap = false
-
-    setvalue(mdl_pF.z_Ol[1:mpcParams.N,1],mpcSol.z[2:mpcParams.N+1,1]-posInfo.s_target)
-    setvalue(mdl_pF.z_Ol[mpcParams.N+1,1],mpcSol.z[mpcParams.N+1,1]-posInfo.s_target)
-    setvalue(mdl_convhull.z_Ol[1:mpcParams.N,1],mpcSol.z[2:mpcParams.N+1,1]-posInfo.s_target)
-    setvalue(mdl_convhull.z_Ol[mpcParams.N+1,1],mpcSol.z[mpcParams.N+1,1]-posInfo.s_target)
-
-    z_prev[:,1] -= posInfo.s_target
-
-    lapStatus.currentLap += 1
-    lapStatus.currentIt = 1
 end

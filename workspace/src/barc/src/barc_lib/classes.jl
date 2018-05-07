@@ -22,13 +22,8 @@ end
 
 type OldTrajectory      # information about previous trajectories
     oldTraj::Array{Float64}             # contains all states over all laps
-    oldInput::Array{Float64}            # contains all inputs
-    oldTimes::Array{Float64}            # contains times related to states and inputs
-    oldCost::Array{Int64}               # contains costs of laps
     count::Array{Int64}                 # contains the counter for each lap
-    idx_start::Array{Int64}             # index of the first measurement with s > 0
-    idx_end::Array{Int64}               # index of the last measurement with s < s_target
-    OldTrajectory(oldTraj=Float64[],oldInput=Float64[],oldTimes=Float64[],oldCost=Float64[],count=Int64[],idx_start=Int64[],idx_end=Int64[]) = new(oldTraj,oldInput,oldTimes,oldCost,count,idx_start,idx_end)
+    OldTrajectory(oldTraj=Float64[],count=Int64[]) = new(oldTraj,count)
 end
 
 type SolHistory
@@ -51,8 +46,8 @@ type SafeSetData
     oldCost::Array{Int64}               # contains costs of laps
     count::Array{Int64}                 # contains the counter for each lap
     oldSS_xy::Array{Float64}
-    SafeSetData(oldSS=Float64[],cost2target=Float64[],oldCost=Int64[],count=Int64[],idx_start=Int64[],idx_end=Int64[],oldSS_xy=Float64[]) =
-    new(oldSS,cost2target,oldCost,count,idx_start,idx_end,oldSS_xy)
+    SafeSetData(oldSS=Float64[],cost2target=Float64[],oldCost=Int64[],count=Int64[],oldSS_xy=Float64[]) =
+    new(oldSS,cost2target,oldCost,count,oldSS_xy)
 end
 
 type SelectedStates                 # Values needed for the convex hull formulation
@@ -60,7 +55,9 @@ type SelectedStates                 # Values needed for the convex hull formulat
     statesCost::Array{Float64}      # ... and their related costs
     Np::Int64                       # number of states to select from each previous lap
     Nl::Int64                       # number of previous laps to include in the convex hull
-    SelectedStates(selStates=Float64[],statesCost=Float64[],Np=10,Nl=2) = new(selStates,statesCost,Np,Nl)
+    feature_Np::Int64               # this is for feature points selcted from history
+    feature_Nl::Int64               # this is for feature points selected from history
+    SelectedStates(selStates=Float64[],statesCost=Float64[],Np=10,Nl=2,feature_Np=30,feature_Nl=5) = new(selStates,statesCost,Np,Nl,feature_Np,feature_Nl)
 end
 
 type MpcParams          # parameters for MPC solver
@@ -155,8 +152,8 @@ type Track
         track=new()
 
         xy=[0.0 0.0] # 1.x 2.y
-        # theta=[0.0]
-        theta=[pi/4]
+        theta=[0.0]
+        # theta=[pi/4]
         curvature=[0.0]
         ds=0.03 # length of each segment
         width=0.8

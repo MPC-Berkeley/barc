@@ -260,7 +260,7 @@ class Localization(object):
     def find_s(self):
         # SINCE THE TRACK FOR COLLECTING THE FEATURE DATA HAS OVERLAPPING PART, ONLY A LIMITED A MOUNT OF DATA FROM THE TRACK IS USED TO DO LOCALIZATION FOR S
         # IN THE EXPERIMENT, THE LENGTH OF THE LOCALIZAITON CANDIDATES MIGHT BE LONGER
-        l_ran = 2 # LOCALIZATION RANGE
+        l_ran = 3 # LOCALIZATION RANGE
         if self.s > self.track_s[-1]-l_ran:
             idx_candidate_1 = (self.track_s+l_ran>=self.track_s[-1])
             idx_candidate_2 = (self.track_s<=l_ran)
@@ -269,7 +269,6 @@ class Localization(object):
             nodes_candidate = array([x_candidate,y_candidate])
             s_candidate = hstack((self.track_s[idx_candidate_1],self.track_s[idx_candidate_2]))
             idx_curr_candidate = hstack((self.track_idx[idx_candidate_1],self.track_idx[idx_candidate_2]))
-            
         else:
             dist_s = self.track_s - self.s
             idx_candidate = (dist_s>=0) & (dist_s<l_ran) # the car can travel 0.3m maximumly within 0.1s  
