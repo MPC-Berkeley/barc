@@ -155,7 +155,7 @@ type Track
         theta=[0.0]
         # theta=[pi/4]
         curvature=[0.0]
-        ds=0.03 # length of each segment
+        ds=0.01 # length of each segment
         width=0.8
         # bound1xy=[0.0 width/2]
         # bound2xy=[0.0 -width/2]

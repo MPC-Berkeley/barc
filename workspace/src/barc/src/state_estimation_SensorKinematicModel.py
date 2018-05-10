@@ -63,6 +63,14 @@ class StateEst(object):
     c_X = array([0,0,0])
     c_Y = array([0,0,0])
 
+    # real_val: true data
+    x_true = 0.0
+    y_true = 0.0
+    vx_true = 0.0
+    vy_true = 0.0
+    yaw_true = 0.0
+    psidot_true = 0.0
+
     # Estimator data
     x_est = 0.0
     y_est = 0.0
@@ -80,6 +88,16 @@ class StateEst(object):
         self.cmd_servo = data.servo        # input steering angle [rad]
         if not self.running:               # set 'running' to True once the first command is received -> here yaw is going to be set to zero
             self.running = True
+
+    # TRUE CALL BACK: only for simulator
+    def true_callback(self, data):
+        self.x_true = data.x
+        self.y_true = data.y
+        self.vx_true = data.v_x
+        self.vy_true = data.v_y
+        self.yaw_true = data.psi
+        self.psidot_true = data.psiDot
+        # print(data.psiDot)
 
     # ultrasound gps data
     def gps_callback(self, data):
@@ -165,11 +183,12 @@ class StateEst(object):
         a_x = data.linear_acceleration.x
         a_y = data.linear_acceleration.y
         a_z = data.linear_acceleration.z
-
+        # print("a_z from estimator",a_z)
         self.psiDot_meas = w_z
         # The next two lines 'project' the measured linear accelerations to a horizontal plane
         self.a_x_meas = cos(-pitch_raw)*a_x + sin(-pitch_raw)*sin(-roll_raw)*a_y - sin(-pitch_raw)*cos(-roll_raw)*a_z
         self.a_y_meas = cos(-roll_raw)*a_y + sin(-roll_raw)*a_z
+
         #self.a_x_meas = a_x
         #self.a_y_meas = a_y
         self.att = (roll_raw,pitch_raw,yaw_raw)
@@ -200,6 +219,7 @@ def state_estimation():
     rospy.Subscriber('vel_est', Vel_est, se.encoder_vel_callback, queue_size=1)
     rospy.Subscriber('ecu', ECU, se.ecu_callback, queue_size=1)
     rospy.Subscriber('hedge_pos', hedge_pos, se.gps_callback, queue_size=1)
+    rospy.Subscriber('real_val', pos_info, se.true_callback, queue_size=1)
     state_pub_pos = rospy.Publisher('pos_info', pos_info, queue_size=1)
 
     # get vehicle dimension parameters
@@ -227,6 +247,7 @@ def state_estimation():
     R = diag([4*5.0,4*5.0,1.0,2*10.0,2*100.0,1000.0,1000.0,     4*5.0,4*5.0,10.0,1.0, 10.0,10.0])
     R = diag([1*5.0,1*5.0,1.0,2*10.0,2*100.0,1000.0,1000.0,     1*5.0,1*5.0,10.0,1.0, 10.0,10.0])
     #         x,y,v,psi,psiDot,a_x,a_y, x, y, psi, v
+    # R = diag([1*5.0,1*5.0,1.0,2*10.0,2*100.0,50.0,1.0,     1*5.0,1*5.0,10.0,1.0, 10.0,10.0])
 
     # Set up track parameters
     l = Localization()
@@ -266,10 +287,10 @@ def state_estimation():
         # d_f_lp = d_f_lp + 0.5*(se.cmd_servo-d_f_lp) # low pass filter on steering
         # a_lp = a_lp + 1.0*(se.cmd_motor-a_lp)       # low pass filter on acceleration
         # u = [a_lp, d_f_hist.pop(0)]
-        u = [se.cmd_motor, d_f_hist.pop(0)]     # this is with 0.2s delay for steering without low pass filter
+        # u = [se.cmd_motor, d_f_hist.pop(0)]     # this is with 0.2s delay for steering without low pass filter
         # print(d_f_hist)
         # # define input without delay
-        # u = [se.cmd_motor, se.cmd_servo]
+        u = [se.cmd_motor, se.cmd_servo]
 
         bta = 0.5 * u[1]
 
@@ -296,6 +317,7 @@ def state_estimation():
 
         # Update track position
         l.set_pos(x_est_2, y_est_2, psi_est_2, v_x_est, v_y_est, psi_dot_est)
+        # l.set_pos(se.x_true, se.y_true, se.yaw_true, se.vx_true, se.vy_true, se.psidot_true)
 
 
         # Calculate new s, ey, epsi (only 12.5 Hz, enough for controller that runs at 10 Hz)

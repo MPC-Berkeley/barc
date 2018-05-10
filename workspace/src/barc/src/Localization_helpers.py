@@ -45,7 +45,7 @@ class Localization(object):
     nodes               = array([0])            # x-y coordinate of the track
     nodes_bound1        = array([0])
     nodes_bound2        = array([0])
-    ds                  = 0.03                  # distance between nodes
+    ds                  = 0.01                  # distance between nodes
     track_s             = 0
     track_idx           = 0
     curvature           = 0
@@ -64,7 +64,7 @@ class Localization(object):
     def create_track(self):
         x = array([0])           # starting point
         y = array([0])
-        ds = 0.03
+        ds = 0.01
         theta = array([0])
         curvature = array([0])
 
@@ -94,7 +94,7 @@ class Localization(object):
 
     def create_feature_track(self):
         # BASIC PARAMETERS INITIALIZATION
-        ds = 0.03
+        ds = self.ds
         width =0.8
         theta = array([pi/4])
         # theta = array([0])
@@ -118,8 +118,8 @@ class Localization(object):
         max_c=1/R
         angle=(pi+pi/2)-0.105
         R_kin = 0.8
-        num_kin = int(round(angle/ ( 0.03/R_kin ) * 2))
-        num = max(int(round(angle/ ( 0.03/R ) * 2)),num_kin)
+        num_kin = int(round(angle/ ( ds/R_kin ) * 2))
+        num = max(int(round(angle/ ( ds/R ) * 2)),num_kin)
         # num*=2
         # TRACK DATA CALCULATION
         theta, curvature = add_curve(theta,curvature,num,-angle)
@@ -144,7 +144,7 @@ class Localization(object):
         self.theta = theta
         self.curvature = curvature
         self.n = size(x)
-        self.track_s = array([0.03*i for i in range(self.n)])
+        self.track_s = array([ds*i for i in range(self.n)])
         self.track_idx = array([i for i in range(self.n)])
         self.ds = ds
         print "number of nodes: %i"%self.n
@@ -152,7 +152,7 @@ class Localization(object):
 
     def create_race_track(self):
         # BASIC PARAMETERS INITIALIZATION
-        ds = 0.03
+        ds = self.ds
         width =0.8
         theta = array([0])
         # theta = array([0])
@@ -210,11 +210,11 @@ class Localization(object):
         #               [80, -pi/2],
         #               [75, 0]]
         # TRACK FOR THE SMALL EXPERIMENT ROOM
-        track_data = [[10, 0],
-                      [140, -pi],
-                      [20, 0],
-                      [140, -pi],
-                      [10, 0]]
+        track_data = [[3*2*10, 0],
+                      [3*2*140, -pi],
+                      [3*2*20, 0],
+                      [3*2*140, -pi],
+                      [3*2*10, 0]]
                       
         for i in range(len(track_data)):
             num = track_data[i][0]
@@ -241,7 +241,7 @@ class Localization(object):
         self.theta = theta
         self.curvature = curvature
         self.n = size(x)
-        self.track_s = array([0.03*i for i in range(self.n)])
+        self.track_s = array([ds*i for i in range(self.n)])
         self.track_idx = array([i for i in range(self.n)])
         self.ds = ds
         print "number of nodes: %i"%self.n
@@ -271,7 +271,8 @@ class Localization(object):
             idx_curr_candidate = hstack((self.track_idx[idx_candidate_1],self.track_idx[idx_candidate_2]))
         else:
             dist_s = self.track_s - self.s
-            idx_candidate = (dist_s>=0) & (dist_s<l_ran) # the car can travel 0.3m maximumly within 0.1s  
+            # idx_candidate = (dist_s>=0) & (dist_s<l_ran) # the car can travel 0.3m maximumly within 0.1s  
+            idx_candidate = (dist_s<100)
             x_candidate = self.nodes[0,:][idx_candidate]
             y_candidate = self.nodes[1,:][idx_candidate]
             nodes_candidate = array([x_candidate,y_candidate])

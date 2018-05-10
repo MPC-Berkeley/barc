@@ -83,6 +83,8 @@ def f_SensorKinematicModel(z, u, vhMdl, dt, est_mode):
     zNext[1] = z[1] + dt*(sin(z[6])*z[2] + cos(z[6])*z[3])          # y
     zNext[2] = z[2] + dt*(z[4]+z[7]*z[3])                           # v_x
     zNext[3] = z[3] + dt*(z[5]-z[7]*z[2])                           # v_y
+    # print((z[5]))
+    # print((z[5]-z[7]*z[2]))
     zNext[4] = z[4]                                                 # a_x
     zNext[5] = z[5]                                                 # a_y
     zNext[6] = z[6] + dt*(z[7])                                     # psi
@@ -91,7 +93,7 @@ def f_SensorKinematicModel(z, u, vhMdl, dt, est_mode):
     zNext[9] = z[9] + dt*(z[12]*cos(z[11] + bta))                   # x
     zNext[10] = z[10] + dt*(z[12]*sin(z[11] + bta))                 # y
     zNext[11] = z[11] + dt*(z[12]/l_B*sin(bta))                     # psi
-    zNext[12] = z[12] + dt*(u[0] - 0.5*z[12])                       # v
+    zNext[12] = z[12] + dt*(u[0] - 0.05*z[12])                       # v
     zNext[13] = z[13]                                               # drift_psi_2
     return array(zNext)
 

@@ -124,9 +124,9 @@ function main()
         t_ros   = get_rostime()
         t       = to_sec(t_ros)
         # # print(t)
-        if sizeof(cmd_log.z[t.>cmd_log.t+0.2,2]) >= 1
-           u_current[2] = cmd_log.z[t.>=cmd_log.t+0.2,2][end]       # artificial steering input delay
-        end
+        # if sizeof(cmd_log.z[t.>cmd_log.t+0.2,2]) >= 1
+        #    u_current[2] = cmd_log.z[t.>=cmd_log.t+0.2,2][end]       # artificial steering input delay
+        # end
         # update current state with a new row vector
         
         # z_current[i,:],slip_ang[i,:]  = simDynModel_exact_xy(z_current[i-1,:], u_current', dt, modelParams)
@@ -138,7 +138,7 @@ function main()
         # u_current[2] = u_temp
 
         # println(d_f_his)
-        # println("input from simulator node",u_current)
+        # println("input from simulator node",round(u_current,2))
         z_current[i,:],slip_ang[i,:]  = simDynModel_xy(z_current[i-1,:], u_current', dt, modelParams)
 
         z_real.t_msg[i] = t
@@ -169,7 +169,7 @@ function main()
             imu_meas.t[imu_meas.i] = t
             imu_meas.z[imu_meas.i,:] = [yaw psiDot]
             imu_meas.i += 1
-            imu_data.orientation = geometry_msgs.msg.Quaternion(cos(yaw/2), sin(yaw/2), 0, 0)
+            imu_data.orientation = geometry_msgs.msg.Quaternion(0, 0, sin(yaw/2), cos(yaw/2))
             imu_data.angular_velocity = Vector3(0,0,psiDot)
             imu_data.header.stamp = t_ros
 
@@ -180,7 +180,7 @@ function main()
                 rand_accX=-0.1
             end
 
-            imu_data.linear_acceleration.x = diff(z_current[i-1:i,3])[1]/dt - z_current[i,6]*z_current[i,4] +rand_accX#+ randn()*0.3*1.0
+            imu_data.linear_acceleration.x = diff(z_current[i-1:i,3])[1]/dt - z_current[i-1,6]*z_current[i-1,4] +rand_accX#+ randn()*0.3*1.0
 
             rand_accY = 0.01*randn()
             if rand_accY > 0.1
@@ -189,13 +189,16 @@ function main()
                 rand_accY=-0.1
             end
 
-            imu_data.linear_acceleration.y = diff(z_current[i-1:i,4])[1]/dt + z_current[i,6]*z_current[i,3] +rand_accY#+ randn()*0.3*1.0
+            # imu_data.linear_acceleration.y = diff(z_current[i-1:i,4])[1]/dt + z_current[i,6]*z_current[i,3] +rand_accY#+ randn()*0.3*1.0
+            imu_data.linear_acceleration.y = (z_current[i,4]-z_current[i-1,4])/dt + z_current[i-1,6]*z_current[i-1,3] +rand_accY#+ randn()*0.3*1.0
             publish(pub_imu, imu_data)      # Imu format is defined by ROS, you can look it up by google "rosmsg Imu"
                                             # It's sufficient to only fill the orientation part of the Imu-type (with one quaternion)
+            # println("ay from simulator:",imu_data.linear_acceleration.y)
+            real_data.a_y = imu_data.linear_acceleration.y
         end
 
         # real values
-        if i%2 == 0
+        if i%6 == 0
             # ADDITIONAL NOISE ADDING
             n=randn(3)
             n_thre = [0.02,0.005,0.05]*0.1
@@ -212,6 +215,7 @@ function main()
             real_data.x      = z_current[i,1]
             real_data.y      = z_current[i,2]
             publish(real_val,real_data)
+
         end
 
         # Velocity measurements
@@ -269,6 +273,8 @@ function main()
             end
             sim_gps_interrupt -= 1
         end
+        # println("True state from LMPC nodes",[real_data.v_x,real_data.v_y,real_data.psiDot])
+
         i += 1
         rossleep(loop_rate)
     end

@@ -47,7 +47,7 @@ end
 function find_idx(z::Array{Float64,2},track::Track)
     idx = Int(ceil(z[1]/track.ds)+1)
     idx>track.n_node ? idx=idx%track.n_node : nothing
-    idx<0 ? idx+=track.n_node : nothing
+    idx<=0 ? idx+=track.n_node : nothing
     return idx
 end
 
@@ -89,6 +89,30 @@ function trackFrame_to_xyFrame(z_sol::Array{Float64,2},track::Track)
         z_y[i]=y
     end
     return z_x, z_y
+end
+
+function xyFrame_to_trackFrame(z::Array{Float64,1},track::Track)
+    # x,y,vx,vy,psi,psidot -> s,ey,epsi,vx,vy,psidot
+    dist = (z[1]-track.xy[:,1]).^2 + (z[2]-track.xy[:,2]).^2
+    (val_min,idx_min)=findmin(dist)
+    s = (idx_min-1)*track.ds
+    theta = track.theta[idx_min]
+    epsi = z[5] - theta
+    # println(epsi)
+    while abs(epsi)>pi
+        epsi = (epsi+2*pi)
+    end
+    epsi = epsi % pi
+    # println(epsi)
+    ey = sqrt(val_min)
+    bound1_dist = (z[1]-track.bound1xy[idx_min,1]).^2 + (z[2]-track.bound1xy[idx_min,2]).^2
+    bound2_dist = (z[1]-track.bound2xy[idx_min,1]).^2 + (z[2]-track.bound2xy[idx_min,2]).^2
+    if bound1_dist > bound2_dist
+        ey = -ey
+    else
+        ey = ey
+    end
+    return [s,ey,epsi,z[3],z[4],z[6]]
 end
 
 # FUNCTIONS FOR FEATURE DATA SELECTING AND SYS_ID
@@ -148,8 +172,8 @@ function find_SS_dist(solHistory::SolHistory,z_curr::Array{Float64,2},u_curr::Ar
     # collect out all the state and input history data
     # at maximum, Nl laps data will be collected, it was actually reshaped into the whole history
     for i=max(1,lapStatus.currentLap-Nl):max(1,(lapStatus.currentLap-1))
-        dummy_state=vcat(dummy_state,reshape(solHistory.z[2:Int(solHistory.cost[i]),i,1,:],Int(solHistory.cost[i])-1,6))
-        dummy_input=vcat(dummy_input,reshape(solHistory.u[1:Int(solHistory.cost[i])-1,i,2,:],Int(solHistory.cost[i])-1,2))
+        dummy_state=vcat(dummy_state,reshape(solHistory.z[1:Int(solHistory.cost[i]),i,1,:],Int(solHistory.cost[i]),6))
+        dummy_input=vcat(dummy_input,reshape(solHistory.u[1:Int(solHistory.cost[i]),i,1,:],Int(solHistory.cost[i]),2))
     end
     cal_state=vcat(cal_state,hcat(dummy_state,dummy_input))
     dummy_norm=zeros(size(dummy_state,1)-1,2)
@@ -233,6 +257,10 @@ function coeff_iden_dist(idenStates::Array{Float64,3},idenInputs::Array{Float64,
     # println("c_Vx is $c_Vx")
     # println("c_Vx is $c_Vy")
     # println("c_Vx is $c_Psi")
+    c_Vx[1] = max(-0.3,min(0.3,c_Vx[1]))
+    c_Vy[2] = max(-1,min(1,c_Vy[2]))
+    c_Vy[3] = max(-1,min(1,c_Vy[3]))
+
     return c_Vx, c_Vy, c_Psi
 end
 
@@ -280,13 +308,13 @@ function find_SS(safeSetData::SafeSetData,selectedStates::SelectedStates,
             SScost_curr[1:idx_s_end]-=cost # correction when switching lap
             selectedStates.statesCost=vcat(selectedStates.statesCost,SScost_curr[cost+idx_s_start:cost],SScost_curr[1:idx_s_end])
         elseif idx_s_end>cost
-            # println(">cost:","idx_start:",idx_s_start," idx_end:",idx_s_end)
+            # println(">cost:","idx_start:",idx_s_start," idx_end:",idx_s_end,"lap cost",cost)
             SS_curr[1:idx_s_end-cost,1]+=track.s
             selectedStates.selStates=vcat(selectedStates.selStates,SS_curr[idx_s_start:cost,:],SS_curr[1:idx_s_end-cost,:])
             SScost_curr[1:idx_s_end-cost]-=cost
             selectedStates.statesCost=vcat(selectedStates.statesCost,SScost_curr[idx_s_start:cost],SScost_curr[1:idx_s_end-cost])
         else
-            # println("else:","idx_start:",idx_s_start," idx_end:",idx_s_end)
+            # println("else:","idx_start:",idx_s_start," idx_end:",idx_s_end,"lap cost",cost)
             if s>track.s-v*dt*(N)
                 SS_curr[idx_s_start:idx_s_end,1]+=track.s
                 selectedStates.selStates=vcat(selectedStates.selStates,SS_curr[idx_s_start:idx_s_end,:])
@@ -390,8 +418,8 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_4s::MpcParams,mpcPa
 
     selectedStates.Np           = 10        # please select an even number
     selectedStates.Nl           = 2         # Number of previous laps to include in the convex hull
-    selectedStates.feature_Np   = 20        # Number of points from previous laps to do SYS_ID
-    selectedStates.feature_Nl   = 1         # Number of previous laps to do SYS_ID 
+    selectedStates.feature_Np   = 40        # Number of points from previous laps to do SYS_ID
+    selectedStates.feature_Nl   = 2         # Number of previous laps to do SYS_ID 
     selectedStates.selStates    = zeros(selectedStates.Nl*selectedStates.Np,6)
     selectedStates.statesCost   = zeros(selectedStates.Nl*selectedStates.Np)
 
@@ -399,8 +427,8 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_4s::MpcParams,mpcPa
     mpcParams_pF.Q              = [0.0,20.0,10.0,10.0]
     mpcParams_pF.R              = 0*[1.0,1.0]               # put weights on a and d_f
     mpcParams_pF.QderivZ        = 0.0*[0.0,0,1.0,0]           # cost matrix for derivative cost of states
-    mpcParams_pF.QderivU        = 1*[1,1]                # cost matrix for derivative cost of inputs
-    mpcParams_pF.vPathFollowing = 1.0                       # reference speed for first lap of path following
+    mpcParams_pF.QderivU        = 0.5*[1,1]                # cost matrix for derivative cost of inputs
+    mpcParams_pF.vPathFollowing = 1                       # reference speed for first lap of path following
     mpcParams_pF.delay_df       = delay_df                         # steering delay (number of steps)
     mpcParams_pF.delay_a        = delay_a                         # acceleration delay
 
@@ -505,6 +533,46 @@ function car_pre_dyn(z_curr::Array{Float64},u_sol::Array{Float64},track::Track,m
     return z_dummy, Fy_dummy, a_slip_dummy
 end
 
+function car_pre_dyn_true(z_curr::Array{Float64},u_sol::Array{Float64},track::Track,modelParams::ModelParams,outputDims::Int64)
+    if size(u_sol,1)==1
+        (z_dummy, Fy_dummy, a_slip_dummy)=car_sim_dyn_exact(z_curr,u_sol,track,modelParams)
+        if outputDims==4
+            z_dummy=s6_to_s4(z_dummy)
+        end
+    elseif size(u_sol,2)==2
+        z_dummy=zeros(size(u_sol,1)+1,6)
+        Fy_dummy=zeros(size(u_sol,1)+1,2)
+        a_slip_dummy=zeros(size(u_sol,1)+1,2)
+
+        z_dummy[1,:]=z_curr
+        for i=2:size(u_sol,1)+1
+            (z_dummy[i,:], Fy_dummy[i,:], a_slip_dummy[i,:])=car_sim_dyn_exact_true(z_dummy[i-1,:],u_sol[i-1,:],track,modelParams)
+        end
+        if outputDims==4
+            z_dummy=s6_to_s4(z_dummy)
+        end
+    else
+        error("Please check the u_sol dimension of function \"car_pre_dyn\" ")
+    end
+
+    return z_dummy, Fy_dummy, a_slip_dummy
+end
+
+function car_sim_dyn_exact_true(z::Array{Float64,2},u::Array{Float64,2},track::Track,modelParams::ModelParams)
+    # This function uses smaller steps to achieve higher fidelity than we would achieve using longer timesteps
+    z_final = copy(z)
+    Fy=zeros(2); a_slip=zeros(2);
+    u[1] = min(u[1],2)
+    u[1] = max(u[1],-1)
+    u[2] = min(u[2],0.1*pi)
+    u[2] = max(u[2],-0.1*pi)
+    dt=modelParams.dt; dtn=dt/10
+    for i=1:10
+        (z_final, Fy, a_slip)= car_sim_dyn(z_final,u,dtn,track,modelParams)
+    end
+    return z_final, Fy, a_slip
+end
+
 function car_sim_dyn_exact(z::Array{Float64,2},u::Array{Float64,2},track::Track,modelParams::ModelParams)
     # This function uses smaller steps to achieve higher fidelity than we would achieve using longer timesteps
     z_final = copy(z)
@@ -518,6 +586,53 @@ function car_sim_dyn_exact(z::Array{Float64,2},u::Array{Float64,2},track::Track,
         (z_final, Fy, a_slip)= car_sim_dyn(z_final,u,dtn,track,modelParams)
     end
     return z_final, Fy, a_slip
+end
+
+function car_sim_dyn_true(z::Array{Float64},u::Array{Float64},dt::Float64,track::Track,modelParams::ModelParams)
+    # s, ey, epsi, vx, vy, Psidot
+    L_f = modelParams.l_A
+    L_r = modelParams.l_B
+    m   = modelParams.m
+    I_z = modelParams.I_z
+    c_f = modelParams.c_f   # motor drag coefficient
+
+    a_F = 0 # front tire slip angle
+    a_R = 0 # rear tire slip angle
+    if abs(z[4]) >= 0.1
+        a_F     = atan((z[5] + L_f*z[6])/abs(z[4])) - u[2]
+        a_R     = atan((z[5] - L_r*z[6])/abs(z[4]))
+    else
+        warn("too low speed, not able to simulate the dynamic model")
+    end
+    if max(abs(a_F),abs(a_R))>30/180*pi
+        # warn("Large tire angles: a_F = $a_F, a_R = $a_R, xDot = $(z[4]), d_F = $(u[2])")
+    end
+
+    FyF = -pacejka_true(a_F)
+    FyR = -pacejka_true(a_R)
+
+    idx=Int(ceil(z[1]/track.ds))+1 # correct the starting original point idx problem
+    # println(z[1])
+    # println(idx)
+    idx>track.n_node ? idx=idx%track.n_node : nothing
+    idx<=0 ? idx += track.n_node : nothing
+    # println(idx)
+    
+    # println(track.n_node)
+    c=track.curvature[idx]
+    
+
+    dsdt = (z[4]*cos(z[3]) - z[5]*sin(z[3]))/(1-z[2]*c)
+
+    zNext = copy(z)
+    zNext[1] = z[1] + dt * dsdt                                             # s
+    zNext[2] = z[2] + dt * (z[4]*sin(z[3]) + z[5]*cos(z[3]))                # eY
+    zNext[3] = z[3] + dt * (z[6]-dsdt*c)                                    # ePsi
+    zNext[4] = z[4] + dt * (u[1] + z[5]*z[6] - c_f*z[4])                    # vx
+    zNext[5] = z[5] + dt * ((FyF*cos(u[2])+FyR)/m - z[4]*z[6])              # vy
+    zNext[6] = z[6] + dt * ((L_f*FyF*cos(u[2]) - L_r*FyR)/I_z)              # psiDot
+
+    return zNext, [FyF,FyR], [a_F,a_R]
 end
 
 function car_sim_dyn(z::Array{Float64},u::Array{Float64},dt::Float64,track::Track,modelParams::ModelParams)
@@ -567,7 +682,7 @@ function car_sim_dyn(z::Array{Float64},u::Array{Float64},dt::Float64,track::Trac
     return zNext, [FyF,FyR], [a_F,a_R]
 end
 
-function pacejka(a)
+function pacejka_true(a)
     # B = 1.0             # This value determines the steepness of the curve
     # C = 1.25
     B = 6.0             # This value determines the steepness of the curve
@@ -577,6 +692,20 @@ function pacejka(a)
     g = 9.81
     D = mu * m * g/2
     C_alpha_f = D*sin.(C*atan.(B*a))
+    return C_alpha_f
+end
+
+function pacejka(a)
+    # B = 1.0             # This value determines the steepness of the curve
+    # C = 1.25
+    B = 6.0             # This value determines the steepness of the curve
+    C = 1.6
+    mu = 0.8            # Friction coefficient (responsible for maximum lateral tire force)
+    m = 1.98
+    g = 9.81
+    D = mu * m * g/2
+    # C_alpha_f = D*sin.(C*atan.(B*a))
+    C_alpha_f = D*sin(C*atan(B*a))
     return C_alpha_f
 end
 
@@ -593,7 +722,7 @@ function car_sim_iden_tv(z::Array{Float64},u::Array{Float64},dt::Float64,mpcCoef
 
     idx=Int(ceil(z[1]/track.ds))+1 # correct the starting original point idx problem
     idx>track.n_node ? idx=idx%track.n_node : nothing
-    idx<0 ? idx+=track.n_node : nothing
+    idx<=0 ? idx+=track.n_node : nothing
 
     c=track.curvature[idx]
     dsdt = (z[4]*cos(z[3]) - z[5]*sin(z[3]))/(1-z[2]*c)
@@ -737,11 +866,11 @@ function createTrack(name::ASCIIString)
                       75 0]
     elseif name == "MSC_lab"
         # TRACK TO USE IN THE SMALL EXPERIMENT ROOM
-        track_data = [10 0;
-                      140 -pi;
-                      20 0;
-                      140 -pi;
-                      10 0]
+        track_data = [2*3*10 0;
+                      2*3*140 -pi;
+                      2*3*20 0;
+                      2*3*140 -pi;
+                      2*3*10 0]
     elseif name == "feature"
         # FEATURE TRACK DATA
         v = 2.5    

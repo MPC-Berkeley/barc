@@ -28,12 +28,18 @@ function solveMpcProblem_pathFollow(mdl::MpcModel_pF,mpcParams_pF::MpcParams,mod
     # println("u_prev is $(u_prev[:,1])")
     # println("s is $(z_curvature[:,1])")
     curvature=curvature_prediction(z_curvature,track)
+    # println("Predicted curvature",round(curvature,2))
+    # println("Predicted ey",round(z_curvature[:,2],2))
+    # println("Predicted u[2]",round(u_prev[:,2],2))
     # println("predicted curvature is $(curvature)")
     ey_ref=zeros(mpcParams_pF.N+1)
     for i=1:mpcParams_pF.N+1
         ey_ref[i]=-curvature[i]/track.max_curvature*width/2
     end
-    z_ref = hcat(zeros(mpcParams_pF.N+1,1),ey_ref,zeros(mpcParams_pF.N+1,1),v_ref*ones(mpcParams_pF.N+1,1))
+    # z_ref = hcat(zeros(mpcParams_pF.N+1,1),ey_ref,zeros(mpcParams_pF.N+1,1),v_ref*ones(mpcParams_pF.N+1,1))
+    z_ref = hcat(zeros(mpcParams_pF.N+1,1),zeros(mpcParams_pF.N+1),zeros(mpcParams_pF.N+1,1),v_ref*ones(mpcParams_pF.N+1,1))
+    
+
     # println("z_ref is: $z_ref")
 
     # Update current initial condition, curvature and previous input
@@ -87,8 +93,8 @@ function solveMpcProblem_convhull_dyn_iden(mdl::MpcModel_convhull_dyn_iden,mpcSo
                                            GP_e_vy::Array{Float64,1},GP_e_psidot::Array{Float64,1})
 
    # IMPORTANT: this warm start must be done manually when swiching the lap, but here, this warm start is done in the swiching lap section outside
-   setvalue(mdl.z_Ol,vcat(zPrev[2:end,:],zPrev[end,:]))
-   setvalue(mdl.u_Ol,vcat(uPrev[2:end,:],uPrev[end,:]))
+   # setvalue(mdl.z_Ol,vcat(zPrev[2:end,:],zPrev[end,:]))
+   # setvalue(mdl.u_Ol,vcat(uPrev[2:end,:],uPrev[end,:]))
    
    # zeros in the model initialization is dangerous for optimization: invalid number might occur when divided by zero happends
 
@@ -244,7 +250,7 @@ function solveMpcProblem_convhull_kin_linear(mdl::MpcModel_convhull_kin_linear,m
     return sol_z,sol_u,sol_status
 end
 
-function solveMpcProblem_convhull_dyn_linear(mdl::MpcModel_convhull_dyn_linear,mpcParams::MpcParams,modelParams::ModelParams,
+function solveMpcProblem_convhull_dyn_linear(mdl::MpcModel_convhull_dyn_linear,mpcSol::MpcSol,mpcParams::MpcParams,modelParams::ModelParams,
                                              lapStatus::LapStatus,
                                              z_linear::Array{Float64,2},u_linear::Array{Float64,2},
                                              zPrev::Array{Float64,2},uPrev::Array{Float64,2}, # this is the delta state hot start
@@ -256,8 +262,8 @@ function solveMpcProblem_convhull_dyn_linear(mdl::MpcModel_convhull_dyn_linear,m
     # if lapStatus.switchingLap
     #     println("warm start during switching")
     #     z_linear[:,1]=-=track.s
-        setvalue(mdl.z_Ol,vcat(zPrev[3:end,:],zPrev[end,:]'))
-        setvalue(mdl.u_Ol,vcat(uPrev[2:end,:],uPrev[end,:]'))
+        # setvalue(mdl.z_Ol,vcat(zPrev[3:end,:],zPrev[end,:]))
+        # setvalue(mdl.u_Ol,vcat(uPrev[2:end,:],uPrev[end,:]))
     #     lapStatus.switchingLap=false
     # end
 
@@ -284,7 +290,8 @@ function solveMpcProblem_convhull_dyn_linear(mdl::MpcModel_convhull_dyn_linear,m
     L_a=modelParams.l_A; L_b=modelParams.l_B
     dt=modelParams.dt; c_f=modelParams.c_f
     # THOSE TIRE PARAMETERS MIGHT NEED TO BE CHANGED
-    m=1.98; I_z=0.03; B = 6.0; C = 1.6; mu = 0.8; g = 9.81
+    m=1.98; I_z=0.03; 
+    B = 6.0; C = 1.6; mu = 0.8; g = 9.81
     A_m=zeros(n_state,n_state,mpcParams.N)
     B_m=zeros(n_state,n_input,mpcParams.N)
     curvature=curvature_prediction(z_linear,track)
@@ -395,16 +402,22 @@ function solveMpcProblem_convhull_dyn_linear(mdl::MpcModel_convhull_dyn_linear,m
     #     end
     #     JuMP.fix(mdl.statesCost[i],statesCost[i])
     # end
+    # println(size(mdl.selStates))
+    # println(size(selStates))
     setvalue(mdl.selStates,selStates)
     setvalue(mdl.statesCost,statesCost)
 
+    setvalue(mdl.df_his,mpcSol.df_his)
+    # println(getvalue(mdl.df_his))
     # for i=1:n_state
     #     JuMP.fix(mdl.zPrev[i],zPrev[1,i])
     # end
     # JuMP.fix(mdl.uPrev[1],uPrev[1,1])
     # JuMP.fix(mdl.uPrev[2],uPrev[1,2])
-    setvalue(mdl.uPrev,uPrev[1,:])
-    setvalue(mdl.zPrev,zPrev[1,:])
+    # println(size(mdl.uPrev))
+    # println(size(uPrev))
+    setvalue(mdl.uPrev,uPrev)
+    setvalue(mdl.zPrev,zPrev)
 
     setvalue(mdl.GP_e_vy,GP_e_vy)
     setvalue(mdl.GP_e_psidot,GP_e_psidot)
@@ -412,7 +425,7 @@ function solveMpcProblem_convhull_dyn_linear(mdl::MpcModel_convhull_dyn_linear,m
     # Solve Problem and return solution
     sol_status  = solve(mdl.mdl)
     sol_u       = getvalue(mdl.u_Ol) + u_linear
-    sol_z       = vcat(z_linear[1,:]', getvalue(mdl.z_Ol) + z_linear[2:end,:])
-    println("Solved, status = $sol_status")
+    sol_z       = vcat(z_linear[1,:], getvalue(mdl.z_Ol) + z_linear[2:end,:])
+    # println("Solved, status = $sol_status")
     return sol_z,sol_u,sol_status
 end
