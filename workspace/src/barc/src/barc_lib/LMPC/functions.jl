@@ -200,6 +200,7 @@ end
 
 function coeff_iden_dist(idenStates::Array{Float64,3},idenInputs::Array{Float64,2})
     z = idenStates
+    # z[:,2,:]*=10
     u = idenInputs
     # println(z)
     # println(u)
@@ -236,9 +237,14 @@ function coeff_iden_dist(idenStates::Array{Float64,3},idenInputs::Array{Float64,
     # n = min(n, 0.01)
     # u[:,2]+=n
 
-    y_vx=diff(reshape(z[:,1,:],size(z,1),size(z,3)),2)
-    y_vy=diff(reshape(z[:,2,:],size(z,1),size(z,3)),2)
-    y_psi=diff(reshape(z[:,3,:],size(z,1),size(z,3)),2)
+    # y_vx=diff(reshape(z[:,1,:],size(z,1),size(z,3)),2)
+    # y_vy=diff(reshape(z[:,2,:],size(z,1),size(z,3)),2)#/10
+    # y_psi=diff(reshape(z[:,3,:],size(z,1),size(z,3)),2)
+
+    y_vx = z[:,1,2] - z[:,1,1]
+    y_vy = z[:,2,2] - z[:,2,1]
+    y_psi = z[:,3,2] - z[:,3,1]
+
     for i=1:size(z,1)
         A_vx[i,1]=z[i,2,1]*z[i,3,1]
         A_vx[i,2]=z[i,1,1]
@@ -251,9 +257,13 @@ function coeff_iden_dist(idenStates::Array{Float64,3},idenInputs::Array{Float64,
         A_psi[i,2]=z[i,2,1]/z[i,1,1]
         A_psi[i,3]=u[i,2]
     end
-    c_Vx = A_vx\y_vx
-    c_Vy = A_vy\y_vy
-    c_Psi = A_psi\y_psi
+    # c_Vx = A_vx\y_vx
+    # c_Vy = A_vy\y_vy
+    # c_Psi = A_psi\y_psi
+    c_Vx = inv(A_vx'*A_vx)*A_vx'*y_vx
+    c_Vy = inv(A_vy'*A_vy)*A_vy'*y_vy
+    c_Psi = inv(A_psi'*A_psi)*A_psi'*y_psi
+
     # println("c_Vx is $c_Vx")
     # println("c_Vx is $c_Vy")
     # println("c_Vx is $c_Psi")
@@ -265,10 +275,10 @@ function coeff_iden_dist(idenStates::Array{Float64,3},idenInputs::Array{Float64,
 end
 
 function find_SS(safeSetData::SafeSetData,selectedStates::SelectedStates,
-                 z_prev::Array{Float64,2},lapStatus::LapStatus,
+                 s_curr::Float64,z_prev::Array{Float64,2},lapStatus::LapStatus,
                  modelParams::ModelParams,mpcParams::MpcParams,track::Track)
 
-    s=z_prev[2,1]; v=z_prev[2,4];
+    s=s_curr; v=z_prev[2,4];
     N=mpcParams.N; dt=modelParams.dt
     Nl=selectedStates.Nl; Np_here=copy(selectedStates.Np/2)
     # Clear the safe set data of previous iteration
@@ -401,7 +411,7 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_4s::MpcParams,mpcPa
         mpcParams.R                 = 0*[10.0,10.0]                 # put weights on a and d_f
         mpcParams.QderivZ           = 1.0*[0,0.1,0.1,0.2,0.1,0.0]             # cost matrix for derivative cost of states
         mpcParams.QderivU           = 1.0*[1.0,1.0] #NOTE Set this to [5.0, 0/40.0]              # cost matrix for derivative cost of inputs
-        mpcParams.Q_term_cost       = 0.05                        # scaling of Q-function
+        mpcParams.Q_term_cost       = 0.01                        # scaling of Q-function
         mpcParams.delay_df          = delay_df                             # steering delay
         mpcParams.delay_a           = delay_a                             # acceleration delay
         mpcParams.Q_lane            = 10                      # weight on the soft constraint for the lane

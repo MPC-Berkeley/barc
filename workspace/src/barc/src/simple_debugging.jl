@@ -13,11 +13,16 @@ using QuickHull
 include("barc_lib/classes.jl")
 include("barc_lib/LMPC/functions.jl")
 
+const select_flag = false
+
 run_time = Dates.format(now(),"yyyy-mm-dd")
 data        = load("$(homedir())/simulations/LMPC-$(run_time)-$(ARGS[2]).jld")
 oldSS       = data["oldSS"]
 selectedStates = data["selectedStates"]
 solHistory  = data["solHistory"]
+selectHistory = data["selectHistory"]
+selectFeatureHistory = data["selectFeatureHistory"]
+statusHistory = data["statusHistory"]
 track       = data["track"]
 modelParams = data["modelParams"]
 mpcParams   = data["mpcParams"]
@@ -44,10 +49,13 @@ if ARGS[1] == "record" || ARGS[1]=="both"
         ylabel("vy")
 
         subplot(3,2,5)
-        plot(current_x+1:current_x+x_len,solHistory.z[1:x_len,i,1,5],color="blue")
+        plot(current_x+1:current_x+x_len,solHistory.z[1:x_len,i,1,6],color="blue")
         plot([current_x,current_x],[-3,3],color="grey",linestyle="--")
         ylabel("psi_dot")
         i += 1
+        if i>length(solHistory.cost)
+            break
+        end
     end
     # PLOT OF SYS_ID PARAMETERS
     # figure(figsize=(15,10))
@@ -128,8 +136,10 @@ if ARGS[1] == "record" || ARGS[1]=="both"
         end
         legend(); ylabel("cpsi")
         i += 1
+        if i>length(solHistory.cost)
+            break
+        end
     end
-    show()
 end
 
 # TRAJECTORY PLOT FOR ALL THE LAPS DONE
@@ -162,36 +172,49 @@ if ARGS[1] == "trajectory" || ARGS[1]=="both"
         lc[:set_linewidth](2)
         line = axs[:add_collection](lc)
         i+=1
+        if i>length(solHistory.cost)
+            break
+        end
     end
     axis("equal")
     # grid("on")
     fig[:colorbar](line, ax=axs)
     xlabel("x [m]")
     ylabel("y [m]")
-    show()
 end
+show()
 
 function set_limits(ax, solHistory::SolHistory,index::Int64)
-    min_val = findmin(solHistory.z[:, :, :, index])[1]
-    max_val = findmax(solHistory.z[:, :, :, index])[1]
+    i = 1; min_val = 0; max_val = 0
+    while solHistory.cost[i]>10
+        min_val = min(findmin(solHistory.z[:, i, :, index])[1],min_val)
+        max_val = max(findmax(solHistory.z[:, i, :, index])[1],max_val)
+        i+=1
+        if i>length(solHistory.cost)
+            break
+        end
+    end
     ax[:set_ylim]([min_val - 0.1, max_val + 0.1])
 end
 
-function update_limits(ax, x_pred, x_true, x_select)
+function update_limits(ax, x_pred::Array{Float64}, x_true::Array{Float64,1}, x_select::Array{Float64,1})
     ax[:set_xlim]([min(findmin(x_pred)[1],findmin(x_true)[1],findmin(x_select)[1]) - 0.1,
                    max(findmax(x_pred)[1],findmax(x_true)[1],findmax(x_select)[1]) + 0.1])
+    # println("pre",findmax(x_pred)[1])
+    # println(findmax(x_true)[1])
+    # println(findmax(x_select)[1])
 end
 
-function plot_prediction(ax, x, y, c)
+function plot_prediction(ax, x::Array{Float64,1}, y::Array{Float64,1}, c)
     prediction, = ax[:plot](x, y, color=c, marker="*")
     return prediction
 end
 
-function update_prediction(plt_h, x, y)
+function update_prediction(plt_h, x::Array{Float64}, y::Array{Float64}, track::Track)
     plt_h[:set_data](x, y)
 end
 
-function plot_selection(ax, x, y, c)
+function plot_selection(ax, x::Array{Float64,1}, y::Array{Float64,1}, c)
     # Plot convex hull of the selected_states
     conv_hull_temp = qhull(x, y)
     conv_hull = zeros(size(conv_hull_temp[1])[1] + 1, 2)
@@ -203,13 +226,13 @@ function plot_selection(ax, x, y, c)
     convex_hull = patch.Polygon(conv_hull, fill=true, color=c, alpha=0.2)
     ax[:add_artist](convex_hull)
 
-    plt_hull_bounds, = ax[:plot](conv_hull[:, 1], conv_hull[:, 2], color=c, linestyle="-", lw=2.0)
-    plt_states, = ax[:plot](x, y, color=c, marker="o")
+    plt_hull_bounds, = ax[:plot](conv_hull[:, 1], conv_hull[:, 2], color=c, linestyle="-", lw=2.0, alpha=0.3)
+    plt_states, = ax[:plot](x, y, color=c, marker="o", alpha=0.3)
 
     return convex_hull, plt_hull_bounds, plt_states
 end
 
-function update_selection(convex_hull, plt_hull_bounds, plt_states, x, y)
+function update_selection(convex_hull, plt_hull_bounds, plt_states, x::Array{Float64,1}, y::Array{Float64,1})
     # Plot convex hull of the selected_states
     conv_hull_temp = qhull(x, y)
     conv_hull = zeros(size(conv_hull_temp[1])[1] + 1, 2)
@@ -238,7 +261,7 @@ if ARGS[1] == "prediction"
     plt[:ion]()
 
     # Create figure and subplots
-    fig = figure("Prediction ")
+    fig = figure("Prediction",figsize=(20,10))
     ax_s_ey = fig[:add_subplot](2, 3, 1)
     xlabel("s [m]")
     ylabel("e_y [m]")
@@ -259,12 +282,40 @@ if ARGS[1] == "prediction"
     xlabel("s [m]")
     ylabel("v_y [m / s]")
 
+    ax_s_c = fig[:add_subplot](2, 3, 6)
+    xlabel("s [m]")
+    ylabel("curvature [1 / m]")
+
     ax = [ax_s_ey, ax_s_epsi, ax_s_vx, ax_s_vy, ax_s_psidot]
+
+    # PLOT FINISHING LINE
+    for axe in ax
+        axe[:plot]([0,0],[-10,10],color="black", linestyle="-")
+        axe[:plot]([track.s,track.s],[-10,10],color="black", linestyle="-")
+    end
+    # PLOT THE BOUNDARY FOR STRAIGHT LINE AND CURVE
+    for axe in ax
+        for i = 1:size(track.curvature,1)-1
+            if (track.curvature[i] == 0 && track.curvature[i+1] != 0)
+                axe[:plot]([i-1,i-1]*track.ds,[-10,10],color="grey", linestyle="-")
+            elseif (track.curvature[i] != 0 && track.curvature[i+1] == 0)
+                axe[:plot]([i-1,i-1]*track.ds,[-10,10],color="grey", linestyle="-.")
+            end
+        end
+    end
+    # PLOT THE TRACK BOUNDARY ON e_y
+    x = (track.idx-1)*track.ds
+    y = track.w/2*ones(size(x,1))
+    ax_s_ey[:plot](x, -y, color="grey", linestyle="--")
+    ax_s_ey[:plot](x,0*y, color="grey", linestyle="--")
+    ax_s_ey[:plot](x,  y, color="grey", linestyle="--")
 
     # SET THE Y-LIMITS FOR EACH SUBPLOT
     for i = 1 : 5
         set_limits(ax[i], solHistory, i+1)
     end
+    ax_s_vy[:set_ylim]([-0.15, 0.15])
+    ax_s_c[:set_ylim]([-1.2,1.2])
     
     # INITIALIZE THE PLOTING FOR MPC PREDICTION
     pre_hs = []
@@ -285,8 +336,8 @@ if ARGS[1] == "prediction"
     hull_bounds = []
     plt_states = []
     for i = 1 : 5
-        conv_hull, hull_bound, plt_state = plot_selection(ax[i], selectedStates.selStates[:, 1], 
-                                                                 selectedStates.selStates[:, i + 1], "blue")
+        conv_hull, hull_bound, plt_state = plot_selection(ax[i], NaN*ones(size(selectedStates.selStates[:, 1])), 
+                                                                 NaN*ones(size(selectedStates.selStates[:, 1])), "blue")
         conv_hulls = [conv_hulls; conv_hull]
         hull_bounds = [hull_bounds; hull_bound]
         plt_states = [plt_states; plt_state]
@@ -299,8 +350,28 @@ if ARGS[1] == "prediction"
         closed_loop_plts = [closed_loop_plts; closed_loop_plt]
     end
 
+    # INITIALIZE THE PLOT FOR CURVATURE
+    curvature_plt, = ax_s_c[:plot](NaN*ones(mpcParams.N+1), NaN*ones(mpcParams.N+1), color="blue", marker="o")
+
+    fig_select = figure("Selected points",figsize=(20,10))
+    ax_track_select = fig_select[:add_subplot](1, 1, 1)
+    ax_track_select[:plot](track.bound1xy[:,1],track.bound1xy[:,2],color="black")
+    ax_track_select[:plot](track.bound2xy[:,1],track.bound2xy[:,2],color="black")
+    select_plt, = ax_track_select[:plot](NaN*ones(size(selectedStates.selStates[:, 1])),
+                                         NaN*ones(size(selectedStates.selStates[:, 1])),"go",alpha=0.3)
+    car_plt, = ax_track_select[:plot](NaN,NaN,"ko",markersize=5,alpha=0.3)
+
+    xlabel("x [m]")
+    ylabel("y [m]")
+    axis("equal")
+
     # UPDATE AND SAVE THE PLOT FOR EVERY LMPC LAPS
-    lap = 2 + max(selectedStates.Nl,selectedStates.feature_Nl)  # starting lap of LMPC
+    if length(ARGS) == 2
+        lap = 1
+    elseif ARGS[3] == "LMPC"
+        lap = 2 + max(selectedStates.Nl,selectedStates.feature_Nl)  # starting lap of LMPC
+    end
+
     while solHistory.cost[lap] > 10
         lapStatus.currentLap = lap
 
@@ -310,26 +381,70 @@ if ARGS[1] == "prediction"
                                                     solHistory.z[1:Int(solHistory.cost[lap]),lap,1,i+1], bufferSize)
         end
 
-        for j = 1:Int(solHistory.cost[lap])
-            # SELECT THE SAVE SET
-            selectedStates = find_SS(oldSS,selectedStates,reshape(solHistory.z[j,lap,:,:],size(solHistory.z,3),size(solHistory.z,4)),
-                                     lapStatus,modelParams,mpcParams,track)
-            
-            # SIMULATE THE TRUE MODEL, WHICH SHOULD BE TURNED OFF FOR EXPERIMENTS
-            true_state, ~, ~ = car_pre_dyn(reshape(solHistory.z[j,lap,1,:],1,size(solHistory.z,4)),
-                                           reshape(solHistory.u[j,lap,:,:],size(solHistory.u,3),size(solHistory.u,4)),track,modelParams,6)
+        if lap <= 1 + max(selectedStates.Nl,selectedStates.feature_Nl)
+            # UPDATE THE PLOT OF THE CURRENT LAP CLOSE LOOP TRAJECTORY
+            for j = 1:Int(solHistory.cost[lap])
+                # SIMULATE THE TRUE MODEL, WHICH SHOULD BE TURNED OFF FOR EXPERIMENTS
+                true_state, ~, ~ = car_pre_dyn(reshape(solHistory.z[j,lap,1,:],1,size(solHistory.z,4)),
+                                               reshape(solHistory.u[j,lap,:,:],size(solHistory.u,3),size(solHistory.u,4)),track,modelParams,6)
 
-            # UPDATE THE PLOTTING DATA
-            for i = 1 : 5
-                update_selection(conv_hulls[i], hull_bounds[i], plt_states[i], 
-                                 selectedStates.selStates[:,1],selectedStates.selStates[:,1+i])
-                update_prediction(pre_hs[i], solHistory.z[j,lap,:,1], solHistory.z[j,lap,:,1+i])
-                update_prediction(true_hs[i], true_state[:,1], true_state[:,i+1])
-                update_limits(ax[i],solHistory.z[j,lap,:,1],true_state[:,1],selectedStates.selStates[:,1])
+                # UPDATE THE PLOTTING DATA
+                for i = 1 : 5
+                    update_prediction(pre_hs[i], solHistory.z[j,lap,:,1], solHistory.z[j,lap,:,1+i], track)
+                    update_prediction(true_hs[i], true_state[:,1], true_state[:,i+1], track)
+                    update_limits(ax[i],solHistory.z[j,lap,:,1],true_state[:,1],NaN*ones(mpcParams.N+1))
+                end
+                
+                # UPDATE THE CURVATURE PLOT
+                curvature=curvature_prediction(reshape(solHistory.z[j,lap,:,:],size(solHistory.z[j,lap,:,:],3),size(solHistory.z[j,lap,:,:],4)),track)
+                update_prediction(curvature_plt,solHistory.z[j,lap,:,1],curvature,track)
+                ax_s_c[:set_xlim]([findmin(solHistory.z[j,lap,:,1])[1]-0.1, findmax(solHistory.z[j,lap,:,1])[1] + 0.1])
+
+                fig[:savefig]("$(homedir())/simulations/animations/lap$(lap)_iteration$(j).png", dpi=100)
+                println("lap$(lap)_iteration$(j)")
             end
-            fig[:savefig]("$(homedir())/simulations/animations/lap$(lap)_iteration$(j).png", dpi=100)
-            println("lap$(lap)_iteration$(j)")
+        else
+            for j = 1:Int(solHistory.cost[lap])
+                # SIMULATE THE TRUE MODEL, WHICH SHOULD BE TURNED OFF FOR EXPERIMENTS
+                true_state, ~, ~ = car_pre_dyn(reshape(solHistory.z[j,lap,1,:],1,size(solHistory.z,4)),
+                                               reshape(solHistory.u[j,lap,:,:],size(solHistory.u,3),size(solHistory.u,4)),track,modelParams,6)
+
+                # UPDATE THE PLOTTING DATA
+                for i = 1 : 5
+                    update_selection(conv_hulls[i], hull_bounds[i], plt_states[i], 
+                                     reshape(selectHistory[j,lap,:,1],size(selectHistory[j,lap,:,1],3)),
+                                     reshape(selectHistory[j,lap,:,1+i],size(selectHistory[j,lap,:,1],3)))
+                    update_prediction(pre_hs[i], solHistory.z[j,lap,:,1], solHistory.z[j,lap,:,1+i], track)
+                    update_prediction(true_hs[i], true_state[:,1], true_state[:,i+1], track)
+                    update_limits(ax[i],solHistory.z[j,lap,:,1],true_state[:,1],reshape(selectHistory[j,lap,:,1],size(selectHistory,3)))
+                    
+                    if select_flag
+                        # FEATURE DATA PLOTTING UPDATE
+                        (z_iden_x, z_iden_y) = trackFrame_to_xyFrame(reshape(selectFeatureHistory[j,lap,:,:],size(selectFeatureHistory,3),size(selectFeatureHistory,4)),track)
+                        update_prediction(select_plt,z_iden_x,z_iden_y,track)
+
+                        # CAR POSITION PLOT UPDATE
+                        (car_x,car_y)=trackFrame_to_xyFrame(reshape(solHistory.z[j,lap,1,:],1,6),track)
+                        update_prediction(car_plt,car_x,car_y,track)
+                    end
+                end
+
+                # UPDATE THE CURVATURE PLOT
+                curvature=curvature_prediction(reshape(solHistory.z[j,lap,:,:],size(solHistory.z[j,lap,:,:],3),size(solHistory.z[j,lap,:,:],4)),track)
+                update_prediction(curvature_plt,solHistory.z[j,lap,:,1],curvature,track)
+                ax_s_c[:set_xlim]([findmin(solHistory.z[j,lap,:,1])[1]-0.1, findmax(solHistory.z[j,lap,:,1])[1] + 0.1])
+                ax_s_c[:set_title](statusHistory[j,lap])
+
+                fig[:savefig]("$(homedir())/simulations/animations/lap$(lap)_iteration$(j).png", dpi=100)
+                if select_flag
+                    fig_select[:savefig]("$(homedir())/simulations/animations/lap$(lap)_iteration$(j)_select.png", dpi=100)
+                end
+                println("lap$(lap)_iteration$(j)")
+            end
         end
         lap += 1
+        if lap>length(solHistory.cost)
+            break
+        end
     end
 end

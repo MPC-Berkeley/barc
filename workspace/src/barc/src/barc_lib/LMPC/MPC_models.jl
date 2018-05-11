@@ -74,7 +74,7 @@ type MpcModel_pF
 
         # System dynamics
         @NLconstraint(mdl, [i=1:4], z_Ol[1,i] == z0[i])         # initial condition
-        @NLconstraint(mdl, u_Ol[1,1] == uPrev[2,1]) # steering delay is 1 for simulation and 3 for experiment
+        @NLconstraint(mdl, u_Ol[1,1] == uPrev[2,1])
         @NLconstraint(mdl, [i=1:mpcParams_pF.delay_df], u_Ol[i,2] == df_his[i]) # steering delay is 1 for simulation and 3 for experiment
 
         for i=1:N

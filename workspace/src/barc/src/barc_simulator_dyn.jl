@@ -201,7 +201,7 @@ function main()
         if i%6 == 0
             # ADDITIONAL NOISE ADDING
             n=randn(3)
-            n_thre = [0.02,0.005,0.05]*0.1
+            n_thre = [0.1,0.1,0.5]*0.01
             # IMPORTANT!!!: THE DATA NEEDS TO BE IN THE SAME ORDER AS Z_EST
             # n_thre = 0.01*[0.02,0.005,0.05,0.005,0.005,0.001]
             # s # 2.5% ey: 0.4 is set as the track width # epsi: 1.8 degree # vx # vy: on the track, max vy can be 0.1 # psidot: on the track, max psidot can be 1
