@@ -46,7 +46,7 @@ function main()
     const BUFFERSIZE       = 500
     const LMPC_LAP         = 30
     const PF_FLAG          = false  # true:only pF,     false:1 warm-up lap and LMPC
-    const LMPC_FLAG        = true   # true:IDEN_MODEL,  false:IDEN_KIN_LIN_MODEL(if both flags are false)
+    const LMPC_FLAG        = false   # true:IDEN_MODEL,  false:IDEN_KIN_LIN_MODEL(if both flags are false)
     const LMPC_DYN_FLAG    = false   # true:DYN_LIN_MODEL, false:IDEN_KIN_LIN_MODEL(if both flags are false)
     const FEATURE_FLAG     = false  # true:8-shape,     false:history (this requires the corresponding change in 3 palces)
     const NORM_SPACE_FLAG  = true  # true:2-norm,      false: space critirion
@@ -63,6 +63,8 @@ function main()
     
     track_data       = createTrack("MSC_lab")
     track            = Track(track_data)
+    track_fe         = createTrack("feature")
+    track_f          = Track(track_fe)
     oldTraj          = OldTrajectory()
     posInfo          = PosInfo();  posInfo.s_target=track.s;
     lapStatus        = LapStatus(1,1,false,false,0.3)
@@ -120,7 +122,7 @@ function main()
         data = load("$(homedir())/simulations/dummy_function/FeatureDataCollecting.jld")
         feature_z = data["feature_z"]
         feature_u = data["feature_u"]
-        (iden_z,iden_u)=find_feature_dist(feature_z,feature_u,z,u)
+        (iden_z,iden_u)=find_feature_dist(feature_z,feature_u,z,u,selectedStates)
         data = load("$(homedir())/simulations/dummy_function/path_following.jld") # oldSS.jld is a dummy data for initialization
         solHistory_dummy = data["solHistory"]
         (~,~,~)=find_feature_space(solHistory_dummy,2*ones(1,6),rand(1,2),lapStatus_dummy,selectedStates,posInfo)
@@ -138,6 +140,7 @@ function main()
         data = load("$(homedir())/simulations/Feature_Data/FeatureDataCollecting.jld")
         feature_z = data["feature_z"]
         feature_u = data["feature_u"]
+        println("Number of total feature points from 8-shape:",size(feature_z,1))
     end
 
     if GP_LOCAL_FLAG || GP_FULL_FLAG
@@ -276,7 +279,7 @@ function main()
                         for i in 1:mpcParams.N
                             if FEATURE_FLAG
                                 # SELECTING THE FEATURE POINTS FROM DATASET
-                                (iden_z,iden_u,z_iden_plot)=find_feature_dist(feature_z,feature_u,z_to_iden[i,:],u_to_iden[i,:])
+                                (iden_z,iden_u,z_iden_plot)=find_feature_dist(feature_z,feature_u,z_to_iden[i,:],u_to_iden[i,:],selectedStates)
                             else
                                 if NORM_SPACE_FLAG
                                     # SELECTING THE FEATURE POINTS FROM HISTORY BASED ON 2-NORM CRITERION
@@ -292,7 +295,7 @@ function main()
                         # TI SYS_ID
                         if FEATURE_FLAG
                             # SELECTING THE FEATURE POINTS FROM DATASET
-                            (iden_z,iden_u,z_iden_plot)=find_feature_dist(feature_z,feature_u,z_curr',u_prev[2,:])
+                            (iden_z,iden_u,z_iden_plot)=find_feature_dist(feature_z,feature_u,z_curr',u_prev[2,:],selectedStates)
                         else
                             if NORM_SPACE_FLAG
                                 # SELECTING THE FEATURE POINTS FROM HISTORY
@@ -328,15 +331,17 @@ function main()
                     end
 
                     # FEATURE POINTS VISUALIZATION
-                    (z_iden_x, z_iden_y) = trackFrame_to_xyFrame(z_iden_plot,track)
+                    if FEATURE_FLAG
+                        (z_iden_x, z_iden_y) = trackFrame_to_xyFrame(z_iden_plot,track_f)
+                    else
+                        (z_iden_x, z_iden_y) = trackFrame_to_xyFrame(z_iden_plot,track)
+                    end
                     mpcSol_to_pub.z_iden_x = z_iden_x
                     mpcSol_to_pub.z_iden_y = z_iden_y
                     toc() # TIME FOR PREPARATION
-                    
                     # SAFESET POINT SELECTION
                     selectedStates=find_SS(oldSS,selectedStates,z_curr[1],z_prev,lapStatus,modelParams,mpcParams,track)
                     # println(selectedStates)
-                    
                     tic()
                     (mpcSol.z,mpcSol.u,sol_status)=solveMpcProblem_convhull_dyn_iden(mdl_convhull,mpcSol,mpcCoeff,z_curr,z_prev,u_prev,selectedStates,track,GP_e_vy,GP_e_psidot)
                     toc() # TIME FOR OPTIMIZATION
@@ -403,7 +408,7 @@ function main()
                         for i=1:size(z_linear,1)-1 
                             # LMS SYS ID
                             if FEATURE_FLAG
-                                (iden_z,iden_u,z_iden_plot)=find_feature_dist(feature_z,feature_u,z_dummy',u_linear[i,:])
+                                (iden_z,iden_u,z_iden_plot)=find_feature_dist(feature_z,feature_u,z_dummy',u_linear[i,:],selectedStates)
                             else
                                 if NORM_SPACE_FLAG
                                     # SELECTING THE FEATURE POINTS FROM HISTORY BASED ON 2-NORM CRITERION
@@ -413,7 +418,12 @@ function main()
                                     (iden_z,iden_u,z_iden_plot)=find_feature_space(solHistory,z_dummy',u_linear[i,:],lapStatus,selectedStates,posInfo)
                                 end
                             end
-                            (mpcCoeff_dummy.c_Vx,mpcCoeff_dummy.c_Vy,mpcCoeff_dummy.c_Psi)=coeff_iden_dist(iden_z,iden_u)
+                            (mpcCoeff_dummy.c_Vx[1,:],mpcCoeff_dummy.c_Vy[1,:],mpcCoeff_dummy.c_Psi[1,:])=coeff_iden_dist(iden_z,iden_u)
+
+                            mpcCoeff.c_Vx[i,:]=mpcCoeff_dummy.c_Vx[1,:]
+                            mpcCoeff.c_Vy[i,:]=mpcCoeff_dummy.c_Vy[1,:]
+                            mpcCoeff.c_Psi[i,:]=mpcCoeff_dummy.c_Psi[1,:]
+                        
                             z_dummy=car_sim_iden_tv(z_dummy,u_linear[i,:],0.1,mpcCoeff_dummy,modelParams,track)
                             # GPR DISTURBANCE ID
                             if GP_LOCAL_FLAG
@@ -434,7 +444,7 @@ function main()
                     else
                         # TI SYS_ID
                         if FEATURE_FLAG # LMS SYS ID
-                            (iden_z,iden_u,z_iden_plot)=find_feature_dist(feature_z,feature_u,z_dummy',u_linear[1,:])
+                            (iden_z,iden_u,z_iden_plot)=find_feature_dist(feature_z,feature_u,z_dummy',u_linear[1,:],selectedStates)
                         else
                             if NORM_SPACE_FLAG
                                 # SELECTING THE FEATURE POINTS FROM HISTORY BASED ON 2-NORM CRITERION
@@ -444,8 +454,14 @@ function main()
                                 (iden_z,iden_u,z_iden_plot)=find_feature_space(solHistory,z_dummy',u_linear[1,:],lapStatus,selectedStates,posInfo)
                             end
                         end
-                        (mpcCoeff_dummy.c_Vx,mpcCoeff_dummy.c_Vy,mpcCoeff_dummy.c_Psi)=coeff_iden_dist(iden_z,iden_u)
+                        (mpcCoeff_dummy.c_Vx[1,:],mpcCoeff_dummy.c_Vy[1,:],mpcCoeff_dummy.c_Psi[1,:])=coeff_iden_dist(iden_z,iden_u)
                         
+                        for i = 1:size(mpcCoeff.c_Vx,1)
+                            mpcCoeff.c_Vx[i,:]=mpcCoeff_dummy.c_Vx[1,:]
+                            mpcCoeff.c_Vy[i,:]=mpcCoeff_dummy.c_Vy[1,:]
+                            mpcCoeff.c_Psi[i,:]=mpcCoeff_dummy.c_Psi[1,:]
+                        end
+
                         for i=1:size(z_linear,1)-1 # GPR DISTURBANCE ID
                             if GP_LOCAL_FLAG
                                 GP_e_vy      = regre(z_dummy,u_linear[i,:],feature_GP_vy_e,feature_GP_z,feature_GP_u)
@@ -509,7 +525,7 @@ function main()
 
             mpcSol.a_x = mpcSol.u[1+mpcParams.delay_a,1] 
             mpcSol.d_f = mpcSol.u[1+mpcParams.delay_df,2]
-            # mpcSol.a_x = mpcSol.u[1,1] 
+            # mpcSol.a_x = mpcSol.u[1,1]
             # mpcSol.d_f = mpcSol.u[1,2]
             if length(mpcSol.df_his)==1
                 mpcSol.df_his[1] = mpcSol.u[1+mpcParams.delay_df,2]
@@ -532,10 +548,16 @@ function main()
                 oldSS.cost2target[lapStatus.currentIt,lapStatus.currentLap]=lapStatus.currentIt
             end
 
-            if (LMPC_FLAG || (!LMPC_FLAG && !LMPC_DYN_FLAG)) && (!PF_FLAG && lapStatus.currentLap > 1+max(selectedStates.feature_Nl,selectedStates.Nl))
-                selectHistory[lapStatus.currentIt,lapStatus.currentLap,:,:] = selectedStates.selStates
+            statusHistory[lapStatus.currentIt,lapStatus.currentLap] = "$sol_status"
+            if !LMPC_DYN_FLAG && !PF_FLAG && lapStatus.currentLap > 1+max(selectedStates.feature_Nl,selectedStates.Nl) 
                 selectFeatureHistory[lapStatus.currentIt,lapStatus.currentLap,:,:] = z_iden_plot
-                statusHistory[lapStatus.currentIt,lapStatus.currentLap] = "$sol_status"
+            end
+            if (!PF_FLAG && lapStatus.currentLap > 1+max(selectedStates.feature_Nl,selectedStates.Nl))
+                if !LMPC_FLAG && !LMPC_DYN_FLAG
+                    selectHistory[lapStatus.currentIt,lapStatus.currentLap,:,1:4] = selectedStates.selStates
+                else
+                    selectHistory[lapStatus.currentIt,lapStatus.currentLap,:,:] = selectedStates.selStates
+                end
             end
 
             # VISUALIZATION COORDINATE CALCULATION FOR view_trajectory.jl NODE
@@ -562,9 +584,9 @@ function main()
             cmd.servo   = convert(Float32,mpcSol.d_f)
             z_prev      = copy(mpcSol.z)
             u_prev      = copy(mpcSol.u)
-            lapStatus.currentIt += 1
             # toc()
             println("$sol_status Current Lap: ", lapStatus.currentLap, ", It: ", lapStatus.currentIt, " v: $(z_est[1])")
+            lapStatus.currentIt += 1
         else
             println("No estimation data received!")
         end

@@ -123,8 +123,8 @@ def view_trajectory():
     rospy.Subscriber("mpc_solution", mpc_solution, mpcSol_callback, queue_size=1)
     
     l = Localization()
+    # l.create_feature_track()
     l.create_race_track()
-    #l.create_circle(rad=0.8, c=array([0.0, -0.5]))
 
     fig = plt.figure(figsize=(10,7))
     plt.ion()

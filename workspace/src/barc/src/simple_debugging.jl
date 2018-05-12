@@ -13,6 +13,7 @@ using QuickHull
 include("barc_lib/classes.jl")
 include("barc_lib/LMPC/functions.jl")
 
+# FLAG FOR PLOTTING THE SELECTED POINTS
 const select_flag = false
 
 run_time = Dates.format(now(),"yyyy-mm-dd")
@@ -150,6 +151,7 @@ if ARGS[1] == "trajectory" || ARGS[1]=="both"
     plot(track.xy[:, 1],       track.xy[:, 2],       color="grey",alpha=0.4)
     plot(track.bound1xy[:, 1], track.bound1xy[:, 2], color="red")
     plot(track.bound2xy[:, 1], track.bound2xy[:, 2], color="red")
+    v_min = 3; v_max = 3;
     while solHistory.cost[i] > 10
         x_len = Int(solHistory.cost[i])
         v = sqrt(solHistory.z[1:x_len,i,1,4].^2 + solHistory.z[1:x_len,i,1,5].^2)
@@ -161,8 +163,10 @@ if ARGS[1] == "trajectory" || ARGS[1]=="both"
         points_2 = points[2 : end, :, :]
         segments = cat(2, points_1, points_2)
 
-        (v_min,~) = findmin(v)
-        (v_max,~) = findmax(v)
+        # v_min = min(findmin(v)[1],v_min)
+        # v_max = max(findmax(v)[1],v_max)
+        v_min = findmin(v)[1]
+        v_max = findmax(v)[1]
         # max should max(V_MAX), min = 0
         norm = plt[:Normalize](v_min, v_max)
 

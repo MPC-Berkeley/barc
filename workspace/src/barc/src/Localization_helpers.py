@@ -120,7 +120,7 @@ class Localization(object):
         R_kin = 0.8
         num_kin = int(round(angle/ ( ds/R_kin ) * 2))
         num = max(int(round(angle/ ( ds/R ) * 2)),num_kin)
-        # num*=2
+        # num*=3
         # TRACK DATA CALCULATION
         theta, curvature = add_curve(theta,curvature,num,-angle)
         theta, curvature = add_curve(theta,curvature,num,angle)
@@ -271,8 +271,8 @@ class Localization(object):
             idx_curr_candidate = hstack((self.track_idx[idx_candidate_1],self.track_idx[idx_candidate_2]))
         else:
             dist_s = self.track_s - self.s
-            # idx_candidate = (dist_s>=0) & (dist_s<l_ran) # the car can travel 0.3m maximumly within 0.1s  
-            idx_candidate = (dist_s<100)
+            idx_candidate = (dist_s>=0) & (dist_s<l_ran) # the car can travel 0.3m maximumly within 0.1s  
+            # idx_candidate = (dist_s<100) # select every points
             x_candidate = self.nodes[0,:][idx_candidate]
             y_candidate = self.nodes[1,:][idx_candidate]
             nodes_candidate = array([x_candidate,y_candidate])

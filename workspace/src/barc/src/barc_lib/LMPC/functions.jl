@@ -99,10 +99,13 @@ function xyFrame_to_trackFrame(z::Array{Float64,1},track::Track)
     theta = track.theta[idx_min]
     epsi = z[5] - theta
     # println(epsi)
-    while abs(epsi)>pi
-        epsi = (epsi+2*pi)
+    while epsi<-pi
+        epsi += 2*pi
     end
-    epsi = epsi % pi
+    while epsi>pi
+        epsi -= 2*pi
+    end
+    # epsi = epsi % pi
     # println(epsi)
     ey = sqrt(val_min)
     bound1_dist = (z[1]-track.bound1xy[idx_min,1]).^2 + (z[2]-track.bound1xy[idx_min,2]).^2
@@ -116,8 +119,8 @@ function xyFrame_to_trackFrame(z::Array{Float64,1},track::Track)
 end
 
 # FUNCTIONS FOR FEATURE DATA SELECTING AND SYS_ID
-function find_feature_dist(z_feature::Array{Float64,3},u_feature::Array{Float64,2},z_curr::Array{Float64,2},u_curr::Array{Float64,2})
-    Np=40 # Just to make life easier, we directly put a specific number here
+function find_feature_dist(z_feature::Array{Float64,3},u_feature::Array{Float64,2},z_curr::Array{Float64,2},u_curr::Array{Float64,2},selectedStates::SelectedStates)
+    Np=selectedStates.feature_Np # Just to make life easier, we directly put a specific number here
     # Clear the safe set data of previous iteration
     iden_z=zeros(Np,3,2)
     iden_z_plot=zeros(Np,6)
@@ -127,14 +130,15 @@ function find_feature_dist(z_feature::Array{Float64,3},u_feature::Array{Float64,
     # norm_state=[0.5 1 0.1 1 1 0.3] # [1 0.1 1] are the normed state, the first state is for "s", which is for putting some weight on the track place
     curr_state=hcat(z_curr[4:6]',u_curr)
 
-    norm_state=[1 1 1 1/2 1/2] # [1 0.1 1] are the normed state, the first state is for "s", which is for putting some weight on the track place
+    norm_state=[1 0.1 1 1 0.2] # [1 0.1 1] are the normed state, the first state is for "s", which is for putting some weight on the track place
+    # norm_state=[1 1 1 1/2 1/2] # [1 0.1 1] are the normed state, the first state is for "s", which is for putting some weight on the track place
     dummy_state=z_feature[:,:,1]
     dummy_input=u_feature
     # cal_state=Float64[] # stored for normalization calculation
     cal_state=hcat(dummy_state,dummy_input)
     dummy_norm=zeros(size(dummy_state,1),2)
 
-    norm_dist=(curr_state.-cal_state[:,4:8])#./norm_state
+    norm_dist=(curr_state.-cal_state[:,4:8])./norm_state
     dummy_norm[:,1]=norm_dist[:,1].^2+norm_dist[:,2].^2+norm_dist[:,3].^2+norm_dist[:,4].^2+norm_dist[:,5].^2
     dummy_norm[:,2]=1:size(dummy_state,1)
     dummy_norm=sortrows(dummy_norm) # pick up the first minimum Np points
@@ -164,7 +168,7 @@ function find_SS_dist(solHistory::SolHistory,z_curr::Array{Float64,2},u_curr::Ar
     # curr_state=hcat(z_curr[1],z_curr[4:6]',u_curr')
     # norm_state=[0.5 1 0.1 1 1 0.3] # [1 0.1 1] are the normed state, the first state is for "s", which is for putting some weight on the track place
     curr_state=hcat(z_curr[4:6]',u_curr)
-    norm_state=[1 1 1 1/2 1/2] # [1 0.1 1] are the normed state, the first state is for "s", which is for putting some weight on the track place
+    norm_state=[1 0.1 1 1 0.2] # [1 0.1 1] are the normed state, the first state is for "s", which is for putting some weight on the track place
     dummy_state=Array{Float64}(0,6)
     dummy_input=Array{Float64}(0,2)
     cal_state=Array{Float64}(0,8) # stored for normalization calculation
@@ -179,7 +183,7 @@ function find_SS_dist(solHistory::SolHistory,z_curr::Array{Float64,2},u_curr::Ar
     dummy_norm=zeros(size(dummy_state,1)-1,2)
     for i=1:size(dummy_state,1)-1 # The last state point will be removed
         # dummy_norm[i,1]=norm((curr_state-cal_state[i,vcat(1,4:8)]')./norm_state) # this is the state after normalization
-        norm_dist=(curr_state.-cal_state[i,4:8])#./norm_state
+        norm_dist=(curr_state.-cal_state[i,4:8])./norm_state
         dummy_norm[i,1]=norm_dist[1]^2+norm_dist[2]^2+norm_dist[3]^2+norm_dist[4]^2+norm_dist[5]^2
         # dummy_norm[i,1]=norm((curr_state-cal_state[i,4:8])./norm_state) # this is the state after normalization
         dummy_norm[i,2]=i
@@ -257,12 +261,24 @@ function coeff_iden_dist(idenStates::Array{Float64,3},idenInputs::Array{Float64,
         A_psi[i,2]=z[i,2,1]/z[i,1,1]
         A_psi[i,3]=u[i,2]
     end
+    # BACKSLASH OPERATOR WITHOUT REGULIZATION
     # c_Vx = A_vx\y_vx
     # c_Vy = A_vy\y_vy
     # c_Psi = A_psi\y_psi
-    c_Vx = inv(A_vx'*A_vx)*A_vx'*y_vx
-    c_Vy = inv(A_vy'*A_vy)*A_vy'*y_vy
-    c_Psi = inv(A_psi'*A_psi)*A_psi'*y_psi
+
+    # BY IVS()
+    # c_Vx = inv(A_vx'*A_vx)*A_vx'*y_vx
+    # c_Vy = inv(A_vy'*A_vy)*A_vy'*y_vy
+    # c_Psi = inv(A_psi'*A_psi)*A_psi'*y_psi
+
+    # BACKSLASH WITH REGULARIZATION
+    mu_Vx = zeros(3,3); mu_Vx[1,1] = 1e-5
+    mu_Vy = zeros(4,4); mu_Vy[1,1] = 1e-5
+    mu_Psi = zeros(3,3); mu_Psi[2,2] = 1e-5
+    c_Vx = (A_vx'*A_vx+mu_Vx)\(A_vx'*y_vx)
+    c_Vy = (A_vy'*A_vy+mu_Vy)\(A_vy'*y_vy)
+    c_Psi = (A_psi'*A_psi+mu_Psi)\(A_psi'*y_psi)
+
 
     # println("c_Vx is $c_Vx")
     # println("c_Vx is $c_Vy")
@@ -287,8 +303,10 @@ function find_SS(safeSetData::SafeSetData,selectedStates::SelectedStates,
     # target_s=s+v*dt*(N)   # 3 is a temporary shift number
     target_s=z_prev[end,1]+z_prev[end,4]*dt
     # for i=1:lapStatus.currentLap-1
+    cost_correction = findmin(safeSetData.oldCost[lapStatus.currentLap-Nl:lapStatus.currentLap-1])[1]
     for i=1:Nl
         SS_curr=safeSetData.oldSS[:,:,lapStatus.currentLap-i]
+        SS_next=safeSetData.oldSS[:,:,lapStatus.currentLap-i+1]
         SScost_curr=copy(safeSetData.cost2target[:,lapStatus.currentLap-i])
         all_s=SS_curr[1:Int(safeSetData.oldCost[lapStatus.currentLap-i]),1]
         if target_s>track.s
@@ -314,33 +332,41 @@ function find_SS(safeSetData::SafeSetData,selectedStates::SelectedStates,
             # println("oldCost:",safeSetData.oldCost[1:5])
             # println("<1:","idx_start:",idx_s_start," idx_end:",idx_s_end)
             SS_curr[1:idx_s_end,1]+=track.s # correction when switching lap
-            selectedStates.selStates=vcat(selectedStates.selStates,SS_curr[cost+idx_s_start:cost,:],SS_curr[1:idx_s_end,:])
+            add_s = hcat(track.s*ones(idx_s_end),zeros(idx_s_end,size(SS_curr,2)-1))
+            # selectedStates.selStates=vcat(selectedStates.selStates,SS_curr[cost+idx_s_start:cost,:],SS_curr[1:idx_s_end,:])
+            selectedStates.selStates=vcat(selectedStates.selStates,SS_curr[cost+idx_s_start:cost,:],reshape(SS_next[1:idx_s_end,:],idx_s_end,size(SS_curr,2))+add_s)
             SScost_curr[1:idx_s_end]-=cost # correction when switching lap
-            selectedStates.statesCost=vcat(selectedStates.statesCost,SScost_curr[cost+idx_s_start:cost],SScost_curr[1:idx_s_end])
+            # SScost_curr[1:idx_s_end]-=cost_correction # correction when switching lap
+            # selectedStates.statesCost=vcat(selectedStates.statesCost,SScost_curr[cost+idx_s_start:cost],SScost_curr[1:idx_s_end])
+            selectedStates.statesCost=vcat(selectedStates.statesCost,(selectedStates.Np:-1:1)+cost)
         elseif idx_s_end>cost
             # println(">cost:","idx_start:",idx_s_start," idx_end:",idx_s_end,"lap cost",cost)
             SS_curr[1:idx_s_end-cost,1]+=track.s
-            selectedStates.selStates=vcat(selectedStates.selStates,SS_curr[idx_s_start:cost,:],SS_curr[1:idx_s_end-cost,:])
+            add_s = hcat(track.s*ones(idx_s_end-cost),zeros(idx_s_end-cost,size(SS_curr,2)-1))
+
+            # selectedStates.selStates=vcat(selectedStates.selStates,SS_curr[idx_s_start:cost,:],SS_curr[1:idx_s_end-cost,:])
+            selectedStates.selStates=vcat(selectedStates.selStates,SS_curr[idx_s_start:cost,:],reshape(SS_next[1:idx_s_end-cost,:],idx_s_end-cost,size(SS_curr,2))+add_s)
             SScost_curr[1:idx_s_end-cost]-=cost
-            selectedStates.statesCost=vcat(selectedStates.statesCost,SScost_curr[idx_s_start:cost],SScost_curr[1:idx_s_end-cost])
+            # SScost_curr[1:idx_s_end-cost]-=cost_correction
+            # selectedStates.statesCost=vcat(selectedStates.statesCost,SScost_curr[idx_s_start:cost],SScost_curr[1:idx_s_end-cost])
+            selectedStates.statesCost=vcat(selectedStates.statesCost,(selectedStates.Np:-1:1)+cost)
         else
             # println("else:","idx_start:",idx_s_start," idx_end:",idx_s_end,"lap cost",cost)
             if s>track.s-v*dt*(N)
                 SS_curr[idx_s_start:idx_s_end,1]+=track.s
-                selectedStates.selStates=vcat(selectedStates.selStates,SS_curr[idx_s_start:idx_s_end,:])
-                selectedStates.statesCost=vcat(selectedStates.statesCost,SScost_curr[idx_s_start:idx_s_end])
+                add_s = hcat(track.s*ones(idx_s_end-idx_s_start+1),zeros(idx_s_end-idx_s_start+1,size(SS_curr,2)-1))
+                # selectedStates.selStates=vcat(selectedStates.selStates,SS_curr[idx_s_start:idx_s_end,:])
+                selectedStates.selStates=vcat(selectedStates.selStates,reshape(SS_next[idx_s_start:idx_s_end,:],idx_s_end-idx_s_start+1,size(SS_curr,2))+add_s)
+                # selectedStates.statesCost=vcat(selectedStates.statesCost,SScost_curr[idx_s_start:idx_s_end])
+                selectedStates.statesCost=vcat(selectedStates.statesCost,(selectedStates.Np:-1:1)+cost)
             else
-                # println("idx_s_start")
-                # println(idx_s_start)
-                # println("idx_s_end")
-                # println(idx_s_end)
                 selectedStates.selStates=vcat(selectedStates.selStates,SS_curr[idx_s_start:idx_s_end,:])
-                selectedStates.statesCost=vcat(selectedStates.statesCost,SScost_curr[idx_s_start:idx_s_end])
-                # selectedStates.selStates=SS_curr[idx_s_start:idx_s_end,:]
-                # selectedStates.statesCost=SScost_curr[idx_s_start:idx_s_end]
+                # selectedStates.statesCost=vcat(selectedStates.statesCost,SScost_curr[idx_s_start:idx_s_end])
+                selectedStates.statesCost=vcat(selectedStates.statesCost,(selectedStates.Np:-1:1)+cost)
             end
         end
     end
+    selectedStates.statesCost[:] -= cost_correction
     return selectedStates
 end
 
@@ -428,8 +454,8 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_4s::MpcParams,mpcPa
 
     selectedStates.Np           = 10        # please select an even number
     selectedStates.Nl           = 2         # Number of previous laps to include in the convex hull
-    selectedStates.feature_Np   = 40        # Number of points from previous laps to do SYS_ID
-    selectedStates.feature_Nl   = 2         # Number of previous laps to do SYS_ID 
+    selectedStates.feature_Np   = 50        # Number of points from previous laps to do SYS_ID
+    selectedStates.feature_Nl   = 1         # Number of previous laps to do SYS_ID 
     selectedStates.selStates    = zeros(selectedStates.Nl*selectedStates.Np,6)
     selectedStates.statesCost   = zeros(selectedStates.Nl*selectedStates.Np)
 
@@ -883,15 +909,16 @@ function createTrack(name::ASCIIString)
                       2*3*10 0]
     elseif name == "feature"
         # FEATURE TRACK DATA
+        ds = 0.01
         v = 2.5    
         max_a=7.6;
         R=v^2/max_a
         max_c=1/R
         angle=(pi+pi/2)-0.105
         R_kin = 0.8
-        num_kin = Int(round(angle/ ( 0.03/R_kin ) * 2))
-        num = max(Int(round(angle/ ( 0.03/R ) * 2)),num_kin)
-        # num*=2
+        num_kin = Int(round(angle/ ( ds/R_kin ) * 2))
+        num = max(Int(round(angle/ ( ds/R ) * 2)),num_kin)
+        # num*=3
         track_data=[num -angle;
                     num  angle]
     else

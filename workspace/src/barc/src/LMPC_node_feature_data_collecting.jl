@@ -34,10 +34,11 @@ function SE_callback(msg::pos_info,acc_f::Array{Float64},lapStatus::LapStatus,po
     elseif z_est[6] > lapStatus.s_lapTrigger
         lapStatus.switchLap = true
     end
+end
 
-    # save current state in oldTraj
-    oldTraj.oldTraj[oldTraj.count[lapStatus.currentLap],:,lapStatus.currentLap] = z_est
-    oldTraj.count[lapStatus.currentLap] += 1
+function ST_callback(msg::pos_info,z_true::Array{Float64,1})
+    z_true[:] = [msg.x,msg.y,msg.v_x,msg.v_y,msg.psi,msg.psiDot]
+    # println("z_true from LMPC node",round(z_true,4))
 end
 
 # This is the main function, it is called when the node is started.
@@ -51,9 +52,11 @@ function main()
     const TI_TV_FLAG       = true   # true:TI,          false:TV
     const GP_LOCAL_FLAG    = false  # true:local GPR
     const GP_FULL_FLAG     = false  # true:full GPR
-    const N                = 16
-    const delay_df         = 3
+    const N                = 10
+    const delay_df         = 1
     const delay_a          = 1
+    println("N=$N, delay_df=$delay_df, delay_a=$delay_a")
+    
     track_data       = createTrack("feature")
     track            = Track(track_data)
     oldTraj          = OldTrajectory()
@@ -69,12 +72,14 @@ function main()
     selectedStates   = SelectedStates()
     oldSS            = SafeSetData()
     z_est            = zeros(7)          # (xDot, yDot, psiDot, ePsi, eY, s, acc_f)
+    z_true           = zeros(6)          # (xDot, yDot, psiDot)
     x_est            = zeros(4)          # (x, y, psi, v)
     cmd              = ECU()             # CONTROL SIGNAL MESSAGE INITIALIZATION
     mpcSol_to_pub    = mpc_solution()    # MPC SOLUTION PUBLISHING MESSAGE INITIALIZATION
     InitializeParameters(mpcParams,mpcParams_4s,mpcParams_pF,modelParams,mpcSol,
                          selectedStates,oldSS,oldTraj,mpcCoeff,mpcCoeff_dummy,
                          LMPC_LAP,delay_df,delay_a,N,BUFFERSIZE)
+    println("track maximum curvature is: ",round(track.max_curvature,3))
     
     # FEATURE DATA INITIALIZATION
     v_ref = vcat([0.8],0.8:0.05:2.5)
@@ -96,6 +101,7 @@ function main()
     # The subscriber passes arguments (coeffCurvature and z_est) which are updated by the callback function:
     acc_f = [0.0]
     s1 = Subscriber("pos_info", pos_info, SE_callback, (acc_f,lapStatus,posInfo,mpcSol,oldTraj,z_est,x_est),queue_size=50)::RobotOS.Subscriber{barc.msg.pos_info}
+    s2 = Subscriber("real_val", pos_info, ST_callback, (z_true,),queue_size=1)::RobotOS.Subscriber{barc.msg.pos_info}
     # Note: Choose queue size long enough so that no pos_info packets get lost! They are important for system ID!
     run_id = get_param("run_id")
     println("Finished initialization.")
@@ -122,13 +128,14 @@ function main()
             # TRACK FEATURE DATA COLLECTING: it is important to put this at the beginning of the iteration to make the data consistant
             if lapStatus.currentLap>1
                 k = k + 1 # start counting from the second lap.
-                
+                z_curr = xyFrame_to_trackFrame(z_true,track)                
                 # (xDot, yDot, psiDot, ePsi, eY, s, acc_f)
                 feature_z[k,:,1] = [z_est[6],z_est[5],z_est[4],z_est[1],z_est[2],z_est[3]]
+                # feature_z[k,:,1] = z_curr
+                feature_z[k-1,:,2] = [z_est[6],z_est[5],z_est[4],z_est[1],z_est[2],z_est[3]]
+                # feature_z[k-1,:,2] = z_curr
                 feature_u[k,1] = u_sol[2,1] # acceleration delay is from MPC itself
                 feature_u[k+mpcParams.delay_df-1,2] = u_sol[1+mpcParams.delay_df,2] # another 2 steps delay is from the system
-                # it should be the same to store the u_sol[2] to the current position, k, since it is fixed in the optimization problem.
-                feature_z[k-1,:,2] = [z_est[6],z_est[5],z_est[4],z_est[1],z_est[2],z_est[3]]
                 # println("feature_u from MPC",feature_u[k,:])
                 # println("current publishing u",u_sol[2,:])
             end
@@ -145,15 +152,18 @@ function main()
                 end
             end
 
-            # OPTIMIZATION
-            println("Current Lap: ", lapStatus.currentLap, ", It: ", lapStatus.currentIt)
-
             # (xDot, yDot, psiDot, ePsi, eY, s, acc_f)
             z_curr = [z_est[6],z_est[5],z_est[4],sqrt(z_est[1]^2+z_est[2]^2)]
+            # z_curr = xyFrame_to_trackFrame(z_true,track)
+            # z_curr = [z_curr[1],z_curr[2],z_curr[3],sqrt(z_curr[4]^2+z_curr[5]^2)]
  
             (z_sol,u_sol,sol_status)=solveMpcProblem_featureData(mdl_pF,mpcParams_pF,modelParams,mpcSol,z_curr,z_prev,u_prev,track,v_ref[lapStatus.currentLap])
             mpcSol.z = z_sol
             mpcSol.u = u_sol
+            
+            # OPTIMIZATION
+            println("$sol_status, Current Lap: ", lapStatus.currentLap, ", It: ", lapStatus.currentIt, ", v:", round(z_curr[4],2))
+            # println("z_curr", round(z_curr,3))
 
             # # ADDITIONAL NOISE ADDING, WHICH IS ONLY FOR SIMULATION
             # n=randn(2)
@@ -176,7 +186,6 @@ function main()
 
             z_prev = z_sol
             u_prev = u_sol
-            println("Feature collecting solver status is = $sol_status")
 
             cmd.motor = convert(Float32,mpcSol.a_x)
             cmd.servo = convert(Float32,mpcSol.d_f)
