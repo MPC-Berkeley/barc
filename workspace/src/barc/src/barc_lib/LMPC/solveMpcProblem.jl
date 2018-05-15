@@ -154,7 +154,6 @@ function solveMpcProblem_convhull_kin_linear(mdl::MpcModel_convhull_kin_linear,m
     # for j=1:n_state
     #     JuMP.fix(mdl.z_linear[mpcParams.N+1,j],z_linear[mpcParams.N+1,j])
     # end
-    println(size(mdl.z_linear),size(z_linear))
     setvalue(mdl.z_linear,z_linear)
     setvalue(mdl.u_linear,u_linear)
 

@@ -4,7 +4,7 @@
 #from numpy import hstack, vstack, sign, size, diff, cumsum, mod, floor, interp, linalg
 #from numpy import polyval, polyder, arctan2
 from numpy import hstack, arange, array, zeros, vstack, transpose, pi, linspace, sin, cos, inf
-from numpy import size, tan, diff, cumsum, mod, argmin, interp, floor, arctan2, polyval, polyder
+from numpy import size, tan, diff, cumsum, mod, argmin, interp, floor, arctan2, polyval, polyder, ceil
 from numpy import amin, dot, ones, sqrt, linalg, sign, sum
 #from numpy import *
 import scipy.optimize
@@ -120,7 +120,7 @@ class Localization(object):
         R_kin = 0.8
         num_kin = int(round(angle/ ( ds/R_kin ) * 2))
         num = max(int(round(angle/ ( ds/R ) * 2)),num_kin)
-        # num*=3
+        # num=int(ceil(num*1.2))
         # TRACK DATA CALCULATION
         theta, curvature = add_curve(theta,curvature,num,-angle)
         theta, curvature = add_curve(theta,curvature,num,angle)

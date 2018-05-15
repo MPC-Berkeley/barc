@@ -46,7 +46,7 @@ function main()
     println("Starting LMPC_Feature_Collecting node.")
     const BUFFERSIZE       = 500
     const LMPC_LAP         = 10
-    const PF_FLAG          = true   # true:only pF,     false:1 warm-up lap and LMPC
+    const PF_FLAG          = false   # true:only pF,     false:1 warm-up lap and LMPC
     const LMPC_FLAG        = true   # true:IDEN_MODEL,  false:IDEN_KIN_LIN_MODEL
     const FEATURE_FLAG     = false  # true:8-shape,     false:history (this requires the corresponding change in 3 palces)
     const TI_TV_FLAG       = true   # true:TI,          false:TV

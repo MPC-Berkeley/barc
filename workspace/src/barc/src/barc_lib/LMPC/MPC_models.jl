@@ -343,8 +343,8 @@ type MpcModel_convhull_kin_linear
         # z_ub       = mpcParams.z_ub              # upper bounds for the states
         u_lb = [-1    -18/180*pi]
         u_ub = [ 2     18/180*pi]
-        z_lb = [-Inf -0.6 -pi -0.5] # 1.s 2.ey 3.epsi 4.v
-        z_ub = [ Inf  0.6  pi  2.5] # 1.s 2.ey 3.epsi 4.v
+        z_lb = [-Inf -Inf -pi -0.5] # 1.s 2.ey 3.epsi 4.v
+        z_ub = [ Inf  Inf  pi  2.5] # 1.s 2.ey 3.epsi 4.v
 
         c_f        = modelParams.c_f
 
@@ -625,7 +625,7 @@ type MpcModel_convhull_dyn_linear
         # Slack cost on Vx
         @NLexpression(mdl, slackVx, (z_Ol[N,4] + z_linear[N+1,4] - sum{alpha[j]*selStates[j,4] , j=1:Nl*Np})^2)
         # Slack cost on Vy
-        @NLexpression(mdl, slackVy, (z_Ol[N,5] + z_linear[N+1,6] - sum{alpha[j]*selStates[j,5] , j=1:Nl*Np})^2)
+        @NLexpression(mdl, slackVy, (z_Ol[N,5] + z_linear[N+1,5] - sum{alpha[j]*selStates[j,5] , j=1:Nl*Np})^2)
         # Slack cost on Psidot
         @NLexpression(mdl, slackPsidot, (z_Ol[N,6] + z_linear[N+1,6] - sum{alpha[j]*selStates[j,6] , j=1:Nl*Np})^2)
 

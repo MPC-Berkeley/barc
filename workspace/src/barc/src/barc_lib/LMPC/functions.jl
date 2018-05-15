@@ -91,7 +91,7 @@ function trackFrame_to_xyFrame(z_sol::Array{Float64,2},track::Track)
     return z_x, z_y
 end
 
-function xyFrame_to_trackFrame(z::Array{Float64,1},track::Track)
+function xyFrame_to_trackFrame(z::Array{Float64,1},track::Track) # Localization in Julia which is corresponding to Localization helper in python
     # x,y,vx,vy,psi,psidot -> s,ey,epsi,vx,vy,psidot
     dist = (z[1]-track.xy[:,1]).^2 + (z[2]-track.xy[:,2]).^2
     (val_min,idx_min)=findmin(dist)
@@ -454,8 +454,8 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_4s::MpcParams,mpcPa
 
     selectedStates.Np           = 10        # please select an even number
     selectedStates.Nl           = 2         # Number of previous laps to include in the convex hull
-    selectedStates.feature_Np   = 50        # Number of points from previous laps to do SYS_ID
-    selectedStates.feature_Nl   = 1         # Number of previous laps to do SYS_ID 
+    selectedStates.feature_Np   = 100        # Number of points from previous laps to do SYS_ID
+    selectedStates.feature_Nl   = 2         # Number of previous laps to do SYS_ID 
     selectedStates.selStates    = zeros(selectedStates.Nl*selectedStates.Np,6)
     selectedStates.statesCost   = zeros(selectedStates.Nl*selectedStates.Np)
 
@@ -787,10 +787,10 @@ function covar_fun(z1::Array{Float64,2},z2::Array{Float64,2})
     return k
 end
 
-function regre(z::Array{Float64,1},u::Array{Float64,2},e::Array{Float64,1},s::Array{Float64,2},i::Array{Float64,2})
+function regre(z::Array{Float64,2},u::Array{Float64,2},e::Array{Float64,1},s::Array{Float64,2},i::Array{Float64,2})
     # find the closest local feature points
     dummy_norm = zeros(size(s,1),2)
-    state = vcat(z,u')
+    state = hcat(z,u)
     feature_state = hcat(s,i)
     dist = state[4:8]'.-feature_state[:,4:8]
     # We have 5 dimensions for distance calculation
@@ -818,7 +818,7 @@ function regre(z::Array{Float64,1},u::Array{Float64,2},e::Array{Float64,1},s::Ar
     end
 
     local_e = k'*(K\y)
-    return local_e
+    return local_e[1]
 end
 
 function GP_prepare(e::Array{Float64,1},s::Array{Float64,2},i::Array{Float64,2})
@@ -845,14 +845,24 @@ function GP_prepare(e::Array{Float64,1},s::Array{Float64,2},i::Array{Float64,2})
     return K\e
 end
 
-function GP_full(z::Array{Float64,1},u::Array{Float64,2},feature_state::Array{Float64,2},GP_prepare::Array{Float64,1})
-    state = [z;u']
-    z = feature_state[:,4:8].-state[4:8]'
+function GP_full_vy(z::Array{Float64,2},u::Array{Float64,2},feature_state::Array{Float64,2},GP_prepare::Array{Float64,1})
+    state = hcat(z,u)
+    z = feature_state[:,4:8].-state[1,4:8]
     Z = 0.5*z[:,1].^2+5*z[:,2].^2+5*z[:,3].^2+0.5*z[:,4].^2+5*z[:,5].^2
     # Z = z[:,1].^2+z[:,2].^2+z[:,3].^2+z[:,4].^2+z[:,5].^2
-    k = exp(-0.5*Z)
+    k = 0.2^2*exp(-0.5*Z)
     GP_e = k'*GP_prepare
-    return GP_e
+    return GP_e[1]
+end
+
+function GP_full_psidot(z::Array{Float64,2},u::Array{Float64,2},feature_state::Array{Float64,2},GP_prepare::Array{Float64,1})
+    state = hcat(z,u)
+    z = feature_state[:,4:8].-state[1,4:8]
+    Z = 0.5*z[:,1].^2+5*z[:,2].^2+5*z[:,3].^2+0.5*z[:,4].^2+5*z[:,5].^2
+    # Z = z[:,1].^2+z[:,2].^2+z[:,3].^2+z[:,4].^2+z[:,5].^2
+    k = 0.2^2*exp(-0.5*Z)
+    GP_e = k'*GP_prepare
+    return GP_e[1]
 end
 
 function createTrack(name::ASCIIString)
@@ -918,7 +928,7 @@ function createTrack(name::ASCIIString)
         R_kin = 0.8
         num_kin = Int(round(angle/ ( ds/R_kin ) * 2))
         num = max(Int(round(angle/ ( ds/R ) * 2)),num_kin)
-        # num*=3
+        # num=Int(ceil(num*1.2))
         track_data=[num -angle;
                     num  angle]
     else

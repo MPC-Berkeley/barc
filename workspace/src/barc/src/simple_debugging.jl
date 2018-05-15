@@ -17,20 +17,24 @@ include("barc_lib/LMPC/functions.jl")
 const select_flag = false
 
 run_time = Dates.format(now(),"yyyy-mm-dd")
-data        = load("$(homedir())/simulations/LMPC-$(run_time)-$(ARGS[2]).jld")
-oldSS       = data["oldSS"]
-selectedStates = data["selectedStates"]
-solHistory  = data["solHistory"]
-selectHistory = data["selectHistory"]
-selectFeatureHistory = data["selectFeatureHistory"]
-statusHistory = data["statusHistory"]
-track       = data["track"]
-modelParams = data["modelParams"]
-mpcParams   = data["mpcParams"]
-log_cvx     = data["log_cvx"]   
-log_cvy     = data["log_cvy"]
-log_cpsi    = data["log_cpsi"]
-lapStatus   = LapStatus(1,1,false,false,0.3)
+if isfile("$(homedir())/simulations/LMPC-$(run_time)-$(ARGS[2]).jld")
+    data        = load("$(homedir())/simulations/LMPC-$(run_time)-$(ARGS[2]).jld")
+    oldSS       = data["oldSS"]
+    selectedStates          = data["selectedStates"]
+    solHistory              = data["solHistory"]
+    selectHistory           = data["selectHistory"]
+    GP_vy_History           = data["GP_vy_History"]
+    GP_psidot_History       = data["GP_psidot_History"]
+    selectFeatureHistory    = data["selectFeatureHistory"]
+    statusHistory           = data["statusHistory"]
+    track       = data["track"]
+    modelParams = data["modelParams"]
+    mpcParams   = data["mpcParams"]
+    log_cvx     = data["log_cvx"]   
+    log_cvy     = data["log_cvy"]
+    log_cpsi    = data["log_cpsi"]
+    lapStatus   = LapStatus(1,1,false,false,0.3)
+end
 
 # STATE AND SYS_ID PARAMETERS PLOT FOR LAPS DONE
 if ARGS[1] == "record" || ARGS[1]=="both"
@@ -318,7 +322,7 @@ if ARGS[1] == "prediction"
     for i = 1 : 5
         set_limits(ax[i], solHistory, i+1)
     end
-    ax_s_vy[:set_ylim]([-0.15, 0.15])
+    # ax_s_vy[:set_ylim]([-0.15, 0.15])
     ax_s_c[:set_ylim]([-1.2,1.2])
     
     # INITIALIZE THE PLOTING FOR MPC PREDICTION
@@ -370,10 +374,16 @@ if ARGS[1] == "prediction"
     axis("equal")
 
     # UPDATE AND SAVE THE PLOT FOR EVERY LMPC LAPS
+    GP_flag = false
     if length(ARGS) == 2
         lap = 1
     elseif ARGS[3] == "LMPC"
         lap = 2 + max(selectedStates.Nl,selectedStates.feature_Nl)  # starting lap of LMPC
+    elseif ARGS[3] == "GP"    
+        lap = 2 + max(selectedStates.Nl,selectedStates.feature_Nl)  # starting lap of LMPC
+        GP_vy_plt, = ax_s_vy[:plot](NaN*ones(mpcParams.N),NaN*ones(mpcParams.N),"ro")
+        GP_psidot_plt, = ax_s_psidot[:plot](NaN*ones(mpcParams.N),NaN*ones(mpcParams.N),"ro")
+        GP_flag = true
     end
 
     while solHistory.cost[lap] > 10
@@ -433,6 +443,13 @@ if ARGS[1] == "prediction"
                     end
                 end
 
+                if GP_flag
+                    GP_vy       = solHistory.z[j,lap,2:end,5]+GP_vy_History[j,lap,:]
+                    GP_psidot   = solHistory.z[j,lap,2:end,6]+GP_psidot_History[j,lap,:]
+                    update_prediction(GP_vy_plt,        solHistory.z[j,lap,2:end,1], GP_vy, track)
+                    update_prediction(GP_psidot_plt,    solHistory.z[j,lap,2:end,1], GP_psidot, track)
+                end
+
                 # UPDATE THE CURVATURE PLOT
                 curvature=curvature_prediction(reshape(solHistory.z[j,lap,:,:],size(solHistory.z[j,lap,:,:],3),size(solHistory.z[j,lap,:,:],4)),track)
                 update_prediction(curvature_plt,solHistory.z[j,lap,:,1],curvature,track)
@@ -452,3 +469,36 @@ if ARGS[1] == "prediction"
         end
     end
 end
+
+if ARGS[1] == "GP"
+    data = load("$(homedir())/simulations/Feature_Data/FeatureData_GP.jld")
+    feature_GP_z        = data["feature_GP_z"]
+    feature_GP_vy_e     = data["feature_GP_vy_e"]
+    feature_GP_psidot_e = data["feature_GP_psidot_e"]
+
+    fig = figure("GPR",figsize=(20,10))
+    min_val = minimum(feature_GP_vy_e)
+    max_val = maximum(feature_GP_vy_e)
+    ax_s_eVy = fig[:add_subplot](2, 1, 1)
+    ax_s_eVy[:plot](feature_GP_vy_e,".")
+    for i = 1:length(feature_GP_vy_e)-1
+        if feature_GP_z[i,1] > feature_GP_z[i+1,1]
+            ax_s_eVy[:plot]([i,i],[min_val,max_val],color="grey",linestyle="--")
+        end
+    end
+    xlabel("s [m]")
+    ylabel("e_vy [m/s]")
+
+    min_val = minimum(feature_GP_psidot_e)
+    max_val = maximum(feature_GP_psidot_e)
+    ax_s_ePsidot = fig[:add_subplot](2, 1, 2)
+    ax_s_ePsidot[:plot](feature_GP_psidot_e,".")
+    for i = 1:length(feature_GP_vy_e)-1
+        if feature_GP_z[i,1] > feature_GP_z[i+1,1]
+            ax_s_ePsidot[:plot]([i,i],[min_val,max_val],color="grey",linestyle="--")
+        end
+    end
+    xlabel("s [m]")
+    ylabel("e_Psi_dot [rad/s]")
+end
+show()
