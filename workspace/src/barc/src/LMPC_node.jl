@@ -105,7 +105,7 @@ function main()
     TI_TV_FLAG ? println("Time invariant SYS_ID") : println("Time variant SYS_ID")
     println("N=$N, delay_df=$delay_df, delay_a=$delay_a")
     
-    track_data       = createTrack("MSC_lab")
+    track_data       = createTrack("3110")
     track            = Track(track_data)
     track_fe         = createTrack("feature")
     track_f          = Track(track_fe)

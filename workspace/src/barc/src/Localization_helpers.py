@@ -183,20 +183,23 @@ class Localization(object):
         #             [153,0],
         #             [120,-pi/2],
         #             [211,0]]
-        # num = 100 # 60
-        # track_data=[[80 ,0],
-        #             [num, -pi/2],
-        #             [80+47 ,0],
-        #             [num, -pi/2],
-        #             [50 ,0],
-        #             [num, -pi/2],
-        #             [4  , 0],
-        #             [num, pi/2],
-        #             [30 ,0],
-        #             [num, -pi/2],
-        #             [4 ,0],
-        #             [num, -pi/2],
-        #             [71+48 ,0]]  
+        
+        # track for room 3110
+        num = 100 # 60
+        track_data=[[int(ceil(1.5*80)) ,0],
+                    [int(ceil(1.5*num)), -pi/2],
+                    [int(ceil(1.5*(80+47))) ,0],
+                    [int(ceil(1.5*num)), -pi/2],
+                    [int(ceil(1.5*50)) ,0],
+                    [int(ceil(1.5*num)), -pi/2],
+                    [int(ceil(1.5*4))  , 0],
+                    [int(ceil(1.5*num)), pi/2],
+                    [int(ceil(1.5*30)) ,0],
+                    [int(ceil(1.5*num)), -pi/2],
+                    [int(ceil(1.5*4)) ,0],
+                    [int(ceil(1.5*num)), -pi/2],
+                    [int(ceil(1.5*(71+48))) ,0]]  
+
         # Basic track for experiment          
         # track_data = [[60, 0],
         #               [80, -pi/2],
@@ -209,12 +212,13 @@ class Localization(object):
         #               [20, 0],
         #               [80, -pi/2],
         #               [75, 0]]
-        # TRACK FOR THE SMALL EXPERIMENT ROOM
-        track_data = [[int(ceil(1.2*3*10)), 0],
-                      [int(ceil(1.2*3*140)), -pi],
-                      [int(ceil(1.2*3*20)), 0],
-                      [int(ceil(1.2*3*140)), -pi],
-                      [int(ceil(1.2*3*10)), 0]]
+        
+        # TRACK FOR MSC EXPERIMENT ROOM
+        # track_data = [[int(ceil(1.2*3*10)), 0],
+        #               [int(ceil(1.2*3*140)), -pi],
+        #               [int(ceil(1.2*3*20)), 0],
+        #               [int(ceil(1.2*3*140)), -pi],
+        #               [int(ceil(1.2*3*10)), 0]]
                       
         for i in range(len(track_data)):
             num = track_data[i][0]

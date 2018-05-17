@@ -908,32 +908,32 @@ function createTrack(name::ASCIIString)
     elseif name == "3110"
         # EXPERIEMENT TRACK DATA
         num = 100
-        track_data=[80 0;
-                    num -pi/2;
-                    80+47 0;
-                    num -pi/2;
-                    50 0;
-                    num -pi/2;
-                    4 0;
-                    num pi/2;
-                    30 0;
-                    num -pi/2;
-                    4 0;
-                    num -pi/2;
-                    71+48 0]
+        track_data=[Int(ceil(1.5*80)) 0;
+                    Int(ceil(1.5*num)) -pi/2;
+                    Int(ceil(1.5*(80+47))) 0;
+                    Int(ceil(1.5*num)) -pi/2;
+                    Int(ceil(1.5*50)) 0;
+                    Int(ceil(1.5*num)) -pi/2;
+                    Int(ceil(1.5*4)) 0;
+                    Int(ceil(1.5*num)) pi/2;
+                    Int(ceil(1.5*30)) 0;
+                    Int(ceil(1.5*num)) -pi/2;
+                    Int(ceil(1.5*4)) 0;
+                    Int(ceil(1.5*num)) -pi/2;
+                    Int(ceil(1.5*(71+48))) 0]
     elseif name == "basic"
         # Basic experiment track
-        track_data = [60 0;
-                      80 -pi/2;
-                      20 0;
-                      80 -pi/2;
-                      40 pi/10;
-                      60 -pi/5;
-                      40 pi/10;
-                      80 -pi/2;
-                      20 0;
-                      80 -pi/2;
-                      75 0]
+        track_data = [Int(ceil(1.5*60)) 0;
+                      Int(ceil(1.5*80)) -pi/2;
+                      Int(ceil(1.5*20)) 0;
+                      Int(ceil(1.5*80)) -pi/2;
+                      Int(ceil(1.5*40)) pi/10;
+                      Int(ceil(1.5*60)) -pi/5;
+                      Int(ceil(1.5*40)) pi/10;
+                      Int(ceil(1.5*80)) -pi/2;
+                      Int(ceil(1.5*20)) 0;
+                      Int(ceil(1.5*80)) -pi/2;
+                      Int(ceil(1.5*75)) 0]
     elseif name == "MSC_lab"
         # TRACK TO USE IN THE SMALL EXPERIMENT ROOM
         track_data = [Int(ceil(1.2*3*10)) 0;
