@@ -32,7 +32,7 @@ import numpy as np
 
 global gps_x_vals, gps_y_vals, gps_x_prev, gps_y_prev
 global pos_info_x_vals, pos_info_y_vals, pos_info_s
-global v_vals, t_vals, psi_vals
+global v_vals, t_vals, psi_curr, psi_raw
 global z_x, z_y, SS_x, SS_y, z_vx, SS_vx, z_s, SS_s, z_fore_x, z_fore_y, z_iden_x, z_iden_y # x and y for mpcSol prediction
 
 gps_x_vals = []
@@ -47,6 +47,7 @@ pos_info_s      = 0
 v_vals = []
 t_vals = []
 psi_curr = 0.0
+psi_raw = 0.0
 
 z_x = ones(11)
 z_y = ones(11)
@@ -76,11 +77,11 @@ def gps_callback(data):
     else:
         gps_x_vals.append(gps_x_prev)
         gps_y_vals.append(gps_y_prev)
-
+    
 
 def pos_info_callback(data):
     global pos_info_x_vals, pos_info_y_vals, pos_info_s
-    global v_vals, t_vals, psi_curr
+    global v_vals, t_vals, psi_curr, psi_raw
     
     pos_info_x_vals.append(data.x)
     pos_info_y_vals.append(data.y)
@@ -89,6 +90,7 @@ def pos_info_callback(data):
     v_vals.append(data.v)
     t_vals.append(rospy.get_rostime().to_sec())
     psi_curr = data.psi
+    psi_raw = data.psi_raw
 
 def mpcSol_callback(data):
     global z_x, z_y, SS_x, SS_y, z_vx, SS_vx, z_s, SS_s, z_fore_x, z_fore_y, z_iden_x, z_iden_y
@@ -112,7 +114,7 @@ def view_trajectory():
 
     global gps_x_vals, gps_y_vals, gps_x_prev, gps_y_prev
     global pos_info_x_vals, pos_info_y_vals, pos_info_s
-    global v_vals, t_vals, psi_curr
+    global v_vals, t_vals, psi_curr, psi_raw
     global z_x, z_y, SS_x, SS_y, z_vx, SSvx, z_s, SS_s, z_fore_x, z_fore_y, z_iden_x, z_iden_y
 
     rospy.init_node("car_view_trajectory_node", anonymous=True)
@@ -121,6 +123,14 @@ def view_trajectory():
     rospy.Subscriber("hedge_pos", hedge_pos, gps_callback, queue_size=1)
     rospy.Subscriber("pos_info", pos_info, pos_info_callback, queue_size=1)
     rospy.Subscriber("mpc_solution", mpc_solution, mpcSol_callback, queue_size=1)
+
+    # FLAGS FOR PLOTTING
+    PRE_FLAG = False
+    SS_FLAG  = True
+    FORE_FLAG= False
+    IDEN_FLAG= True
+    GPS_FLAG = True
+    YAW_FLAG = True
     
     l = Localization()
     # l.create_feature_track()
@@ -146,13 +156,28 @@ def view_trajectory():
     car_xs_origin = [car_dx, car_dx, -car_dx, -car_dx, car_dx]
     car_ys_origin = [car_dy, -car_dy, -car_dy, car_dy, car_dy]
     car_plot, = ax1.plot(car_xs_origin,car_ys_origin,"k-")
+
+    if YAW_FLAG:
+        yaw_raw_plot, = ax1.plot(car_xs_origin,car_ys_origin,"r-")
+
     car_center_plot, = ax1.plot(0,0,"ko",alpha=0.4)
-    pre_plot, = ax1.plot([0 for i in range(11)],[0 for i in range(11)],"b-*")
-    SS_plot, = ax1.plot([0 for i in range(20)],[0 for i in range(20)],"ro",alpha=0.2)
-    fore_plot, = ax1.plot([0 for i in range(11)],[0 for i in range(11)],"k.")
-    iden_plot, = ax1.plot([0 for i in range(30)],[0 for i in range(30)],"go",alpha=0.3)
-    # num = min(len(gps_x_vals),len(gps_y_vals))
-    # GPS_plot, = ax1.plot(gps_x_vals, gps_y_vals, 'b-', label="GPS data path")
+
+    if PRE_FLAG:
+        pre_plot, = ax1.plot([0 for i in range(11)],[0 for i in range(11)],"b-*")
+    
+    if SS_FLAG:
+        SS_plot, = ax1.plot([0 for i in range(20)],[0 for i in range(20)],"ro",alpha=0.2)
+    
+    if FORE_FLAG:
+        fore_plot, = ax1.plot([0 for i in range(11)],[0 for i in range(11)],"k.")
+
+    if IDEN_FLAG:    
+        iden_plot, = ax1.plot([0 for i in range(30)],[0 for i in range(30)],"go",alpha=0.3)
+
+    if GPS_FLAG:
+        num = min(len(gps_x_vals),len(gps_y_vals))
+        GPS_plot, = ax1.plot(gps_x_vals, gps_y_vals, 'b-', label="GPS data path")
+
     num = min(len(pos_info_x_vals),len(pos_info_y_vals))
     pos_plot, = ax1.plot(pos_info_x_vals[:num], pos_info_y_vals[:num], 'g-', label="pos data path")
 
@@ -170,6 +195,7 @@ def view_trajectory():
 
     plt.show()
     car_frame = np.vstack((np.array(car_xs_origin), np.array(car_ys_origin)))
+
     counter_buffer = 600
     counter = 1
     while not rospy.is_shutdown():
@@ -180,6 +206,11 @@ def view_trajectory():
             gps_y_vals = [0,gps_y_vals[-1]]
             pos_info_x_vals = [0,pos_info_x_vals[-1]]
             pos_info_y_vals = [0,pos_info_y_vals[-1]]
+
+            # gps_x_vals = [0,0]
+            # gps_y_vals = [0,0]
+            # pos_info_x_vals = [0,0]
+            # pos_info_y_vals = [0,0]
         
 
         x = pos_info_x_vals[len(pos_info_x_vals)-1]
@@ -189,14 +220,23 @@ def view_trajectory():
         R = np.matrix([[np.cos(psi_curr), -np.sin(psi_curr)], [np.sin(psi_curr), np.cos(psi_curr)]])
 
         rotated_car_frame = R * car_frame
-
         car_xs = np.array(rotated_car_frame[0,:])[0] + x
         car_ys = np.array(rotated_car_frame[1,:])[0] + y
 
         car_plot.set_data([car_xs[i] for i in range(5)], [car_ys[i] for i in range(5)])
         car_center_plot.set_data(x,y)
-        # num = min(len(gps_x_vals),len(gps_y_vals))
-        # GPS_plot.set_data(gps_x_vals, gps_y_vals) 
+
+        if YAW_FLAG:
+            R_yaw_raw = np.matrix([[np.cos(psi_raw), -np.sin(psi_raw)], [np.sin(psi_raw), np.cos(psi_raw)]])
+            yaw_raw_rotated_car_frame = R_yaw_raw * car_frame
+            car_xs = np.array(rotated_car_frame[0,:])[0] + x
+            car_ys = np.array(rotated_car_frame[1,:])[0] + y
+            yaw_raw_plot.set_data([car_xs[i] for i in range(5)], [car_ys[i] for i in range(5)])
+
+        if GPS_FLAG:
+            num = min(len(gps_x_vals),len(gps_y_vals))
+            GPS_plot.set_data(gps_x_vals[:num], gps_y_vals[:num])
+
         num = min(len(pos_info_x_vals),len(pos_info_y_vals))
         pos_plot.set_data(pos_info_x_vals[:num], pos_info_y_vals[:num])
 
@@ -211,11 +251,18 @@ def view_trajectory():
         # else:
         #     ax2.set_xlim([min(z_s), max(SS_s)])
         #     ax2.set_ylim([min(min(z_vx),min(SS_vx)), max(max(z_vx),max(SS_vx))])
+        if PRE_FLAG:
+            pre_plot.set_data(z_x,z_y)
 
-        pre_plot.set_data(z_x,z_y)
-        fore_plot.set_data(z_fore_x,z_fore_y)
-        iden_plot.set_data(z_iden_x,z_iden_y)
-        SS_plot.set_data(SS_x,SS_y)
+        if FORE_FLAG:
+            fore_plot.set_data(z_fore_x,z_fore_y)
+        
+        if IDEN_FLAG:
+            iden_plot.set_data(z_iden_x,z_iden_y)
+        
+        if SS_FLAG:
+            SS_plot.set_data(SS_x,SS_y)
+        
         fig.canvas.draw()
         counter+=1
         # print(counter)
