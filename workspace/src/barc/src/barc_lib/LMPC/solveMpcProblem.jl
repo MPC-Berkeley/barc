@@ -125,7 +125,7 @@ function solveMpcProblem_convhull_dyn_iden(mdl::MpcModel_convhull_dyn_iden,mpcSo
    return sol_z,sol_u,sol_status
 end
 
-function solveMpcProblem_convhull_kin_linear(mdl::MpcModel_convhull_kin_linear,mpcParams::MpcParams,modelParams::ModelParams,
+function solveMpcProblem_convhull_kin_linear(mdl::MpcModel_convhull_kin_linear,mpcSol::MpcSol,mpcParams::MpcParams,modelParams::ModelParams,
                                              z_linear::Array{Float64,2},u_linear::Array{Float64,2},
                                              zPrev::Array{Float64,2},uPrev::Array{Float64,2}, # this is the delta state hot start
                                              selectedStates::SelectedStates,track::Track)
@@ -156,6 +156,9 @@ function solveMpcProblem_convhull_kin_linear(mdl::MpcModel_convhull_kin_linear,m
     # end
     setvalue(mdl.z_linear,z_linear)
     setvalue(mdl.u_linear,u_linear)
+    # println(size(mdl.df_his))
+    # println(size(mpcSol.df_his))
+    setvalue(mdl.df_his,mpcSol.df_his)
 
 
     # uPrev=u_prev; zPrev=z_prev
@@ -280,6 +283,10 @@ function solveMpcProblem_convhull_dyn_linear(mdl::MpcModel_convhull_dyn_linear,m
     # for j=1:n_state
     #     JuMP.fix(mdl.z_linear[mpcParams.N+1,j],z_linear[mpcParams.N+1,j])
     # end
+
+    z_linear[1:end-1,5] += GP_e_vy
+    z_linear[1:end-1,6] += GP_e_psidot
+
     setvalue(mdl.z_linear,z_linear)
     setvalue(mdl.u_linear,u_linear)
 

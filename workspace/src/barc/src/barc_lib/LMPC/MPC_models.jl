@@ -154,7 +154,7 @@ type MpcModel_convhull_dyn_iden
         # u_ub       = mpcParams.u_ub              # upper bounds for the control inputs
         # z_lb       = mpcParams.z_lb              # lower bounds for the states
         # z_ub       = mpcParams.z_ub              # upper bounds for the states
-        ey_max  = 0.6/2
+        ey_max  = 0.8/2
         u_lb    = [ -0.5    -18/180*pi]
         u_ub    = [    2     18/180*pi]
         z_lb    = [-Inf -Inf -Inf    0 -Inf -Inf] # 1.s 2.ey 3.epsi 4.vx 5.vy 6.psi_dot
@@ -309,6 +309,7 @@ type MpcModel_convhull_kin_linear
     statesCost::Array{JuMP.NonlinearParameter,1}
     uPrev::Array{JuMP.NonlinearParameter,2}
     zPrev::Array{JuMP.NonlinearParameter,2}
+    df_his::Array{JuMP.NonlinearParameter,1}
 
     A::Array{JuMP.NonlinearParameter,3}
     B::Array{JuMP.NonlinearParameter,3}
@@ -348,7 +349,7 @@ type MpcModel_convhull_kin_linear
 
         c_f        = modelParams.c_f
 
-        ey_max      = 0.6/2                    # bound for the state ey (distance from the center track). It is set as half of the width of the track for obvious reasons
+        ey_max      = 0.8/2                    # bound for the state ey (distance from the center track). It is set as half of the width of the track for obvious reasons
 
         N          = mpcParams.N                           # Prediction horizon
         QderivZ    = mpcParams.QderivZ::Array{Float64,1}   # weights for the derivative cost on the states
@@ -373,6 +374,7 @@ type MpcModel_convhull_kin_linear
         @NLparameter( mdl, B[1:n_state,1:n_input,1:N]==0)
         @NLparameter( mdl, selStates[1:Nl*Np,1:n_state]==0)
         @NLparameter( mdl, statesCost[1:Nl*Np]==0)
+        @NLparameter( mdl, df_his[1:mpcParams.delay_df] == 0)
 
         @variable( mdl, z_Ol[1:N,1:n_state])
         @variable( mdl, u_Ol[1:N,1:n_input])
@@ -390,6 +392,9 @@ type MpcModel_convhull_kin_linear
             @NLconstraint(mdl, [i=1:N], u_Ol[i,j] + u_linear[i,j] >= u_lb[j])
             @NLconstraint(mdl, [i=1:N], u_Ol[i,j] + u_linear[i,j] <= u_ub[j])
         end
+        
+        @NLconstraint(mdl, u_Ol[1,1]+u_linear[1,1] == uPrev[2,1]) # acceleration delay is 1
+        @NLconstraint(mdl, [i=1:mpcParams.delay_df], u_Ol[i,2]+u_linear[i,2] == df_his[i]) # steering delay is 1 for simulation and 3 for experiment
 
         # System dynamics
         for i=1:N-1
@@ -446,6 +451,7 @@ type MpcModel_convhull_kin_linear
         m.u_linear = u_linear
         m.zPrev = zPrev
         m.uPrev = uPrev
+        m.df_his = df_his
 
         m.derivCost = derivCost
         m.laneCost = laneCost
@@ -573,9 +579,9 @@ type MpcModel_convhull_dyn_linear
         for i=1:N-1
             for j=1:n_state
                 if j==5
-                    @NLconstraint(mdl, z_Ol[i+1,j]+GP_e_vy[i+1] == sum{A[j,k,i+1]*z_Ol[i,k], k=1:n_state}+sum{B[j,k,i+1]*u_Ol[i+1,k], k=1:n_input} )
+                    @NLconstraint(mdl, z_Ol[i+1,j] == sum{A[j,k,i+1]*z_Ol[i,k], k=1:n_state}+sum{B[j,k,i+1]*u_Ol[i+1,k], k=1:n_input} )
                 elseif j == 6
-                    @NLconstraint(mdl, z_Ol[i+1,j]+GP_e_psidot[i+1] == sum{A[j,k,i+1]*z_Ol[i,k], k=1:n_state}+sum{B[j,k,i+1]*u_Ol[i+1,k], k=1:n_input} )
+                    @NLconstraint(mdl, z_Ol[i+1,j] == sum{A[j,k,i+1]*z_Ol[i,k], k=1:n_state}+sum{B[j,k,i+1]*u_Ol[i+1,k], k=1:n_input} )
                 else
                     @NLconstraint(mdl, z_Ol[i+1,j] == sum{A[j,k,i+1]*z_Ol[i,k], k=1:n_state}+sum{B[j,k,i+1]*u_Ol[i+1,k], k=1:n_input} )
                 end
@@ -583,13 +589,14 @@ type MpcModel_convhull_dyn_linear
         end
         for j=1:n_state
             if j==5
-                @NLconstraint(mdl, z_Ol[1,j]+GP_e_vy[1] == sum{B[j,k,1]*u_Ol[1,k], k=1:n_input} )
+                @NLconstraint(mdl, z_Ol[1,j] == sum{B[j,k,1]*u_Ol[1,k], k=1:n_input} )
             elseif j==6
-                @NLconstraint(mdl, z_Ol[1,j]+GP_e_psidot[1] == sum{B[j,k,1]*u_Ol[1,k], k=1:n_input} )
+                @NLconstraint(mdl, z_Ol[1,j] == sum{B[j,k,1]*u_Ol[1,k], k=1:n_input} )
             else
                 @NLconstraint(mdl, z_Ol[1,j] == sum{B[j,k,1]*u_Ol[1,k], k=1:n_input} )
             end
         end
+        # IDENTIFIED DISTURBANCE FOR THE LINEARIZED \delta MODEL IS TOO MUCH. SO THIS SHOULD BE PUT INTO THE LINEARIZATION POINTS 
 
         # STEERING DERIVATIVE CONSTRAINTS
         # @NLconstraint(mdl, u_Ol[1,2]+u_linear[1,2]-uPrev[2] <= 0.12)

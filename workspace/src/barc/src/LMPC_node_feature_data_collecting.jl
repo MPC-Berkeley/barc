@@ -36,10 +36,10 @@ function SE_callback(msg::pos_info,acc_f::Array{Float64},lapStatus::LapStatus,po
     end
 end
 
-function ST_callback(msg::pos_info,z_true::Array{Float64,1})
-    z_true[:] = [msg.x,msg.y,msg.v_x,msg.v_y,msg.psi,msg.psiDot]
-    # println("z_true from LMPC node",round(z_true,4))
-end
+# function ST_callback(msg::pos_info,z_true::Array{Float64,1})
+#     z_true[:] = [msg.x,msg.y,msg.v_x,msg.v_y,msg.psi,msg.psiDot]
+#     # println("z_true from LMPC node",round(z_true,4))
+# end
 
 # This is the main function, it is called when the node is started.
 function main()
@@ -53,10 +53,9 @@ function main()
     const GP_LOCAL_FLAG    = false  # true:local GPR
     const GP_FULL_FLAG     = false  # true:full GPR
     const N                = 10
-    const delay_df         = 1
+    const delay_df         = 3
     const delay_a          = 1
     println("N=$N, delay_df=$delay_df, delay_a=$delay_a")
-    
     track_data       = createTrack("feature")
     track            = Track(track_data)
     oldTraj          = OldTrajectory()
@@ -101,7 +100,7 @@ function main()
     # The subscriber passes arguments (coeffCurvature and z_est) which are updated by the callback function:
     acc_f = [0.0]
     s1 = Subscriber("pos_info", pos_info, SE_callback, (acc_f,lapStatus,posInfo,mpcSol,oldTraj,z_est,x_est),queue_size=50)::RobotOS.Subscriber{barc.msg.pos_info}
-    s2 = Subscriber("real_val", pos_info, ST_callback, (z_true,),queue_size=1)::RobotOS.Subscriber{barc.msg.pos_info}
+    # s2 = Subscriber("real_val", pos_info, ST_callback, (z_true,),queue_size=1)::RobotOS.Subscriber{barc.msg.pos_info}
     # Note: Choose queue size long enough so that no pos_info packets get lost! They are important for system ID!
     run_id = get_param("run_id")
     println("Finished initialization.")
@@ -128,7 +127,7 @@ function main()
             # TRACK FEATURE DATA COLLECTING: it is important to put this at the beginning of the iteration to make the data consistant
             if lapStatus.currentLap>1
                 k = k + 1 # start counting from the second lap.
-                z_curr = xyFrame_to_trackFrame(z_true,track)                
+                # z_curr = xyFrame_to_trackFrame(z_true,track)                
                 # (xDot, yDot, psiDot, ePsi, eY, s, acc_f)
                 feature_z[k,:,1] = [z_est[6],z_est[5],z_est[4],z_est[1],z_est[2],z_est[3]]
                 # feature_z[k,:,1] = z_curr
@@ -196,12 +195,9 @@ function main()
             mpcSol_to_pub.z_y = z_y
 
             # TRACK FEATURE DATA COLLECTING
+            run_time = Dates.format(now(),"yyyy-mm-dd-H:M")
             if lapStatus.currentLap==length(v_ref) && z_est[6] > track.s[end]-0.5
-                log_path = "$(homedir())/simulations/Feature_Data/FeatureDataCollecting-$(run_id[1:4]).jld"
-                if isfile(log_path)
-                    log_path = "$(homedir())/simulations/Feature_Data/FeatureDataCollecting-$(run_id[1:4])-2.jld"
-                    warn("Warning: File already exists.")
-                end
+                log_path = "$(homedir())/simulations/Feature_Data/FeatureDataCollecting-$(run_time).jld"
                 # CUT THE FRONT AND REAR TAIL BEFORE SAVING THE DATA
                 feature_z = feature_z[2+mpcParams.delay_df-1:k-1,:,:]
                 feature_u = feature_u[2+mpcParams.delay_df-1:k-1,:]
@@ -216,11 +212,8 @@ function main()
         rossleep(loop_rate)
     end # END OF THE WHILE LOOP
     # DATA SAVING, trying to save as much as feature data as possible to do sys_id
-    log_path = "$(homedir())/simulations/Feature_Data/FeatureDataCollecting-$(run_id[1:4]).jld"
-    if isfile(log_path)
-        log_path = "$(homedir())/simulations/Feature_Data/FeatureDataCollecting-$(run_id[1:4])-2.jld"
-        warn("Warning: File already exists.")
-    end
+    run_time = Dates.format(now(),"yyyy-mm-dd-H:M")
+    log_path = "$(homedir())/simulations/Feature_Data/FeatureDataCollecting-$(run_time).jld"
     # CUT THE FRONT AND REAR TAIL BEFORE SAVING THE DATA
     feature_z = feature_z[2+mpcParams.delay_df-1:k-1,:,:]
     feature_u = feature_u[2+mpcParams.delay_df-1:k-1,:]

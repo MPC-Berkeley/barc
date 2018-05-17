@@ -120,7 +120,7 @@ class Localization(object):
         R_kin = 0.8
         num_kin = int(round(angle/ ( ds/R_kin ) * 2))
         num = max(int(round(angle/ ( ds/R ) * 2)),num_kin)
-        # num=int(ceil(num*1.2))
+        num=int(ceil(num*1.3))
         # TRACK DATA CALCULATION
         theta, curvature = add_curve(theta,curvature,num,-angle)
         theta, curvature = add_curve(theta,curvature,num,angle)
@@ -210,11 +210,11 @@ class Localization(object):
         #               [80, -pi/2],
         #               [75, 0]]
         # TRACK FOR THE SMALL EXPERIMENT ROOM
-        track_data = [[3*2*10, 0],
-                      [3*2*140, -pi],
-                      [3*2*20, 0],
-                      [3*2*140, -pi],
-                      [3*2*10, 0]]
+        track_data = [[int(ceil(1.2*3*10)), 0],
+                      [int(ceil(1.2*3*140)), -pi],
+                      [int(ceil(1.2*3*20)), 0],
+                      [int(ceil(1.2*3*140)), -pi],
+                      [int(ceil(1.2*3*10)), 0]]
                       
         for i in range(len(track_data)):
             num = track_data[i][0]

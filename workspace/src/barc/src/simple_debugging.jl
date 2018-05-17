@@ -1,4 +1,14 @@
 # simple debugging
+# GP data plotting to check if they are biased
+# -> julia simple_debugging.jl GP SYS_ID_KIN_LIN_TI
+# plot the newest recorded data
+# -> julia simple_debugging.jl record
+# plot the newest trajectory data
+# -> julia simple_debugging.jl trajectory
+# plot the newest recorded data and trajectory
+# -> julia simple_debugging.jl both
+
+
 using JLD
 using PyPlot
 using PyCall
@@ -17,28 +27,41 @@ include("barc_lib/LMPC/functions.jl")
 const select_flag = false
 
 run_time = Dates.format(now(),"yyyy-mm-dd")
-if isfile("$(homedir())/simulations/LMPC-$(run_time)-$(ARGS[2]).jld")
-    data        = load("$(homedir())/simulations/LMPC-$(run_time)-$(ARGS[2]).jld")
-    oldSS       = data["oldSS"]
-    selectedStates          = data["selectedStates"]
-    solHistory              = data["solHistory"]
-    selectHistory           = data["selectHistory"]
-    GP_vy_History           = data["GP_vy_History"]
-    GP_psidot_History       = data["GP_psidot_History"]
-    selectFeatureHistory    = data["selectFeatureHistory"]
-    statusHistory           = data["statusHistory"]
-    track       = data["track"]
-    modelParams = data["modelParams"]
-    mpcParams   = data["mpcParams"]
-    log_cvx     = data["log_cvx"]   
-    log_cvy     = data["log_cvy"]
-    log_cpsi    = data["log_cpsi"]
-    lapStatus   = LapStatus(1,1,false,false,0.3)
+# if isfile("$(homedir())/experiments/LMPC-$(run_time)-$(ARGS[2]).jld")
+#     data        = load("$(homedir())/experiments/LMPC-$(run_time)-$(ARGS[2]).jld")
+# else
+
+# find the newest experiment time until now
+file_names = readdir("$(homedir())/experiments/")
+file_times = zeros(length(file_names))
+for i = 1:length(file_names)
+    file_times[i] = mtime("$(homedir())/experiments/$(file_names[i])")
 end
+(~,idx) = findmax(file_times)
+
+data        = load("$(homedir())/experiments/$(file_names[idx])")
+oldSS       = data["oldSS"]
+selectedStates          = data["selectedStates"]
+solHistory              = data["solHistory"]
+selectHistory           = data["selectHistory"]
+GP_vy_History           = data["GP_vy_History"]
+GP_psidot_History       = data["GP_psidot_History"]
+selectFeatureHistory    = data["selectFeatureHistory"]
+statusHistory           = data["statusHistory"]
+track       = data["track"]
+modelParams = data["modelParams"]
+mpcParams   = data["mpcParams"]
+log_cvx     = data["log_cvx"]
+log_cvy     = data["log_cvy"]
+log_cpsi    = data["log_cpsi"]
+lapStatus   = LapStatus(1,1,false,false,0.3)
+
+
+# end
 
 # STATE AND SYS_ID PARAMETERS PLOT FOR LAPS DONE
 if ARGS[1] == "record" || ARGS[1]=="both"
-    figure("Record") # PLOT OF STATE
+    figure("Record-$(file_names[idx])") # PLOT OF STATE
     i = 1; plot_way = [3,2]
     while solHistory.cost[i] > 10
         i == 1 ? current_x = 0 : current_x = sum(solHistory.cost[1:i-1])
@@ -150,7 +173,7 @@ end
 # TRAJECTORY PLOT FOR ALL THE LAPS DONE
 if ARGS[1] == "trajectory" || ARGS[1]=="both"
     i = 1
-    fig = figure("Trajectory")
+    fig = figure("Trajectory-$(file_names[idx])")
     axs = fig[:add_subplot](1, 1, 1); line = nothing
     plot(track.xy[:, 1],       track.xy[:, 2],       color="grey",alpha=0.4)
     plot(track.bound1xy[:, 1], track.bound1xy[:, 2], color="red")
@@ -269,7 +292,7 @@ if ARGS[1] == "prediction"
     plt[:ion]()
 
     # Create figure and subplots
-    fig = figure("Prediction",figsize=(20,10))
+    fig = figure("Prediction-$(file_names[idx])",figsize=(20,10))
     ax_s_ey = fig[:add_subplot](2, 3, 1)
     xlabel("s [m]")
     ylabel("e_y [m]")
@@ -361,7 +384,7 @@ if ARGS[1] == "prediction"
     # INITIALIZE THE PLOT FOR CURVATURE
     curvature_plt, = ax_s_c[:plot](NaN*ones(mpcParams.N+1), NaN*ones(mpcParams.N+1), color="blue", marker="o")
 
-    fig_select = figure("Selected points",figsize=(20,10))
+    fig_select = figure("Selected points-$(file_names[idx])",figsize=(20,10))
     ax_track_select = fig_select[:add_subplot](1, 1, 1)
     ax_track_select[:plot](track.bound1xy[:,1],track.bound1xy[:,2],color="black")
     ax_track_select[:plot](track.bound2xy[:,1],track.bound2xy[:,2],color="black")
@@ -374,17 +397,19 @@ if ARGS[1] == "prediction"
     axis("equal")
 
     # UPDATE AND SAVE THE PLOT FOR EVERY LMPC LAPS
-    GP_flag = false
-    if length(ARGS) == 2
-        lap = 1
-    elseif ARGS[3] == "LMPC"
-        lap = 2 + max(selectedStates.Nl,selectedStates.feature_Nl)  # starting lap of LMPC
-    elseif ARGS[3] == "GP"    
-        lap = 2 + max(selectedStates.Nl,selectedStates.feature_Nl)  # starting lap of LMPC
-        GP_vy_plt, = ax_s_vy[:plot](NaN*ones(mpcParams.N),NaN*ones(mpcParams.N),"ro")
-        GP_psidot_plt, = ax_s_psidot[:plot](NaN*ones(mpcParams.N),NaN*ones(mpcParams.N),"ro")
-        GP_flag = true
-    end
+    # GP_flag = false
+    # if length(ARGS) == 2
+    #     lap = 1
+    # elseif ARGS[3] == "LMPC"
+    #     lap = 2 + max(selectedStates.Nl,selectedStates.feature_Nl)  # starting lap of LMPC
+    # elseif ARGS[3] == "GP"    
+    #     lap = 2 + max(selectedStates.Nl,selectedStates.feature_Nl)  # starting lap of LMPC
+    #     GP_vy_plt, = ax_s_vy[:plot](NaN*ones(mpcParams.N),NaN*ones(mpcParams.N),"ro")
+    #     GP_psidot_plt, = ax_s_psidot[:plot](NaN*ones(mpcParams.N),NaN*ones(mpcParams.N),"ro")
+    #     GP_flag = true
+    # end
+    lap = 2 + max(selectedStates.Nl,selectedStates.feature_Nl)  # starting lap of LMPC
+
 
     while solHistory.cost[lap] > 10
         lapStatus.currentLap = lap
@@ -471,12 +496,12 @@ if ARGS[1] == "prediction"
 end
 
 if ARGS[1] == "GP"
-    data = load("$(homedir())/simulations/Feature_Data/FeatureData_GP.jld")
+    data = load("$(homedir())/simulations/Feature_Data/FeatureData_GP-$(ARGS[2]).jld")
     feature_GP_z        = data["feature_GP_z"]
     feature_GP_vy_e     = data["feature_GP_vy_e"]
     feature_GP_psidot_e = data["feature_GP_psidot_e"]
 
-    fig = figure("GPR",figsize=(20,10))
+    fig = figure("GPR-$(file_names[idx])",figsize=(20,10))
     min_val = minimum(feature_GP_vy_e)
     max_val = maximum(feature_GP_vy_e)
     ax_s_eVy = fig[:add_subplot](2, 1, 1)

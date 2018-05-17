@@ -244,8 +244,8 @@ def state_estimation():
 
     Q = diag([1/20*dt**5*qa,1/20*dt**5*qa,1/3*dt**3*qa,1/3*dt**3*qa,dt*qa,dt*qa,1/3*dt**3*qp,dt*qp,0.1, 0.2,0.2,1.0,1.0,0.1])
     R = diag([5.0,5.0,1.0,10.0,100.0,1000.0,1000.0,     5.0,5.0,10.0,1.0, 10.0,10.0])
-    R = diag([4*5.0,4*5.0,1.0,2*10.0,2*100.0,1000.0,1000.0,     4*5.0,4*5.0,10.0,1.0, 10.0,10.0])
-    R = diag([1*5.0,1*5.0,1.0,2*10.0,2*100.0,1000.0,1000.0,     1*5.0,1*5.0,10.0,1.0, 10.0,10.0])
+    # R = diag([4*5.0,4*5.0,1.0,2*10.0,2*100.0,1000.0,1000.0,     4*5.0,4*5.0,10.0,1.0, 10.0,10.0])
+    # R = diag([1*5.0,1*5.0,1.0,2*10.0,2*100.0,1000.0,1000.0,     1*5.0,1*5.0,10.0,1.0, 10.0,10.0])
     #         x,y,v,psi,psiDot,a_x,a_y, x, y, psi, v
     # R = diag([1*5.0,1*5.0,1.0,2*10.0,2*100.0,50.0,1.0,     1*5.0,1*5.0,10.0,1.0, 10.0,10.0])
 
@@ -287,10 +287,10 @@ def state_estimation():
         # d_f_lp = d_f_lp + 0.5*(se.cmd_servo-d_f_lp) # low pass filter on steering
         # a_lp = a_lp + 1.0*(se.cmd_motor-a_lp)       # low pass filter on acceleration
         # u = [a_lp, d_f_hist.pop(0)]
-        # u = [se.cmd_motor, d_f_hist.pop(0)]     # this is with 0.2s delay for steering without low pass filter
+        u = [se.cmd_motor, d_f_hist.pop(0)]     # this is with 0.2s delay for steering without low pass filter
         # print(d_f_hist)
         # # define input without delay
-        u = [se.cmd_motor, se.cmd_servo]
+        # u = [se.cmd_motor, se.cmd_servo]
 
         bta = 0.5 * u[1]
 

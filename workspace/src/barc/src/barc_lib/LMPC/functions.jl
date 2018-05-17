@@ -284,8 +284,8 @@ function coeff_iden_dist(idenStates::Array{Float64,3},idenInputs::Array{Float64,
     # println("c_Vx is $c_Vy")
     # println("c_Vx is $c_Psi")
     c_Vx[1] = max(-0.3,min(0.3,c_Vx[1]))
-    c_Vy[2] = max(-1,min(1,c_Vy[2]))
-    c_Vy[3] = max(-1,min(1,c_Vy[3]))
+    # c_Vy[2] = max(-1,min(1,c_Vy[2]))
+    # c_Vy[3] = max(-1,min(1,c_Vy[3]))
 
     return c_Vx, c_Vy, c_Psi
 end
@@ -322,7 +322,7 @@ function find_SS(safeSetData::SafeSetData,selectedStates::SelectedStates,
         # println("Target s is: $target_s")
         # println("Safe set idx start and end are")
         # println(idx_s_start)
-        # println(idx_s_end)
+        # println(idx_s_end
         # println("Size of SS_curr is")
         # println(size(SS_curr))
         # println("Size of SS_cost is")
@@ -331,10 +331,21 @@ function find_SS(safeSetData::SafeSetData,selectedStates::SelectedStates,
             # println("lapStatus:",lapStatus)
             # println("oldCost:",safeSetData.oldCost[1:5])
             # println("<1:","idx_start:",idx_s_start," idx_end:",idx_s_end)
-            SS_curr[1:idx_s_end,1]+=track.s # correction when switching lap
-            add_s = hcat(track.s*ones(idx_s_end),zeros(idx_s_end,size(SS_curr,2)-1))
-            # selectedStates.selStates=vcat(selectedStates.selStates,SS_curr[cost+idx_s_start:cost,:],SS_curr[1:idx_s_end,:])
-            selectedStates.selStates=vcat(selectedStates.selStates,SS_curr[cost+idx_s_start:cost,:],reshape(SS_next[1:idx_s_end,:],idx_s_end,size(SS_curr,2))+add_s)
+            # println(SS_next[1:idx_s_end,1])
+            flag_array = isnan(SS_next[1:idx_s_end,:])
+            flag = false
+            for i = 1:length(flag_array)
+                flag = flag | flag_array[i]
+            end
+            if flag
+                # println("hahaha")
+                SS_curr[cost+idx_s_start:cost,1]-=track.s
+                selectedStates.selStates=vcat(selectedStates.selStates,SS_curr[cost+idx_s_start:cost,:],SS_curr[1:idx_s_end,:])
+            else
+                SS_curr[1:idx_s_end,1]+=track.s # correction when switching lap
+                add_s = hcat(track.s*ones(idx_s_end),zeros(idx_s_end,size(SS_curr,2)-1))
+                selectedStates.selStates=vcat(selectedStates.selStates,SS_curr[cost+idx_s_start:cost,:],reshape(SS_next[1:idx_s_end,:],idx_s_end,size(SS_curr,2))+add_s)
+            end
             SScost_curr[1:idx_s_end]-=cost # correction when switching lap
             # SScost_curr[1:idx_s_end]-=cost_correction # correction when switching lap
             # selectedStates.statesCost=vcat(selectedStates.statesCost,SScost_curr[cost+idx_s_start:cost],SScost_curr[1:idx_s_end])
@@ -407,7 +418,7 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_4s::MpcParams,mpcPa
                               LMPC_LAP::Int64,delay_df::Int64,delay_a::Int64,N::Int64,BUFFERSIZE::Int64)
     simulator_flag   = true
 
-    if simulator_flag == false   # if the BARC is in use
+    if simulator_flag == true   # if the BARC is in use
 
         mpcParams.N                 = N
         mpcParams.Q                 = [5.0,0.0,0.0,0.1,50.0,0.0]   # Q (only for path following mode)
@@ -416,28 +427,6 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_4s::MpcParams,mpcPa
         mpcParams.QderivZ           = 1.0*[0,0.1,0.1,2,0.1,0.0]             # cost matrix for derivative cost of states
         mpcParams.QderivU           = 1.0*[1.0,1.0] #NOTE Set this to [5.0, 0/40.0]              # cost matrix for derivative cost of inputs
         mpcParams.Q_term_cost       = 0.05                        # scaling of Q-function
-        mpcParams.delay_df          = delay_df                             # steering delay
-        mpcParams.delay_a           = delay_a                             # acceleration delay
-        mpcParams.Q_lane            = 100                      # weight on the soft constraint for the lane
-        mpcParams.Q_slack           = 50.0*[1.0,1.0,1.0,1.0,1.0,1.0]#[20.0,10.0,10.0,30.0,80.0,50.0]  #s,ey,epsi,vx,vy,psiDot
-
-        mpcParams_4s.N              = N
-        mpcParams_4s.R              = 0.0*[1,1]
-        mpcParams_4s.QderivZ        = 1.0*[0,0.1,0.1,2]
-        mpcParams_4s.QderivU        = 1.0*[1,1]
-        mpcParams_4s.Q_term_cost    = 3e-1 # scaling of Q-function
-        mpcParams_4s.Q_lane         = 100.0 # weight on the soft constraint for the lane bounds
-        mpcParams_4s.Q_slack        = 5.0*[1,1,1,1]
-
-    elseif simulator_flag == true  # if the simulator is in use
-
-        mpcParams.N                 = N
-        mpcParams.Q                 = [5.0,0.0,0.0,0.1,50.0,0.0]   # Q (only for path following mode)
-        mpcParams.vPathFollowing    = 1.0                           # reference speed for first lap of path following
-        mpcParams.R                 = 0*[10.0,10.0]                 # put weights on a and d_f
-        mpcParams.QderivZ           = 1.0*[0,0.1,0.1,0.2,0.1,0.0]             # cost matrix for derivative cost of states
-        mpcParams.QderivU           = 1.0*[1.0,1.0] #NOTE Set this to [5.0, 0/40.0]              # cost matrix for derivative cost of inputs
-        mpcParams.Q_term_cost       = 0.01                        # scaling of Q-function
         mpcParams.delay_df          = delay_df                             # steering delay
         mpcParams.delay_a           = delay_a                             # acceleration delay
         mpcParams.Q_lane            = 10                      # weight on the soft constraint for the lane
@@ -450,23 +439,58 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_4s::MpcParams,mpcPa
         mpcParams_4s.Q_term_cost    = 3e-1 # scaling of Q-function
         mpcParams_4s.Q_lane         = 10.0 # weight on the soft constraint for the lane bounds
         mpcParams_4s.Q_slack        = 5.0*[1,1,1,1]
+        mpcParams_4s.delay_df          = delay_df                             # steering delay
+        mpcParams_4s.delay_a           = delay_a                             # acceleration delay
+
+        mpcParams_pF.N              = N
+        mpcParams_pF.Q              = [0.0,50.0,5.0,20.0]
+        mpcParams_pF.R              = 0*[1.0,1.0]               # put weights on a and d_f
+        mpcParams_pF.QderivZ        = 1.0*[0.0,0,1.0,0]           # cost matrix for derivative cost of states
+        mpcParams_pF.QderivU        = 8*[2,1]                # cost matrix for derivative cost of inputs
+        mpcParams_pF.vPathFollowing = 1                       # reference speed for first lap of path following
+        mpcParams_pF.delay_df       = delay_df                         # steering delay (number of steps)
+        mpcParams_pF.delay_a        = delay_a                         # acceleration delay
+
+    elseif simulator_flag == false  # if the simulator is in use
+
+        mpcParams.N                 = N
+        mpcParams.Q                 = [5.0,0.0,0.0,0.1,50.0,0.0]   # Q (only for path following mode)
+        mpcParams.vPathFollowing    = 1.0                           # reference speed for first lap of path following
+        mpcParams.R                 = 0*[10.0,10.0]                 # put weights on a and d_f
+        mpcParams.QderivZ           = 1.0*[0,0.1,0.1,0.2,0.1,0.0]             # cost matrix for derivative cost of states
+        mpcParams.QderivU           = 8.0*[2.0,2.5] #NOTE Set this to [5.0, 0/40.0]              # cost matrix for derivative cost of inputs
+        mpcParams.Q_term_cost       = 1                        # scaling of Q-function
+        mpcParams.delay_df          = delay_df                             # steering delay
+        mpcParams.delay_a           = delay_a                             # acceleration delay
+        mpcParams.Q_lane            = 10                      # weight on the soft constraint for the lane
+        mpcParams.Q_slack           = 1.0*[50.0,80.0,30.0,20.0,1.0,10.0]#[20.0,10.0,10.0,30.0,80.0,50.0]  #s,ey,epsi,vx,vy,psiDot
+
+        mpcParams_4s.N              = N
+        mpcParams_4s.R              = 0.0*[1,1]
+        mpcParams_4s.QderivZ        = 1.0*[0,0.1,0.1,2]
+        mpcParams_4s.QderivU        = 1.0*[1,1]
+        mpcParams_4s.Q_term_cost    = 3e-1 # scaling of Q-function
+        mpcParams_4s.Q_lane         = 10.0 # weight on the soft constraint for the lane bounds
+        mpcParams_4s.Q_slack        = 5.0*[1,1,1,1]
+        mpcParams_4s.delay_df          = delay_df                             # steering delay
+        mpcParams_4s.delay_a           = delay_a                             # acceleration delay
+
+        mpcParams_pF.N              = N
+        mpcParams_pF.Q              = [0.0,50.0,5.0,20.0]
+        mpcParams_pF.R              = 0*[1.0,1.0]               # put weights on a and d_f
+        mpcParams_pF.QderivZ        = 1.0*[0.0,0,1.0,0]           # cost matrix for derivative cost of states
+        mpcParams_pF.QderivU        = 8*[2,1]                # cost matrix for derivative cost of inputs
+        mpcParams_pF.vPathFollowing = 1                       # reference speed for first lap of path following
+        mpcParams_pF.delay_df       = delay_df                         # steering delay (number of steps)
+        mpcParams_pF.delay_a        = delay_a                         # acceleration delay
     end
 
-    selectedStates.Np           = 10        # please select an even number
-    selectedStates.Nl           = 2         # Number of previous laps to include in the convex hull
+    selectedStates.Np           = 20        # please select an even number
+    selectedStates.Nl           = 3         # Number of previous laps to include in the convex hull
     selectedStates.feature_Np   = 100        # Number of points from previous laps to do SYS_ID
     selectedStates.feature_Nl   = 2         # Number of previous laps to do SYS_ID 
     selectedStates.selStates    = zeros(selectedStates.Nl*selectedStates.Np,6)
     selectedStates.statesCost   = zeros(selectedStates.Nl*selectedStates.Np)
-
-    mpcParams_pF.N              = N
-    mpcParams_pF.Q              = [0.0,20.0,10.0,10.0]
-    mpcParams_pF.R              = 0*[1.0,1.0]               # put weights on a and d_f
-    mpcParams_pF.QderivZ        = 0.0*[0.0,0,1.0,0]           # cost matrix for derivative cost of states
-    mpcParams_pF.QderivU        = 0.5*[1,1]                # cost matrix for derivative cost of inputs
-    mpcParams_pF.vPathFollowing = 1                       # reference speed for first lap of path following
-    mpcParams_pF.delay_df       = delay_df                         # steering delay (number of steps)
-    mpcParams_pF.delay_a        = delay_a                         # acceleration delay
 
     modelParams.l_A             = 0.125
     modelParams.l_B             = 0.125
@@ -850,7 +874,7 @@ function GP_full_vy(z::Array{Float64,2},u::Array{Float64,2},feature_state::Array
     z = feature_state[:,4:8].-state[1,4:8]
     Z = 0.5*z[:,1].^2+5*z[:,2].^2+5*z[:,3].^2+0.5*z[:,4].^2+5*z[:,5].^2
     # Z = z[:,1].^2+z[:,2].^2+z[:,3].^2+z[:,4].^2+z[:,5].^2
-    k = 0.2^2*exp(-0.5*Z)
+    k = 0.5^2*exp(-0.5*Z)
     GP_e = k'*GP_prepare
     return GP_e[1]
 end
@@ -860,7 +884,7 @@ function GP_full_psidot(z::Array{Float64,2},u::Array{Float64,2},feature_state::A
     z = feature_state[:,4:8].-state[1,4:8]
     Z = 0.5*z[:,1].^2+5*z[:,2].^2+5*z[:,3].^2+0.5*z[:,4].^2+5*z[:,5].^2
     # Z = z[:,1].^2+z[:,2].^2+z[:,3].^2+z[:,4].^2+z[:,5].^2
-    k = 0.2^2*exp(-0.5*Z)
+    k = 0.5^2*exp(-0.5*Z)
     GP_e = k'*GP_prepare
     return GP_e[1]
 end
@@ -912,11 +936,11 @@ function createTrack(name::ASCIIString)
                       75 0]
     elseif name == "MSC_lab"
         # TRACK TO USE IN THE SMALL EXPERIMENT ROOM
-        track_data = [2*3*10 0;
-                      2*3*140 -pi;
-                      2*3*20 0;
-                      2*3*140 -pi;
-                      2*3*10 0]
+        track_data = [Int(ceil(1.2*3*10)) 0;
+                      Int(ceil(1.2*3*140)) -pi;
+                      Int(ceil(1.2*3*20)) 0;
+                      Int(ceil(1.2*3*140)) -pi;
+                      Int(ceil(1.2*3*10)) 0]
     elseif name == "feature"
         # FEATURE TRACK DATA
         ds = 0.01
@@ -928,7 +952,7 @@ function createTrack(name::ASCIIString)
         R_kin = 0.8
         num_kin = Int(round(angle/ ( ds/R_kin ) * 2))
         num = max(Int(round(angle/ ( ds/R ) * 2)),num_kin)
-        # num=Int(ceil(num*1.2))
+        num=Int(ceil(num*1.3))
         track_data=[num -angle;
                     num  angle]
     else
