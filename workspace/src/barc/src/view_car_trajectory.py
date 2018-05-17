@@ -16,7 +16,7 @@
 
 import rospy
 from Localization_helpers import Localization
-from barc.msg import ECU, pos_info, Vel_est
+from barc.msg import ECU, pos_info, Vel_est, selected_states, prediction
 from sensor_msgs.msg import Imu
 from marvelmind_nav.msg import hedge_pos
 from std_msgs.msg import Header
@@ -46,6 +46,12 @@ v_vals = []
 t_vals = []
 psi_curr = 0.0
 
+class Selection:
+    x = zeros(10)
+    y = zeros(10)
+    s = zeros(10)
+    ey = zeros(10)
+
 def gps_callback(data):
     global gps_x_vals, gps_y_vals, gps_x_prev, gps_y_prev
 
@@ -71,6 +77,16 @@ def pos_info_callback(data):
     t_vals.append(rospy.get_rostime().to_sec())
     psi_curr = data.psi
 
+def selection_callback(msg, selection):
+    selection.x = msg.x
+    selection.y = msg.y
+    selection.s = msg.s
+    selection.ey = msg.ey
+
+def prediction_callback(msg, prediction):
+    prediction.s = msg.s
+    prediction.ey = msg.ey
+
 def show():
     plt.show()
 
@@ -80,11 +96,18 @@ def view_trajectory():
     global pos_info_x_vals, pos_info_y_vals
     global v_vals, t_vals, psi_curr
 
+    track_width = 0.6
+
+    selection = Selection()
+    prediction_obj = Selection()
+
     rospy.init_node("car_view_trajectory_node", anonymous=True)
     rospy.on_shutdown(show)
 
+    rospy.Subscriber("selected_states", selected_states, selection_callback, (selection))
     rospy.Subscriber("hedge_pos", hedge_pos, gps_callback)
     rospy.Subscriber("pos_info", pos_info, pos_info_callback)
+    rospy.Subscriber("prediction", prediction, prediction_callback, (prediction_obj))
     
     l = Localization()
     l.create_track()
@@ -106,19 +129,38 @@ def view_trajectory():
 
     car_frame = np.vstack((np.array(car_xs_origin), np.array(car_ys_origin)))
     while not rospy.is_shutdown():
-        ax1 = fig.add_subplot(2, 1, 1)
-        ax2 = fig.add_subplot(2, 1, 2)
+        ax1 = fig.add_subplot(2, 2, 1)
+        ax2 = fig.add_subplot(2, 2, 3)
+        ax3 = fig.add_subplot(2, 2, 4)
         ax1.plot(l.nodes[0,:],l.nodes[1,:],"r-o")
         ax1.grid('on')
         ax1.axis('equal')
-        
+
+        if not math.isnan(selection.x[1]):
+            ax1.plot(selection.x, selection.y, "ko")
+
+        if not math.isnan(prediction_obj.s[1]):
+            ax3.plot(selection.s, selection.ey, "co")
+            ax3.plot(prediction_obj.s, prediction_obj.ey, "bo")
+            min_selection = min(selection.s)
+            min_prediction = min(prediction_obj.s)
+            min_value = max(min_selection, min_prediction)
+            max_selection = max(selection.s)
+            max_prediction = max(prediction_obj.s)
+            max_value = max(min_selection, min_prediction)
+            ax3.plot([min_value, max_value], [(- track_width / 2), (- track_width / 2)], "k-")
+            ax3.plot([min_value, max_value], [(track_width / 2), (track_width / 2)], "k-")
+            ax3.plot([min_value, max_value], [0.0, 0.0], "k--")
+
         
         if (gps_x_vals and gps_y_vals):
-            ax1.plot(gps_x_vals[:len(gps_x_vals)-1], gps_y_vals[:len(gps_y_vals)-1], 'b-', label="GPS data path")
-            ax1.plot(gps_x_vals[len(gps_x_vals)-1], gps_y_vals[len(gps_y_vals)-1], 'b*',label="Car current GPS Pos")
+            num_values_gps = min(len(gps_x_vals), len(gps_y_vals))
+            ax1.plot(gps_x_vals[:num_values_gps-1], gps_y_vals[:num_values_gps-1], 'b-', label="GPS data path")
+            ax1.plot(gps_x_vals[num_values_gps-1], gps_y_vals[num_values_gps-1], 'b*',label="Car current GPS Pos")
        
         if (pos_info_x_vals and pos_info_y_vals):
-            ax1.plot(pos_info_x_vals[:len(pos_info_x_vals)-1], pos_info_y_vals[:len(pos_info_y_vals)-1], 'g-', label="Car path")
+            num_values = min(len(pos_info_x_vals), len(pos_info_y_vals))
+            ax1.plot(pos_info_x_vals[:num_values - 1], pos_info_y_vals[:num_values - 1], 'g-', label="Car path")
             
             x = pos_info_x_vals[len(pos_info_x_vals)-1]
             y = pos_info_y_vals[len(pos_info_y_vals)-1]
@@ -140,7 +182,8 @@ def view_trajectory():
 
         if (v_vals):
             t_vals_zeroed = [t - t_vals[0] for t in t_vals]
-            ax2.plot(t_vals_zeroed, v_vals, 'm-')
+            last_value = min(len(t_vals_zeroed), len(v_vals))
+            ax2.plot(t_vals_zeroed[:last_value], v_vals[:last_value], 'm-')
             ax2.set_ylim([min(0, min(v_vals)), max(vmax_ref, max(v_vals))])
 
 

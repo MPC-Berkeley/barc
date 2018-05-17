@@ -55,7 +55,7 @@ function simDynModel(z::Array{Float64},u::Array{Float64},dt::Float64,coeff::Arra
         a_R     = atan((z[2] - L_r*z[3])/abs(z[1]))
     end
     if max(abs(a_F),abs(a_R))>30/180*pi
-        warn("Large tire angles: a_F = $a_F, a_R = $a_R, xDot = $(z[1]), d_F = $(z[8])")
+        # warn("Large tire angles: a_F = $a_F, a_R = $a_R, xDot = $(z[1]), d_F = $(z[8])")
     end
     
     FyF = -pacejka(a_F)
@@ -119,14 +119,14 @@ function simDynModel_xy(z::Array{Float64},u::Array{Float64},dt::Float64,modelPar
     FyR = -pacejka(a_R)
 
     if abs(a_F) > 30/180*pi || abs(a_R) > 30/180*pi
-        warn("Large slip angles in simulation: a_F = $a_F, a_R = $a_R")
+        # warn("Large slip angles in simulation: a_F = $a_F, a_R = $a_R")
     end
 
     zNext = copy(z)
     # compute next state
     zNext[1]        = zNext[1]       + dt * (cos(z[5])*z[3] - sin(z[5])*z[4])               # x
     zNext[2]        = zNext[2]       + dt * (sin(z[5])*z[3] + cos(z[5])*z[4])               # y
-    zNext[3]        = zNext[3]       + dt * (z[7] + z[4]*z[6] - 0.5*z[3])                   # v_x
+    zNext[3]        = zNext[3]       + dt * (z[7] + z[4]*z[6] - 0.05*z[3])                   # v_x
     zNext[4]        = zNext[4]       + dt * (1/m*(FyF*cos(z[8]) + FyR) - z[6]*z[3])         # v_y
     zNext[5]        = zNext[5]       + dt * (z[6])                                          # psi
     zNext[6]        = zNext[6]       + dt * (1/I_z*(L_f*FyF - L_r*FyR))                     # psiDot

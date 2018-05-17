@@ -170,7 +170,7 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_pF::MpcParams,track
     mpcParams_pF.R              = 0*[1.0,1.0]               # put weights on a and d_f
     mpcParams_pF.QderivZ        = 0.0*[0.0,0,1.0,0]           # cost matrix for derivative cost of states
     mpcParams_pF.QderivU        = 10*[1,1]                # cost matrix for derivative cost of inputs
-    mpcParams_pF.vPathFollowing = 1                       # reference speed for first lap of path following
+    mpcParams_pF.vPathFollowing = 0.6                       # reference speed for first lap of path following
     mpcParams_pF.delay_df       = 3                         # steering delay (number of steps)
     mpcParams_pF.delay_a        = 1                         # acceleration delay
 
@@ -219,6 +219,14 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_pF::MpcParams,track
     lapStatus.currentIt         = 0         # current iteration in lap
 
     obstacle.obstacle_active    = false     # true if we have to consider the obstacles in the optimization problem (NEVER set true here, the LMPC_node.jl script will set this value to true as soon as the current lap is equal to obstacle.lap_active)
+    obstacle.lap_deactivate     = 800        # number of lap in which to stop considering obstacles
+    obstacle.lap_active         = 400         # number of the first lap in which the obstacles are used
+    obstacle.obs_detect         = 10         # maximum distance at which we can detect obstacles (in terms of s!!)
+    obstacle.n_obs              = 1         # number of obstacles
+    obstacle.s_obs_init         = [12]    # initial s coordinate of each obstacle
+    obstacle.ey_obs_init        = [-0.35]       # initial ey coordinate of each obstacle
+
+#=
     obstacle.lap_deactivate     = 600        # number of lap in which to stop considering obstacles
     obstacle.lap_active         = 400         # number of the first lap in which the obstacles are used
 
@@ -226,6 +234,7 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_pF::MpcParams,track
     obstacle.n_obs              = 1         # number of obstacles
     obstacle.s_obs_init         = [18]    # initial s coordinate of each obstacle
     obstacle.ey_obs_init        = [-0.3]       # initial ey coordinate of each obstacle
+=#
     obstacle.v_obs_init         = [0]       # initial velocity of each obstacles
     obstacle.r_s                = 0.4#0.5
     obstacle.r_ey               = 0.2#0.2

@@ -10,6 +10,8 @@ l.create_track()
 plt.plot(l.nodes[0,:],l.nodes[1,:],"r-o")
 plt.grid('on')
 plt.axis('equal')
+plt.xlabel('x [m]')
+plt.ylabel('y [m]')
 plt.show()
 
 

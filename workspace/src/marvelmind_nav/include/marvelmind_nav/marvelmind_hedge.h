@@ -3,17 +3,77 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#define DATA_INPUT_SEMAPHORE "/data_input_semaphore"
+
 struct PositionValue
 {
     uint8_t address;
     uint32_t timestamp;
     int32_t x, y, z;// coordinates in millimeters
     uint8_t flags;
+    
+    double angle;
 
     bool highResolution;
 
     bool ready;
     bool processed;
+};
+
+struct RawIMUValue
+{
+    int16_t acc_x;
+    int16_t acc_y;
+    int16_t acc_z;
+    
+    int16_t gyro_x;
+    int16_t gyro_y;
+    int16_t gyro_z;
+    
+    int16_t compass_x;
+    int16_t compass_y;
+    int16_t compass_z;
+    
+    uint32_t timestamp;
+    
+    bool updated;
+};
+
+struct FusionIMUValue
+{
+    int32_t x;
+    int32_t y;
+    int32_t z;// coordinates in mm
+    
+    int16_t qw;
+    int16_t qx;
+    int16_t qy;
+    int16_t qz;// quaternion, normalized to 10000
+    
+    int16_t vx;
+    int16_t vy;
+    int16_t vz;// velocity, mm/s
+    
+    int16_t ax;
+    int16_t ay;
+    int16_t az;// acceleration, mm/s^2
+    
+    uint32_t timestamp;
+    
+    bool updated;
+};
+
+struct RawDistanceItem
+{
+  uint8_t address_beacon;
+  uint32_t distance;// distance, mm
+};
+struct RawDistances
+{
+    uint8_t address_hedge;
+    struct RawDistanceItem distances[4];
+    
+    bool updated;
 };
 
 struct StationaryBeaconPosition
@@ -53,6 +113,11 @@ struct MarvelmindHedge
     struct PositionValue * positionBuffer;
     
     struct StationaryBeaconsPositions positionsBeacons;
+    
+    struct RawIMUValue rawIMU;
+    struct FusionIMUValue fusionIMU;
+    
+    struct RawDistances rawDistances;
 
 // verbose flag which activate console output
 //		default: False
@@ -66,6 +131,7 @@ struct MarvelmindHedge
 
 //  receiveDataCallback is callback function to recieve data
     void (*receiveDataCallback)(struct PositionValue position);
+    void (*anyInputPacketCallback)();
 
 // private variables
     uint8_t lastValuesCount_;
@@ -84,6 +150,9 @@ struct MarvelmindHedge
 #define BEACONS_POSITIONS_DATAGRAM_ID 0x0002
 #define POSITION_DATAGRAM_HIGHRES_ID 0x0011
 #define BEACONS_POSITIONS_DATAGRAM_HIGHRES_ID 0x0012
+#define IMU_RAW_DATAGRAM_ID 0x0003
+#define BEACON_RAW_DISTANCE_DATAGRAM_ID 0x0004
+#define IMU_FUSION_DATAGRAM_ID 0x0005
 
 struct MarvelmindHedge * createMarvelmindHedge ();
 void destroyMarvelmindHedge (struct MarvelmindHedge * hedge);

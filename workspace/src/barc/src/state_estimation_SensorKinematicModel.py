@@ -14,10 +14,10 @@
 # ---------------------------------------------------------------------------
 
 import rospy
-from Localization_helpers import Localization
+# from Localization_helpers import Localization
 from barc.msg import ECU, pos_info, Vel_est
 from sensor_msgs.msg import Imu
-from marvelmind_nav.msg import hedge_pos
+from marvelmind_nav.msg import hedge_pos, hedge_imu_fusion
 from std_msgs.msg import Header
 from numpy import eye, array, zeros, diag, unwrap, tan, cos, sin, vstack, linalg, append
 from numpy import ones, polyval, delete, size
@@ -170,6 +170,7 @@ class StateEst(object):
         # The next two lines 'project' the measured linear accelerations to a horizontal plane
         self.a_x_meas = cos(-pitch_raw)*a_x + sin(-pitch_raw)*sin(-roll_raw)*a_y - sin(-pitch_raw)*cos(-roll_raw)*a_z
         self.a_y_meas = cos(-roll_raw)*a_y + sin(-roll_raw)*a_z
+        # self.a_y_meas = a_y + sin(-roll_raw)*a_z
         #self.a_x_meas = a_x
         #self.a_y_meas = a_y
         self.att = (roll_raw,pitch_raw,yaw_raw)
@@ -199,7 +200,8 @@ def state_estimation():
     rospy.Subscriber('imu/data', Imu, se.imu_callback)
     rospy.Subscriber('vel_est', Vel_est, se.encoder_vel_callback)
     rospy.Subscriber('ecu', ECU, se.ecu_callback)
-    rospy.Subscriber('hedge_pos', hedge_pos, se.gps_callback, queue_size=1)
+    # rospy.Subscriber('hedge_pos', hedge_pos, se.gps_callback, queue_size=1)
+    rospy.Subscriber('hedge_imu_fusion', hedge_imu_fusion, se.gps_callback, queue_size=1)
     state_pub_pos = rospy.Publisher('pos_info', pos_info, queue_size=1)
 
     # get vehicle dimension parameters
@@ -223,17 +225,19 @@ def state_estimation():
     #R = diag([0.5,0.5,0.5,0.1,10.0,1.0,1.0,     5.0,5.0,0.1,0.5, 1.0, 1.0])
 
     Q = diag([1/20*dt**5*qa,1/20*dt**5*qa,1/3*dt**3*qa,1/3*dt**3*qa,dt*qa,dt*qa,1/3*dt**3*qp,dt*qp,0.1, 0.2,0.2,1.0,1.0,0.1])
-    R = diag([5.0,5.0,1.0,10.0,100.0,1000.0,1000.0,     5.0,5.0,10.0,1.0, 10.0,10.0])
-    R = diag([4*5.0,4*5.0,1.0,2*10.0,2*100.0,1000.0,1000.0,     4*5.0,4*5.0,10.0,1.0, 10.0,10.0])
-    R = diag([1*5.0,1*5.0,1.0,2*10.0,2*100.0,1000.0,1000.0,     1*5.0,1*5.0,10.0,1.0, 10.0,10.0])
+    R = 1.0 * diag([5.0,5.0,1.0,10.0,100.0,1000.0,1000.0,     5.0,5.0,10.0,1.0, 10.0,10.0])
+    #R = diag([20.0,20.0,1.0,10.0,100.0,1000.0,1000.0,     20.0,20.0,10.0,1.0, 10.0,10.0])
     #         x,y,v,psi,psiDot,a_x,a_y, x, y, psi, v
 
     # Set up track parameters
-    l = Localization()
-    l.create_track()
+    # l = Localization()
+    # l.create_track()
     #l.prepare_trajectory(0.06)
 
-    d_f_hist = [0.0]*10       # assuming that we are running at 50Hz, array of 10 means 0.2s lag
+    # d_f_hist = [0.0]*10       # assuming that we are running at 50Hz, array of 10 means 0.2s lag
+    d_f_hist = [0.0] * 5
+    d_a_hist = [0.0] * 5
+
     d_f_lp = 0.0
     a_lp = 0.0
 
@@ -252,18 +256,24 @@ def state_estimation():
     while not rospy.is_shutdown():
         t_now = rospy.get_rostime().to_sec()-se.t0
 
-        se.x_meas = polyval(se.c_X, t_now)
-        se.y_meas = polyval(se.c_Y, t_now)
+        # se.x_meas = polyval(se.c_X, t_now)
+        # se.y_meas = polyval(se.c_Y, t_now)
         se.gps_updated = False
         se.imu_updated = False
         se.vel_updated = False
 
         # define input
         d_f_hist.append(se.cmd_servo)           # this is for a 0.2 seconds delay of steering
+        d_a_hist.append(se.cmd_motor)
         d_f_lp = d_f_lp + 0.5*(se.cmd_servo-d_f_lp) # low pass filter on steering
         a_lp = a_lp + 1.0*(se.cmd_motor-a_lp)       # low pass filter on acceleration
         #u = [a_lp, d_f_hist.pop(0)]
-        u = [se.cmd_motor, d_f_hist.pop(0)]
+
+        # Steering delay
+        # u = [se.cmd_motor, d_f_hist.pop(0)]
+        u = [d_a_hist.pop(0), d_f_hist.pop(0)]
+        # No steering delay
+        # u = [se.cmd_motor, se.cmd_servo]
 
         bta = 0.5 * u[1]
 
@@ -289,22 +299,27 @@ def state_estimation():
         #print "V_x and V_y : (%f, %f)" % (v_x_est, v_y_est)
 
         # Update track position
-        l.set_pos(x_est_2, y_est_2, psi_est_2, v_x_est, v_y_est, psi_dot_est)
+        # l.set_pos(x_est_2, y_est_2, psi_est_2, v_x_est, v_y_est, psi_dot_est)
 
 
         # Calculate new s, ey, epsi (only 12.5 Hz, enough for controller that runs at 10 Hz)
-        if est_counter%4 == 0:
-            l.find_s()
+        # if est_counter%4 == 0:
+        #     l.find_s()
         #l.s = 0
         #l.epsi = 0
         #l.s_start = 0
 
         # and then publish position info
         ros_t = rospy.get_rostime()
-        state_pub_pos.publish(pos_info(Header(stamp=ros_t), l.s, l.ey, l.epsi, v_est_2, l.s_start, l.x, l.y, l.v_x, l.v_y,
-                                       l.psi, l.psiDot, se.x_meas, se.y_meas, se.yaw_meas, se.vel_meas, se.psiDot_meas,
+
+        # state_pub_pos.publish(pos_info(Header(stamp=ros_t), l.s, l.ey, l.epsi, v_est_2, l.s_start, l.x, l.y, l.v_x, l.v_y,
+        #                                l.psi, l.psiDot, se.x_meas, se.y_meas, se.yaw_meas, se.vel_meas, se.psiDot_meas,
+        #                                psi_drift_est, a_x_est, a_y_est, se.a_x_meas, se.a_y_meas, se.cmd_motor, se.cmd_servo,
+        #                                (0,), (0,), (0,), l.coeffCurvature.tolist()))
+        state_pub_pos.publish(pos_info(Header(stamp=ros_t), 0., 0., 0., 0., 0., x_est_2, y_est_2, v_x_est, v_y_est,
+                                       psi_est_2, psi_dot_est, se.x_meas, se.y_meas, se.yaw_meas, se.vel_meas, se.psiDot_meas,
                                        psi_drift_est, a_x_est, a_y_est, se.a_x_meas, se.a_y_meas, se.cmd_motor, se.cmd_servo,
-                                       (0,), (0,), (0,), l.coeffCurvature.tolist()))
+                                       (0,), (0,), (0,), [0.]))
 
         # wait
         est_counter += 1

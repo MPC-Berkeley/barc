@@ -65,6 +65,8 @@ function SE_callback(msg::pos_info,acc_f::Array{Float64},lapStatus::LapStatus,po
         oldTraj.count[lapStatus.currentLap+1] += 1
         oldTraj.idx_start[lapStatus.currentLap+1] = oldTraj.count[lapStatus.currentLap+1]
     end
+
+    println("oldTraj Counter: ", oldTraj.count[lapStatus.currentLap])
 end
 
 # This is the main function, it is called when the node is started.
