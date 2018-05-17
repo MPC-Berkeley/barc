@@ -7,6 +7,7 @@
     <param name="m" type="double" value="1.98" />
     <param name="I_z" type="double" value="0.24" />
     <param name="dt" type="double" value="0.1" />
+    <param name="num_agents" type="int" value="1" />
 
     <!-- MACHINES -->
     <machine name="yoga" address="127.0.0.1" user="lukas" timeout="20.0" env-loader="/home/lukas/barc/env_loader_yoga.sh" />
@@ -22,6 +23,8 @@
         <param name="color" type="str" value="blue" />
         <param name="mass" type="double" value="1.98" />
         <param name="time_offset" type="double" value="0.0" />
+        <param name="delay_a" type="int" value="1" />
+        <param name="delay_df" type="int" value="1" />
 
         <remap from="pos_info" to="agent_1/pos_info" />
         <remap from="ecu" to="agent_1/ecu" />
@@ -47,6 +50,7 @@
         <remap from="vel_est" to="agent_1/vel_est" />
         <remap from="pos_info" to="agent_1/pos_info" />
         <remap from="ecu" to="agent_1/ecu" />
+        <remap from="hedge_imu_fusion" to="agent_1/hedge_imu_fusion" />
     </node>
 
     <!-- IMU -->
@@ -66,6 +70,7 @@
         <remap from="beacons_pos_a" to="agent_1/beacons_pos_a" />
         <remap from="hedge_pos" to="agent_1/hedge_pos" />
         <remap from="hedge_pos_a" to="agent_1/hedge_pos_a" />
+        <remap from="hedge_imu_fusion" to="agent_1/hedge_imu_fusion" />
     </node>
     
     <!-- ARDUINO -->
@@ -79,8 +84,9 @@
     <!-- AGENT 1 NODES-->
 
     <!-- VISUALIZATION -->
-    <!--<node machine="yoga" pkg="barc" type="plotter.py" name="visualization" output="screen"> -->
-        <!-- <param name="num_agents" type="int" value="1" /> -->
-    <!-- </node>  -->
+    <node machine="yoga" pkg="barc" type="plotter.py" name="visualization" output="screen">
+        <param name="num_agents" type="int" value="1" />
+        <param name="index" type="int" value="1" />
+    </node>
 
 </launch>

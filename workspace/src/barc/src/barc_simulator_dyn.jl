@@ -17,7 +17,7 @@ using RobotOS
 @rosimport barc.msg: ECU, Vel_est, pos_info, xy_prediction
 @rosimport geometry_msgs.msg: Vector3
 @rosimport sensor_msgs.msg: Imu
-@rosimport marvelmind_nav.msg: hedge_pos
+@rosimport marvelmind_nav.msg: hedge_pos, hedge_imu_fusion
 @rosimport std_msgs.msg: Header
 rostypegen()
 using barc.msg
@@ -71,7 +71,8 @@ function main()
 
     # initiate node, set up publisher / subscriber topics
     init_node("barc_sim")
-    pub_gps = Publisher("hedge_pos", hedge_pos, queue_size=1)::RobotOS.Publisher{marvelmind_nav.msg.hedge_pos}
+    # pub_gps = Publisher("hedge_pos", hedge_pos, queue_size=1)::RobotOS.Publisher{marvelmind_nav.msg.hedge_pos}
+    pub_gps = Publisher("hedge_imu_fusion", hedge_imu_fusion, queue_size=1)::RobotOS.Publisher{marvelmind_nav.msg.hedge_imu_fusion}
     pub_imu = Publisher("imu/data", Imu, queue_size=1)::RobotOS.Publisher{sensor_msgs.msg.Imu}
     pub_vel = Publisher("vel_est", Vel_est, queue_size=1)::RobotOS.Publisher{barc.msg.Vel_est}
     real_val = Publisher("real_val", pos_info, queue_size=1)::RobotOS.Publisher{barc.msg.pos_info}
@@ -114,7 +115,8 @@ function main()
     imu_data    = Imu()
     vel_est     = Vel_est()
     t0          = to_sec(get_rostime())
-    gps_data    = hedge_pos()
+    # gps_data    = hedge_pos()
+    gps_data    = hedge_imu_fusion()
     real_data   = pos_info()
 
     const NOISE = true
@@ -133,8 +135,8 @@ function main()
         t_ros   = get_rostime()
         t       = to_sec(t_ros)
         # if sizeof(cmd_log.z[t .> cmd_log.t + 0.2,2]) >= 1
-        #    u_current[2] = cmd_log.z[t.>=cmd_log.t+0.2,2][end]       # artificial steering input delay
-        # end
+        #     u_current[2] = cmd_log.z[t.>=cmd_log.t+0.2,2][end]       # artificial steering input delay
+        #end
         # update current state with a new row vector
         z_current[i,:],slip_ang[i,:]  = simDynModel_exact_xy(z_current[i-1,:], u_current', dt, modelParams)
 
@@ -188,6 +190,7 @@ function main()
             imu_meas.z[imu_meas.i,:] = [yaw psiDot]
             imu_meas.i += 1
             imu_data.orientation = geometry_msgs.msg.Quaternion(cos(yaw/2), sin(yaw/2), 0, 0)
+            imu_data.orientation = geometry_msgs.msg.Quaternion(0, 0, sin(yaw/2), cos(yaw/2))
             imu_data.angular_velocity = Vector3(0,0,psiDot)
             imu_data.header.stamp = t_ros
 

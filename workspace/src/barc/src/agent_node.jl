@@ -57,7 +57,7 @@ function race(num_laps::Int64)
     				   queue_size=1)::RobotOS.Publisher{barc.msg.xy_prediction}
     xy_sub = Subscriber("pos_info", pos_info, xy_callback, (agent, track), 
     					queue_size=1)::RobotOS.Subscriber{barc.msg.pos_info}
-    # xy_sub = Subscriber("real_val", pos_info, xy_callback, (agent, track), 
+    #xy_sub = Subscriber("real_val", pos_info, xy_callback, (agent, track), 
     #					queue_size=1)::RobotOS.Subscriber{barc.msg.pos_info}
     theta_pub = Publisher("theta", theta, queue_size=1)::RobotOS.Publisher{barc.msg.theta}
     selection_pub = Publisher("selected_states", selected_states, queue_size=1)::RobotOS.Publisher{barc.msg.selected_states}
@@ -76,8 +76,15 @@ function race(num_laps::Int64)
 	init!(optimizer, agent, HORIZON)
 
 	mpc_model_pf = MpcModel_pF(agent, track)
-	mpc_model_convhull = MpcModel_convhull(agent, track)
-	println("Succesfully initialized convhull model.")
+	if NUM_AGENTS == 1
+		mpc_model_convhull = MpcModel_convhull(agent, track)
+		println("Succesfully initialized convhull model.")
+	elseif NUM_AGENTS == 2
+		mpc_model_obstacle = MpcModel_obstacle(agent, track)
+		println("Succesfully initialized obstacle model.")
+	else
+		error("Too many agents.")
+	end
 
 	# Create an Optimizer object for the first path following lap of the LMPC
 	#= 
@@ -110,7 +117,11 @@ function race(num_laps::Int64)
 		# Do the system identification once to speed up the whole process
 		# identify_system!(agent)
 		select_states(agent)
-		solveMpcProblem_convhull(mpc_model_convhull, optimizer, agent, track)
+		if NUM_AGENTS == 1
+			solveMpcProblem_convhull(mpc_model_convhull, optimizer, agent, track)
+		else
+			solveMpcProblem_obstacle(mpc_model_obstacle, optimizer, agent, track)
+		end
 
 		# Warm start optimizer
 		max_acc = agent.input_upper_bound[1]
@@ -167,7 +178,7 @@ function race(num_laps::Int64)
 		println("Lap: ", i)
 
 		# Do path following for the first lap, if LMPC is used.
-		if LEARNING && i <= 1
+		if LEARNING && i <= NUM_PF_LAPS
 			race_lap!(agent, optimizer, low_level_controller, 
 					  track, xy_pub, theta_pub, selection_pub, input_pub, mpc_model_pf)
 			# Make sure the same agent object is used after the first path 
@@ -178,8 +189,13 @@ function race(num_laps::Int64)
 			race_lap!(agent, optimizer, low_level_controller, 
 					  track, xy_pub, theta_pub, selection_pub, input_pub, mpc_model_pf)
 		else
-			race_lap!(agent, optimizer, low_level_controller, track ,xy_pub, 
-					  theta_pub, selection_pub, input_pub, mpc_model_convhull)
+			if MODE == "learning"
+				race_lap!(agent, optimizer, low_level_controller, track ,xy_pub, 
+						  theta_pub, selection_pub, input_pub, mpc_model_convhull)
+			elseif MODE == "racing" 
+				race_lap!(agent, optimizer, low_level_controller, track ,xy_pub, 
+						  theta_pub, selection_pub, input_pub, mpc_model_obstacle)
+			end
 		end
 	end
 
@@ -193,16 +209,6 @@ function race(num_laps::Int64)
 	catch
 		println("Creating a new folder for today: ", month_day)
 		mkdir(month_day)
-	end
-
-	filename = "/home/lukas/simulations/theta.jld"
-	jldopen(filename, "w") do file
-	#    JLD.write(file, "vx", agent.t_vx_log[1 : agent.t_counter, :])
-	#    JLD.write(file, "vy", agent.t_vy_log[1 : agent.t_counter, :])
-	#    JLD.write(file, "psi_dot", agent.t_psi_log[1 : agent.t_counter, :])
-		JLD.write(file, "vx", agent.t_vx_log)
-	    JLD.write(file, "vy", agent.t_vy_log)
-	    JLD.write(file, "psi_dot", agent.t_psi_log)
 	end
 
 	node_name = (get_name())[2 : end]
@@ -219,7 +225,7 @@ function race(num_laps::Int64)
 	elseif MODE == "racing"
 		save_trajectories(agent, "/home/lukas/simulations/" * month_day * "/" * 
 								 hour_minute_second * "_" * node_name * 
-								 "_racing.jld")
+								 "_racing_" * INITIALIZATION_TYPE  * ".jld")
 	else 
 		error("MODE $(MODE) is not defined. Please choose one of the following: 
 			   path_following, learning or racing.")
@@ -235,11 +241,19 @@ function xy_callback(msg::pos_info, agent::Agent, track::Track)
 		current_xy[3] = msg.v_x
 		current_xy[4] = msg.v_y
 		current_xy[5] = msg.psi
+		# println("Psi before: ", msg.psi)
+
+		current_xy[5] = atan2(sin(msg.psi), cos(msg.psi))  # (msg.psi + pi) % (2 * pi ) - pi
+		#=
 		if msg.psi < - pi 
-			current_xy[5] -= min(ceil(msg.psi / (2 * pi)), - 1.0) * 2 * pi
+			current_xy[5] -= floor(msg.psi / (2 * pi)) * 2 * pi
+			# current_xy[5] -= min(ceil(msg.psi / (2 * pi)), - 1.0) * 2 * pi
 		elseif msg.psi > pi
-			current_xy[5] -= max(floor(msg.psi / (2 * pi)), 1.0) * 2 * pi
+			current_xy[5] -= ceil(msg.psi / (2 * pi)) * 2 * pi
+			# current_xy[5] -= max(floor(msg.psi / (2 * pi)), 1.0) * 2 * pi
 		end
+		=#
+		# println("Psi after: ", current_xy[5])
 		current_xy[6] = msg.psiDot
 		set_current_xy!(agent, current_xy, track)
 		agent.state_initialized = true
@@ -289,6 +303,11 @@ function race_lap!(agent::Agent, optimizer::Optimizer,
 	mapping = [5, 6, 4]
 
 	while !is_shutdown() && iteration <= MAXIMUM_NUM_ITERATIONS && !finished
+		# Get ROS time. Don't set to zero, because needs to be comparable to 
+		# the other agent.
+		time_now = to_sec(get_rostime())
+		agent.time_log[agent.counter[end]] = time_now
+
 		current_iteration = agent.current_iteration
 
 		println("Iteration: ", current_iteration)
@@ -360,11 +379,21 @@ function race_lap!(agent::Agent, optimizer::Optimizer,
 		end
 		=#
 
-		if LEARNING && agent.current_lap > 1
+		if LEARNING && agent.current_lap > NUM_PF_LAPS
 			agent.all_predictions[agent.counter[end], :, :] = agent.predicted_s
 		else
 			agent.all_predictions[agent.counter[end], :, [1, 2, 3, 5]] = agent.predicted_s
 		end
+
+		if agent.counter[end] == 1
+			agent.theta_vx = zeros(agent.theta_vx)
+			agent.theta_vy = zeros(agent.theta_vy)
+			agent.theta_psi_dot = zeros(agent.theta_psi_dot)
+		end
+		
+		agent.t_vx_log[agent.counter[end], :] = agent.theta_vx
+		agent.t_vy_log[agent.counter[end], :] = agent.theta_vy
+		agent.t_psidot_log[agent.counter[end], :] = agent.theta_psi_dot
 
 		agent_counter = agent.counter[agent.current_session]
 		current_dynamics = [agent.states_s[current_iteration, mapping] agent.inputs[current_iteration, :]]
@@ -471,10 +500,10 @@ function race_iteration!(agent::Agent, optimizer::Optimizer,
 	# println("I am solving agent $(agent.index)")
 
 	current_iteration = agent.current_iteration
+	num_buffer = NUM_STATES_BUFFER
 
 	# Reset the weights and the predicted states
 	# num_considered_states = size(agent.selected_states_s)[1]
-	num_buffer = NUM_STATES_BUFFER
 	agent.weights_states = ones(num_buffer)
 	agent.predicted_xy = zeros(agent.predicted_xy)
 
@@ -482,63 +511,50 @@ function race_iteration!(agent::Agent, optimizer::Optimizer,
 		# TODO: Figure out a different way to know how many agents there are
 		#######################################################################
 		if NUM_AGENTS > 1
-			distance = get_distance_on_track(simulator)
+			current_s = agent.states_s[agent.current_iteration, 1]
+			adv_s = optimizer.adv_predictions_s[1, 1]
+			distance = abs((agent.current_lap * track.total_length + current_s) - 
+					   (optimizer.adv_current_lap * track.total_length + adv_s))
 			# println("DISTANCE: ", distance)
 			# if get_total_distance(simulator.optimizers[i], simulator.track.total_length) >= 0
 			# println("direct distance on track: ", get_leading_agent_on_track(simulator, i))
-			if get_leading_agent_on_track(simulator, 1) >= 0
-				leading = true
-			end
+			leading = get_leading_agent_on_track(track, agent, optimizer)
 		end
 
 		publish_selection(selection_pub, agent)
 
 		tic()
-		if agent.current_lap <= 1
+		if agent.current_lap <= NUM_PF_LAPS
 			solveMpcProblem_pathFollow(mpc_model, optimizer, agent, track, 
 									   CURRENT_REFERENCE)
 			# solve_path_following!(optimizer, track, CURRENT_REFERENCE)
 		else 
 			if NUM_AGENTS == 1
 				select_states(agent)
-			elseif distance > 2 * simulator.horizon * simulator.track.ds || leading
-				chosen_lap = simulator.num_loaded_laps
+			elseif distance > 2 * HORIZON * track.ds || leading
+				chosen_lap = NUM_LOADED_LAPS
 				select_states(agent)
 			else
-				adv_agent = optimizer.adversarial_agents[1]
-				adv_agent_iter = adv_agent.current_iteration
-				adv_agent_e_y = adv_agent.states_s[adv_agent_iter, 2]
+				adv_agent_e_y = adv_predictions_s[end, 2]
 				# adv_agent_e_y = adv_agent.predicted_s[end, 2]
-				adv_agent_v = adv_agent.states_s[adv_agent_iter, 4]
-				if adv_agent_v > agent.states_s[current_iteration, 4]
+				adv_agent_v = adv_predictions_s[end, 5]
+				if adv_agent_v > agent.states_s[current_iteration, 5]
 					select_states(agent)
 				else
 					select_states_smartly(agent, adv_agent_e_y, track)
-					adjust_convex_hull(optimizer)
+					adjust_convex_hull(agent, optimizer)
 				end
 			end
 
-			solveMpcProblem_convhull(mpc_model, optimizer, agent, track)
-
-			#=
-			if SYS_ID
-				# solve_lmpc_regression!(optimizer, track)
-				# ref = [0.0 0.0 0.0 0.0 1.0 0.0]
-				ref = [0.0 0.0 0.0 1.0 0.0]
-				solve_path_following_regression!(optimizer, track, ref)
-			else 
-				solve_learning_mpc!(optimizer, track, leading)
+			if NUM_AGENTS == 2
+				solveMpcProblem_obstacle(mpc_model, optimizer, agent, track, leading)
+			elseif NUM_AGENTS == 1
+				println("Current s: ", agent.states_s[agent.current_iteration, :])
+				solveMpcProblem_convhull(mpc_model, optimizer, agent, track)
 			end
-			=#
 		end
 		toc()
 	else
-		#=
-		if agent.current_lap > 1
-			identify_system!(agent)
-		end
-		=#
-
 		solveMpcProblem_pathFollow(mpc_model, optimizer, agent, track, 
 								   CURRENT_REFERENCE)
 		# solve_path_following!(optimizer, track, CURRENT_REFERENCE)
@@ -586,11 +602,6 @@ function publish_selection(selection_pub, agent)
 	publish(selection_pub, agent.selection)
 end
 
-# Start race() function
-if !isinteractive()
-    race(NUM_LAPS)
-end
-
 
 function get_num_loaded_laps(filename::ASCIIString)
     Data = load(filename)
@@ -630,27 +641,33 @@ function get_distance_on_track(agent::Agent, optimizer::Optimizer, track::Track)
 end
 
 
-function get_leading_agent_on_track(track::Track, idx::Int64)
-	# TODO: fix this
+function get_leading_agent_on_track(track::Track, agent::Agent, optimizer::Optimizer)
+	current_iteration = agent.current_iteration
+	current_s = agent.states_s[current_iteration, 1]
+	adv_s = optimizer.adv_predictions_s[1, 1]
 	track_length = track.total_length
-	s_coords = zeros(NUM_AGENTS)
 
-	if idx == 1
-		increment = 1
-		end_idx = 2
-	elseif idx == 2
-		increment = - 1
-		end_idx = 1
+	if current_s <= track_length / 2
+		if current_s > adv_s
+			return true
+		elseif current_s <= adv_s && adv_s <= current_s + track_length / 2
+			return false
+		else 
+			return true
+		end
+	else
+		if current_s < adv_s
+			return false
+		elseif adv_s <= current_s && adv_s > current_s - track_length / 2
+			return true
+		else
+			return false
+		end
 	end
+end
 
-	counter = 1
-	for i = idx : increment : end_idx
-		iteration = simulator.agents[i].current_iteration
-		s_coords[counter] = simulator.agents[i].states_s[iteration, 1]
-		counter += 1
-	end
 
-	distance = sum(s_coords .* [1; - 1])
-
-	return distance
+# Start race() function
+if !isinteractive()
+    race(NUM_LAPS)
 end

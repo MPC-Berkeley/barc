@@ -48,16 +48,16 @@ function s_to_xy(track::Track, s_coord::Array{Float64})
 	delta_theta_prime = delta_theta / track.ds * delta_s
 	theta_prime = theta + delta_theta_prime
 
-	if abs(track.thetas[xy1_index] - track.thetas[xy1_index + 1]) > 1e-5
-		if abs(track.curvature[xy1_index]) < 1e-5 &&
-		   abs(track.curvature[xy1_index + 1]) > 1e-5
-		   curvature = track.curvature[xy1_index + 1]
-		elseif abs(track.curvature[xy1_index]) > 1e-5 &&
-			   abs(track.curvature[xy1_index + 1]) > 1e-5 &&
-			   abs(track.curvature[xy1_index] - track.curvature[xy1_index + 1]) < 1e-5
-			curvature = track.curvature[xy1_index + 1]
+	if abs(track.thetas[xy1_index] - track.thetas[xy1_index + 1]) > 1e-5 && abs(get_curvature(track, track.s_coord[xy1_index + 1])) > 1e-5
+		if abs(get_curvature(track, track.s_coord[xy1_index])) < 1e-5 &&
+		   abs(get_curvature(track, track.s_coord[xy1_index + 1])) > 1e-5
+		   curvature = get_curvature(track, track.s_coord[xy1_index + 1])
+		elseif abs(get_curvature(track, track.s_coord[xy1_index])) > 1e-5 &&
+			   abs(get_curvature(track, track.s_coord[xy1_index + 1])) > 1e-5 &&
+			   abs(get_curvature(track, track.s_coord[xy1_index]) - get_curvature(track, track.s_coord[xy1_index + 1])) < 1e-5
+			curvature = get_curvature(track, track.s_coord[xy1_index + 1])
 		else
-			curvature = track.curvature[xy1_index + 1]
+			curvature = get_curvature(track, track.s_coord[xy1_index + 1])
 		end
 		r = 1.0 / curvature
 		chord = 2.0 * r * sin(delta_theta_prime / 2.0)
@@ -115,14 +115,15 @@ function xy_to_s(track::Track, xy_coord::Array{Float64})
 	s1_s = track.s_coord[s1_index]
 
 	if abs(track.thetas[s1_index] - track.thetas[s1_index + 1]) > 1e-5
-		if abs(track.curvature[s1_index + 1] - track.curvature[s1_index]) > 1e-5
-			if abs(track.curvature[s1_index + 1]) > 1e-5
-				curvature = track.curvature[s1_index + 1]
+		if abs(get_curvature(track, track.s_coord[s1_index + 1]) - get_curvature(track, track.s_coord[s1_index])) > 1e-5
+			if abs(get_curvature(track, track.s_coord[s1_index + 1])) > 1e-5
+				curvature = get_curvature(track, track.s_coord[s1_index + 1])
+				# curvature = get_curvature(track, track.s_coord[s1_index])
 			else 
-				curvature = track.curvature[s1_index]
+				curvature = get_curvature(track, track.s_coord[s1_index])
 			end
 		else
-			curvature = track.curvature[s1_index]
+			curvature = get_curvature(track, track.s_coord[s1_index])
 		end
 
 		radius = 1. / curvature
@@ -142,10 +143,17 @@ function xy_to_s(track::Track, xy_coord::Array{Float64})
 		nominator = radius_abs^2  + dist_to_center_segment^2 - dist_to_s1^2
 		denom = 2 * radius_abs * dist_to_center_segment
 		if abs(nominator - denom) < 1e-5
-			phi = 0.0
+			abs_phi = 0.0
 		else
-			phi = acos(nominator / denom)
+			abs_phi = acos(nominator / denom)
 		end
+
+		if curvature < 0.0 
+			phi = - abs_phi
+		else
+			phi = abs_phi
+		end
+
 		#=
 		plot([x; center_of_segment[1]], [y; center_of_segment[2]], "r-")
 		plot([x; track.xy_coords[s1_index, 1]],
@@ -156,7 +164,7 @@ function xy_to_s(track::Track, xy_coord::Array{Float64})
 
 		# determining s and e_y
 		# take the radius, because s gets projected onto it
-		delta_s = radius_abs * phi
+		delta_s = radius_abs * abs_phi
 
 		# TODO: might be the other way round, but it makes sense to me
 		# to define it this way
@@ -166,11 +174,14 @@ function xy_to_s(track::Track, xy_coord::Array{Float64})
 			e_y = - (radius_abs - dist_to_center_segment)
 		end
 
+		# println("Theta: ", track.thetas[s1_index])
+		# println("Phi: ", phi)
 		e_psi = psi - (track.thetas[s1_index] + phi)
 	else
 		# using the law of cosines to determine the
 		# s1 has the smaller s-value, can be further away or closer
 		theta = track.thetas[s1_index]
+		# println("Theta: ", theta)
 
 		dist_to_s1 = distances_to_track[s1_index]
 		dist_to_s2 = distances_to_track[s1_index + 1]
@@ -182,8 +193,13 @@ function xy_to_s(track::Track, xy_coord::Array{Float64})
 			delta_s = dist_to_s1
 			abs_e_y = 0.
 		else
-			phi = acos((dist_to_s1^2 + track.ds^2 - dist_to_s2^2) /
+			abs_phi = acos((dist_to_s1^2 + track.ds^2 - dist_to_s2^2) /
 					   (2 * dist_to_s1 * track.ds))
+			if get_curvature(track, track.s_coord[s1_index + 1]) < 0.0 
+				phi = abs_phi
+			else
+				phi = abs_phi
+			end
 			delta_s = dist_to_s1 * cos(phi)
 			abs_e_y = dist_to_s1 * sin(phi)
 		end
@@ -198,6 +214,7 @@ function xy_to_s(track::Track, xy_coord::Array{Float64})
 		e_y_rotated = rotate_around_z(e_y_direction, theta)
 		xy_position = track.xy_coords[s1_index, :]' +
 					  delta_s * [cos(theta); sin(theta)]
+					  # [delta_s; 0.0]
 		center_of_segment = e_y_rotated + xy_position
 		distance_to_inner_bound = colwise(Euclidean(), center_of_segment,
 										  [x; y])
@@ -210,11 +227,22 @@ function xy_to_s(track::Track, xy_coord::Array{Float64})
 
 	s = s1_s + delta_s
 
+	# println("e_psi before: ", e_psi)
+
+	#=
 	if e_psi < - pi 
-		e_psi -= min(ceil(e_psi / (2 * pi)), - 1.0) * 2 * pi
+		e_psi = pi + 
+		e_psi -= floor(e_psi / (2 * pi)) * 2 * pi  # min(ceil(e_psi / (2 * pi)), - 1.0) * 2 * pi
 	elseif e_psi > pi
-		e_psi -= max(floor(e_psi / (2 * pi)), 1.0) * 2 * pi
+		e_psi -= ceil(e_psi / (2 * pi)) * 2 * pi  # max(floor(e_psi / (2 * pi)), 1.0) * 2 * pi
 	end
+	=#
+	e_psi = atan2(sin(e_psi), cos(e_psi))
+	# e_psi = (e_psi + pi) % (2 * pi) - pi
+
+	# println("e_psi after: ", e_psi)
+
+	# (self.psi - self.theta[self.idx_curr]+pi)%(2*pi)-pi
 
 	return [s, - e_y, e_psi, psi_dot, v_x, v_y]
 end

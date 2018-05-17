@@ -102,7 +102,12 @@ end
 
 
 function get_index(filename)
-	return parse(Int64, split(filename, "_")[end - 2])
+	if contains(filename, "agent_1")
+		return 1
+		# return parse(Int64, split(filename, "_")[end - 2])
+	elseif contains(filename, "agent_2")
+		return 2
+	end
 end
 
 

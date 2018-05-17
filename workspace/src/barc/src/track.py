@@ -12,6 +12,7 @@ from numpy import linalg as LA
 import os
 import json
 import pdb
+import matplotlib.pyplot as plt
 
 
 class Track:
@@ -21,7 +22,7 @@ class Track:
     s_coords = np.zeros(1)
 
     thetas = [0.0]
-    curvature = [0.0]
+    curvature = []
     xy_coords = np.zeros(2)
     xy_outer = np.zeros(2)
     xy_inner = np.zeros(2)
@@ -77,41 +78,64 @@ class Track:
         self.xy_outer[0, 1] = self.width / 2
         self.xy_inner[0, 1] = - self.width / 2
 
+        self.s_coords = self.ds * np.ones(num_points)
+        self.s_coords[0] = 0.0
+        self.s_coords = np.cumsum(self.s_coords)
+
         for i in range(1, num_points):
             theta = self.thetas[i]
 
-            if abs(theta - self.thetas[i - 1]) > 0.:
-                radius = 1. / self.curvature[i]
-                delta_theta = theta - self.thetas[i - 1]
+            delta_theta = theta - self.thetas[i - 1]
 
+            if abs(delta_theta) > 0. and abs(self.get_curvature(self.s_coords[i])) > 1e-5:
+                radius = 1. / self.get_curvature(self.s_coords[i])
                 chord = 2 * radius * np.sin(delta_theta / 2)
-                self.xy_coords[i, :] = chord * np.array([np.cos(theta), np.sin(theta)])
+
+                initial_point = self.xy_coords[0, :]
+                s_direction = np.array([initial_point[0] + chord, initial_point[1]])
+                s_rotated = rotate_around_z(s_direction, self.thetas[i - 1] + delta_theta / 2)
+                self.xy_coords[i, :] = s_rotated + self.xy_coords[i - 1, :]
             else:
-                self.xy_coords[i, :] = self.ds * np.array([np.cos(theta), np.sin(theta)])
+                self.xy_coords[i, :] = self.xy_coords[i - 1, :] + self.ds * np.array([np.cos(theta), np.sin(theta)])
 
             self.xy_outer[i, :] = self.width / 2 * np.array([np.cos(theta + np.pi / 2),
                                                              np.sin(theta + np.pi / 2)])
             self.xy_inner[i, :] = self.width / 2 * np.array([np.cos(theta - np.pi / 2),
                                                              np.sin(theta - np.pi / 2)])
 
-        self.xy_coords = np.cumsum(self.xy_coords, 0)
         self.xy_outer += self.xy_coords
         self.xy_inner += self.xy_coords
 
         # assert LA.norm(self.xy_coords[0, :] - self.xy_coords[- 1, :]) < 1e-3
 
-        self.total_length = (num_points - 1) * self.ds
-        self.s_coords = self.ds * np.ones(num_points)
-        self.s_coords[0] = 0.0
-        self.s_coords = np.cumsum(self.s_coords)
+        if sum(abs(self.xy_coords[0, :] - self.xy_coords[- 1, :])) > 1e-2:
+            print(self.xy_coords[0, :])
+            print(self.xy_coords[- 1, :])
+            print("Track starting and end point don't align.")
+            exit()
 
     def oval_track(self):
+        self.add_segment(1.0, 0.0)
+        self.add_segment(7.0, - np.pi)
+        self.add_segment(2.0, 0.0)
+        self.add_segment(7.0, - np.pi)
+        self.add_segment(1.0, 0.0)
+
+        """
         self.add_segment(1.0, 0.0)
         self.add_segment(4.5, - np.pi)
         self.add_segment(2.0, 0.0)
         self.add_segment(4.5, - np.pi)
         self.add_segment(1.0, 0.0)
+        """
 
+        """
+        self.add_segment(2.0, 0.0)
+        self.add_segment(9.0, - np.pi)
+        self.add_segment(4.0, 0.0)
+        self.add_segment(9.0, - np.pi)
+        self.add_segment(2.0, 0.0)
+        """
         """
         self.add_segment(6.0, 0.0)
         self.add_segment(14.0, - np.pi)
@@ -122,7 +146,7 @@ class Track:
 
     def test_track(self):
         denominator = 3.5
-        small = True
+        small = False
 
         if small:
             self.add_segment(1.7, 0.0)
@@ -137,6 +161,31 @@ class Track:
             self.add_segment(2.0, - np.pi / 2)
             self.add_segment(1.8, 0.0)
         else:
+            self.add_segment(1.5, 0.0)
+            self.add_segment(2.0, - np.pi / 2)
+            self.add_segment(1.5, 0.0)
+            self.add_segment(2.0, - np.pi / 2)
+            self.add_segment(3.0, 0.0)
+            self.add_segment(2.0, - np.pi / 2)
+            self.add_segment(1.5, 0.0)
+            self.add_segment(2.0, - np.pi / 2)
+            self.add_segment(1.5, 0.0)
+
+            """
+            self.add_segment(2.5, 0.0)
+            self.add_segment(2.0, - np.pi / 2)
+            self.add_segment(1.0, 0.0)
+            self.add_segment(2.0, - np.pi / 2)
+            self.add_segment(1.5, np.pi / (2 * denominator))
+            self.add_segment(1.5, - np.pi / denominator)
+            self.add_segment(1.5, np.pi / (2 * denominator))
+            self.add_segment(2.0, - np.pi / 2)
+            self.add_segment(1.0, 0.0)
+            self.add_segment(2.0, - np.pi / 2)
+            self.add_segment(1.9, 0.0)
+            """
+
+            """
             self.add_segment(3.0, 0.0)
             self.add_segment(2.0, - np.pi / 2)
             self.add_segment(2.0, 0.0)
@@ -148,6 +197,7 @@ class Track:
             self.add_segment(2.0, 0.0)
             self.add_segment(2.0, - np.pi / 2)
             self.add_segment(2.8, 0.0)
+            """
 
     def add_segment(self, length, angle):
         num_pieces = int(round(length / self.ds))
@@ -158,7 +208,15 @@ class Track:
         thetas_segment = angle_per_segment * np.ones(num_pieces)
         thetas_segment[0] += self.thetas[- 1]
         self.thetas += (np.cumsum(thetas_segment)).tolist()
-        self.curvature += (curvature * np.ones(num_pieces)).tolist()
+
+        # self.curvature += (curvature * np.ones(num_pieces)).tolist()
+
+        start_interval = self.total_length
+        end_interval = start_interval + length
+        kappa = [(start_interval, end_interval), curvature]
+        self.curvature.append(kappa)
+        self.total_length += length
+
 
     def get_s(self, s):
         if isinstance(s, np.float64):
@@ -174,11 +232,14 @@ class Track:
     def get_curvature(self, s):
         s = self.get_s(s)
 
-        distances_to_track = np.array([LA.norm(self.s_coords[i] - s)
-                                      for i in range(len(self.s_coords))])
-        s_index = np.argmin(distances_to_track)
+        for i in range(len(self.curvature)):
+            interval = self.curvature[i][0]
+            start_interval = interval[0]
+            end_interval = interval[1]
 
-        return self.curvature[s_index]
+            if s >= start_interval and s < end_interval:
+                curvature = self.curvature[i][1]
+                return curvature
 
     def get_theta(self, s):
         return 0
@@ -188,6 +249,13 @@ class Track:
 
     def load_track(self):
         return 0
+
+
+def rotate_around_z(xy_coords, angle):
+    rotation_matrix = np.array([[np.cos(angle), - np.sin(angle)],
+                                [np.sin(angle), np.cos(angle)]])
+
+    return np.dot(rotation_matrix, xy_coords)
 
 
 if __name__ == "__main__":

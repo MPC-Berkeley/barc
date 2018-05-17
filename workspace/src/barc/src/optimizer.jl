@@ -64,6 +64,7 @@ type Optimizer
 	adv_states_s::Array{JuMP.NonlinearParameter, 2}
 
 	adv_predictions_s::Array{Float64}
+	adv_current_lap::Int64
 	predictions_s::prediction
 	first_input::ECU
 	adversarial::Bool
@@ -94,6 +95,7 @@ function init!(optimizer::Optimizer, agent::Agent, horizon::Int64)
 	optimizer.predictions_s = prediction()
 	optimizer.first_input = ECU()
 	optimizer.adv_predictions_s = zeros(horizon + 1, 6)
+	optimizer.adv_current_lap = 0
 	optimizer.adversarial = false
 	dummy = 0
 	optimizer.prediction_sub = Subscriber("adv_prediction", prediction, 
@@ -1190,56 +1192,56 @@ function get_total_distance(optimizer::Optimizer, track_length::Int64)
 	return sum(progress_on_track .* (repmat([1; - 1]', horizon + 1))', 1)
 end
 
-function adjust_convex_hull(optimizer::Optimizer)
-	selected_states_s = optimizer.agent.selected_states_s
-	num_selected_states = size(selected_states_s)[1]
-	horizon = size(optimizer.agent.predicted_s)[1] - 1
+function adjust_convex_hull(agent::Agent, optimizer::Optimizer)
 
-	num_adv_agents = NUM_AGENTS - 1
+    selected_states_s = agent.selected_states_s
+    num_selected_states = size(selected_states_s)[1]
+    horizon = size(optimizer.adv_predictions_s)[1] - 1
 
-	dummy_weights = ones(size(selected_states_s)[1])
-	for i = 1 : num_adv_agents
-		adv_predictions_s = optimizer.adv_predictions_s
-		r_s = 2 * optimizer.agent.l_front
-		r_e_y = 2 * optimizer.agent.width / 2
-		for j = 1 : num_selected_states
-			evaluate_ellipse = ((selected_states_s[j, 1] - 
-								adv_predictions_s[end, 1]) / r_s).^2 + 
-							   ((selected_states_s[j, 2] - 
-							   	adv_predictions_s[end, 2]) / r_e_y).^2  
-			if evaluate_ellipse <= 1
-				optimizer.agent.weights_states[j] = 10
-			end
-		end
-	end
+    dummy_weights = ones(size(selected_states_s)[1])
+    for i = 1 : NUM_AGENTS - 1
+        adv_predictions_s = optimizer.adv_predictions_s
+        r_s = 2 * agent.l_front
+        r_e_y = 2 * agent.width / 2
+        for j = 1 : num_selected_states
+            evaluate_ellipse = ((selected_states_s[j, 1] - 
+                                adv_predictions_s[end, 1]) / r_s).^2 + 
+                               ((selected_states_s[j, 2] - 
+                                adv_predictions_s[end, 2]) / r_e_y).^2  
+            if evaluate_ellipse <= 1
+                agent.weights_states[j] = 10
+            end
+        end
+    end
 
-	sorted_weights = sortperm(optimizer.agent.weights_states)
-	max_weight = findmax(optimizer.agent.weights_states[sorted_weights])
+    sorted_weights = sortperm(agent.weights_states)
+    max_weight = findmax(agent.weights_states[sorted_weights])
 
-	if max_weight[1] > 1
-		adjusted_weights_indeces = max_weight[2] : num_selected_states
-		# 5 * 2 * horizon == num_selected_states
-		for i = 1 : 2 * horizon : num_selected_states
-			sum_weights = sum(optimizer.agent.weights_states[i : i + 2 * horizon - 1])
-			if sum_weights > 2 * horizon  # we know there are adjusted states
-				max_index = findmax(optimizer.agent.weights_states[i : i + 2 * horizon - 1])[2]
-				# println(max_index)
-				optimizer.agent.weights_states[i + max_index : i + 2 * horizon - 1] = 
-					10 * ones(optimizer.agent.weights_states[i + max_index : i + 2 * horizon - 1])
-			end	
-		end
-	end
+    if max_weight[1] > 1
+        adjusted_weights_indeces = max_weight[2] : num_selected_states
+        # 5 * 2 * horizon == num_selected_states
+        for i = 1 : 2 * horizon : num_selected_states
+            sum_weights = sum(agent.weights_states[i : i + 2 * horizon - 1])
+            if sum_weights > 2 * horizon  # we know there are adjusted states
+                max_index = findmax(agent.weights_states[i : i + 2 * horizon - 1])[2]
+                # println(max_index)
+                agent.weights_states[i + max_index : i + 2 * horizon - 1] = 
+                    10 * ones(agent.weights_states[i + max_index : i + 2 * horizon - 1])
+            end 
+        end
+    end
 end
 
-function propagate_adv_prediction!(optimizer)
+
+function propagate_adv_prediction!(optimizer::Optimizer, agent::Agent)
 	# TODO: Change this using alpha!!
 	try
-		for i = 1 : length(optimizer.adversarial_agents)
+		for i = 1 : NUM_AGENTS - 1
 			optimizer.adv_predictions_s[1 : end - 1, :] = optimizer.adv_predictions_s[2 : end, :]
 			last_pred_s = optimizer.adv_predictions_s[end, :]
 			optimizer.adv_predictions_s[end, :] = last_pred_s
 							
-			optimizer.adv_predictions_s[end, 1] += last_pred_s[end - 1] * optimizer.agent.dt
+			optimizer.adv_predictions_s[end, 1] += last_pred_s[end - 1] * agent.dt
 		end
 	end
 end

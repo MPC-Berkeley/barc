@@ -95,7 +95,9 @@ type Agent
 
 	t_vx_log::Array{Float64}
 	t_vy_log::Array{Float64}
-	t_psi_log::Array{Float64}
+	t_psidot_log::Array{Float64}
+
+	time_log::Array{Float64}
 
 	t_counter::Int64
 
@@ -115,6 +117,12 @@ type Agent
 	counter::Array{Int64}
 
 	acc::Float64
+
+	delay_a::Int64
+	delay_df::Int64
+
+	not_for_selection::Array{Int64}
+    not_for_dynamics::Array{Int64}
 
 	Agent() = new()
 end
@@ -168,7 +176,7 @@ function init!(agent::Agent, index::Int64, track::Track,
 	agent.all_selected_states = Dict([i => [(j, 1 : 10) for j = 1 : NUM_CONSIDERED_LAPS] for i = 1 : 6000])
 	agent.all_predictions = zeros(6000, horizon + 1, 6)
 
-	agent.num_loaded_laps = num_loaded_laps
+	agent.num_loaded_laps = 0
 
 	agent.current_session = 1
 	agent.num_sessions = 1
@@ -176,13 +184,29 @@ function init!(agent::Agent, index::Int64, track::Track,
 	agent.dynamics = zeros(agent.num_sessions, 6000, 5)
 
 	if MODE == "learning"
-		filename = get_most_recent(node_name[2 : end], "path_following", 
-								   INITIALIZATION_TYPE)
+		filename = ascii(get_most_recent(node_name[2 : end], "path_following", 
+								   INITIALIZATION_TYPE))
 		# filename = "/home/lukas/simulations/" * get_name() * 
 		#		   "_path_following_" * INITIALIZATION_TYPE * ".jld"
 		# filename = "/home/lukas/simulations/lmpc_test.jld"
 		println("LOADING: ", filename)
 		load_trajectories!(agent, filename)
+	elseif MODE == "racing"
+		filename = ascii(get_most_recent(node_name[2 : end], "path_following", 
+								   INITIALIZATION_TYPE))
+		filename_center = ascii(get_most_recent(node_name[2 : end], "lmpc", 
+								   		  "center"))
+		filename_inner = ascii(get_most_recent(node_name[2 : end], "lmpc", 
+								   		 "inner"))
+		filename_outer = ascii(get_most_recent(node_name[2 : end], "lmpc", 
+								   		 "outer"))
+		println("LOADING: ", filename)
+		println("LOADING: ", filename_center)
+		println("LOADING: ", filename_inner)
+		println("LOADING: ", filename_outer)
+
+		files = [filename; filename_center; filename_inner; filename_outer]
+		load_trajectories!(agent, files)
 	end
 
 	# x-y state: z_xy = [x y v_x v_y psi psi_dot]
@@ -228,9 +252,11 @@ function init!(agent::Agent, index::Int64, track::Track,
 	agent.theta_vy = zeros(Float64, 4)
 	agent.theta_psi_dot = zeros(Float64, 3)
 
-	agent.t_vx_log = zeros(1000, 3)
-	agent.t_vy_log = zeros(1000, 4)
-	agent.t_psi_log = zeros(1000, 3)
+	agent.t_vx_log = zeros(6000, 3)
+	agent.t_vy_log = zeros(6000, 4)
+	agent.t_psidot_log = zeros(6000, 3)
+
+	agent.time_log = zeros(6000)
 
 	agent.t_counter = 0
 
@@ -243,6 +269,9 @@ function init!(agent::Agent, index::Int64, track::Track,
 
 	agent.time_inputs = 0.0
 	agent.time_states = 0.0
+
+	agent.delay_a = get_param(node_name * "/delay_a")
+	agent.delay_df = get_param(node_name * "/delay_df")
 
 	# agent.num_sessions = 1
 	# agent.current_session = 1
@@ -309,28 +338,80 @@ function save_trajectories(agent::Agent, filename::ASCIIString)
 	    JLD.write(file, "dynamics", agent.dynamics)
 	    JLD.write(file, "all_selected_states", agent.all_selected_states)
 	    JLD.write(file, "all_predictions", agent.all_predictions)
+	    JLD.write(file, "theta_vx", agent.t_vx_log)
+	    JLD.write(file, "theta_vy", agent.t_vy_log)
+	    JLD.write(file, "theta_psi_dot", agent.t_psidot_log)
+	    JLD.write(file, "time", agent.time_log)
 	end
 end
 
 function load_trajectories!(agent::Agent, filename::ASCIIString)
-    Data = load(filename)
-    num_loaded_laps = size(Data["trajectories_s"])[1]
-    agent.trajectories_s[1 : num_loaded_laps, :, :] = Data["trajectories_s"]
-    agent.trajectories_xy[1 : num_loaded_laps, :, :] = Data["trajectories_xy"]
-    agent.previous_inputs[1 : num_loaded_laps, :, :] = Data["previous_inputs"]
-    previous_session_dynamics = Data["dynamics"]
-    agent.num_sessions = size(previous_session_dynamics, 1) + 1
-    agent.current_session = agent.num_sessions
-    agent.dynamics = zeros(agent.num_sessions, 6000, 5)
-    agent.dynamics[1 : agent.num_sessions - 1, :, :] = previous_session_dynamics
-    agent.counter = zeros(agent.num_sessions)
+	load_trajectories!(agent, [filename])
+end
+
+function load_trajectories!(agent::Agent, filenames::Array{ASCIIString})
+	agent.num_sessions = length(filenames) + 1
+	num_previously_loaded = 0
+	agent.current_session = agent.num_sessions
+	agent.dynamics = zeros(agent.num_sessions, 6000, 5)
+	agent.counter = zeros(agent.num_sessions)
     agent.counter[end] = 1
-    for i = 1 : agent.num_sessions - 1
-    	agent.counter[i] = findmin(sumabs(agent.dynamics[i, :, :], 3))[2]
-    end
-    determine_needed_iterations!(agent)
+
+    agent.not_for_selection = zeros(agent.num_sessions - 1)
+    agent.not_for_dynamics = zeros((agent.num_sessions - 1) * 2 + 1)
+
+    num_laps = 0
+    for filename in filenames
+	    Data = load(filename)
+	    cutoff = 0
+	    if contains(filename, "lmpc")
+	    	cutoff += 5  # Number of path following laps
+	    end
+	    num_laps += size(Data["trajectories_s"])[1] - cutoff
+	end
+
+	num_laps += NUM_LAPS
+
+	agent.trajectories_s = zeros(num_laps, MAXIMUM_NUM_ITERATIONS, 6)
+	agent.trajectories_xy = zeros(num_laps, MAXIMUM_NUM_ITERATIONS, 6)
+    agent.previous_inputs = zeros(num_laps, MAXIMUM_NUM_ITERATIONS, 2)
+    agent.iterations_needed = zeros(num_laps)
+
+	index = 1
+	for filename in filenames
+	    Data = load(filename)
+	    cutoff = 1
+	    if contains(filename, "lmpc")
+	    	cutoff += 5  # Number of path following laps
+	    end
+	    num_loaded_laps = size(Data["trajectories_s"])[1] + num_previously_loaded - cutoff + 1
+	    agent.trajectories_s[num_previously_loaded + 1 : num_loaded_laps, :, :] = Data["trajectories_s"][cutoff : end, :, :]
+	    agent.trajectories_xy[num_previously_loaded + 1 : num_loaded_laps, :, :] = Data["trajectories_xy"][cutoff : end, :, :]
+	    agent.previous_inputs[num_previously_loaded + 1 : num_loaded_laps, :, :] = Data["previous_inputs"][cutoff : end, :, :]
+	    previous_session_dynamics = Data["dynamics"]
+	    
+	    agent.dynamics[index, :, :] = previous_session_dynamics[end, :, :]
+    	agent.counter[index] = findmin(sumabs(agent.dynamics[index, :, :], 3))[2]
+
+    	agent.not_for_selection[index] = num_loaded_laps
+    	agent.not_for_dynamics[(index - 1) * 2 + 1] = num_previously_loaded + 1
+		agent.not_for_dynamics[(index - 1) * 2 + 2] = num_loaded_laps
+
+	    determine_needed_iterations!(agent, num_previously_loaded + 1 : num_loaded_laps)
+	    num_previously_loaded = num_loaded_laps
+	    index += 1
+	end
+
+	agent.not_for_dynamics[end] = num_previously_loaded + 1
+
+	println(agent.iterations_needed)
+	println(agent.not_for_selection)
+	println(agent.not_for_dynamics)
+	# NUM_LOADED_LAPS = num_previously_loaded
+	agent.num_loaded_laps = num_previously_loaded
  end
 
+#=
  function load_trajectories!(agent::Agent, filenames::Array{ASCIIString})
  	num_previously_loaded = 0
  	for filename in filenames
@@ -344,66 +425,21 @@ function load_trajectories!(agent::Agent, filename::ASCIIString)
 
  	determine_needed_iterations!(agent)
  end
-
-function select_states(agent::Agent, chosen_lap::Int64)
-	# Always using the previous lap
-	# TODO: smarter selection of states
-	# TODO: select from latest lap
-	#chosen_lap = 2
-	# println(agent.trajectories_s)
-	agent.iterations_needed[chosen_lap] = findmin(sumabs(agent.trajectories_s[chosen_lap, :, :], (1, 3)))[2] - 1
-	# println("SUM: ", sumabs(agent.trajectories_s[2, :, :], (1, 3)))
-	needed_iterations = agent.iterations_needed[chosen_lap]
-	# println("needed iterations: ", needed_iterations)
-	# println("test: ", agent.trajectories_s[chosen_lap, needed_iterations - 2 : needed_iterations + 2, :])
-	# println("test: ", agent.trajectories_s[chosen_lap, needed_iterations - 1, :])
-
-	# exit()
-	num_considered_states = size(agent.selected_states_s)[1]
-	# println("num considered states: ", num_considered_states)
-
-	horizon = size(agent.optimal_inputs)[1]
-
-	iteration = agent.current_iteration
-	first_iteration = findmin(colwise(Euclidean(), 
-							  agent.trajectories_s[chosen_lap, 1 : needed_iterations, 1], 
-							  [agent.states_s[iteration, 1]]))[2]
-	if first_iteration == needed_iterations
-		first_iteration = 1
-	end
-
-	# println("first iteration: ", first_iteration)
-
-	# TODO: check if necessary
-	#=
-	if needed_iterations <= num_considered_states
-		agent.selected_states_s = squeeze(agent.trajectories_s[chosen_lap, 
-										  first_iteration : first_iteration + needed_iterations - 1, :], 1)
-	else
-		agent.selected_states_s = squeeze(agent.trajectories_s[chosen_lap, 
-										  first_iteration : first_iteration + num_considered_states - 1, :], 1)
-		agent.selected_states_xy = squeeze(agent.trajectories_xy[chosen_lap, 
-										   first_iteration : first_iteration + num_considered_states - 1, :], 1)
-	end
-	=#
-	if needed_iterations <= num_considered_states
-		agent.selected_states_s = squeeze(agent.trajectories_s[chosen_lap, 
-										  first_iteration : first_iteration + 2 * horizon - 1, :], 1)
-	else
-		agent.selected_states_s = squeeze(agent.trajectories_s[chosen_lap, 
-										  first_iteration : first_iteration + 2 * horizon - 1, :], 1)
-		agent.selected_states_xy = squeeze(agent.trajectories_xy[chosen_lap, 
-										   first_iteration : first_iteration + 2 * horizon - 1, :], 1)
-	end
-
-	agent.selected_states_s = repmat(agent.selected_states_s, 5)
-	agent.selected_states_xy = repmat(agent.selected_states_xy, 5)
-end
+=#
 
 function select_states(agent::Agent)
 	# println("TEST: ", sumabs(agent.trajectories_s[:, :, :], (2, 3)))
 	num_recorded_laps = NUM_LOADED_LAPS + agent.current_lap - 1
 	# num_recorded_laps = findmin(sumabs(agent.trajectories_s[:, :, :], (2, 3)))[2] - 1
+
+	iteration = agent.current_iteration
+	prev_s = agent.predicted_s[1, 1]
+	current_s = agent.states_s[iteration, 1]
+
+	# Check if we're already in the next lap
+	if abs(prev_s - current_s) >= 0.5 * TRACK_WIDTH && iteration > 1
+		num_recorded_laps += 1
+	end
 
 	possible_trajectory_list = nothing
 	closest_index = zeros(Int64, num_recorded_laps)
@@ -411,7 +447,6 @@ function select_states(agent::Agent)
 	horizon = size(agent.optimal_inputs)[1]
 	num_considered_states = size(agent.selected_states_s)[1]
 	num_buffer = NUM_STATES_BUFFER
-	iteration = agent.current_iteration
 
 	selected_laps = zeros(Int64, NUM_CONSIDERED_LAPS)
 
@@ -425,11 +460,18 @@ function select_states(agent::Agent)
 	# for i = 1 : num_recorded_laps
 	# Do not select from the first overall lap, because there are no states, 
 	# which could be appended in the beginning
-	for i = 2 : num_recorded_laps
-		if i == NUM_LOADED_LAPS
+	for i = 1 : num_recorded_laps
+		if i in agent.not_for_selection
+		# if i in agent.not_for_selection || i == num_recorded_laps
+		# if i in agent.not_for_dynamics	
 			continue
 		end
-		needed_iterations = agent.iterations_needed[i]
+
+		if agent.iterations_needed[i] == 0 && i == num_recorded_laps
+			needed_iterations = iteration
+		else
+			needed_iterations = agent.iterations_needed[i]
+		end
 
 		#=
 		if i > NUM_LOADED_LAPS
@@ -448,9 +490,13 @@ function select_states(agent::Agent)
 		# index_closest_state = findmin(colwise(Euclidean(), 
 		# 							  agent.trajectories_s[i, num_considered_states + 1 : needed_iterations + 2 * num_considered_states, 1],
 		# 							  [agent.states_s[iteration, 1]]))[2]
-		index_closest_state = findmin(abs(agent.trajectories_s[i, num_buffer + 1 : needed_iterations + 2 * num_buffer, 1]
-									      - agent.states_s[iteration, 1]))[2] + num_buffer
 		
+		index_closest_state = findmin(abs(agent.trajectories_s[i, num_buffer + 1 : needed_iterations + num_buffer, 1]
+		 							      - agent.states_s[iteration, 1]))[2] + num_buffer
+		# index_closest_state = findmin(abs(agent.trajectories_s[i, num_buffer + 1 : needed_iterations + num_buffer, 1]
+		#							      - agent.states_s[iteration, 1]))[2] + num_buffer
+		
+		index_closest_state += SELECTION_SHIFT
 		closest_index[i] = Int64(index_closest_state)
 		# determine reachability from current state
 
@@ -460,7 +506,7 @@ function select_states(agent::Agent)
 
 		# println("Current velocity: ", current_vel)
 		#max_diff_vel = horizon * agent.dt * agent.input_upper_bound[1] 
-		max_diff_vel = (horizon + 4) * agent.dt * agent.input_upper_bound[1] 
+		max_diff_vel = horizon * agent.dt * agent.input_upper_bound[1] 
 
 		# println("max_diff_vel", max_diff_vel)
 
@@ -471,9 +517,6 @@ function select_states(agent::Agent)
 
 		# println("recorded_vel_ahead", agent.trajectories_s[i, index_closest_state : index_closest_state + horizon + 5, 4])
 		# TODO: Figure out a better way to do this!
-		# println("recorded vel", recorded_vel_ahead)
-		# println("current vel", current_vel)
-		# println("max_diff_vel", max_diff_vel)
 		
 		if current_vel - max_diff_vel <= recorded_vel_ahead && current_vel + 
 			max_diff_vel >= recorded_vel_ahead
@@ -506,7 +549,7 @@ function select_states(agent::Agent)
 	end
 	=#
 
-	# println("Possible trajectories:", possible_trajectory_list)
+	println("Possible trajectories:", possible_trajectory_list)
 
 	if num_recorded_laps <= NUM_CONSIDERED_LAPS  # && possible_trajectory_list == nothing
 		possible_trajectory_list = collect(1 : num_recorded_laps)
@@ -514,11 +557,19 @@ function select_states(agent::Agent)
 	end
 
 	if possible_trajectory_list == nothing
-		possible_trajectory_list = collect(num_recorded_laps: - 1 : 1)
-		if agent.current_lap == 1 && NUM_LOADED_LAPS > 0
-			possible_trajectory_list[end] = 2
+		possible_trajectory_list = collect(num_recorded_laps : - 1 : 1)
+		for i = 1 : length(possible_trajectory_list)
+			if possible_trajectory_list[i] in agent.not_for_selection
+			# if possible_trajectory_list[i] in agent.not_for_selection || possible_trajectory_list[i] == num_recorded_laps
+			# if possible_trajectory_list[i] in agent.not_for_dynamics 
+				possible_trajectory_list[i] = 2
+			end
 		end
 	end
+	###########################################################################
+	# possible_trajectory_list = [num_recorded_laps]
+	###########################################################################
+	println("Possible trajectories:", possible_trajectory_list)
 	@assert possible_trajectory_list != nothing
 
 	sorted_iterations = sortperm(needed_iteration_array)
@@ -536,6 +587,14 @@ function select_states(agent::Agent)
 			j += 1
 		end
 		i += 1
+	end
+
+	if MODE == "learning"
+		if !(num_recorded_laps in selected_laps)
+			dummy_list = [num_recorded_laps]
+			append!(dummy_list, selected_laps[1 : NUM_CONSIDERED_LAPS - 1])
+			possible_trajectory_list = dummy_list
+		end
 	end
 
 	# Make sure, that certain laps are not selected. 
@@ -569,30 +628,50 @@ function select_states(agent::Agent)
 		end
 	end
 	=#
+
+	println("Iterations: ", agent.iterations_needed)
+	min_iteration = round(Int64, findmin(agent.iterations_needed[selected_laps])[1])
+	println("min Iteration: ", min_iteration)
  
 	counter = 1
 	iteration_number = 1
 	for i in selected_laps
-		agent.selected_states_s[counter : counter + 2 * horizon - 1, :] = 
+		println("lap: ", i)
+		if i == num_recorded_laps
+			println("Max S: ", findmax(agent.trajectories_s[num_recorded_laps, :, 1]))
+		else
+			println("Previous lap not selected!")
+		end
+
+		println("closest: ", closest_index[i])
+		agent.selected_states_s[counter : counter + NUM_HORIZONS * horizon - 1, :] = 
 			squeeze(agent.trajectories_s[i, 
-					closest_index[i] : closest_index[i] + 2 * horizon - 1, :], 
+					closest_index[i] : closest_index[i] + NUM_HORIZONS * horizon - 1, :], 
 					1)
-		agent.selected_states_xy[counter : counter + 2 * horizon - 1, :] = 
+		agent.selected_states_xy[counter : counter + NUM_HORIZONS * horizon - 1, :] = 
 			squeeze(agent.trajectories_xy[i, 
-					closest_index[i] : closest_index[i] + 2 * horizon - 1, :], 
+					closest_index[i] : closest_index[i] + NUM_HORIZONS * horizon - 1, :], 
 					1)		
 		# agent.selected_states_cost[counter : counter + 2 * horizon - 1, :] = 
 		#	collect(agent.iterations_needed[i] : - 1 : agent.iterations_needed[i] - 2 * horizon + 1)
-		agent.selected_states_cost[counter : counter + 2 * horizon - 1, :] = 
-			collect(agent.iterations_needed[i] - closest_index[i] + num_buffer : - 1 : 
-					agent.iterations_needed[i] - closest_index[i] + num_buffer - 2 * horizon + 1)
-		
-		agent.all_selected_states[agent.counter[end]][iteration_number] = (i, closest_index[i] : closest_index[i] + 2 * horizon - 1)
+		agent.selected_states_cost[counter : counter + NUM_HORIZONS * horizon - 1, :] = 
+			# collect(agent.iterations_needed[i] - closest_index[i] - SELECTION_SHIFT + num_buffer : - 1 : 
+			#		agent.iterations_needed[i] - closest_index[i] - SELECTION_SHIFT + num_buffer - NUM_HORIZONS * horizon + 1)
+			collect((NUM_HORIZONS * horizon : - 1 : 1) + agent.iterations_needed[i] - min_iteration) 
+					
+		agent.all_selected_states[agent.counter[end]][iteration_number] = (i, closest_index[i] : closest_index[i] + NUM_HORIZONS * horizon - 1)
 
-		counter += 2 * horizon
+		counter += NUM_HORIZONS * horizon
 		iteration_number += 1		
 	end
 
+	for i = 1 : num_considered_states
+		if abs(agent.selected_states_s[i, 2]) > TRACK_WIDTH / 2
+			agent.selected_states_cost[i] += 20
+		end
+	end
+
+	println("Cost: ", agent.selected_states_cost)
 	# println("COST: ", agent.selected_states_cost)
 
 	println("SELECTED VX MIN: ", findmin(agent.selected_states_s[:, 5])[1])
@@ -601,6 +680,185 @@ function select_states(agent::Agent)
 	identify_system!(agent)
 end
 
+
+function select_states_smartly(agent::Agent, adv_e_y::Float64, track::Track)
+	num_recorded_laps = findmin(sumabs(agent.trajectories_s[:, :, :], (2, 3)))[2] - 1
+	possible_trajectory_list = nothing
+	avg_e_y = nothing
+	closest_index = zeros(Int64, num_recorded_laps)
+
+	horizon = size(agent.optimal_inputs)[1]
+	num_considered_states = size(agent.selected_states_s)[1]
+	iteration = agent.current_iteration
+
+	overtake_on_left = true
+	# println("num recorded laps: ", num_recorded_laps)
+
+	# find the fastest lap
+	min_iterations = [size(agent.states_xy)[1], 0]
+
+	# TODO: Use adversarial agent's width, 4 could also be changed!!
+	current_e_y = agent.states_s[iteration, 2]
+	# TODO: using the last e_y in the prediction of the adversarial agent
+
+	current_vel = agent.states_s[iteration, 5]
+
+	if adv_e_y > current_e_y 
+		if adv_e_y + track.width / 2.0 > 4 * agent.width
+		    # add states on that side
+		    # determine the interval
+			interval = [(current_e_y - 2 * agent.width) (current_e_y + 2 * agent.width)]
+			overtake_on_left = false
+		else 
+			interval = [adv_e_y (adv_e_y + 4 * agent.width)]
+			overtake_on_left = true
+		end
+	else
+		if track.width / 2.0 - adv_e_y > 4 * agent.width
+		# add states on the other side
+		# determine the interval
+			interval = [(current_e_y - 2 * agent.width) (current_e_y + 2 * agent.width)]
+			overtake_on_left = true
+		else
+			interval = [(adv_e_y - 4 * agent.width) adv_e_y]
+			overtake_on_left = false
+		end
+	end
+
+	for i = 1 : num_recorded_laps
+		if i in agent.not_for_selection
+		# if i in agent.not_for_selection || i == num_recorded_laps
+		# if i in agent.not_for_dynamics	
+			continue
+		end
+		needed_iterations = agent.iterations_needed[i]
+
+		if agent.trajectories_s[i, num_buffer + 1, 1] <= 2 * agent.dt * agent.v_max
+			needed_iteration_array[i] = needed_iterations
+		else
+			needed_iteration_array[i] = needed_iterations + Int64(ceil(2 * agent.dt * agent.v_max))
+		end
+
+		index_closest_state = findmin(abs(agent.trajectories_s[i, num_buffer + 1 : needed_iterations + num_buffer, 1]
+		 							      - agent.states_s[iteration, 1]))[2] + num_buffer
+		
+		index_closest_state += SELECTION_SHIFT
+		closest_index[i] = Int64(index_closest_state)
+		
+		current_vel = sqrt(agent.states_s[iteration, 5]^2 + agent.states_s[iteration, 6]^2)
+		max_diff_vel = horizon * agent.dt * agent.input_upper_bound[1] 
+		recorded_vel_ahead = sqrt(agent.trajectories_s[i, index_closest_state + horizon, 5]^2 +
+								  agent.trajectories_s[i, index_closest_state + horizon, 6]^2)
+
+		if current_vel - max_diff_vel <= recorded_vel_ahead && current_vel + 
+			max_diff_vel >= recorded_vel_ahead
+
+			travel_distance = horizon * agent.dt * current_vel
+
+			if travel_distance > abs(agent.trajectories_s[i, index_closest_state, 1] - agent.states_s[iteration, 1])
+				visited_e_ys = agent.trajectories_s[i, index_closest_state : index_closest_state + 2 * horizon - 1, 2]
+				mean_e_y = mean(visited_e_ys)
+				# sorted_e_ys = sort(vec(visited_e_ys))
+
+				# if mean_e_y >= interval[1] && mean_e_y <= interval[2]
+				if overtake_on_left
+					if any(visited_e_ys .< interval[1])
+						continue
+					end
+				else
+					if any(visited_e_ys[1] .> interval[1])
+						continue
+					end
+				end
+
+				# plot(agent.trajectories_xy[i, index_closest_state : index_closest_state + 2 * horizon, 1], 
+				#	 agent.trajectories_xy[i, index_closest_state : index_closest_state + 2 * horizon, 2], "go")
+				if possible_trajectory_list == nothing
+					 possible_trajectory_list = [i]
+					 avg_e_y = [mean_e_y]
+				else 
+					append!(possible_trajectory_list, [i])
+					append!(avg_e_y, [mean_e_y])
+				end
+				# end
+			end
+		end
+	end
+
+	#=
+	while length(mi_vector) <= 4
+		append!(mi_vector, [mi_vector[1]])
+		append!(possible_trajectory_list, [possible_trajectory_list[1]])
+	end
+	=#
+
+	if avg_e_y == nothing
+		select_states(agent)
+	else
+		num_possible_trajectories = length(possible_trajectory_list)
+
+		sorted_e_y = sortperm(avg_e_y)
+		# println(avg_e_y[sorted_e_y])
+		min_max_e_y = [possible_trajectory_list[sorted_e_y[1]]; 
+					   possible_trajectory_list[sorted_e_y[end]]]
+
+		if num_possible_trajectories >= NUM_CONSIDERED_LAPS - 1
+			if overtake_on_left
+				# println("OVERTAKE ON THE LEFT")
+				possible_trajectory_list = possible_trajectory_list[sorted_e_y[1 : NUM_CONSIDERED_LAPS - 1]]
+				# possible_trajectory_list = possible_trajectory_list[sorted_e_y[end : - 1 : end - (NUM_CONSIDERED_LAPS - 2)]]
+			else 
+				possible_trajectory_list = possible_trajectory_list[sorted_e_y[end : - 1 : end - (NUM_CONSIDERED_LAPS - 2)]]
+				# possible_trajectory_list = possible_trajectory_list[sorted_e_y[1 : NUM_CONSIDERED_LAPS - 1]]
+			end
+		# end
+
+		# if num_possible_trajectories > 2
+		# 	possible_trajectory_list = possible_trajectory_list[sorted_e_y[randperm(num_possible_trajectories - 2) + 1]]
+		else
+			possible_trajectory_list = possible_trajectory_list[randperm(num_possible_trajectories)]
+		end
+
+		while length(possible_trajectory_list) < 4
+			append!(possible_trajectory_list, [possible_trajectory_list[randperm(length(possible_trajectory_list))[1]]])
+		end
+
+		# println("interval: [$(interval[1]), $(interval[2])")
+
+		# println(avg_e_y[sorted_e_y])
+		# possible_trajectory_list = possible_trajectory_list[1 : 2]
+		# append!(possible_trajectory_list, min_max_e_y)
+		append!(possible_trajectory_list, [min_iterations[2]])
+
+		# println("selected laps: ", possible_trajectory_list)
+
+		counter = 1
+		iteration_number = 1
+		for i in possible_trajectory_list
+			println("closest: ", closest_index[i])
+			agent.selected_states_s[counter : counter + NUM_HORIZONS * horizon - 1, :] = 
+				squeeze(agent.trajectories_s[i, 
+						closest_index[i] : closest_index[i] + NUM_HORIZONS * horizon - 1, :], 
+						1)
+			agent.selected_states_xy[counter : counter + NUM_HORIZONS * horizon - 1, :] = 
+				squeeze(agent.trajectories_xy[i, 
+						closest_index[i] : closest_index[i] + NUM_HORIZONS * horizon - 1, :], 
+						1)		
+			# agent.selected_states_cost[counter : counter + 2 * horizon - 1, :] = 
+			#	collect(agent.iterations_needed[i] : - 1 : agent.iterations_needed[i] - 2 * horizon + 1)
+			agent.selected_states_cost[counter : counter + NUM_HORIZONS * horizon - 1, :] = 
+				collect(agent.iterations_needed[i] - closest_index[i] - SELECTION_SHIFT + num_buffer : - 1 : 
+						agent.iterations_needed[i] - closest_index[i] - SELECTION_SHIFT + num_buffer - NUM_HORIZONS * horizon + 1)
+			
+			agent.all_selected_states[agent.counter[end]][iteration_number] = (i, closest_index[i] : closest_index[i] + NUM_HORIZONS * horizon - 1)
+
+			counter += NUM_HORIZONS * horizon
+			iteration_number += 1		
+		end
+	end
+end
+
+#=
 function select_states_smartly(agent::Agent, current_adv_e_y::Float64, 
 							   track::Track)
 	num_recorded_laps = findmin(sumabs(agent.trajectories_s[:, :, :], (2, 3)))[2] - 1
@@ -804,6 +1062,7 @@ function select_states_smartly(agent::Agent, current_adv_e_y::Float64,
 		=#
 	end
 end
+=#
 
 function states_cost(agent::Agent, chosen_lap::Int64)
 	# TODO
@@ -819,9 +1078,11 @@ function states_cost(agent::Agent, chosen_lap::Int64)
 end
 
 function identify_system!(agent::Agent)
-	num_states = 20  # number of states used for system identification
+	num_states = 50  # number of states used for system identification
 	num_previous = SYS_ID_BEFORE
 	num_after = SYS_ID_AFTER
+
+	num_buffer = NUM_STATES_BUFFER
 
 	# Create the current dynamic state: [v_x v_y psi_dot acc steering]
 	current_iteration = agent.current_iteration
@@ -832,7 +1093,20 @@ function identify_system!(agent::Agent)
 	# println(agent.current_input)
 	current_s = agent.states_s[current_iteration, 1]
 	v_x, v_y, psi_dot  = agent.states_s[current_iteration, mapping]
-	acc, steering = agent.current_input
+
+	# TODO: Add Delay
+	# acc, steering = agent.current_input
+	previous_lap = agent.current_lap - 1 + NUM_LOADED_LAPS
+	if current_iteration <= agent.delay_a
+		acc = agent.previous_inputs[previous_lap, agent.iterations_needed[previous_lap] - agent.delay_a + current_iteration + num_buffer + 1, 1]
+	else
+		acc = agent.inputs[current_iteration - agent.delay_a, 1]
+	end
+	if current_iteration <= agent.delay_df
+		steering = agent.previous_inputs[previous_lap, agent.iterations_needed[previous_lap] - agent.delay_df + current_iteration + num_buffer + 1, 2]
+	else
+		steering = agent.inputs[current_iteration - agent.delay_df, 2]
+	end
 
 	current_dynamics = [v_x, v_y, psi_dot, acc, steering]
 	# current_dynamics = squeeze(agent.dynamics[agent.num_sessions, max(agent.counter[agent.current_session] - 1, 1), :], (1, 2))
@@ -840,7 +1114,6 @@ function identify_system!(agent::Agent)
 
 	num_recorded_laps = agent.num_loaded_laps + agent.current_lap - 1
 	# num_considered_states = size(agent.selected_states_s)[1]
-	num_buffer = NUM_STATES_BUFFER
 
 	# Count the number of recorded states
 	total_recorded_states = current_iteration - 1
@@ -889,14 +1162,15 @@ function identify_system!(agent::Agent)
 	# End using Loading Shuqi's data
 	=#
 
-	vx_tolerance = 0.1
-	acc_tolerance = 0.1
+	vx_tolerance = 0.05
+	acc_tolerance = 0.05
 	steering_tolerance = 0.05
+	psi_dot_tolerance = 0.1
 
 	list = []
 
 	for session = 1 : agent.num_sessions
-		for i = 1 : agent.counter[session] - 3
+		for i = 1 : agent.counter[session] - max(agent.delay_a, agent.delay_df)
 			recorded_dynamics = agent.dynamics[session, i, :]
 			if recorded_dynamics[1] < v_x + vx_tolerance &&
 				recorded_dynamics[1] > v_x - vx_tolerance
@@ -904,7 +1178,10 @@ function identify_system!(agent::Agent)
 					recorded_dynamics[4] > acc - acc_tolerance
 					if recorded_dynamics[5] < steering + steering_tolerance &&
 						recorded_dynamics[5] > steering - steering_tolerance
-						append!(list, [(session, i)])
+						if recorded_dynamics[3] < psi_dot + psi_dot_tolerance &&
+							recorded_dynamics[3] > psi_dot - psi_dot_tolerance
+							append!(list, [(session, i)])
+						end
 					end
 				end
 			end
@@ -916,7 +1193,7 @@ function identify_system!(agent::Agent)
 
 	if false
 	# if length_list >= SYS_ID_AFTER
-	# if MODE == "racing" # || current_dynamics[1] > 1.1
+	# if MODE == "racing" && length_list > num_states # || current_dynamics[1] > 1.1
 	# if true
 		####################################################################
 		# Selection based on norm_on_dynamics #
@@ -947,12 +1224,17 @@ function identify_system!(agent::Agent)
 		=#
 
 		dynamic_states = zeros(length_list, 5)
-		next_dynamics = zeros(length_list, 5)
+		next_dynamics = zeros(length_list, 3)
 		index = 1
 
 		for (i, j) in list
-			dynamic_states[index, :] = agent.dynamics[i, j, :]
-			next_dynamics[index, :] = agent.dynamics[i, j + 1, :]
+			if j < max(agent.delay_a, agent.delay_df)
+				j = max(agent.delay_a, agent.delay_df) + 1
+			end
+			dynamic_states[index, 1 : 3] = agent.dynamics[i, j, 1 : 3]
+			dynamic_states[index, 4] = agent.dynamics[i, j - agent.delay_a, 4]
+			dynamic_states[index, 5] = agent.dynamics[i, j - agent.delay_df, 5]
+			next_dynamics[index, :] = agent.dynamics[i, j + 1, 1 : 3]
 			index += 1
 		end
 
@@ -960,6 +1242,7 @@ function identify_system!(agent::Agent)
 
 		# Calcualte euclidean distances and sort
 		norm_on_dynamics = colwise(Euclidean(), dynamic_states[:, 3]', [current_dynamics[3]])
+		# norm_on_dynamics = findmin(abs(dynamic_states[:, 3]))
 		# norm_on_dynamics = colwise(Euclidean(), dynamic_states[:, 1]', [current_dynamics[1]])
 		# norm_on_dynamics = colwise(Euclidean(), dynamic_states', current_dynamics)
 		# norm_on_dynamics = colwise(Euclidean(), dynamic_states[:, 1 : 3]', current_dynamics[1 : 3])
@@ -1017,17 +1300,13 @@ function identify_system!(agent::Agent)
 		# {1, NUM_LOADED_LAPS, NUM_LOADED_LAPS + 1}
 		@assert NUM_LOADED_LAPS > 1
 		previous_lap = agent.current_lap - 1 + NUM_LOADED_LAPS
-		if previous_lap in [NUM_LOADED_LAPS, NUM_LOADED_LAPS + 1]
-			if previous_lap == NUM_LOADED_LAPS
-				previous_lap -= 1
-			elseif previous_lap == NUM_LOADED_LAPS + 1
-				previous_lap -= 2
-			end
+		if previous_lap in agent.not_for_dynamics
+			previous_lap = 2  # is always a complete path_following lap
 		end
 
-		println("previous lap: ", previous_lap)
+		println("previous_lap: ", previous_lap)
 
-		previous_indeces = num_buffer + 1 : agent.iterations_needed[previous_lap] + num_buffer
+		previous_indeces = (1 : agent.iterations_needed[previous_lap]) + num_buffer
 		previous_s = agent.trajectories_s[previous_lap, previous_indeces, 1]
 
 		distance_to_s = colwise(Euclidean(), previous_s, [current_s])
@@ -1035,7 +1314,30 @@ function identify_system!(agent::Agent)
 		selected_indeces = collect((closest_index - num_previous : closest_index + num_after) + num_buffer)
 
 		dynamic_states = squeeze(agent.trajectories_s[previous_lap, :, mapping], 1)
-		dynamic_states = [dynamic_states squeeze(agent.previous_inputs[previous_lap, :, :], 1)]
+		previous_acc = squeeze(agent.previous_inputs[previous_lap, :, 1], 1)
+		previous_acc = [zeros(agent.delay_a); previous_acc[1 : end - agent.delay_a]]
+		previous_steering = squeeze(agent.previous_inputs[previous_lap, :, 2], 1)
+		previous_steering = [zeros(agent.delay_df); previous_steering[1 : end - agent.delay_df]]
+
+		previous_inputs = [previous_acc previous_steering]
+		
+		#=
+		prev_prev_indeces = (1 : agent.iterations_needed[previous_lap - 1]) + num_buffer
+		prev_prev_acc = squeeze(agent.previous_inputs[previous_lap - 1, prev_prev_indeces, 1], 1)
+		prev_prev_steering = squeeze(agent.previous_inputs[previous_lap - 1, prev_prev_indeces, 2], 1)
+		prev_acc = squeeze(agent.previous_inputs[previous_lap, previous_indeces, 1], 1)
+		prev_steering = squeeze(agent.previous_inputs[previous_lap, previous_indeces, 2], 1)
+
+		shifted_acc = [prev_prev_acc[end + 1 - agent.delay_a : end]; 
+					   prev_acc[1 : end - agent.delay_a]]
+		shifted_steering = [prev_prev_steering[end + 1 - agent.delay_df : end]; 
+							prev_steering[1 : end - agent.delay_df]]
+		prev_inputs = [zeros(num_buffer, 2); shifted_acc shifted_steering]
+		previous_inputs = zeros(size(dynamic_states, 1), 2)
+		previous_inputs[1 : size(prev_inputs, 1), :] = prev_inputs
+		=#
+
+		dynamic_states = [dynamic_states previous_inputs]
 
 		# Or select all data from the previous lap
 		# selected_indeces = previous_indeces[1 : end - 1]
@@ -1067,21 +1369,18 @@ function identify_system!(agent::Agent)
 		=#
 
 		selected_dynamics = dynamic_states[selected_indeces, :]
-		next_dynamics = dynamic_states[selected_indeces + 1, :]
+		next_dynamics = dynamic_states[selected_indeces + 1, 1 : 3]
 
 		current_lap = agent.current_lap + NUM_LOADED_LAPS
 		previous_iteration = agent.current_iteration - 1
-		if current_lap in [NUM_LOADED_LAPS, NUM_LOADED_LAPS + 1]
-			if current_lap == NUM_LOADED_LAPS
-				current_lap -= 1
-			elseif current_lap == NUM_LOADED_LAPS + 1
-				current_lap -= 2
-			end
+		if current_lap in agent.not_for_dynamics
+			current_lap = 2  # is always a complete path_following lap
 		end
 
 		println("current lap: ", current_lap)
 
-		if previous_iteration >= 2
+		if true
+		# if previous_iteration >= 2
 			indeces = collect((max(1, previous_iteration - SYS_ID_AFTER) : previous_iteration - 1) + num_buffer)
 			# indeces = collect((previous_iteration - SYS_ID_AFTER : previous_iteration) + num_buffer)
 			#=
@@ -1100,9 +1399,33 @@ function identify_system!(agent::Agent)
 			=#
 			
 			previous_dynamic_states = squeeze(agent.trajectories_s[current_lap, :, mapping], 1)
-			previous_dynamic_states = [previous_dynamic_states squeeze(agent.previous_inputs[current_lap, :, :], 1)]
+			previous_acc = squeeze(agent.previous_inputs[current_lap, :, 1], 1)
+			previous_acc = [zeros(agent.delay_a); previous_acc[1 : end - agent.delay_a]]
+			previous_steering = squeeze(agent.previous_inputs[current_lap, :, 2], 1)
+			previous_steering = [zeros(agent.delay_df); previous_steering[1 : end - agent.delay_df]]
+
+			previous_inputs = [previous_acc previous_steering]
+
+			#=
+			prev_prev_indeces = num_buffer + 1 : agent.iterations_needed[current_lap - 1] + num_buffer
+			prev_prev_acc = squeeze(agent.previous_inputs[current_lap - 1, prev_prev_indeces, 1], 1)
+			prev_prev_steering = squeeze(agent.previous_inputs[current_lap - 1, prev_prev_indeces, 2], 1)
+			prev_acc = squeeze(agent.previous_inputs[current_lap, indeces, 1], 1)
+			prev_steering = squeeze(agent.previous_inputs[current_lap, indeces, 2], 1)
+
+			shifted_acc = [prev_prev_acc[end + 1 - agent.delay_a : end]; 
+						   prev_acc[1 : end - agent.delay_a]]
+			shifted_steering = [prev_prev_steering[end + 1 - agent.delay_df : end]; 
+								prev_steering[1 : end - agent.delay_df]]
+			prev_inputs = [zeros(num_buffer, 2); shifted_acc shifted_steering]
+			previous_inputs = zeros(size(previous_dynamic_states, 1), 2)
+			previous_inputs[1 : size(prev_inputs, 1), :] = prev_inputs
+			=#
+
+			previous_dynamic_states = [previous_dynamic_states previous_inputs]
+
 			selected_dynamics = [selected_dynamics; previous_dynamic_states[indeces, :]]
-			next_dynamics = [next_dynamics; previous_dynamic_states[indeces + 1, :]]
+			next_dynamics = [next_dynamics; previous_dynamic_states[indeces + 1, 1 : 3]]
 
 			# println("SELECTED DYNAMICS: ", selected_dynamics)
 			# println("NEXT DYNAMICS: ", next_dynamics)
@@ -1186,29 +1509,27 @@ function identify_system!(agent::Agent)
 	println("THETA VX: ", agent.theta_vx)
 	println("THETA VY: ", agent.theta_vy)
 	println("THETA PSI DOT: ", agent.theta_psi_dot)
+end
 
-	try
-		if agent.current_lap > 1
-			agent.t_counter += 1
-			agent.t_vx_log[agent.t_counter, :] = agent.theta_vx
-			agent.t_vy_log[agent.t_counter, :] = agent.theta_vy
-			agent.t_psi_log[agent.t_counter, :] = agent.theta_psi_dot
-		end	
+function determine_needed_iterations!(agent::Agent, indeces)
+	num_buffer = NUM_STATES_BUFFER
+
+	for i = indeces
+		agent.iterations_needed[i] = findmin(sumabs(agent.trajectories_s[i, :, :], (1, 3)))[2] - 1 - 2 * num_buffer
+		# No data has been appended to the last lap yet.
+		if i == indeces[end]
+			agent.iterations_needed[i] += num_buffer
+		end
+		# No data has been appended to the first lap yet.
+		if i == indeces[1]
+			agent.iterations_needed[i] += num_buffer
+			if agent.iterations_needed[i] < 1
+				agent.iterations_needed[i] = findmin(sumabs(agent.trajectories_s[i, num_buffer + 1 : end, :], (1, 3)))[2] - 1 - num_buffer
+			end
+		end
 	end
 end
 
 function determine_needed_iterations!(agent::Agent)
-	num_buffer = NUM_STATES_BUFFER
-
-	for i = 1 : agent.num_loaded_laps
-		agent.iterations_needed[i] = findmin(sumabs(agent.trajectories_s[i, :, :], (1, 3)))[2] - 1 - 2 * num_buffer
-		# No data has been appended to the last lap yet.
-		if i == NUM_LOADED_LAPS
-			agent.iterations_needed[i] += num_buffer
-		end
-		# No data has been appended to the last lap yet.
-		if i == 1 
-			agent.iterations_needed[i] += num_buffer
-		end
-	end
+	determine_needed_iterations!(agent, 1 : agent.num_loaded_laps)
 end

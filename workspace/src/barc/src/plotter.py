@@ -326,7 +326,11 @@ class Plotter:
         """
         node_name = rospy.get_name()
         self.num_agents = rospy.get_param(node_name + "/num_agents")
-        color_strings = ["agent_" + str(i + 1) + "/color" for i in range(self.num_agents)]
+        if self.num_agents == 1:
+            index = rospy.get_param(node_name + "/index") 
+            color_strings = ["agent_" + str(i) + "/color" for i in [index]]
+        else:
+            color_strings = ["agent_" + str(i + 1) + "/color" for i in range(self.num_agents)]
         # color_strings = ["agent_1/color", "agent_2/color"]
         # print("plotter color: ", colors)
 
@@ -348,7 +352,7 @@ class Plotter:
         self.time_string = "Time : %.2f s" % (round(elapsed_time, 2))
 
         # plotter.ax[:annotate](time_string, xy=[0.5, 0.9], 
-        self.time_s = self.ax.annotate("", xy=[0.5, 0.7], xycoords= "axes fraction", 
+        self.time_s = self.ax.annotate("", xy=[0.2, 0.5], xycoords= "axes fraction", 
                                   fontsize=20, verticalalignment="top")
         # plotter.ax[:annotate](race_string, xy=[0.8, 0.9], xycoords="axes fraction", 
         self.race_s = self.ax.annotate("", xy=[0.5, 0.5], xycoords="axes fraction", 
@@ -460,7 +464,11 @@ class Plotter:
         # print("STEERING: ", self.plotted_agents[0].steering_angles[np.max(self.plotted_agents[0].counter - 1, 0)])
         # print("MAX STEERING: ", np.max(self.plotted_agents[0].steering_angles))
         # print("MIN STEERING: ", np.min(self.plotted_agents[0].steering_angles))
-        plt.pause(0.0001)
+        
+        try:
+            plt.pause(0.0001)
+        except:
+            RuntimeError("Plot not updated.")
 
         self.count += 1
 
