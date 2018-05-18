@@ -96,7 +96,8 @@ type MpcSol             # MPC solution output
     eps_alpha::Array{Float64}
     costSlack::Array{Float64}
     df_his::Array{Float64,1}
-    MpcSol(a_x=0.0,d_f=0.0,solverStatus=Symbol(),u=Float64[],z=Float64[],cost=Float64[],eps_alpha=Float64[],costSlack=Float64[],df_his=Float64[]) = new(a_x,d_f,solverStatus,u,z,cost,eps_alpha,costSlack,df_his)
+    a_his::Array{Float64,1}
+    MpcSol(a_x=0.0,d_f=0.0,solverStatus=Symbol(),u=Float64[],z=Float64[],cost=Float64[],eps_alpha=Float64[],costSlack=Float64[],df_his=Float64[],a_his=Float64[]) = new(a_x,d_f,solverStatus,u,z,cost,eps_alpha,costSlack,df_his,a_his)
 end
 
 type ModelParams

@@ -416,7 +416,7 @@ end
 function InitializeParameters(mpcParams::MpcParams,mpcParams_4s::MpcParams,mpcParams_pF::MpcParams,modelParams::ModelParams,mpcSol::MpcSol,
                               selectedStates::SelectedStates,oldSS::SafeSetData,oldTraj::OldTrajectory,mpcCoeff::MpcCoeff,mpcCoeff_dummy::MpcCoeff,
                               LMPC_LAP::Int64,delay_df::Int64,delay_a::Int64,N::Int64,BUFFERSIZE::Int64)
-    simulator_flag   = true
+    simulator_flag   = false
 
     if simulator_flag == true   # if the BARC is in use
 
@@ -457,12 +457,12 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_4s::MpcParams,mpcPa
         mpcParams.Q                 = [5.0,0.0,0.0,0.1,50.0,0.0]   # Q (only for path following mode)
         mpcParams.vPathFollowing    = 1.0                           # reference speed for first lap of path following
         mpcParams.R                 = 0*[10.0,10.0]                 # put weights on a and d_f
-        mpcParams.QderivZ           = 1.0*[0,0.1,0.1,0.2,0.1,0.0]             # cost matrix for derivative cost of states
-        mpcParams.QderivU           = 8.0*[2.0,2.5] #NOTE Set this to [5.0, 0/40.0]              # cost matrix for derivative cost of inputs
-        mpcParams.Q_term_cost       = 1                        # scaling of Q-function
+        mpcParams.QderivZ           = 10.0*[0,0,1,1,1,1]             # cost matrix for derivative cost of states
+        mpcParams.QderivU           = 100*[4.0,1.0] #NOTE Set this to [5.0, 0/40.0]              # cost matrix for derivative cost of inputs
+        mpcParams.Q_term_cost       = 3                        # scaling of Q-function
         mpcParams.delay_df          = delay_df                             # steering delay
         mpcParams.delay_a           = delay_a                             # acceleration delay
-        mpcParams.Q_lane            = 10                      # weight on the soft constraint for the lane
+        mpcParams.Q_lane            = 16                      # weight on the soft constraint for the lane
         mpcParams.Q_slack           = 1.0*[50.0,80.0,30.0,20.0,1.0,10.0]#[20.0,10.0,10.0,30.0,80.0,50.0]  #s,ey,epsi,vx,vy,psiDot
 
         mpcParams_4s.N              = N
@@ -476,18 +476,18 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_4s::MpcParams,mpcPa
         mpcParams_4s.delay_a           = delay_a                             # acceleration delay
 
         mpcParams_pF.N              = N
-        mpcParams_pF.Q              = [0.0,50.0,5.0,20.0]
-        mpcParams_pF.R              = 0*[1.0,1.0]               # put weights on a and d_f
-        mpcParams_pF.QderivZ        = 1.0*[0.0,0,1.0,0]           # cost matrix for derivative cost of states
-        mpcParams_pF.QderivU        = 8*[2,1]                # cost matrix for derivative cost of inputs
-        mpcParams_pF.vPathFollowing = 1                       # reference speed for first lap of path following
+        mpcParams_pF.Q              = [0.0,20.0,10.0,10.0]
+        mpcParams_pF.R              = 2*[1.0,1.0]               # put weights on a and d_f
+        mpcParams_pF.QderivZ        = 1.0*[0.0,1.0,1.0,1.0]           # cost matrix for derivative cost of states
+        mpcParams_pF.QderivU        = 0.1*[1,0.1]                # cost matrix for derivative cost of inputs
+        mpcParams_pF.vPathFollowing = 1.2                       # reference speed for first lap of path following
         mpcParams_pF.delay_df       = delay_df                         # steering delay (number of steps)
         mpcParams_pF.delay_a        = delay_a                         # acceleration delay
     end
 
     selectedStates.Np           = 20        # please select an even number
     selectedStates.Nl           = 3         # Number of previous laps to include in the convex hull
-    selectedStates.feature_Np   = 100        # Number of points from previous laps to do SYS_ID
+    selectedStates.feature_Np   = 30        # Number of points from previous laps to do SYS_ID
     selectedStates.feature_Nl   = 2         # Number of previous laps to do SYS_ID 
     selectedStates.selStates    = zeros(selectedStates.Nl*selectedStates.Np,6)
     selectedStates.statesCost   = zeros(selectedStates.Nl*selectedStates.Np)
@@ -528,6 +528,7 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_4s::MpcParams,mpcPa
     mpcSol.a_x  = 0
     mpcSol.d_f  = 0
     mpcSol.df_his = zeros(delay_df) # DELAT COMES FROM TWO PARTS, ONLY THE SYSTEM DELAY NEEDS TO BE CONSIDERED
+    mpcSol.a_his = zeros(delay_a) # DELAT COMES FROM TWO PARTS, ONLY THE SYSTEM DELAY NEEDS TO BE CONSIDERED
 end
 
 function s6_to_s4(z::Array{Float64})
@@ -908,39 +909,49 @@ function createTrack(name::ASCIIString)
     elseif name == "3110"
         # EXPERIEMENT TRACK DATA
         num = 100
-        track_data=[Int(ceil(1.5*80)) 0;
-                    Int(ceil(1.5*num)) -pi/2;
-                    Int(ceil(1.5*(80+47))) 0;
-                    Int(ceil(1.5*num)) -pi/2;
-                    Int(ceil(1.5*50)) 0;
-                    Int(ceil(1.5*num)) -pi/2;
-                    Int(ceil(1.5*4)) 0;
-                    Int(ceil(1.5*num)) pi/2;
-                    Int(ceil(1.5*30)) 0;
-                    Int(ceil(1.5*num)) -pi/2;
-                    Int(ceil(1.5*4)) 0;
-                    Int(ceil(1.5*num)) -pi/2;
-                    Int(ceil(1.5*(71+48))) 0]
+        track_data=[Int(ceil(2*80)) 0;
+                    Int(ceil(2*num)) -pi/2;
+                    Int(ceil(2*(80+47))) 0;
+                    Int(ceil(2*num)) -pi/2;
+                    Int(ceil(2*50)) 0;
+                    Int(ceil(2*num)) -pi/2;
+                    Int(ceil(2*4)) 0;
+                    Int(ceil(2*num)) pi/2;
+                    Int(ceil(2*30)) 0;
+                    Int(ceil(2*num)) -pi/2;
+                    Int(ceil(2*4)) 0;
+                    Int(ceil(2*num)) -pi/2;
+                    Int(ceil(2*(71+48))) 0]
     elseif name == "basic"
         # Basic experiment track
-        track_data = [Int(ceil(1.5*60)) 0;
-                      Int(ceil(1.5*80)) -pi/2;
-                      Int(ceil(1.5*20)) 0;
-                      Int(ceil(1.5*80)) -pi/2;
-                      Int(ceil(1.5*40)) pi/10;
-                      Int(ceil(1.5*60)) -pi/5;
-                      Int(ceil(1.5*40)) pi/10;
-                      Int(ceil(1.5*80)) -pi/2;
-                      Int(ceil(1.5*20)) 0;
-                      Int(ceil(1.5*80)) -pi/2;
-                      Int(ceil(1.5*75)) 0]
+        # track_data = [Int(ceil(3*60)) 0;
+        #               Int(ceil(3*80)) -pi/2;
+        #               Int(ceil(3*20)) 0;
+        #               Int(ceil(3*80)) -pi/2;
+        #               Int(ceil(3*40)) pi/10;
+        #               Int(ceil(3*60)) -pi/5;
+        #               Int(ceil(3*40)) pi/10;
+        #               Int(ceil(3*80)) -pi/2;
+        #               Int(ceil(3*20)) 0;
+        #               Int(ceil(3*80)) -pi/2;
+        #               Int(ceil(3*75)) 0]
+
+        track_data = [Int(ceil(2.8*40)) 0;
+                      Int(ceil(2.8*120)) -pi/2;
+                      Int(ceil(2.8*5)) 0;
+                      Int(ceil(2.8*120)) -pi/2;
+                      Int(ceil(2.8*80)) 0;
+                      Int(ceil(2.8*120)) -pi/2;
+                      Int(ceil(2.8*5)) 0;
+                      Int(ceil(2.8*120)) -pi/2;
+                      Int(ceil(2.8*40)) 0]
     elseif name == "MSC_lab"
         # TRACK TO USE IN THE SMALL EXPERIMENT ROOM
-        track_data = [Int(ceil(1.2*3*10)) 0;
-                      Int(ceil(1.2*3*140)) -pi;
-                      Int(ceil(1.2*3*20)) 0;
-                      Int(ceil(1.2*3*140)) -pi;
-                      Int(ceil(1.2*3*10)) 0]
+        track_data = [Int(ceil(1.8*3*10)) 0;
+                      Int(ceil(1.8*3*120)) -pi;
+                      Int(ceil(1.8*3*20)) 0;
+                      Int(ceil(1.8*3*120)) -pi;
+                      Int(ceil(1.8*3*10)) 0]
     elseif name == "feature"
         # FEATURE TRACK DATA
         ds = 0.01

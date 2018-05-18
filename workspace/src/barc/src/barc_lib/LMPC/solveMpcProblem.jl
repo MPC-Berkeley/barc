@@ -19,6 +19,9 @@ function solveMpcProblem_pathFollow(mdl::MpcModel_pF,mpcParams_pF::MpcParams,mod
                                     z_curr::Array{Float64,1},
                                     z_prev::Array{Float64,2},u_prev::Array{Float64,2},track::Track)
 
+    # println("from decision variable",getvalue(mdl.u_Ol[1:3,2]))
+    # println("from nonlinear paramet",getvalue(mdl.df_his))
+
     # Load Parameters
     v_ref=mpcParams_pF.vPathFollowing
     width=0.8*0.9 # 0.9 is to give some margin for safety due tp hard constraint for simple path following case
@@ -48,7 +51,8 @@ function solveMpcProblem_pathFollow(mdl::MpcModel_pF,mpcParams_pF::MpcParams,mod
 
     setvalue(mdl.uPrev,u_prev)
     setvalue(mdl.df_his,mpcSol.df_his)
-    # println("df_his",mpcSol.df_his)
+    setvalue(mdl.a_his,mpcSol.a_his)
+    # println("a_his",mpcSol.a_his)
     setvalue(mdl.z_Ref,z_ref)
 
     # Solve Problem and return solution

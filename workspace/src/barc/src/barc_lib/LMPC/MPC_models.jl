@@ -15,6 +15,7 @@ type MpcModel_pF
     controlCost::JuMP.NonlinearExpression   # soft constraints cost
 
     uPrev::Array{JuMP.NonlinearParameter,2}
+    a_his::Array{JuMP.NonlinearParameter,1}
     df_his::Array{JuMP.NonlinearParameter,1}
 
     function MpcModel_pF(mpcParams_pF::MpcParams,modelParams::ModelParams)
@@ -69,12 +70,14 @@ type MpcModel_pF
         @NLparameter(mdl, z0[i=1:4]==0);        setvalue(z0[4],v_ref) # initial speed for first initial solution
         @NLparameter(mdl, uPrev[1:N,1:2]==0)
         @NLparameter(mdl, df_his[1:mpcParams_pF.delay_df] == 0)
+        @NLparameter(mdl, a_his[1:mpcParams_pF.delay_a] == 0)
         @NLparameter(mdl, zPrev[1:N+1,1:4]==0)
         @NLparameter(mdl, c[1:N+1]==0)
 
         # System dynamics
         @NLconstraint(mdl, [i=1:4], z_Ol[1,i] == z0[i])         # initial condition
-        @NLconstraint(mdl, u_Ol[1,1] == uPrev[2,1])
+        # @NLconstraint(mdl, u_Ol[1,1] == uPrev[2,1])
+        @NLconstraint(mdl, [i=1:mpcParams_pF.delay_a], u_Ol[i,1] == a_his[i]) # steering delay is 1 for simulation and 3 for experiment
         @NLconstraint(mdl, [i=1:mpcParams_pF.delay_df], u_Ol[i,2] == df_his[i]) # steering delay is 1 for simulation and 3 for experiment
 
         for i=1:N
@@ -103,6 +106,8 @@ type MpcModel_pF
         m.z_Ol=z_Ol; m.u_Ol = u_Ol
         m.uPrev=uPrev
         m.df_his = df_his
+        m.a_his = a_his
+
         m.derivCost=derivCost; m.costZ=costZ; m.controlCost=controlCost
         return m
     end
@@ -242,7 +247,8 @@ type MpcModel_convhull_dyn_iden
         @NLexpression(mdl, derivCost, sum{QderivZ[j]*(sum{(z_Ol[i,j]-z_Ol[i+1,j])^2 ,i=1:N}), j=1:n_state} +
                                       sum{QderivU[j]*(sum{(u_Ol[i,j]-u_Ol[i+1,j])^2 ,i=1:N-1} + (uPrev[1,j]-u_Ol[1,j])^2) ,j=1:n_input} )
         # @NLexpression(mdl, controlCost, sum(R[j]*sum((u_Ol[i,1])^2 for i=1:N) for j=1:2))
-        @NLexpression(mdl, laneCost, Q_lane*sum{10.0*eps_lane[i]+50.0*eps_lane[i]^2 , i=1:N}) # original data for lane cost 10.0*eps_lane[i]+50.0*eps_lane[i]^2
+        # @NLexpression(mdl, laneCost, Q_lane*sum{10.0*eps_lane[i]+50.0*eps_lane[i]^2 , i=1:N}) # original data for lane cost 10.0*eps_lane[i]+50.0*eps_lane[i]^2
+        @NLexpression(mdl, laneCost, Q_lane*sum{1.0*eps_lane[i]+20.0*eps_lane[i]^2 , i=1:N}) # original data for lane cost 10.0*eps_lane[i]+50.0*eps_lane[i]^2
         @NLexpression(mdl, terminalCost , Q_term_cost*sum{alpha[i]*statesCost[i] , i=1:Nl*Np})
         # Slack cost on vx
         #----------------------------------

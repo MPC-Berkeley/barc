@@ -17,7 +17,7 @@ import rospy
 from Localization_helpers import Localization
 from barc.msg import ECU, pos_info, Vel_est
 from sensor_msgs.msg import Imu
-from marvelmind_nav.msg import hedge_pos
+from marvelmind_nav.msg import hedge_pos, hedge_imu_fusion
 from std_msgs.msg import Header
 from numpy import eye, array, zeros, diag, unwrap, tan, cos, sin, vstack, linalg, append
 from numpy import ones, polyval, delete, size
@@ -218,7 +218,8 @@ def state_estimation():
     rospy.Subscriber('imu/data', Imu, se.imu_callback, queue_size=1)
     rospy.Subscriber('vel_est', Vel_est, se.encoder_vel_callback, queue_size=1)
     rospy.Subscriber('ecu', ECU, se.ecu_callback, queue_size=1)
-    rospy.Subscriber('hedge_pos', hedge_pos, se.gps_callback, queue_size=1)
+    # rospy.Subscriber('hedge_pos', hedge_pos, se.gps_callback, queue_size=1)
+    rospy.Subscriber('hedge_imu_fusion', hedge_imu_fusion, se.gps_callback, queue_size=1)
     rospy.Subscriber('real_val', pos_info, se.true_callback, queue_size=1)
     state_pub_pos = rospy.Publisher('pos_info', pos_info, queue_size=1)
 
@@ -255,7 +256,8 @@ def state_estimation():
     # l.create_feature_track()
     l.create_race_track()
 
-    d_f_hist = [0.0]*10       # assuming that we are running at 50Hz, array of 10 means 0.2s lag
+    d_f_hist = [0.0]*5       # assuming that we are running at 50Hz, array of 10 means 0.2s lag
+    d_a_hist = [0.0]*5
     d_f_lp = 0.0
     a_lp = 0.0
 
@@ -284,12 +286,22 @@ def state_estimation():
 
         # define input
         d_f_hist.append(se.cmd_servo)           # this is for a 0.2 seconds delay of steering
+        d_a_hist.append(se.cmd_motor)           # this is for a 0.2 seconds delay of steering
         # d_f_lp = d_f_lp + 0.5*(se.cmd_servo-d_f_lp) # low pass filter on steering
         # a_lp = a_lp + 1.0*(se.cmd_motor-a_lp)       # low pass filter on acceleration
         # u = [a_lp, d_f_hist.pop(0)]
-        u = [se.cmd_motor, d_f_hist.pop(0)]     # this is with 0.2s delay for steering without low pass filter
+
+
+
+        # u = [se.cmd_motor, d_f_hist.pop(0)]     # this is with 0.2s delay for steering without low pass filter
+
+        u = [d_a_hist.pop(0), d_f_hist.pop(0)]     # this is with 0.2s delay for steering without low pass filter
+
+
         # print(d_f_hist)
         # # define input without delay
+
+
         # u = [se.cmd_motor, se.cmd_servo]
 
         bta = 0.5 * u[1]

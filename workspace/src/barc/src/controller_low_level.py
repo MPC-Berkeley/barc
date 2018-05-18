@@ -25,7 +25,8 @@ import rospy
 
 def ESCacc(vel, Acc):
 
-    Acc_1 = 0.9043 * Acc + 0.09113
+    # Acc_1 = 0.9043 * Acc + 0.09113
+    Acc_1 = 0.7043 * Acc + 0.09113
 
     if vel < 0.1:
         PWM = (26.149 + Acc_1) / 0.2627
@@ -132,7 +133,8 @@ class low_level_control(object):
         # if msg.servo < 0.0:         # right curve
         #     self.servo_pwm = 95.5 + 118.8*float(msg.servo)
         # elif msg.servo > 0.0:       # left curve
-        #     self.servo_pwm = 90.8 + 78.9*float(msg.servo)
+        #     # self.servo_pwm = 90.8 + 78.9*float(msg.servo)
+        #     self.servo_pwm = 90.0 + 89.0*float(msg.servo)
         self.servo_pwm = 90.0 + 89.0*float(msg.servo)
 
         # compute motor command
@@ -141,8 +143,8 @@ class low_level_control(object):
             self.motor_pwm = 90.0
         elif FxR > 0:
             #self.motor_pwm = max(94,91 + 6.5*FxR)   # using writeMicroseconds() in Arduino
-            # self.motor_pwm = 91 + 6.5*FxR   # using writeMicroseconds() in Arduino
-            self.motor_pwm = ESCacc(self.vx, FxR)
+            self.motor_pwm = 91 + 6.5*FxR   # using writeMicroseconds() in Arduino
+            # self.motor_pwm = ESCacc(self.vx, FxR)
             # self.motor_pwm = max(94,90.74 + 6.17*FxR)
             #self.motor_pwm = 90.74 + 6.17*FxR
             
@@ -150,8 +152,8 @@ class low_level_control(object):
             #self.motor_pwm = 90.12 + 5.24*FxR
             # Note: Barc doesn't move for u_pwm < 93
         else:               # motor break / slow down
-            # self.motor_pwm = 93.5 + 46.73*FxR
-            self.motor_pwm = ESCdec(self.vx, FxR)
+            self.motor_pwm = 93.5 + 46.73*FxR
+            # self.motor_pwm = ESCdec(self.vx, FxR)
 
             # self.motor_pwm = 98.65 + 67.11*FxR
             #self.motor = 69.95 + 68.49*FxR

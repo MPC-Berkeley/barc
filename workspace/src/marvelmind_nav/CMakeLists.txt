@@ -52,7 +52,11 @@ add_message_files(
   FILES
   hedge_pos.msg
   hedge_pos_a.msg
+  hedge_pos_ang.msg
   beacon_pos_a.msg
+  hedge_imu_raw.msg
+  hedge_imu_fusion.msg
+  beacon_distance.msg
 )
 
 ## Generate services in the 'srv' folder

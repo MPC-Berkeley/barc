@@ -48,7 +48,7 @@ function main()
 
     const SIM_FLAG         = false   # true: save the data in simulation folder, false: save the data in experiment folder
 
-    const PF_FLAG          = true  # true:only pF,     false:1 warm-up lap and LMPC
+    const PF_FLAG          = false  # true:only pF,     false:1 warm-up lap and LMPC
 
     const LMPC_FLAG        = true   # true:IDEN_MODEL,  false:IDEN_KIN_LIN_MODEL(if both flags are false)
     const LMPC_DYN_FLAG    = false   # true:DYN_LIN_MODEL, false:IDEN_KIN_LIN_MODEL(if both flags are false)
@@ -56,14 +56,14 @@ function main()
     const FEATURE_FLAG     = false  # true:8-shape,     false:history (this requires the corresponding change in 3 palces)
     const NORM_SPACE_FLAG  = true  # true:2-norm,      false: space critirion
 
-    const TI_TV_FLAG       = false   # true:TI,          false:TV
+    const TI_TV_FLAG       = true   # true:TI,          false:TV
 
     const GP_LOCAL_FLAG    = false  # true:local GPR
     const GP_FULL_FLAG     = false  # true:full GPR
     const GP_HISTORY_FLAG  = false  # true: GPR data is from last laps, false: GP data is from data base.
 
     const N                = 10
-    const delay_df         = 3
+    const delay_df         = 1
     const delay_a          = 1
     
     if PF_FLAG
@@ -105,7 +105,7 @@ function main()
     TI_TV_FLAG ? println("Time invariant SYS_ID") : println("Time variant SYS_ID")
     println("N=$N, delay_df=$delay_df, delay_a=$delay_a")
     
-    track_data       = createTrack("3110")
+    track_data       = createTrack("MSC_lab")
     track            = Track(track_data)
     track_fe         = createTrack("feature")
     track_f          = Track(track_fe)
@@ -249,6 +249,7 @@ function main()
         solHistory = data["solHistory"]
     end
     println(lapStatus)
+    println("track maximum curvature: ",track.max_curvature)
 
     println("Finished LMPC NODE initialization.")
 
@@ -419,7 +420,7 @@ function main()
                     toc() # TIME FOR PREPARATION
                     # SAFESET POINT SELECTION
                     selectedStates=find_SS(oldSS,selectedStates,z_curr[1],z_prev,lapStatus,modelParams,mpcParams,track)
-                    println(selectedStates)
+                    # println(selectedStates)
                     tic()
                     (mpcSol.z,mpcSol.u,sol_status)=solveMpcProblem_convhull_dyn_iden(mdl_convhull,mpcSol,mpcCoeff,z_curr,z_prev,u_prev,selectedStates,track,GP_e_vy,GP_e_psidot)
                     toc() # TIME FOR OPTIMIZATION
@@ -610,6 +611,14 @@ function main()
                 # INPUT DELAY HISTORY UPDATE
                 mpcSol.df_his[1:end-1] = mpcSol.df_his[2:end]
                 mpcSol.df_his[end] = mpcSol.u[1+mpcParams.delay_df,2]
+            end
+
+            if length(mpcSol.a_his)==1
+                mpcSol.a_his[1] = mpcSol.u[1+mpcParams.delay_a,1]
+            else
+                # INPUT DELAY HISTORY UPDATE
+                mpcSol.a_his[1:end-1] = mpcSol.a_his[2:end]
+                mpcSol.a_his[end] = mpcSol.u[1+mpcParams.delay_a,1]
             end
             
             if PF_FLAG || (!PF_FLAG && lapStatus.currentLap > 1+max(selectedStates.feature_Nl,selectedStates.Nl))

@@ -125,7 +125,7 @@ def view_trajectory():
     rospy.Subscriber("mpc_solution", mpc_solution, mpcSol_callback, queue_size=1)
 
     # FLAGS FOR PLOTTING
-    PRE_FLAG = False
+    PRE_FLAG = True
     SS_FLAG  = True
     FORE_FLAG= False
     IDEN_FLAG= True
