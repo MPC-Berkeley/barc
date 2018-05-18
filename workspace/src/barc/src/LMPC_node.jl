@@ -48,7 +48,7 @@ function main()
 
     const SIM_FLAG         = false   # true: save the data in simulation folder, false: save the data in experiment folder
 
-    const PF_FLAG          = false  # true:only pF,     false:1 warm-up lap and LMPC
+    const PF_FLAG          = true  # true:only pF,     false:1 warm-up lap and LMPC
 
     const LMPC_FLAG        = true   # true:IDEN_MODEL,  false:IDEN_KIN_LIN_MODEL(if both flags are false)
     const LMPC_DYN_FLAG    = false   # true:DYN_LIN_MODEL, false:IDEN_KIN_LIN_MODEL(if both flags are false)

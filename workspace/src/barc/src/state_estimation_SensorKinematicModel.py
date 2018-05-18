@@ -25,6 +25,8 @@ from observers import ekf
 from system_models import f_SensorKinematicModel, h_SensorKinematicModel
 from tf import transformations
 import math
+import numpy as np
+import os
 
 # ***_meas are values that are used by the Kalman filters
 # ***_raw are raw values coming from the sensors
@@ -218,8 +220,8 @@ def state_estimation():
     rospy.Subscriber('imu/data', Imu, se.imu_callback, queue_size=1)
     rospy.Subscriber('vel_est', Vel_est, se.encoder_vel_callback, queue_size=1)
     rospy.Subscriber('ecu', ECU, se.ecu_callback, queue_size=1)
-    # rospy.Subscriber('hedge_pos', hedge_pos, se.gps_callback, queue_size=1)
-    rospy.Subscriber('hedge_imu_fusion', hedge_imu_fusion, se.gps_callback, queue_size=1)
+    rospy.Subscriber('hedge_pos', hedge_pos, se.gps_callback, queue_size=1)
+    # rospy.Subscriber('hedge_imu_fusion', hedge_imu_fusion, se.gps_callback, queue_size=1)
     rospy.Subscriber('real_val', pos_info, se.true_callback, queue_size=1)
     state_pub_pos = rospy.Publisher('pos_info', pos_info, queue_size=1)
 
@@ -275,6 +277,11 @@ def state_estimation():
     acc_f = 0.0
     vel_meas_est = 0.0
 
+    psi_drift_est_his = [0.0]
+    psi_drift_est_2_his = [0.0]
+    psi_est_his = [0.0]
+    psi_est_2_his = [0.0]
+
     while not rospy.is_shutdown():
         t_now = rospy.get_rostime().to_sec()-se.t0
 
@@ -323,6 +330,13 @@ def state_estimation():
         (x_est, y_est, v_x_est, v_y_est, a_x_est, a_y_est, psi_est, psi_dot_est, psi_drift_est,
             x_est_2, y_est_2, psi_est_2, v_est_2, psi_drift_est_2) = z_EKF           # note, r = EKF estimate yaw rate
 
+        # sections to save the data and for debugging
+        psi_drift_est_his.append(psi_drift_est)
+        psi_drift_est_2_his.append(psi_drift_est_2)
+        psi_est_his.append(psi_est)
+        psi_est_2_his.append(psi_est_2)
+
+
         se.x_est = x_est_2
         se.y_est = y_est_2
         #print "V_x and V_y : (%f, %f)" % (v_x_est, v_y_est)
@@ -349,6 +363,13 @@ def state_estimation():
         # wait
         est_counter += 1
         rate.sleep()
+
+    homedir = os.path.expanduser("~")
+    pathSave = os.path.join(homedir,"barc_debugging/estimator.npz")
+    np.savez(pathSave,psi_drift_est_his=psi_drift_est_his,
+                      psi_drift_est_2_his=psi_drift_est_2_his,
+                      psi_est_his=psi_est_his,
+                      psi_est_2_his=psi_est_2_his)
 
 if __name__ == '__main__':
     try:
