@@ -224,11 +224,11 @@ class Localization(object):
         #               [int(ceil(2.8*40)), 0]]
         
         # TRACK FOR MSC EXPERIMENT ROOM
-        track_data = [[int(ceil(1.8*3*10)), 0],
-                      [int(ceil(1.8*3*120)), -pi],
-                      [int(ceil(1.8*3*20)), 0],
-                      [int(ceil(1.8*3*120)), -pi],
-                      [int(ceil(1.8*3*10)), 0]]
+        track_data = [[int(ceil(1.5*3*10)), 0],
+                      [int(ceil(1.5*3*120)), -pi],
+                      [int(ceil(1.5*3*20)), 0],
+                      [int(ceil(1.5*3*120)), -pi],
+                      [int(ceil(1.5*3*10)), 0]]
                       
         for i in range(len(track_data)):
             num = track_data[i][0]

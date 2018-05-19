@@ -17,7 +17,7 @@ import rospy
 from Localization_helpers import Localization
 from barc.msg import ECU, pos_info, Vel_est
 from sensor_msgs.msg import Imu
-from marvelmind_nav.msg import hedge_pos, hedge_imu_fusion
+from marvelmind_nav.msg import hedge_pos, hedge_imu_fusion, hedge_imu_raw
 from std_msgs.msg import Header
 from numpy import eye, array, zeros, diag, unwrap, tan, cos, sin, vstack, linalg, append
 from numpy import ones, polyval, delete, size
@@ -48,6 +48,19 @@ class StateEst(object):
     a_y_meas = 0.0
     imu_updated = False
     att = (0.0,0.0,0.0)               # attitude
+    # history data storage for debugging
+    roll_raw_his = [0.0]
+    pitch_raw_his = [0.0]
+    yaw_raw_his = [0.0]
+    yaw_his = [0.0]  # yaw after unwrap
+    yaw0_his = [0.0] 
+    yaw_meas_his = [0.0]
+    psidot_raw_his = [0.0]
+    a_x_raw_his = [0.0]
+    a_y_raw_his = [0.0]
+    a_x_meas_his = [0.0]
+    a_y_meas_his = [0.0]
+    imu_time = [0.0]
 
     # Velocity
     vel_meas = 0.0
@@ -64,6 +77,34 @@ class StateEst(object):
     t_gps = zeros(15)
     c_X = array([0,0,0])
     c_Y = array([0,0,0])
+    # GPS IMU FUSION
+    gps_x_his = [0.0]
+    gps_y_his = [0.0]
+    gps_time  = [0.0]
+
+    qx_his = [0.0]
+    qy_his = [0.0]
+    qz_his = [0.0]
+    qw_his = [0.0]
+    ax_his = [0.0]
+    ay_his = [0.0]
+    az_his = [0.0]
+    vx_his = [0.0]
+    vy_his = [0.0]
+    vz_his = [0.0]
+    gps_imu_fusion_time = [0.0]
+
+    # GPS IMU RAW
+    acc_x_his = [0.0]
+    acc_y_his = [0.0]
+    acc_z_his = [0.0]
+    gyro_x_his = [0.0]
+    gyro_y_his = [0.0]
+    gyro_z_his = [0.0]
+    compass_x_his = [0.0]
+    compass_y_his = [0.0]
+    compass_z_his = [0.0]
+    gps_imu_raw_time = [0.0]
 
     # real_val: true data
     x_true = 0.0
@@ -155,6 +196,37 @@ class StateEst(object):
             self.c_Y = linalg.lstsq(t_matrix, self.y_hist)[0]
         self.gps_updated = True
 
+        self.gps_x_his.append(data.x_m)
+        self.gps_y_his.append(data.y_m)
+        self.gps_time.append(rospy.get_rostime().to_sec()-self.t0)
+
+    def gps_imu_fusion_callback(self,data):
+        # GPS IMU FUSION
+        self.gps_imu_fusion_time.append(rospy.get_rostime().to_sec()-self.t0)
+        self.qx_his.append(data.qx)
+        self.qy_his.append(data.qy)
+        self.qz_his.append(data.qz)
+        self.qw_his.append(data.qw)
+        self.ax_his.append(data.ax)
+        self.ay_his.append(data.ay)
+        self.az_his.append(data.az)
+        self.vx_his.append(data.vx)
+        self.vy_his.append(data.vy)
+        self.vz_his.append(data.vz)
+        
+    def gps_imu_raw_callback(self,data):
+        # GPS IMU RAW
+        self.gps_imu_raw_time.append(rospy.get_rostime().to_sec()-self.t0)
+        self.acc_x_his.append(data.acc_x)
+        self.acc_y_his.append(data.acc_y)
+        self.acc_z_his.append(data.acc_z)
+        self.gyro_x_his.append(data.gyro_x)
+        self.gyro_y_his.append(data.gyro_y)
+        self.gyro_z_his.append(data.gyro_z)
+        self.compass_x_his.append(data.compass_x)
+        self.compass_y_his.append(data.compass_y)
+        self.compass_z_his.append(data.compass_z)
+
     # imu measurement update
     def imu_callback(self, data):
         # units: [rad] and [rad/s]
@@ -166,35 +238,40 @@ class StateEst(object):
         quaternion = (ori.x, ori.y, ori.z, ori.w)
         (roll_raw, pitch_raw, yaw_raw) = transformations.euler_from_quaternion(quaternion)
         # yaw_meas is element of [-pi,pi]
- 
-
+        
         yaw = unwrap([self.yaw_prev, yaw_raw])[1]       # get smooth yaw (from beginning)
         self.yaw_prev = self.yaw_meas                   # and always use raw measured yaw for unwrapping
-        # from this point on 'yaw' will be definitely unwrapped (smooth)!
         if not self.running:
             self.yaw0 = yaw              # set yaw0 to current yaw
             self.yaw_meas = 0                 # and current yaw to zero
         else:
             self.yaw_meas = yaw - self.yaw0
-            #print "yaw measured: %f" % self.yaw_meas * 180 / math.pi
 
-        # extract angular velocity and linear acceleration data
-        #w_x = data.angular_velocity.x
-        #w_y = data.angular_velocity.y
         w_z = data.angular_velocity.z
         a_x = data.linear_acceleration.x
         a_y = data.linear_acceleration.y
         a_z = data.linear_acceleration.z
-        # print("a_z from estimator",a_z)
+
         self.psiDot_meas = w_z
-        # The next two lines 'project' the measured linear accelerations to a horizontal plane
         self.a_x_meas = cos(-pitch_raw)*a_x + sin(-pitch_raw)*sin(-roll_raw)*a_y - sin(-pitch_raw)*cos(-roll_raw)*a_z
         self.a_y_meas = cos(-roll_raw)*a_y + sin(-roll_raw)*a_z
 
-        #self.a_x_meas = a_x
-        #self.a_y_meas = a_y
         self.att = (roll_raw,pitch_raw,yaw_raw)
         self.imu_updated = True
+
+        # FOR DEBUGGING PURPOSE
+        self.imu_time.append(current_t-self.t0)
+        self.psidot_raw_his.append(w_z)
+        self.a_x_raw_his.append(a_x)
+        self.a_y_raw_his.append(a_y)
+        self.a_x_meas_his.append(self.a_x_meas)
+        self.a_y_meas_his.append(self.a_y_meas)
+        self.roll_raw_his.append(roll_raw)
+        self.pitch_raw_his.append(pitch_raw)
+        self.yaw_raw_his.append(yaw_raw)
+        self.yaw_his.append(yaw) # yaw after unwrap()
+        self.yaw0_his.append(self.yaw0) # yaw after unwrap()
+        self.yaw_meas_his.append(self.yaw_meas)
 
     def encoder_vel_callback(self, data):
         if data.vel_est != self.vel_prev:
@@ -220,10 +297,16 @@ def state_estimation():
     rospy.Subscriber('imu/data', Imu, se.imu_callback, queue_size=1)
     rospy.Subscriber('vel_est', Vel_est, se.encoder_vel_callback, queue_size=1)
     rospy.Subscriber('ecu', ECU, se.ecu_callback, queue_size=1)
-    rospy.Subscriber('hedge_pos', hedge_pos, se.gps_callback, queue_size=1)
+    state_pub_pos = rospy.Publisher('pos_info', pos_info, queue_size=1)
+
+    # Simulations and Experiment will subscribe to different GPS topis
     # rospy.Subscriber('hedge_imu_fusion', hedge_imu_fusion, se.gps_callback, queue_size=1)
     rospy.Subscriber('real_val', pos_info, se.true_callback, queue_size=1)
-    state_pub_pos = rospy.Publisher('pos_info', pos_info, queue_size=1)
+    rospy.Subscriber('hedge_pos', hedge_pos, se.gps_callback, queue_size=1)
+
+    # for debugging to collect the data
+    rospy.Subscriber('hedge_imu_fusion', hedge_imu_fusion, se.gps_imu_fusion_callback, queue_size=1)
+    rospy.Subscriber('hedge_imu_raw', hedge_imu_raw, se.gps_imu_raw_callback, queue_size=1)
 
     # get vehicle dimension parameters
     L_f = rospy.get_param("L_a")       # distance from CoG to front axel
@@ -244,8 +327,8 @@ def state_estimation():
     #         x, y, vx, vy, ax, ay, psi, psidot, psidrift, x, y, psi, v
     #Q = diag([1/20*dt**5*qa,1/20*dt**5*qa,1/3*dt**3*qa,1/3*dt**3*qa,dt*qa,dt*qa,1/3*dt**3*qp,dt*qp,0.01, 0.01,0.01,1.0,1.0,0.1])
     #R = diag([0.5,0.5,0.5,0.1,10.0,1.0,1.0,     5.0,5.0,0.1,0.5, 1.0, 1.0])
-
-    Q = diag([1/20*dt**5*qa,1/20*dt**5*qa,1/3*dt**3*qa,1/3*dt**3*qa,dt*qa,dt*qa,1/3*dt**3*qp,dt*qp,0.1, 0.2,0.2,1.0,1.0,0.1])
+                                                                                                    # drift_1
+    Q = diag([1/20*dt**5*qa,1/20*dt**5*qa,1/3*dt**3*qa,1/3*dt**3*qa,dt*qa,dt*qa,1/3*dt**3*qp,dt*qp, 10000, 0.2,0.2,1.0,1.0,0.1])
     R = diag([5.0,5.0,1.0,10.0,100.0,1000.0,1000.0,     5.0,5.0,10.0,1.0, 10.0,10.0])
     # R = diag([4*5.0,4*5.0,1.0,2*10.0,2*100.0,1000.0,1000.0,     4*5.0,4*5.0,10.0,1.0, 10.0,10.0])
     # R = diag([1*5.0,1*5.0,1.0,2*10.0,2*100.0,1000.0,1000.0,     1*5.0,1*5.0,10.0,1.0, 10.0,10.0])
@@ -258,7 +341,7 @@ def state_estimation():
     # l.create_feature_track()
     l.create_race_track()
 
-    d_f_hist = [0.0]*5       # assuming that we are running at 50Hz, array of 10 means 0.2s lag
+    d_f_hist = [0.0]*10       # assuming that we are running at 50Hz, array of 10 means 0.2s lag
     d_a_hist = [0.0]*5
     d_f_lp = 0.0
     a_lp = 0.0
@@ -277,11 +360,25 @@ def state_estimation():
     acc_f = 0.0
     vel_meas_est = 0.0
 
-    psi_drift_est_his = [0.0]
+    psi_drift_est_his   = [0.0]
     psi_drift_est_2_his = [0.0]
-    psi_est_his = [0.0]
-    psi_est_2_his = [0.0]
-
+    psi_est_his         = [0.0]
+    psi_est_2_his       = [0.0]
+    vx_est_his          = [0.0]
+    vy_est_his          = [0.0]
+    ax_est_his          = [0.0]
+    ay_est_his          = [0.0]
+    psi_dot_est_his     = [0.0]
+    v2_est_his          = [0.0]
+    vel_meas_his        = [0.0]
+    a_his               = [0.0]
+    df_his              = [0.0]
+    estimator_time      = [0.0]
+    x_est_his       = [0.0]
+    y_est_his       = [0.0]
+    x_est_2_his     = [0.0]
+    y_est_2_his     = [0.0]
+ 
     while not rospy.is_shutdown():
         t_now = rospy.get_rostime().to_sec()-se.t0
 
@@ -293,23 +390,21 @@ def state_estimation():
 
         # define input
         d_f_hist.append(se.cmd_servo)           # this is for a 0.2 seconds delay of steering
-        d_a_hist.append(se.cmd_motor)           # this is for a 0.2 seconds delay of steering
+        # d_a_hist.append(se.cmd_motor)           # this is for a 0.2 seconds delay of steering
+        
+
+
         # d_f_lp = d_f_lp + 0.5*(se.cmd_servo-d_f_lp) # low pass filter on steering
         # a_lp = a_lp + 1.0*(se.cmd_motor-a_lp)       # low pass filter on acceleration
         # u = [a_lp, d_f_hist.pop(0)]
 
+        u = [se.cmd_motor, d_f_hist.pop(0)]     # this is with 0.2s delay for steering without low pass filter
 
-
-        # u = [se.cmd_motor, d_f_hist.pop(0)]     # this is with 0.2s delay for steering without low pass filter
-
-        u = [d_a_hist.pop(0), d_f_hist.pop(0)]     # this is with 0.2s delay for steering without low pass filter
-
-
-        # print(d_f_hist)
-        # # define input without delay
-
+        # u = [d_a_hist.pop(0), d_f_hist.pop(0)]     # this is with 0.2s delay for steering without low pass filter
 
         # u = [se.cmd_motor, se.cmd_servo]
+
+        # u = [ 0, 0]
 
         bta = 0.5 * u[1]
 
@@ -331,10 +426,24 @@ def state_estimation():
             x_est_2, y_est_2, psi_est_2, v_est_2, psi_drift_est_2) = z_EKF           # note, r = EKF estimate yaw rate
 
         # sections to save the data and for debugging
+        estimator_time.append(t_now)
         psi_drift_est_his.append(psi_drift_est)
         psi_drift_est_2_his.append(psi_drift_est_2)
         psi_est_his.append(psi_est)
-        psi_est_2_his.append(psi_est_2)
+        psi_est_2_his.append(psi_est_2)     
+        vx_est_his.append(v_x_est)          
+        vy_est_his.append(v_y_est)          
+        ax_est_his.append(a_x_est)          
+        ay_est_his.append(a_y_est)          
+        psi_dot_est_his.append(psi_dot_est)     
+        v2_est_his.append(v_est_2)
+        vel_meas_his.append(se.vel_meas) # measurment data from encoder
+        a_his.append(u[0])
+        df_his.append(u[1])
+        x_est_his.append(x_est)
+        y_est_his.append(y_est)
+        x_est_2_his.append(x_est_2)
+        y_est_2_his.append(y_est_2)
 
 
         se.x_est = x_est_2
@@ -365,11 +474,69 @@ def state_estimation():
         rate.sleep()
 
     homedir = os.path.expanduser("~")
-    pathSave = os.path.join(homedir,"barc_debugging/estimator.npz")
-    np.savez(pathSave,psi_drift_est_his=psi_drift_est_his,
-                      psi_drift_est_2_his=psi_drift_est_2_his,
-                      psi_est_his=psi_est_his,
-                      psi_est_2_his=psi_est_2_his)
+    pathSave = os.path.join(homedir,"barc_debugging/estimator_output.npz")
+    np.savez(pathSave,x_est_his = x_est_his,
+                      y_est_his = y_est_his,
+                      x_est_2_his = x_est_2_his,
+                      y_est_2_his = y_est_2_his,
+                      psi_drift_est_his     = psi_drift_est_his,
+                      psi_drift_est_2_his   = psi_drift_est_2_his,
+                      psi_est_his           = psi_est_his,
+                      psi_est_2_his         = psi_est_2_his,
+                      vx_est_his            = vx_est_his,
+                      vy_est_his            = vy_est_his,
+                      ax_est_his            = ax_est_his,
+                      ay_est_his            = ay_est_his,
+                      psi_dot_est_his       = psi_dot_est_his,  
+                      v2_est_his            = v2_est_his,
+                      vel_meas_his          = vel_meas_his,
+                      a_his                 = a_his,
+                      df_his                = df_his,
+                      estimator_time        = estimator_time)
+
+    pathSave = os.path.join(homedir,"barc_debugging/estimator_imu.npz")
+    np.savez(pathSave,psidot_raw_his    = se.psidot_raw_his,
+                      a_x_raw_his       = se.a_x_raw_his,
+                      a_y_raw_his       = se.a_y_raw_his,
+                      a_x_meas_his      = se.a_x_meas_his,
+                      a_y_meas_his      = se.a_y_meas_his,
+                      roll_raw_his      = se.roll_raw_his,
+                      pitch_raw_his     = se.pitch_raw_his,
+                      yaw_raw_his       = se.yaw_raw_his,
+                      yaw_his           = se.yaw_his,
+                      yaw0_his          = se.yaw0_his,
+                      yaw_meas_his      = se.yaw_meas_his,
+                      imu_time          = se.imu_time)
+
+    pathSave = os.path.join(homedir,"barc_debugging/estimator_hedge_imu_fusion.npz")
+    np.savez(pathSave,gps_x_his = se.gps_x_his,
+                      gps_y_his = se.gps_y_his,
+                      qx_his = se.qx_his,
+                      qy_his = se.qy_his,
+                      qz_his = se.qz_his,
+                      qw_his = se.qw_his,
+                      ax_his = se.ax_his,
+                      ay_his = se.ay_his,
+                      az_his = se.az_his,
+                      vx_his = se.vx_his,
+                      vy_his = se.vy_his,
+                      vz_his = se.vz_his,
+                      gps_time = se.gps_time,
+                      gps_imu_fusion_time = se.gps_imu_fusion_time)
+
+    pathSave = os.path.join(homedir,"barc_debugging/estimator_hedge_imu_raw.npz")
+    np.savez(pathSave,acc_x_his = se.acc_x_his,
+                      acc_y_his = se.acc_y_his,
+                      acc_z_his = se.acc_z_his,
+                      gyro_x_his = se.gyro_x_his,
+                      gyro_y_his = se.gyro_y_his,
+                      gyro_z_his = se.gyro_z_his,
+                      compass_x_his = se.compass_x_his,
+                      compass_y_his = se.compass_y_his,
+                      compass_z_his = se.compass_z_his,
+                      gps_imu_raw_time = se.gps_imu_raw_time)
+
+    print "finishing saveing data"
 
 if __name__ == '__main__':
     try:

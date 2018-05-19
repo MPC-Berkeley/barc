@@ -416,7 +416,7 @@ end
 function InitializeParameters(mpcParams::MpcParams,mpcParams_4s::MpcParams,mpcParams_pF::MpcParams,modelParams::ModelParams,mpcSol::MpcSol,
                               selectedStates::SelectedStates,oldSS::SafeSetData,oldTraj::OldTrajectory,mpcCoeff::MpcCoeff,mpcCoeff_dummy::MpcCoeff,
                               LMPC_LAP::Int64,delay_df::Int64,delay_a::Int64,N::Int64,BUFFERSIZE::Int64)
-    simulator_flag   = false
+    simulator_flag   = true
 
     if simulator_flag == true   # if the BARC is in use
 
@@ -480,7 +480,7 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_4s::MpcParams,mpcPa
         mpcParams_pF.R              = 2*[1.0,1.0]               # put weights on a and d_f
         mpcParams_pF.QderivZ        = 1.0*[0.0,1.0,1.0,1.0]           # cost matrix for derivative cost of states
         mpcParams_pF.QderivU        = 0.1*[1,0.1]                # cost matrix for derivative cost of inputs
-        mpcParams_pF.vPathFollowing = 1.2                       # reference speed for first lap of path following
+        mpcParams_pF.vPathFollowing = 1.5                       # reference speed for first lap of path following
         mpcParams_pF.delay_df       = delay_df                         # steering delay (number of steps)
         mpcParams_pF.delay_a        = delay_a                         # acceleration delay
     end
@@ -945,13 +945,13 @@ function createTrack(name::ASCIIString)
                       Int(ceil(2.8*5)) 0;
                       Int(ceil(2.8*120)) -pi/2;
                       Int(ceil(2.8*40)) 0]
-    elseif name == "MSC_lab"
+    elseif name == "MSC_lab"    
         # TRACK TO USE IN THE SMALL EXPERIMENT ROOM
-        track_data = [Int(ceil(1.8*3*10)) 0;
-                      Int(ceil(1.8*3*120)) -pi;
-                      Int(ceil(1.8*3*20)) 0;
-                      Int(ceil(1.8*3*120)) -pi;
-                      Int(ceil(1.8*3*10)) 0]
+        track_data = [Int(ceil(1.5*3*10)) 0;
+                      Int(ceil(1.5*3*120)) -pi;
+                      Int(ceil(1.5*3*20)) 0;
+                      Int(ceil(1.5*3*120)) -pi;
+                      Int(ceil(1.5*3*10)) 0]
     elseif name == "feature"
         # FEATURE TRACK DATA
         ds = 0.01

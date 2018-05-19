@@ -124,9 +124,9 @@ function main()
         t_ros   = get_rostime()
         t       = to_sec(t_ros)
         # # print(t)
-        if sizeof(cmd_log.z[t.>cmd_log.t+0.2,2]) >= 1
-           u_current[2] = cmd_log.z[t.>=cmd_log.t+0.2,2][end]       # artificial steering input delay
-        end
+        # if sizeof(cmd_log.z[t.>cmd_log.t+0.2,2]) >= 1
+        #    u_current[2] = cmd_log.z[t.>=cmd_log.t+0.2,2][end]       # artificial steering input delay
+        # end
         # update current state with a new row vector
         
         # z_current[i,:],slip_ang[i,:]  = simDynModel_exact_xy(z_current[i-1,:], u_current', dt, modelParams)
@@ -208,10 +208,10 @@ function main()
             n.*=n_thre
             n=min(n, n_thre)
             n=max(n,-n_thre)
-            real_data.psiDot = z_current[i,6] + n[3]
+            real_data.psiDot = z_current[i,6] #+ n[3]
             real_data.psi    = z_current[i,5]
-            real_data.v_x    = z_current[i,3] + n[1]
-            real_data.v_y    = z_current[i,4] + n[2]
+            real_data.v_x    = z_current[i,3] #+ n[1]
+            real_data.v_y    = z_current[i,4] #+ n[2]
             real_data.x      = z_current[i,1]
             real_data.y      = z_current[i,2]
             publish(real_val,real_data)

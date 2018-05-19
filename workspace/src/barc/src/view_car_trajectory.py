@@ -30,7 +30,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 # import pylab
 
-global gps_x_vals, gps_y_vals, gps_x_prev, gps_y_prev
+global gps_x_vals, gps_y_vals, gps_x_prev, gps_y_prev, real_x_vals, real_y_vals
 global pos_info_x_vals, pos_info_y_vals, pos_info_s
 global v_vals, t_vals, psi_curr, psi_raw
 global z_x, z_y, SS_x, SS_y, z_vx, SS_vx, z_s, SS_s, z_fore_x, z_fore_y, z_iden_x, z_iden_y # x and y for mpcSol prediction
@@ -43,6 +43,9 @@ gps_y_prev = 0.0
 pos_info_x_vals = [0]
 pos_info_y_vals = [0]
 pos_info_s      = 0
+
+real_x_vals = [0]
+real_y_vals = [0]
 
 v_vals = []
 t_vals = []
@@ -92,6 +95,13 @@ def pos_info_callback(data):
     psi_curr = data.psi
     psi_raw = data.psi_raw
 
+def real_val_callback(data):
+    global real_x_vals, real_y_vals
+    real_x_vals.append(data.x)
+    real_y_vals.append(data.y)
+
+
+
 def mpcSol_callback(data):
     global z_x, z_y, SS_x, SS_y, z_vx, SS_vx, z_s, SS_s, z_fore_x, z_fore_y, z_iden_x, z_iden_y
     z_x = data.z_x
@@ -112,7 +122,7 @@ def mpcSol_callback(data):
 
 def view_trajectory():
 
-    global gps_x_vals, gps_y_vals, gps_x_prev, gps_y_prev
+    global gps_x_vals, gps_y_vals, gps_x_prev, gps_y_prev, real_x_vals, real_y_vals
     global pos_info_x_vals, pos_info_y_vals, pos_info_s
     global v_vals, t_vals, psi_curr, psi_raw
     global z_x, z_y, SS_x, SS_y, z_vx, SSvx, z_s, SS_s, z_fore_x, z_fore_y, z_iden_x, z_iden_y
@@ -122,6 +132,7 @@ def view_trajectory():
 
     rospy.Subscriber("hedge_pos", hedge_pos, gps_callback, queue_size=1)
     rospy.Subscriber("pos_info", pos_info, pos_info_callback, queue_size=1)
+    rospy.Subscriber("real_val", pos_info, real_val_callback, queue_size=1)
     rospy.Subscriber("mpc_solution", mpc_solution, mpcSol_callback, queue_size=1)
 
     # FLAGS FOR PLOTTING
@@ -129,8 +140,9 @@ def view_trajectory():
     SS_FLAG  = True
     FORE_FLAG= False
     IDEN_FLAG= True
-    GPS_FLAG = True
+    GPS_FLAG = False
     YAW_FLAG = True
+    ETS_TRUE_FLAG = False
     
     l = Localization()
     # l.create_feature_track()
@@ -206,15 +218,20 @@ def view_trajectory():
             gps_y_vals = [0,gps_y_vals[-1]]
             pos_info_x_vals = [0,pos_info_x_vals[-1]]
             pos_info_y_vals = [0,pos_info_y_vals[-1]]
+            real_x_vals = [0,real_x_vals[-1]]
+            real_y_vals = [0,real_y_vals[-1]]
 
             # gps_x_vals = [0,0]
             # gps_y_vals = [0,0]
             # pos_info_x_vals = [0,0]
             # pos_info_y_vals = [0,0]
         
-
-        x = pos_info_x_vals[len(pos_info_x_vals)-1]
-        y = pos_info_y_vals[len(pos_info_y_vals)-1]
+        if ETS_TRUE_FLAG:
+            x = real_x_vals[len(real_x_vals)-1]
+            y = real_y_vals[len(real_y_vals)-1]
+        else:        
+            x = pos_info_x_vals[len(pos_info_x_vals)-1]
+            y = pos_info_y_vals[len(pos_info_y_vals)-1]
         # ax1.plot(x, y, 'gs', label="Car current pos")
 
         R = np.matrix([[np.cos(psi_curr), -np.sin(psi_curr)], [np.sin(psi_curr), np.cos(psi_curr)]])
@@ -237,8 +254,12 @@ def view_trajectory():
             num = min(len(gps_x_vals),len(gps_y_vals))
             GPS_plot.set_data(gps_x_vals[:num], gps_y_vals[:num])
 
-        num = min(len(pos_info_x_vals),len(pos_info_y_vals))
-        pos_plot.set_data(pos_info_x_vals[:num], pos_info_y_vals[:num])
+        if ETS_TRUE_FLAG:
+            num = min(len(real_x_vals),len(real_y_vals))
+            pos_plot.set_data(real_x_vals[:num], real_y_vals[:num])
+        else:
+            num = min(len(pos_info_x_vals),len(pos_info_y_vals))
+            pos_plot.set_data(pos_info_x_vals[:num], pos_info_y_vals[:num])
 
         # ax2 PLOT CHOICE 1: V_X HISTORY PLOT
         # v_plot.set_data(z_vx)

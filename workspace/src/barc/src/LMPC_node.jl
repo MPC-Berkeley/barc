@@ -46,9 +46,10 @@ function main()
     const BUFFERSIZE       = 500
     const LMPC_LAP         = 30
 
-    const SIM_FLAG         = false   # true: save the data in simulation folder, false: save the data in experiment folder
+    const SIM_FLAG         = true   # true: save the data in simulation folder, false: save the data in experiment folder
 
     const PF_FLAG          = true  # true:only pF,     false:1 warm-up lap and LMPC
+    const PID_PF           = false
 
     const LMPC_FLAG        = true   # true:IDEN_MODEL,  false:IDEN_KIN_LIN_MODEL(if both flags are false)
     const LMPC_DYN_FLAG    = false   # true:DYN_LIN_MODEL, false:IDEN_KIN_LIN_MODEL(if both flags are false)
@@ -63,7 +64,7 @@ function main()
     const GP_HISTORY_FLAG  = false  # true: GPR data is from last laps, false: GP data is from data base.
 
     const N                = 10
-    const delay_df         = 1
+    const delay_df         = 3
     const delay_a          = 1
     
     if PF_FLAG
@@ -317,11 +318,14 @@ function main()
                 z_curr = [z_est[6],z_est[5],z_est[4],z_est[1],z_est[2],z_est[3]]
                 z_kin = [z_est[6],z_est[5],z_est[4],sqrt(z_est[1]^2+z_est[2]^2)]
                 # z_curr = xyFrame_to_trackFrame(z_true,track)
-                # z_curr = [z_curr[1],z_curr[2],z_curr[3],sqrt(z_curr[4]^2+z_curr[5]^2)]
+                # z_kin = [z_curr[1],z_curr[2],z_curr[3],sqrt(z_curr[4]^2+z_curr[5]^2)]
                 # println("         state from LMPC nodes",round(mpcSol.z[2,:],2))
                 # println("estimate state from LMPC nodes",round(z_curr,2))
-
-                (mpcSol.z,mpcSol.u,sol_status) = solveMpcProblem_pathFollow(mdl_pF,mpcParams_pF,modelParams,mpcSol,z_kin,z_prev,u_prev,track)
+                if PID_PF
+                    # mpcSol.u = PID_pathFollow(z_kin)
+                else
+                    (mpcSol.z,mpcSol.u,sol_status) = solveMpcProblem_pathFollow(mdl_pF,mpcParams_pF,modelParams,mpcSol,z_kin,z_prev,u_prev,track)
+                end
             else # LMPC CONTROLLER
                 # FOR QUICK LMPC STARTING, the next time, change the path following lap number to 1 and change the initial lapStatus to selectedStates.
                 if PF_FLAG
