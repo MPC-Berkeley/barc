@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 homedir = os.path.expanduser("~")
 pathSave = os.path.join(homedir,"barc_debugging/estimator_output.npz")
 npz_output = np.load(pathSave)
+# yaw_true_his 		= npz_output["yaw_true_his"]
+# psiDot_true_his 	= npz_output["psiDot_true_his"]
 x_est_his     		= npz_output["x_est_his"]
 y_est_his     		= npz_output["y_est_his"]
 x_est_2_his     	= npz_output["x_est_2_his"]
@@ -25,6 +27,7 @@ v2_est_his          =npz_output["v2_est_his"]
 vel_meas_his        =npz_output["vel_meas_his"] 
 a_his  				=npz_output["a_his"]
 df_his  			=npz_output["df_his"]
+# df_lp_his 			=npz_output["df_lp_his"]
 pathSave = os.path.join(homedir,"barc_debugging/estimator_imu.npz")
 npz_imu = np.load(pathSave)
 imu_time  		  = npz_imu["imu_time"]
@@ -72,6 +75,7 @@ ax2.plot(vx_est_his,label="vx_est")
 ax2.plot(v2_est_his,label="v_est_2")
 ax2.plot(vel_meas_his,label="v_meas")
 ax2.plot(vy_est_his,label="vy_est")
+ax2.plot(np.sqrt(vy_est_his**2+vx_est_his**2),label="sqrt")
 ax2.legend()
 ax2.grid()
 ax3 = fig.add_subplot(num_plot,1,3,ylabel="acc & psidot estimation")
@@ -105,21 +109,21 @@ ax3.plot(pitch_raw_his,label="pitch angle")
 ax3.legend()
 ax3.grid()
 
-# GPS comparison
-num_plot = 2
-fig = plt.figure("GPS EST position comparison")
-ax1 = fig.add_subplot(num_plot,1,1,ylabel="x")
-ax1.plot(gps_time, gps_x_his, label="gps")
-ax1.plot(estimator_time, x_est_his, label="EST 1")
-ax1.plot(estimator_time, x_est_2_his, label="EST 2")
-ax1.legend()
-ax1.grid()
-ax2 = fig.add_subplot(num_plot,1,2,ylabel="y")
-ax2.plot(gps_time, gps_y_his, label="gps")
-ax2.plot(estimator_time, y_est_his, label="EST 1")
-ax2.plot(estimator_time, y_est_2_his, label="EST 2")
-ax2.legend()
-ax2.grid()
+# # GPS comparison
+# num_plot = 2
+# fig = plt.figure("GPS EST position comparison")
+# ax1 = fig.add_subplot(num_plot,1,1,ylabel="x")
+# ax1.plot(gps_time, gps_x_his, 			label="gps")
+# ax1.plot(estimator_time, x_est_his, 	label="EST 1")
+# ax1.plot(estimator_time, x_est_2_his, 	label="EST 2")
+# ax1.legend()
+# ax1.grid()
+# ax2 = fig.add_subplot(num_plot,1,2,ylabel="y")
+# ax2.plot(gps_time, gps_y_his, 			label="gps")
+# ax2.plot(estimator_time, y_est_his, 	label="EST 1")
+# ax2.plot(estimator_time, y_est_2_his, 	label="EST 2")
+# ax2.legend()
+# ax2.grid()
 
 # raw data and estimation data comparison
 num_plot = 3
@@ -145,10 +149,19 @@ ax4.grid()
 
 fig = plt.figure("input")
 ax4 = fig.add_subplot(1,1,1,ylabel="ax")
-ax4.plot(estimator_time, df_his, "--",	label="cmd.df")
+ax4.plot(estimator_time, df_his, "-",	label="cmd.df")
 ax4.plot(estimator_time, a_his, "--",	label="cmd.a")
 ax4.legend()
 ax4.grid()
+
+fig = plt.figure("yaw compare")
+ax4 = fig.add_subplot(1,1,1,ylabel="yaw")
+# ax4.plot(gps_time, yaw_true_his[:-1], "--",	label="yaw true")
+ax4.plot(estimator_time, psi_est_his, "--",	label="yaw est 1")
+ax4.plot(estimator_time, psi_est_2_his, "--",	label="yaw est 2")
+ax4.legend()
+ax4.grid()
+
 """ GPS imu fusion data plot
 # Figure 3 hedge_imu_fusion_data
 num_plot = 4

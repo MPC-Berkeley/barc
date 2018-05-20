@@ -18,6 +18,19 @@ def create_circle(rad, n, c):
 
 def add_curve(theta, curvature, length, angle):
     d_theta = 0
+    ds = 0.01
+    curve = 2*sum(arange(1,length/2+1,1))+length/2
+    for i in range(0,length):
+        if i < length/2+1:
+            d_theta = d_theta + angle / curve
+        else:
+            d_theta = d_theta - angle / curve
+        theta = hstack((theta,theta[-1] + d_theta))
+        curvature = hstack((curvature,d_theta/ds))
+    return theta, curvature
+
+def add_curve_step(theta, curvature, length, angle):
+    d_theta = 0
     ds = 0.03
     curve = 2*sum(arange(1,length/2+1,1))+length/2
     for i in range(0,length):
@@ -28,6 +41,7 @@ def add_curve(theta, curvature, length, angle):
         theta = hstack((theta,theta[-1] + d_theta))
         curvature = hstack((curvature,d_theta/ds))
     return theta, curvature
+
 
 def create_bezier(p0,p1,p2,dt):
     t = arange(0,1+dt,dt)[:,None]

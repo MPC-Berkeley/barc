@@ -124,9 +124,9 @@ function main()
         t_ros   = get_rostime()
         t       = to_sec(t_ros)
         # # print(t)
-        # if sizeof(cmd_log.z[t.>cmd_log.t+0.2,2]) >= 1
-        #    u_current[2] = cmd_log.z[t.>=cmd_log.t+0.2,2][end]       # artificial steering input delay
-        # end
+        if sizeof(cmd_log.z[t.>cmd_log.t+0.2,2]) >= 1
+           u_current[2] = cmd_log.z[t.>=cmd_log.t+0.2,2][end]       # artificial steering input delay
+        end
         # update current state with a new row vector
         
         # z_current[i,:],slip_ang[i,:]  = simDynModel_exact_xy(z_current[i-1,:], u_current', dt, modelParams)
@@ -136,10 +136,12 @@ function main()
         # d_f_his[1:end-1] = d_f_his[2:end]
         # d_f_his[end] = u_current[2]
         # u_current[2] = u_temp
+        u_current[1] *= 1
 
         # println(d_f_his)
         # println("input from simulator node",round(u_current,2))
         z_current[i,:],slip_ang[i,:]  = simDynModel_xy(z_current[i-1,:], u_current', dt, modelParams)
+        
 
         z_real.t_msg[i] = t
         z_real.t[i]     = t
@@ -148,7 +150,7 @@ function main()
 
         # IMU measurements
         if i%2 == 0                 # 50 Hz
-            imu_drift   = 1+(t-t0)/100#sin(t/100*pi/2)     # drifts to 1 in 100 seconds (and add random start value 1)
+            imu_drift   = 0#1+(t-t0)/100#sin(t/100*pi/2)     # drifts to 1 in 100 seconds (and add random start value 1)
             rand_yaw = 0.05*randn()
             if rand_yaw > 0.1
                 rand_yaw = 0.1
@@ -180,7 +182,7 @@ function main()
                 rand_accX=-0.1
             end
 
-            imu_data.linear_acceleration.x = diff(z_current[i-1:i,3])[1]/dt - z_current[i-1,6]*z_current[i-1,4] +rand_accX#+ randn()*0.3*1.0
+            imu_data.linear_acceleration.x = diff(z_current[i-1:i,3])[1]/dt - z_current[i-1,6]*z_current[i-1,4] #+rand_accX#+ randn()*0.3*1.0
 
             rand_accY = 0.01*randn()
             if rand_accY > 0.1
@@ -190,7 +192,7 @@ function main()
             end
 
             # imu_data.linear_acceleration.y = diff(z_current[i-1:i,4])[1]/dt + z_current[i,6]*z_current[i,3] +rand_accY#+ randn()*0.3*1.0
-            imu_data.linear_acceleration.y = (z_current[i,4]-z_current[i-1,4])/dt + z_current[i-1,6]*z_current[i-1,3] +rand_accY#+ randn()*0.3*1.0
+            imu_data.linear_acceleration.y = (z_current[i,4]-z_current[i-1,4])/dt + z_current[i-1,6]*z_current[i-1,3] #+rand_accY#+ randn()*0.3*1.0
             publish(pub_imu, imu_data)      # Imu format is defined by ROS, you can look it up by google "rosmsg Imu"
                                             # It's sufficient to only fill the orientation part of the Imu-type (with one quaternion)
             # println("ay from simulator:",imu_data.linear_acceleration.y)
@@ -243,7 +245,7 @@ function main()
                 rand_x=-0.1
             end
 
-            x = round(z_current[i,1] +  rand_x,2)#0.002*randn(),2)       # Indoor gps measures, rounded on cm
+            x = round(z_current[i,1] ,2)# +  rand_x,2)#0.002*randn(),2)       # Indoor gps measures, rounded on cm
 
             rand_y = 0.01*randn()
             if rand_y > 0.1
@@ -252,7 +254,7 @@ function main()
                 rand_y=-0.1
             end
 
-            y = round(z_current[i,2] + rand_y,2)#0.002*randn(),2)
+            y = round(z_current[i,2] ,2)#+ rand_y,2)#0.002*randn(),2)
 
             if randn()>10            # simulate gps-outlier (probability about 0.13% for randn()>3, 0.62% for randn()>2.5, 2.3% for randn()>2.0 )
                 x += 1#randn()        # add random value to x and y

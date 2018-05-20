@@ -35,10 +35,10 @@ function SE_callback(msg::pos_info,acc_f::Array{Float64},lapStatus::LapStatus,po
     oldTraj.count[lapStatus.currentLap] += 1
 end
 
-# function ST_callback(msg::pos_info,z_true::Array{Float64,1})
-#     z_true[:] = [msg.x,msg.y,msg.v_x,msg.v_y,msg.psi,msg.psiDot]
-#     # println("z_true from LMPC node",round(z_true,4))
-# end
+function ST_callback(msg::pos_info,z_true::Array{Float64,1})
+    z_true[:] = [msg.x,msg.y,msg.v_x,msg.v_y,msg.psi,msg.psiDot]
+    # println("z_true from LMPC node",round(z_true,4))
+end
 
 # This is the main function, it is called when the node is started.
 function main()
@@ -46,7 +46,7 @@ function main()
     const BUFFERSIZE       = 500
     const LMPC_LAP         = 30
 
-    const SIM_FLAG         = true   # true: save the data in simulation folder, false: save the data in experiment folder
+    const SIM_FLAG         = false   # true: save the data in simulation folder, false: save the data in experiment folder
 
     const PF_FLAG          = true  # true:only pF,     false:1 warm-up lap and LMPC
     const PID_PF           = false
@@ -136,6 +136,7 @@ function main()
     u_prev           = mpcSol.u
     GP_e_vy          = zeros(mpcParams.N)
     GP_e_psidot      = zeros(mpcParams.N)
+    d_f_lp = 0.0
 
     # NODE INITIALIZATION
     init_node("mpc_traj")
@@ -143,7 +144,7 @@ function main()
     pub         = Publisher("ecu", ECU, queue_size=1)::RobotOS.Publisher{barc.msg.ECU}
     mpcSol_pub  = Publisher("mpc_solution", mpc_solution, queue_size=1)::RobotOS.Publisher{barc.msg.mpc_solution}; acc_f = [0.0]
     s1          = Subscriber("pos_info", pos_info, SE_callback, (acc_f,lapStatus,posInfo,mpcSol,oldTraj,z_est,x_est),queue_size=1)::RobotOS.Subscriber{barc.msg.pos_info}
-    # s2          = Subscriber("real_val", pos_info, ST_callback, (z_true,),queue_size=1)::RobotOS.Subscriber{barc.msg.pos_info}
+    s2          = Subscriber("real_val", pos_info, ST_callback, (z_true,),queue_size=1)::RobotOS.Subscriber{barc.msg.pos_info}
 
     num_lap             = LMPC_LAP+1+max(selectedStates.Nl,selectedStates.feature_Nl)
     log_cvx             = zeros(BUFFERSIZE,mpcParams.N,3,num_lap)
@@ -303,7 +304,7 @@ function main()
                                   "oldTraj",oldTraj,"selectedStates",selectedStates,"oldSS",oldSS,"solHistory",solHistory,
                                   "selectHistory",selectHistory,"selectFeatureHistory",selectFeatureHistory,"statusHistory",statusHistory,
                                   "track",track,"modelParams",modelParams,"mpcParams",mpcParams)
-                    # COLLECT ONE STEP PREDICTION ERROR FOR GPR 
+                    # COLLECT ONE STEP PREDICTION ERROR FOR GPR
                     if !GP_LOCAL_FLAG && !GP_FULL_FLAG
                         run_time = Dates.format(now(),"yyyy-mm-dd-H:M")
                         log_path = "$(homedir())/simulations/Feature_Data/FeatureData_GP-$(file_name).jld"
@@ -607,6 +608,7 @@ function main()
 
             mpcSol.a_x = mpcSol.u[1+mpcParams.delay_a,1] 
             mpcSol.d_f = mpcSol.u[1+mpcParams.delay_df,2]
+
             # mpcSol.a_x = mpcSol.u[1,1]
             # mpcSol.d_f = mpcSol.u[1,2]
             if length(mpcSol.df_his)==1
@@ -675,8 +677,20 @@ function main()
             end
 
             # DATA UPDATE
-            cmd.motor   = convert(Float32,mpcSol.a_x)
+            # n = 0.06*randn()
+            # n = min(0.06,n)
+            # n = max(-0.06,n)
+            # mpcSol.d_f += n
+            # mpcSol.d_f = max(-0.1*pi,mpcSol.d_f)
+            # mpcSol.d_f = min(0.1*pi,mpcSol.d_f)
+            
+            # d_f_lp = d_f_lp + 0.3*(mpcSol.d_f-d_f_lp)
+            # cmd.servo   = convert(Float32,d_f_lp)
             cmd.servo   = convert(Float32,mpcSol.d_f)
+
+            cmd.motor   = convert(Float32,mpcSol.a_x)
+
+
             z_prev      = copy(mpcSol.z)
             u_prev      = copy(mpcSol.u)
             # toc()

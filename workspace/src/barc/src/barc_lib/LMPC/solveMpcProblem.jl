@@ -26,8 +26,8 @@ function solveMpcProblem_pathFollow(mdl::MpcModel_pF,mpcParams_pF::MpcParams,mod
     v_ref=mpcParams_pF.vPathFollowing
     width=0.8*0.9 # 0.9 is to give some margin for safety due tp hard constraint for simple path following case
     
-    z_final=car_sim_kin(z_prev[end,:],u_prev[end,:],track,modelParams)
-    z_curvature=vcat(z_curr',z_prev[3:end,:],z_final)
+    z_final=car_sim_kin(z_prev[end,1:4],u_prev[end,:],track,modelParams)
+    z_curvature=vcat(z_curr',z_prev[3:end,1:4],z_final)
     # println("u_prev is $(u_prev[:,1])")
     # println("s is $(z_curvature[:,1])")
     curvature=curvature_prediction(z_curvature,track)

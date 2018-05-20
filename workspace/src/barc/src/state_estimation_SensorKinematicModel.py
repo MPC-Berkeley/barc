@@ -113,6 +113,8 @@ class StateEst(object):
     vy_true = 0.0
     yaw_true = 0.0
     psidot_true = 0.0
+    yaw_true_his = [0.0]
+    psiDot_true_his = [0.0]
 
     # Estimator data
     x_est = 0.0
@@ -140,7 +142,9 @@ class StateEst(object):
         self.vy_true = data.v_y
         self.yaw_true = data.psi
         self.psidot_true = data.psiDot
-        # print(data.psiDot)
+        # FOR DEBUGGING purpose
+        self.yaw_true_his.append(data.psi)
+        self.psiDot_true_his.append(data.psiDot)
 
     # ultrasound gps data
     def gps_callback(self, data):
@@ -300,9 +304,9 @@ def state_estimation():
     state_pub_pos = rospy.Publisher('pos_info', pos_info, queue_size=1)
 
     # Simulations and Experiment will subscribe to different GPS topis
-    # rospy.Subscriber('hedge_imu_fusion', hedge_imu_fusion, se.gps_callback, queue_size=1)
-    rospy.Subscriber('real_val', pos_info, se.true_callback, queue_size=1)
-    rospy.Subscriber('hedge_pos', hedge_pos, se.gps_callback, queue_size=1)
+    rospy.Subscriber('hedge_imu_fusion', hedge_imu_fusion, se.gps_callback, queue_size=1)
+    # rospy.Subscriber('real_val', pos_info, se.true_callback, queue_size=1)
+    # rospy.Subscriber('hedge_pos', hedge_pos, se.gps_callback, queue_size=1)
 
     # for debugging to collect the data
     rospy.Subscriber('hedge_imu_fusion', hedge_imu_fusion, se.gps_imu_fusion_callback, queue_size=1)
@@ -328,8 +332,8 @@ def state_estimation():
     #Q = diag([1/20*dt**5*qa,1/20*dt**5*qa,1/3*dt**3*qa,1/3*dt**3*qa,dt*qa,dt*qa,1/3*dt**3*qp,dt*qp,0.01, 0.01,0.01,1.0,1.0,0.1])
     #R = diag([0.5,0.5,0.5,0.1,10.0,1.0,1.0,     5.0,5.0,0.1,0.5, 1.0, 1.0])
                                                                                                     # drift_1
-    Q = diag([1/20*dt**5*qa,1/20*dt**5*qa,1/3*dt**3*qa,1/3*dt**3*qa,dt*qa,dt*qa,1/3*dt**3*qp,dt*qp, 10000, 0.2,0.2,1.0,1.0,0.1])
-    R = diag([5.0,5.0,1.0,10.0,100.0,1000.0,1000.0,     5.0,5.0,10.0,1.0, 10.0,10.0])
+    Q = 0.1*diag([1/20*dt**5*qa,1/20*dt**5*qa,1/3*dt**3*qa,1/3*dt**3*qa,dt*qa,dt*qa,1/3*dt**3*qp,dt*qp, 1, 0.2,0.2,1.0,1.0,0.1])
+    R = 0.1*diag([5.0,5.0,1.0,10.0,100.0,1000.0,1000.0,     5.0,5.0,10.0,1.0, 10.0,10.0])
     # R = diag([4*5.0,4*5.0,1.0,2*10.0,2*100.0,1000.0,1000.0,     4*5.0,4*5.0,10.0,1.0, 10.0,10.0])
     # R = diag([1*5.0,1*5.0,1.0,2*10.0,2*100.0,1000.0,1000.0,     1*5.0,1*5.0,10.0,1.0, 10.0,10.0])
     #         x,y,v,psi,psiDot,a_x,a_y, x, y, psi, v
@@ -373,6 +377,8 @@ def state_estimation():
     vel_meas_his        = [0.0]
     a_his               = [0.0]
     df_his              = [0.0]
+    a_lp_his            = [0.0]
+    df_lp_his           = [0.0]
     estimator_time      = [0.0]
     x_est_his       = [0.0]
     y_est_his       = [0.0]
@@ -392,13 +398,17 @@ def state_estimation():
         d_f_hist.append(se.cmd_servo)           # this is for a 0.2 seconds delay of steering
         # d_a_hist.append(se.cmd_motor)           # this is for a 0.2 seconds delay of steering
         
-
-
         # d_f_lp = d_f_lp + 0.5*(se.cmd_servo-d_f_lp) # low pass filter on steering
         # a_lp = a_lp + 1.0*(se.cmd_motor-a_lp)       # low pass filter on acceleration
         # u = [a_lp, d_f_hist.pop(0)]
 
-        u = [se.cmd_motor, d_f_hist.pop(0)]     # this is with 0.2s delay for steering without low pass filter
+
+        d_f = d_f_hist.pop(0)
+        # d_f_lp = d_f_lp + 0.3*(d_f-d_f_lp) # low pass filter on steering
+        # # a_lp = a_lp + 1.0*(se.cmd_motor-a_lp)       # low pass filter on acceleration
+        # u = [se.cmd_motor, d_f_lp]
+
+        u = [se.cmd_motor, d_f]     # this is with 0.2s delay for steering without low pass filter
 
         # u = [d_a_hist.pop(0), d_f_hist.pop(0)]     # this is with 0.2s delay for steering without low pass filter
 
@@ -440,6 +450,9 @@ def state_estimation():
         vel_meas_his.append(se.vel_meas) # measurment data from encoder
         a_his.append(u[0])
         df_his.append(u[1])
+        a_lp_his.append(se.cmd_motor)
+        df_lp_his.append(d_f)
+
         x_est_his.append(x_est)
         y_est_his.append(y_est)
         x_est_2_his.append(x_est_2)
@@ -451,8 +464,8 @@ def state_estimation():
         #print "V_x and V_y : (%f, %f)" % (v_x_est, v_y_est)
 
         # Update track position
-        l.set_pos(x_est_2, y_est_2, psi_est_2, v_x_est, v_y_est, psi_dot_est)
-        # l.set_pos(se.x_true, se.y_true, se.yaw_true, se.vx_true, se.vy_true, se.psidot_true)
+        # l.set_pos(x_est_2, y_est_2, psi_est_2, v_x_est, v_y_est, psi_dot_est)
+        l.set_pos(x_est,   y_est,   psi_est,   v_x_est, v_y_est, psi_dot_est)
 
 
         # Calculate new s, ey, epsi (only 12.5 Hz, enough for controller that runs at 10 Hz)
@@ -475,10 +488,12 @@ def state_estimation():
 
     homedir = os.path.expanduser("~")
     pathSave = os.path.join(homedir,"barc_debugging/estimator_output.npz")
-    np.savez(pathSave,x_est_his = x_est_his,
-                      y_est_his = y_est_his,
-                      x_est_2_his = x_est_2_his,
-                      y_est_2_his = y_est_2_his,
+    np.savez(pathSave,yaw_true_his      = se.yaw_true_his,
+                      psiDot_true_his   = se.psiDot_true_his,
+                      x_est_his     = x_est_his,
+                      y_est_his     = y_est_his,
+                      x_est_2_his   = x_est_2_his,
+                      y_est_2_his   = y_est_2_his,
                       psi_drift_est_his     = psi_drift_est_his,
                       psi_drift_est_2_his   = psi_drift_est_2_his,
                       psi_est_his           = psi_est_his,
@@ -492,6 +507,8 @@ def state_estimation():
                       vel_meas_his          = vel_meas_his,
                       a_his                 = a_his,
                       df_his                = df_his,
+                      a_lp_his              = a_lp_his,
+                      df_lp_his             = df_lp_his,
                       estimator_time        = estimator_time)
 
     pathSave = os.path.join(homedir,"barc_debugging/estimator_imu.npz")

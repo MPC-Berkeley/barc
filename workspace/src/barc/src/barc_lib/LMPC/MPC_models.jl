@@ -78,6 +78,7 @@ type MpcModel_pF
         @NLconstraint(mdl, [i=1:4], z_Ol[1,i] == z0[i])         # initial condition
         # @NLconstraint(mdl, u_Ol[1,1] == uPrev[2,1])
         @NLconstraint(mdl, [i=1:mpcParams_pF.delay_a], u_Ol[i,1] == a_his[i]) # steering delay is 1 for simulation and 3 for experiment
+
         @NLconstraint(mdl, [i=1:mpcParams_pF.delay_df], u_Ol[i,2] == df_his[i]) # steering delay is 1 for simulation and 3 for experiment
 
         for i=1:N
@@ -87,6 +88,8 @@ type MpcModel_pF
             @NLconstraint(mdl, z_Ol[i+1,2] == z_Ol[i,2] + dt*z_Ol[i,4]*sin(z_Ol[i,3]+bta[i])  )             # ey
             @NLconstraint(mdl, z_Ol[i+1,3] == z_Ol[i,3] + dt*(z_Ol[i,4]/L_a*sin(bta[i])-dsdt[i]*c[i])  )    # epsi
             @NLconstraint(mdl, z_Ol[i+1,4] == z_Ol[i,4] + dt*(u_Ol[i,1] - c_f*z_Ol[i,4]))                   # v
+            # low pass filter for steering
+            # @NLconstraint(mdl, z_Ol[i+1,5] == z_Ol[i,5] + dt*(u_Ol[i,2]-z_Ol[i,5])*0.3)
         end
 
         ###### ------ Cost definitions ------ ######

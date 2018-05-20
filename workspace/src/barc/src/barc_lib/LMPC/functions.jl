@@ -416,7 +416,7 @@ end
 function InitializeParameters(mpcParams::MpcParams,mpcParams_4s::MpcParams,mpcParams_pF::MpcParams,modelParams::ModelParams,mpcSol::MpcSol,
                               selectedStates::SelectedStates,oldSS::SafeSetData,oldTraj::OldTrajectory,mpcCoeff::MpcCoeff,mpcCoeff_dummy::MpcCoeff,
                               LMPC_LAP::Int64,delay_df::Int64,delay_a::Int64,N::Int64,BUFFERSIZE::Int64)
-    simulator_flag   = true
+    simulator_flag   = false
 
     if simulator_flag == true   # if the BARC is in use
 
@@ -446,10 +446,12 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_4s::MpcParams,mpcPa
         mpcParams_pF.Q              = [0.0,50.0,5.0,20.0]
         mpcParams_pF.R              = 0*[1.0,1.0]               # put weights on a and d_f
         mpcParams_pF.QderivZ        = 1.0*[0.0,0,1.0,0]           # cost matrix for derivative cost of states
-        mpcParams_pF.QderivU        = 8*[2,1]                # cost matrix for derivative cost of inputs
+        mpcParams_pF.QderivU        = 1*[2,1]                # cost matrix for derivative cost of inputs
         mpcParams_pF.vPathFollowing = 1                       # reference speed for first lap of path following
         mpcParams_pF.delay_df       = delay_df                         # steering delay (number of steps)
         mpcParams_pF.delay_a        = delay_a                         # acceleration delay
+
+        modelParams.c_f             = 0.05       
 
     elseif simulator_flag == false  # if the simulator is in use
 
@@ -476,17 +478,20 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_4s::MpcParams,mpcPa
         mpcParams_4s.delay_a           = delay_a                             # acceleration delay
 
         mpcParams_pF.N              = N
-        mpcParams_pF.Q              = [0.0,20.0,10.0,10.0]
-        mpcParams_pF.R              = 2*[1.0,1.0]               # put weights on a and d_f
+        mpcParams_pF.Q              = [0.0,20.0,1.0,10.0]
+        mpcParams_pF.R              = 2*[1.0,0.1]               # put weights on a and d_f
         mpcParams_pF.QderivZ        = 1.0*[0.0,1.0,1.0,1.0]           # cost matrix for derivative cost of states
-        mpcParams_pF.QderivU        = 0.1*[1,0.1]                # cost matrix for derivative cost of inputs
-        mpcParams_pF.vPathFollowing = 1.5                       # reference speed for first lap of path following
+        mpcParams_pF.QderivU        = 0.1*[1,0.01]                # cost matrix for derivative cost of inputs
+        mpcParams_pF.vPathFollowing = 1.0                       # reference speed for first lap of path following
         mpcParams_pF.delay_df       = delay_df                         # steering delay (number of steps)
         mpcParams_pF.delay_a        = delay_a                         # acceleration delay
+
+        modelParams.c_f             = 0.5       
+
     end
 
     selectedStates.Np           = 20        # please select an even number
-    selectedStates.Nl           = 3         # Number of previous laps to include in the convex hull
+    selectedStates.Nl           = 10         # Number of previous laps to include in the convex hull
     selectedStates.feature_Np   = 30        # Number of points from previous laps to do SYS_ID
     selectedStates.feature_Nl   = 2         # Number of previous laps to do SYS_ID 
     selectedStates.selStates    = zeros(selectedStates.Nl*selectedStates.Np,6)
@@ -497,7 +502,6 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_4s::MpcParams,mpcPa
     modelParams.dt              = 0.1       
     modelParams.m               = 1.98
     modelParams.I_z             = 0.03
-    modelParams.c_f             = 0.05       
 
     num_lap = 1 + selectedStates.Nl + LMPC_LAP
 
