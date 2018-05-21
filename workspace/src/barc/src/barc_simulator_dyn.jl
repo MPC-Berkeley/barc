@@ -317,9 +317,9 @@ function main()
     clean_up(slip_a)
 
     # Save simulation data to file
-    log_path = "$(homedir())/simulations/output-SIM-$(run_id[1:4]).jld"
-    save(log_path,"gps_meas",gps_meas,"z",z_real,"imu_meas",imu_meas,"cmd_log",cmd_log,"slip_a",slip_a)
-    println("Exiting node... Saving data to $log_path. Simulated $((i-1)*dt) seconds.")
+    # log_path = "$(homedir())/simulations/output-SIM-$(run_id[1:4]).jld"
+    # save(log_path,"gps_meas",gps_meas,"z",z_real,"imu_meas",imu_meas,"cmd_log",cmd_log,"slip_a",slip_a)
+    # println("Exiting node... Saving data to $log_path. Simulated $((i-1)*dt) seconds.")
 
 end
 
