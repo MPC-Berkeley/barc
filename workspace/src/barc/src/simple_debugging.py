@@ -1,7 +1,9 @@
 import numpy as np
 import os
 import matplotlib.pyplot as plt
-
+from Localization_helpers import Localization
+l = Localization()
+l.create_race_track()
 
 # FIGURE 1 plotting of estimator output data
 homedir = os.path.expanduser("~")
@@ -58,15 +60,17 @@ vz_his = npz_hedge_imu_fusion["vz_his"]
 gps_x_his = npz_hedge_imu_fusion["gps_x_his"]
 gps_y_his = npz_hedge_imu_fusion["gps_y_his"]
 gps_time  = npz_hedge_imu_fusion["gps_time"]
+yaw_gps_meas_his = npz_hedge_imu_fusion["yaw_gps_meas_his"]
 
-num_plot = 3
+
+num_plot = 3.
 fig = plt.figure("Estimator_output")
 ax1 = fig.add_subplot(num_plot,1,1,ylabel="Psi_estimation")
 ax1.plot(estimator_time,psi_drift_est_his, 	label="psi_drift_1")
 ax1.plot(estimator_time,psi_drift_est_2_his,label="psi_drift_2")
 ax1.plot(estimator_time,psi_est_his, 		label="psi_est_1")
 ax1.plot(estimator_time,psi_est_2_his,		label="psi_est_2")
-ax1.plot(imu_time,yaw_meas_his,				label="yaw_meas")
+# ax1.plot(imu_time,yaw_meas_his,				label="yaw_meas")
 ax1.plot(estimator_time,np.cumsum(psi_dot_est_his*0.02), label="yaw by integrate")
 ax1.legend()
 ax1.grid()
@@ -86,66 +90,66 @@ ax3.legend()
 ax3.grid()
 
 # FIGURE 2 plotting of IMU data
-num_plot = 3
-fig = plt.figure("Imu raw data")
-ax1 = fig.add_subplot(num_plot,1,1,ylabel="IMU yaw")
-ax1.plot(yaw_raw_his, label="yaw_raw")
-ax1.plot(yaw_his, label="yaw = unwrap(yaw_raw)")
-ax1.plot(yaw0_his, label="yaw0")
-ax1.plot(yaw_meas_his, label="yaw_meas = yaw - yaw0")
-ax1.legend()
-ax1.grid()
-ax2 = fig.add_subplot(num_plot,1,2,ylabel="IMU acc & psidot")
-ax2.plot(psidot_raw_his,label="psidot_raw")
-ax2.plot(a_x_raw_his,label="ax_raw")
-ax2.plot(a_y_raw_his,label="ay_raw")
-ax2.plot(a_x_meas_his,label="ax_meas")
-ax2.plot(a_y_meas_his,label="ay_meas")
-ax2.legend()
-ax2.grid()
-ax3 = fig.add_subplot(num_plot,1,3,ylabel="pitch & roll angle")
-ax3.plot(roll_raw_his,label="roll angle")
-ax3.plot(pitch_raw_his,label="pitch angle")
-ax3.legend()
-ax3.grid()
-
-# # GPS comparison
-# num_plot = 2
-# fig = plt.figure("GPS EST position comparison")
-# ax1 = fig.add_subplot(num_plot,1,1,ylabel="x")
-# ax1.plot(gps_time, gps_x_his, 			label="gps")
-# ax1.plot(estimator_time, x_est_his, 	label="EST 1")
-# ax1.plot(estimator_time, x_est_2_his, 	label="EST 2")
+# num_plot = 3
+# fig = plt.figure("Imu raw data")
+# ax1 = fig.add_subplot(num_plot,1,1,ylabel="IMU yaw")
+# ax1.plot(yaw_raw_his, label="yaw_raw")
+# ax1.plot(yaw_his, label="yaw = unwrap(yaw_raw)")
+# ax1.plot(yaw0_his, label="yaw0")
+# ax1.plot(yaw_meas_his, label="yaw_meas = yaw - yaw0")
 # ax1.legend()
 # ax1.grid()
-# ax2 = fig.add_subplot(num_plot,1,2,ylabel="y")
-# ax2.plot(gps_time, gps_y_his, 			label="gps")
-# ax2.plot(estimator_time, y_est_his, 	label="EST 1")
-# ax2.plot(estimator_time, y_est_2_his, 	label="EST 2")
+# ax2 = fig.add_subplot(num_plot,1,2,ylabel="IMU acc & psidot")
+# ax2.plot(psidot_raw_his,label="psidot_raw")
+# ax2.plot(a_x_raw_his,label="ax_raw")
+# ax2.plot(a_y_raw_his,label="ay_raw")
+# ax2.plot(a_x_meas_his,label="ax_meas")
+# ax2.plot(a_y_meas_his,label="ay_meas")
 # ax2.legend()
 # ax2.grid()
+# ax3 = fig.add_subplot(num_plot,1,3,ylabel="pitch & roll angle")
+# ax3.plot(roll_raw_his,label="roll angle")
+# ax3.plot(pitch_raw_his,label="pitch angle")
+# ax3.legend()
+# ax3.grid()
 
-# raw data and estimation data comparison
-num_plot = 3
-fig = plt.figure("raw data and est data comparison")
-ax2 = fig.add_subplot(num_plot,1,1,ylabel="ax")
-ax2.plot(imu_time, a_x_meas_his, ".", 	label="ax_meas")
-ax2.plot(estimator_time, ax_est_his, 	label="ax_est")
-ax2.plot(estimator_time, a_his, "--",	label="cmd.acc")
+# GPS comparison
+num_plot = 2
+fig = plt.figure("GPS EST position comparison")
+ax1 = fig.add_subplot(num_plot,1,1,ylabel="x")
+# ax1.plot(gps_time, gps_x_his, 			label="gps")
+ax1.plot(estimator_time, x_est_his, 	label="EST 1")
+ax1.plot(estimator_time, x_est_2_his, 	label="EST 2")
+ax1.legend()
+ax1.grid()
+ax2 = fig.add_subplot(num_plot,1,2,ylabel="y")
+# ax2.plot(gps_time, gps_y_his, 			label="gps")
+ax2.plot(estimator_time, y_est_his, 	label="EST 1")
+ax2.plot(estimator_time, y_est_2_his, 	label="EST 2")
 ax2.legend()
 ax2.grid()
-ax3 = fig.add_subplot(num_plot,1,2,ylabel="ay")
-ax3.plot(imu_time, a_y_meas_his, ".", 	label="ay_meas")
-ax3.plot(estimator_time, ay_est_his, 	label="ay_est")
-ax3.plot(estimator_time, df_his, "--",	label="cmd.df")
-ax3.legend()
-ax3.grid()
-ax4 = fig.add_subplot(num_plot,1,3,ylabel="psidot")
-ax4.plot(imu_time, psidot_raw_his, ".", label="psidot_meas")
-ax4.plot(estimator_time,psi_dot_est_his,label="psidot_est")
-ax4.plot(estimator_time, df_his, "--",	label="cmd.df")
-ax4.legend()
-ax4.grid()
+
+# raw data and estimation data comparison
+# num_plot = 3
+# fig = plt.figure("raw data and est data comparison")
+# ax2 = fig.add_subplot(num_plot,1,1,ylabel="ax")
+# ax2.plot(imu_time, a_x_meas_his, ".", 	label="ax_meas")
+# ax2.plot(estimator_time, ax_est_his, 	label="ax_est")
+# ax2.plot(estimator_time, a_his, "--",	label="cmd.acc")
+# ax2.legend()
+# ax2.grid()
+# ax3 = fig.add_subplot(num_plot,1,2,ylabel="ay")
+# ax3.plot(imu_time, a_y_meas_his, ".", 	label="ay_meas")
+# ax3.plot(estimator_time, ay_est_his, 	label="ay_est")
+# ax3.plot(estimator_time, df_his, "--",	label="cmd.df")
+# ax3.legend()
+# ax3.grid()
+# ax4 = fig.add_subplot(num_plot,1,3,ylabel="psidot")
+# ax4.plot(imu_time, psidot_raw_his, ".", label="psidot_meas")
+# ax4.plot(estimator_time,psi_dot_est_his,label="psidot_est")
+# ax4.plot(estimator_time, df_his, "--",	label="cmd.df")
+# ax4.legend()
+# ax4.grid()
 
 fig = plt.figure("input")
 ax4 = fig.add_subplot(1,1,1,ylabel="ax")
@@ -154,13 +158,64 @@ ax4.plot(estimator_time, a_his, "--",	label="cmd.a")
 ax4.legend()
 ax4.grid()
 
-fig = plt.figure("yaw compare")
+fig = plt.figure("yaw  haha compare")
 ax4 = fig.add_subplot(1,1,1,ylabel="yaw")
+ax4.plot(imu_time,yaw_meas_his, "--",	label="yaw meas")
+ax4.plot(gps_time,yaw_gps_meas_his, "--",	label="yaw gps meas")
+ax4.plot(estimator_time, psi_est_his, "--",	label="yaw est 1")
+ax4.plot(estimator_time,psi_drift_est_his, 	label="psi_drift_1")
+# ax4.plot(, psi_est_2_his, "--",	label="yaw est 2")
+# ax4.plot(estimator_time, psi_est_2_his, "--",	label="yaw est 2")
+ax4.plot(psidot_raw_his,label="psidot_raw")
+ax4.legend()
+ax4.grid()
+
+# fig = plt.figure("drift estmation")
+# ax1 = fig.add_subplot(1,1,1,ylabel="Psi drift estimation")
+# ax1.plot(estimator_time,psi_drift_est_his, 	label="psi_drift_1")
+# ax1.plot(estimator_time,psi_drift_est_2_his,label="psi_drift_2")
+# ax1.legend()
+# ax1.grid()
+
+
+fig = plt.figure("yaw compare")
+ax4 = fig.add_subplot(2,1,2,ylabel="yaw")
 # ax4.plot(gps_time, yaw_true_his[:-1], "--",	label="yaw true")
 ax4.plot(estimator_time, psi_est_his, "--",	label="yaw est 1")
 ax4.plot(estimator_time, psi_est_2_his, "--",	label="yaw est 2")
+# ax4.plot(imu_time,yaw_raw_his, label="yaw_raw")
+ax4.plot(estimator_time,np.cumsum(psi_dot_est_his*0.02), label="yaw by integrate")
 ax4.legend()
 ax4.grid()
+ax1 = fig.add_subplot(2,1,1,ylabel="Psi drift estimation")
+ax1.plot(estimator_time,psi_drift_est_his, 	label="psi_drift_1")
+ax1.plot(estimator_time,psi_drift_est_2_his,label="psi_drift_2")
+# ax1.plot(estimator_time,vy_est_his,label="vy_est")
+ax1.plot(estimator_time,psi_dot_est_his,label="psidot")
+ax1.legend()
+ax1.grid()
+
+
+fig = plt.figure("track x-y plot")
+ax1 = fig.add_subplot(1,1,1,ylabel="track x-y plot")
+ax1.plot(l.nodes[0],l.nodes[1],color="grey",linestyle="--", alpha=0.3)
+ax1.plot(l.nodes_bound1[0],l.nodes_bound1[1],color="red",alpha=0.3)
+ax1.plot(l.nodes_bound2[0],l.nodes_bound2[1],color="red",alpha=0.3)
+ax1.axis("equal")
+ax1.plot(x_est_his,y_est_his,color="green",label="est 1")
+# ax1.plot(x_est_2_his,y_est_2_his,color="blue",label="est 2")
+# ax1.plot(gps_x_his,gps_y_his,color="red",label="gps")
+ax1.legend()
+
+
+fig = plt.figure("vx check")
+ax1 = fig.add_subplot(1,1,1,ylabel="vx check")
+ax1.plot(estimator_time,np.cumsum(vx_est_his*0.02),color="blue",label="vx_int")
+# ax1.plot(gps_x_his,gps_y_his,color="red",label="gps")
+ax1.legend()
+ax1.grid()
+
+
 
 """ GPS imu fusion data plot
 # Figure 3 hedge_imu_fusion_data

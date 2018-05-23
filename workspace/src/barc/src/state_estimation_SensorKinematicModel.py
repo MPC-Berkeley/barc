@@ -17,7 +17,7 @@ import rospy
 from Localization_helpers import Localization
 from barc.msg import ECU, pos_info, Vel_est
 from sensor_msgs.msg import Imu
-from marvelmind_nav.msg import hedge_pos, hedge_imu_fusion, hedge_imu_raw
+from marvelmind_nav.msg import hedge_pos, hedge_imu_fusion, hedge_imu_raw, hedge_pos_ang
 from std_msgs.msg import Header
 from numpy import eye, array, zeros, diag, unwrap, tan, cos, sin, vstack, linalg, append
 from numpy import ones, polyval, delete, size
@@ -61,6 +61,7 @@ class StateEst(object):
     a_x_meas_his = [0.0]
     a_y_meas_his = [0.0]
     imu_time = [0.0]
+    imu_prev_time = 0.0
 
     # Velocity
     vel_meas = 0.0
@@ -71,12 +72,16 @@ class StateEst(object):
     # GPS
     x_meas = 0.0
     y_meas = 0.0
+    x2_meas = 0.0
+    y2_meas = 0.0
     gps_updated = False
     x_hist = zeros(15)
     y_hist = zeros(15)
     t_gps = zeros(15)
     c_X = array([0,0,0])
     c_Y = array([0,0,0])
+    yaw_gps_meas_his = [0.0]
+    yaw_gps_meas = 0.0
     # GPS IMU FUSION
     gps_x_his = [0.0]
     gps_y_his = [0.0]
@@ -161,7 +166,9 @@ class StateEst(object):
         #    print "GPS: Bad synchronization - dt = %f"%(t_now-t_msg)
 
         # get current gps measurement 
-        self.x_meas = data.x_m
+        # self.x_meas = (data.x_m + self.x2_meas)/2
+        # self.y_meas = (data.y_m + self.y2_meas)/2
+        self.x_meas = data.x_m 
         self.y_meas = data.y_m
         #print "Received coordinates : (%f, %f)" % (self.x_meas, self.y_meas)
 
@@ -202,7 +209,22 @@ class StateEst(object):
 
         self.gps_x_his.append(data.x_m)
         self.gps_y_his.append(data.y_m)
+        # self.gps_time.append(rospy.get_rostime().to_sec()-self.t0)
+
+    # def gps2_callback(self, data):
+    #     self.x2_meas = data.x_m
+    #     self.y2_meas = data.y_m
+
+    def gps_ang_callback(self, data):
+        yaw = math.radians(data.angle+90)
+        if not self.running:
+            self.yaw_prev = 0
+        else:
+            self.yaw_gps_meas = np.unwrap([self.yaw_prev,yaw])[1]
+            self.yaw_prev = self.yaw_gps_meas
         self.gps_time.append(rospy.get_rostime().to_sec()-self.t0)
+        self.yaw_gps_meas_his.append(self.yaw_gps_meas)
+
 
     def gps_imu_fusion_callback(self,data):
         # GPS IMU FUSION
@@ -243,13 +265,18 @@ class StateEst(object):
         (roll_raw, pitch_raw, yaw_raw) = transformations.euler_from_quaternion(quaternion)
         # yaw_meas is element of [-pi,pi]
         
-        yaw = unwrap([self.yaw_prev, yaw_raw])[1]       # get smooth yaw (from beginning)
-        self.yaw_prev = self.yaw_meas                   # and always use raw measured yaw for unwrapping
-        if not self.running:
-            self.yaw0 = yaw              # set yaw0 to current yaw
-            self.yaw_meas = 0                 # and current yaw to zero
-        else:
-            self.yaw_meas = yaw - self.yaw0
+        # yaw = unwrap([self.yaw_prev, yaw_raw])[1]       # get smooth yaw (from beginning)
+        # self.yaw_prev = self.yaw_meas                   # and always use raw measured yaw for unwrapping
+        # if not self.running:
+        #     self.yaw0 = yaw              # set yaw0 to current yaw
+        #     self.yaw_meas = 0                 # and current yaw to zero
+        # else:
+        #     self.yaw_meas = yaw - self.yaw0
+        
+        # self.yaw_meas = yaw - self.yaw0
+
+        if self.imu_prev_time > 0:
+            self.yaw_meas += self.psiDot_meas * (current_t-self.imu_prev_time)
 
         w_z = data.angular_velocity.z
         a_x = data.linear_acceleration.x
@@ -273,23 +300,41 @@ class StateEst(object):
         self.roll_raw_his.append(roll_raw)
         self.pitch_raw_his.append(pitch_raw)
         self.yaw_raw_his.append(yaw_raw)
-        self.yaw_his.append(yaw) # yaw after unwrap()
-        self.yaw0_his.append(self.yaw0) # yaw after unwrap()
+        # self.yaw_his.append(yaw) # yaw after unwrap()
+        # self.yaw0_his.append(self.yaw0) # yaw after unwrap()
         self.yaw_meas_his.append(self.yaw_meas)
 
+        self.imu_prev_time = current_t
+
+
     def encoder_vel_callback(self, data):
-        if data.vel_est != self.vel_prev:
-            self.vel_meas = data.vel_est
+        # if data.vel_est != self.vel_prev:
+        #     self.vel_meas = data.vel_est
+        #     self.vel_updated = True
+        #     self.vel_prev = data.vel_est
+        #     self.vel_count = 0
+        # else:
+        #     self.vel_count = self.vel_count + 1
+        #     if self.vel_count > 10:     # if 10 times in a row the same measurement
+        #         self.vel_meas = 0       # set velocity measurement to zero
+        #         self.vel_updated = True
+        # self.vel_meas = data.vel_est
+        # self.vel_updated = True
+
+        # Average both rear speed
+        v_est = (data.vel_bl + data.vel_br)/2
+        if v_est != self.vel_prev:
+            self.vel_meas = v_est
             self.vel_updated = True
-            self.vel_prev = data.vel_est
+            self.vel_prev = v_est
             self.vel_count = 0
         else:
             self.vel_count = self.vel_count + 1
             if self.vel_count > 10:     # if 10 times in a row the same measurement
                 self.vel_meas = 0       # set velocity measurement to zero
                 self.vel_updated = True
-        # self.vel_meas = data.vel_est
-        # self.vel_updated = True
+
+
 
 # state estimation node
 def state_estimation():
@@ -305,12 +350,18 @@ def state_estimation():
 
     # Simulations and Experiment will subscribe to different GPS topis
     rospy.Subscriber('hedge_imu_fusion', hedge_imu_fusion, se.gps_callback, queue_size=1)
+    # rospy.Subscriber('hedge_imu_fusion_2', hedge_imu_fusion, se.gps2_callback, queue_size=1)
+    rospy.Subscriber('hedge_pos_ang', hedge_pos_ang, se.gps_ang_callback, queue_size=1)
+
+
     # rospy.Subscriber('real_val', pos_info, se.true_callback, queue_size=1)
     # rospy.Subscriber('hedge_pos', hedge_pos, se.gps_callback, queue_size=1)
 
     # for debugging to collect the data
     rospy.Subscriber('hedge_imu_fusion', hedge_imu_fusion, se.gps_imu_fusion_callback, queue_size=1)
     rospy.Subscriber('hedge_imu_raw', hedge_imu_raw, se.gps_imu_raw_callback, queue_size=1)
+
+
 
     # get vehicle dimension parameters
     L_f = rospy.get_param("L_a")       # distance from CoG to front axel
@@ -325,15 +376,50 @@ def state_estimation():
 
     z_EKF = zeros(14)                                       # x, y, psi, v, psi_drift
     P = eye(14)                                             # initial dynamics coveriance matrix
+    # z_EKF = zeros(9)                                       # x, y, psi, v, psi_drift
+    # P = eye(9)                                             # initial dynamics coveriance matrix
 
     qa = 1000.0
     qp = 1000.0
     #         x, y, vx, vy, ax, ay, psi, psidot, psidrift, x, y, psi, v
     #Q = diag([1/20*dt**5*qa,1/20*dt**5*qa,1/3*dt**3*qa,1/3*dt**3*qa,dt*qa,dt*qa,1/3*dt**3*qp,dt*qp,0.01, 0.01,0.01,1.0,1.0,0.1])
     #R = diag([0.5,0.5,0.5,0.1,10.0,1.0,1.0,     5.0,5.0,0.1,0.5, 1.0, 1.0])
+    
+    # experiemnt
                                                                                                     # drift_1
-    Q = 0.1*diag([1/20*dt**5*qa,1/20*dt**5*qa,1/3*dt**3*qa,1/3*dt**3*qa,dt*qa,dt*qa,1/3*dt**3*qp,dt*qp, 1, 0.2,0.2,1.0,1.0,0.1])
-    R = 0.1*diag([5.0,5.0,1.0,10.0,100.0,1000.0,1000.0,     5.0,5.0,10.0,1.0, 10.0,10.0])
+    Q = 0.1*diag([1/20*dt**5*qa,1/20*dt**5*qa,1/3*dt**3*qa,1/3*dt**3*qa,dt*qa,dt*qa,1/3*dt**3*qp,dt*qp, 0.001, 0.2,0.2,1.0,1.0,0.1])
+    R = 0.1*diag([100.0,100.0,1.0,1.0,1.0,100.0,100.0,     5.0,5.0,10.0,1.0, 10.0,10.0])
+
+    # # without yaw_meas
+    # Q = 0.1*diag([1/20*dt**5*qa,1/20*dt**5*qa,1/3*dt**3*qa,1/3*dt**3*qa,dt*qa,dt*qa,1/3*dt**3*qp,dt*qp, 1, 0.2,0.2,1.0,1.0,0.1])
+    # R = 0.1*diag([5.0,5.0,1.0,   1.0,1000.0,1000.0,     5.0,5.0,10.0,1.0, 10.0,10.0])
+
+
+    # experiemnt: single model
+    #                    # x,            y,            vx,          vy,       ax,   ay,      psi,    psidot,   psidrift,
+    # Q = 0.1*diag([1/20*dt**5*qa,1/20*dt**5*qa,1/3*dt**3*qa,1/3*dt**3*qa,dt*qa,dt*qa, 1/3*dt**3*qp,  dt*qp,     0.001])
+    #               # x_meas, y_meas,  vel_meas, yaw_meas, psiDot_meas, a_x_meas,  a_y_meas    
+    # # R = 0.1*diag([100.0,    100.0,     1.0,      1.0,     1.0,       100.0,    100.0, 10.0])
+    # R = 0.1*diag([100.0,    100.0,     1.0,      1.0,     1.0,       100.0,    100.0,   10.0, 10.0])
+
+    # experiemnt: single model
+    #           # x,   y,    vx,    vy,   ax, ay, psi,  psidot,  psidrift,
+    # Q = diag([1e-2,  1e-2, 1e-2,  1e-2, 10, 10, 1e-3, 10,      1e-3 ])**2
+    #           # x_meas, y_meas,  vel_meas, yaw_meas, psiDot_meas, a_x_meas,  a_y_meas    
+    # R = diag([1e-2,     1e-2,    1e-2,     1e-2,     1e-2,        1.0,       1.0])**2
+
+    # # simulation
+    # Q = diag([1/20*dt**5*qa,1/20*dt**5*qa,1/3*dt**3*qa,1/3*dt**3*qa,dt*qa,dt*qa,1/3*dt**3*qp,dt*qp, 0.1, 0.2,0.2,1.0,1.0,0.1])
+    # R = diag([5.0,5.0,1.0,10.0,100.0,1000.0,1000.0,     5.0,5.0,10.0,1.0, 10.0,10.0])
+
+    # simulation single model
+    # #            x,            y,            vx,          vy,       ax,   ay,      psi,         psidot,   psidrift,
+    # Q = diag([1/20*dt**5*qa,1/20*dt**5*qa,1/3*dt**3*qa,1/3*dt**3*qa,dt*qa,dt*qa,1/3*dt**3*qp,   dt*qp,     0.1])
+    # #         x_meas,   y_meas,  vel_meas, yaw_meas, psiDot_meas, a_x_meas,  a_y_meas    
+    # R = diag([1.0,      1.0,     1.0,       10.0,       1.0,      10.0,     10.0])
+
+
+
     # R = diag([4*5.0,4*5.0,1.0,2*10.0,2*100.0,1000.0,1000.0,     4*5.0,4*5.0,10.0,1.0, 10.0,10.0])
     # R = diag([1*5.0,1*5.0,1.0,2*10.0,2*100.0,1000.0,1000.0,     1*5.0,1*5.0,10.0,1.0, 10.0,10.0])
     #         x,y,v,psi,psiDot,a_x,a_y, x, y, psi, v
@@ -390,7 +476,7 @@ def state_estimation():
 
         se.x_meas = polyval(se.c_X, t_now)
         se.y_meas = polyval(se.c_Y, t_now)
-        se.gps_updated = False
+        se.gps_updated = False  
         se.imu_updated = False
         se.vel_updated = False
 
@@ -424,6 +510,13 @@ def state_estimation():
         y = array([se.x_meas, se.y_meas, se.vel_meas, se.yaw_meas, se.psiDot_meas, se.a_x_meas, se.a_y_meas,
                     se.x_meas, se.y_meas, se.yaw_meas, se.vel_meas, cos(bta)*se.vel_meas, sin(bta)*se.vel_meas])
 
+        # # measurement without yaw_meas from imu
+        # y = array([se.x_meas, se.y_meas, se.vel_meas, se.yaw_meas, se.psiDot_meas, se.a_x_meas, se.a_y_meas,
+        #             se.x_meas, se.y_meas, se.vel_meas, cos(bta)*se.vel_meas, sin(bta)*se.vel_meas])
+
+        # y = array([se.x_meas, se.y_meas, se.vel_meas, se.yaw_meas, se.psiDot_meas, se.a_x_meas, se.a_y_meas, sin(bta)*se.vel_meas])
+        # y = array([se.x_meas, se.y_meas, se.vel_meas, se.yaw_meas, se.psiDot_meas, se.a_x_meas, se.a_y_meas, cos(bta)*se.vel_meas, sin(bta)*se.vel_meas])
+
         
 
         # build extra arguments for non-linear function
@@ -434,6 +527,15 @@ def state_estimation():
         # Read values
         (x_est, y_est, v_x_est, v_y_est, a_x_est, a_y_est, psi_est, psi_dot_est, psi_drift_est,
             x_est_2, y_est_2, psi_est_2, v_est_2, psi_drift_est_2) = z_EKF           # note, r = EKF estimate yaw rate
+
+        # (x_est, y_est, v_x_est, v_y_est, a_x_est, a_y_est, psi_est, psi_dot_est, psi_drift_est) = z_EKF           # note, r = EKF estimate yaw rate
+        # dummy
+        x_est_2=0
+        y_est_2=0
+        psi_est_2=0
+        v_est_2=0
+        psi_drift_est_2=0
+        
 
         # sections to save the data and for debugging
         estimator_time.append(t_now)
@@ -459,13 +561,14 @@ def state_estimation():
         y_est_2_his.append(y_est_2)
 
 
-        se.x_est = x_est_2
-        se.y_est = y_est_2
+        se.x_est = x_est
+        se.y_est = y_est
         #print "V_x and V_y : (%f, %f)" % (v_x_est, v_y_est)
 
         # Update track position
         # l.set_pos(x_est_2, y_est_2, psi_est_2, v_x_est, v_y_est, psi_dot_est)
         l.set_pos(x_est,   y_est,   psi_est,   v_x_est, v_y_est, psi_dot_est)
+        # l.set_pos(x_est,   y_est,  se.yaw_meas,   se.vel_meas, v_y_est, psi_dot_est)
 
 
         # Calculate new s, ey, epsi (only 12.5 Hz, enough for controller that runs at 10 Hz)
@@ -539,6 +642,7 @@ def state_estimation():
                       vy_his = se.vy_his,
                       vz_his = se.vz_his,
                       gps_time = se.gps_time,
+                      yaw_gps_meas_his = se.yaw_gps_meas_his,
                       gps_imu_fusion_time = se.gps_imu_fusion_time)
 
     pathSave = os.path.join(homedir,"barc_debugging/estimator_hedge_imu_raw.npz")

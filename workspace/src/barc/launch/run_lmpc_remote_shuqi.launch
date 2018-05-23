@@ -49,6 +49,12 @@
 
     <!-- GPS -->
     <node machine="odroid" pkg="marvelmind_nav" type="hedge_rcv_bin" name="indoor_gps" args="/dev/ttyACM1"/>
+
+    <!-- GPS -->
+    <!-- <node machine="odroid" pkg="marvelmind_nav" type="hedge_rcv_bin" name="indoor_gps2" args="/dev/ttyACM2" > -->
+        <!-- <remap from="hedge_pos_ang" to="hedge_pos_ang_2" /> -->
+        <!-- <remap from="hedge_imu_fusion" to="hedge_imu_fusion_2" /> -->
+    <!-- </node> -->
     
     <!-- ARDUINO -->
     <!--  * encoders and ultrasound sensors -->

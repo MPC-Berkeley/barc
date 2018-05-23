@@ -74,7 +74,7 @@ function main()
 
     z_current = zeros(60000,8)
     z_current[1,:] = [0.1 0.0 0.0 0.0 0.0 0.0 0.0 0.0]
-    # z_current[1,:] = [0.1 0.0 0.0 0.0 pi/4 0.0 0.0 0.0]
+    # z_current[1,:] = [0.1 0.0 0.0 0.0 pi/6 0.0 0.0 0.0]
     slip_ang = zeros(60000,2)
 
     dt = 0.01
