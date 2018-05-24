@@ -98,6 +98,7 @@ def ekf(f, mx_k, P_k, h, y_kp1, Q, R, args):
     print "estimation psidot ", my_kp1[3]
     mx_kp1  = mx_kp1 + dot(K,(y_kp1 - my_kp1))  # state estimate
     P_kp1   = dot(dot(K,R),K.T) + dot( dot( (eye(xDim) - dot(K,H)) , P_kp1)  ,  (eye(xDim) - dot(K,H)).T ) 
+    print "kalman gain ", P_kp1
 
     return (mx_kp1, P_kp1)
 

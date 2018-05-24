@@ -47,45 +47,43 @@ def main():
     #               # x_meas, y_meas,  vel_meas,  psiDot_meas, a_x_meas,  a_y_meas  vy_meas   
     # R = 0.1*diag([100.0,    100.0,     1.0,         1.0,       100.0,    100.0,   10.0])
 
-    #           x,               y,             vx,         vy,             ax,          ay,      psi,              psidot
-    Q = diag([1/20*dt**5*qa,    1/20*dt**5*qa,1/3*dt**3*qa, 1/3*dt**3*qa,  dt*qa,       dt*qa,  1/3*dt**3*qp,     1e8*dt*qp])
-    R = diag([0.5,0.5,0.5,      1e-8,       1.0,1.0, 1.0])
+    # #           x,               y,             vx,         vy,             ax,          ay,      psi,           psidot
+    Q = 0.1*diag([1/20*dt**5*qa,    1/20*dt**5*qa,1/3*dt**3*qa, 1/3*dt**3*qa,  dt*qa,       dt*qa,  1/3*dt**3*qp,     dt*qp])
+    R = 0.1*diag([100,100,              1.0,      1.0,       100.0,100.0, 10.0])
+    # Q = diag(ones(8))
+    # R = diag(ones(7))
 
     t0 = rospy.get_rostime().to_sec()
     imu = ImuClass(t0)
     gps = GpsClass(t0)
     enc = EncClass(t0)
     ecu = EcuClass(t0)
-    se  = StateEst(t0,loop_rate,a_delay,df_delay,Q,R)
+    est  = Estimator(t0,loop_rate,a_delay,df_delay,Q,R)
     
     l   = Localization()
     l.create_race_track()
-    est_counter = 1
     
     while not rospy.is_shutdown():
-        se.ekf(imu,gps,enc,ecu)
         
-        l.set_pos(gps.x, gps.y, imu.yaw, se.vx_est, se.vy_est, se.psiDot_est)
-        # l.find_s()
-        if est_counter%4 == 0:
+        est.estimateState(imu,gps,enc,ecu)
 
-            l.find_s()
-
-        est_counter += 1
-
+        l.set_pos(est.x_est, est.y_est, est.yaw_est, est.vx_est, est.vy_est, est.psiDot_est)
+        l.find_s()
+        
         ros_t = rospy.get_rostime()
-        se.state_pub_pos.publish(pos_info(Header(stamp=ros_t), l.s, l.ey, l.epsi, l.v, 
-                                                               gps.x, gps.y, enc.v_meas, se.vy_est, 
-                                                               imu.yaw, se.psiDot_est, 
-                                                               se.ax_est, se.ay_est, 
-                                                               ecu.a, ecu.df))
+        est.state_pub_pos.publish(pos_info(Header(stamp=ros_t), l.s, l.ey, l.epsi, l.v, 
+                                                                est.x_est,      est.y_est,          
+                                                                est.vx_est,     est.vy_est, 
+                                                                est.yaw_est,    est.psiDot_est, 
+                                                                est.ax_est,     est.ay_est, 
+                                                                ecu.a,          ecu.df))
 
         imu.saveHistory()
         gps.saveHistory()
         enc.saveHistory()
         ecu.saveHistory()
-        se.saveHistory()
-        se.rate.sleep()
+        est.saveHistory()
+        est.rate.sleep()
 
     homedir = os.path.expanduser("~")
     pathSave = os.path.join(homedir,"barc_debugging/estimator_output.npz")
@@ -128,7 +126,7 @@ def main():
     print "finishing saveing state estimation data"
 
 
-class StateEst(object):
+class Estimator(object):
     """ Object collecting  estimated state data
     Attributes:
         Estimated states:
@@ -193,7 +191,7 @@ class StateEst(object):
         self.time_his           = [0.0]
 
     # ecu command update
-    def ekf(self,imu,gps,enc,ecu):
+    def estimateState(self,imu,gps,enc,ecu):
         """Do extended Kalman filter to estimate states"""
         self.curr_time = rospy.get_rostime().to_sec() - self.t0
 

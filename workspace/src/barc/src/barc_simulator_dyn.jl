@@ -159,7 +159,7 @@ function main()
                 rand_yaw=-0.1
             end
 
-            yaw         = z_current[i,5] + imu_drift #+ rand_yaw#+ 0.002*randn() 
+            yaw         = z_current[i,5] + imu_drift + rand_yaw#+ 0.002*randn() 
 
             rand_psiDot = 0.01*randn()
             if rand_psiDot > 0.1
@@ -183,7 +183,7 @@ function main()
                 rand_accX=-0.1
             end
 
-            imu_data.linear_acceleration.x = diff(z_current[i-1:i,3])[1]/dt - z_current[i-1,6]*z_current[i-1,4] #+rand_accX#+ randn()*0.3*1.0
+            imu_data.linear_acceleration.x = diff(z_current[i-1:i,3])[1]/dt - z_current[i-1,6]*z_current[i-1,4] +rand_accX#+ randn()*0.3*1.0
 
             rand_accY = 0.01*randn()
             if rand_accY > 0.1
@@ -193,7 +193,7 @@ function main()
             end
 
             # imu_data.linear_acceleration.y = diff(z_current[i-1:i,4])[1]/dt + z_current[i,6]*z_current[i,3] +rand_accY#+ randn()*0.3*1.0
-            imu_data.linear_acceleration.y = (z_current[i,4]-z_current[i-1,4])/dt + z_current[i-1,6]*z_current[i-1,3] #+rand_accY#+ randn()*0.3*1.0
+            imu_data.linear_acceleration.y = (z_current[i,4]-z_current[i-1,4])/dt + z_current[i-1,6]*z_current[i-1,3] +rand_accY#+ randn()*0.3*1.0
             publish(pub_imu, imu_data)      # Imu format is defined by ROS, you can look it up by google "rosmsg Imu"
                                             # It's sufficient to only fill the orientation part of the Imu-type (with one quaternion)
             # println("ay from simulator:",imu_data.linear_acceleration.y)
@@ -211,11 +211,11 @@ function main()
             n.*=n_thre
             n=min(n, n_thre)
             n=max(n,-n_thre)
-            real_data.psiDot = z_current[i,6] #+ n[3]
+            real_data.psiDot = z_current[i,6] + n[3]
             real_data.psi    = z_current[i,5]
-            real_data.v_x    = z_current[i,3] #+ n[1]
+            real_data.v_x    = z_current[i,3] + n[1]
             # println("v from simulator",z_current[i,3])
-            real_data.v_y    = z_current[i,4] #+ n[2]
+            real_data.v_y    = z_current[i,4] + n[2]
             real_data.x      = z_current[i,1]
             real_data.y      = z_current[i,2]
             publish(real_val,real_data)
@@ -247,7 +247,7 @@ function main()
                 rand_x=-0.1
             end
 
-            x = round(z_current[i,1] ,2)# +  rand_x,2)#0.002*randn(),2)       # Indoor gps measures, rounded on cm
+            x = round(z_current[i,1] +  rand_x,2)#0.002*randn(),2)       # Indoor gps measures, rounded on cm
 
             rand_y = 0.01*randn()
             if rand_y > 0.1
@@ -256,7 +256,7 @@ function main()
                 rand_y=-0.1
             end
 
-            y = round(z_current[i,2] ,2)#+ rand_y,2)#0.002*randn(),2)
+            y = round(z_current[i,2] + rand_y,2)#0.002*randn(),2)
 
             if randn()>10            # simulate gps-outlier (probability about 0.13% for randn()>3, 0.62% for randn()>2.5, 2.3% for randn()>2.0 )
                 x += 1#randn()        # add random value to x and y

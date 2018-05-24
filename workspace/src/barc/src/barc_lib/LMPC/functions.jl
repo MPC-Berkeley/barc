@@ -451,7 +451,7 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_4s::MpcParams,mpcPa
         mpcParams_pF.delay_df       = delay_df                         # steering delay (number of steps)
         mpcParams_pF.delay_a        = delay_a                         # acceleration delay
 
-        modelParams.c_f             = 0.05       
+        modelParams.c_f             = 0.5       
 
     elseif simulator_flag == false  # if the simulator is in use
 

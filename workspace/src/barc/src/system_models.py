@@ -22,6 +22,7 @@ def f_SensorKinematicModel(z, u, vhMdl, dt, est_mode):
     """ This Sensor model contains a pure Sensor-Model and a Kinematic model. They're independent from each other."""
     (l_A,l_B) = vhMdl
     bta = math.atan2(l_A*tan(u[1]),l_A+l_B)
+    # print "u in sys model", u
     zNext = [0]*8
     zNext[0] = z[0] + dt*(cos(z[6])*z[2] - sin(z[6])*z[3])  # x
     zNext[1] = z[1] + dt*(sin(z[6])*z[2] + cos(z[6])*z[3])  # y
