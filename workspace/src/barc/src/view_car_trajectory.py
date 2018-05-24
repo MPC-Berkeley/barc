@@ -15,15 +15,12 @@
 # ---------------------------------------------------------------------------
 
 import rospy
-from Localization_helpers import Localization
+from Localization_helpers import Track
 from barc.msg import ECU, pos_info, Vel_est, mpc_solution
 from sensor_msgs.msg import Imu
-from marvelmind_nav.msg import hedge_pos
-from std_msgs.msg import Header
+from marvelmind_nav.msg import hedge_imu_fusion
 from numpy import eye, array, zeros, diag, unwrap, tan, cos, sin, vstack, linalg, append, ones, polyval, delete, size, empty, linspace
 from numpy import ones, polyval, delete, size
-from observers import ekf
-from system_models import f_SensorKinematicModel, h_SensorKinematicModel
 from tf import transformations
 import math
 import matplotlib.pyplot as plt
@@ -131,7 +128,7 @@ def view_trajectory():
     rospy.init_node("car_view_trajectory_node", anonymous=True)
     # rospy.on_shutdown(show)
 
-    rospy.Subscriber("hedge_pos", hedge_pos, gps_callback, queue_size=1)
+    rospy.Subscriber("hedge_imu_fusion", hedge_imu_fusion, gps_callback, queue_size=1)
     rospy.Subscriber("pos_info", pos_info, pos_info_callback, queue_size=1)
     rospy.Subscriber("real_val", pos_info, real_val_callback, queue_size=1)
     rospy.Subscriber("mpc_solution", mpc_solution, mpcSol_callback, queue_size=1)
@@ -145,17 +142,17 @@ def view_trajectory():
     YAW_FLAG = True
     ETS_TRUE_FLAG = False
     
-    l = Localization()
+    track = Track(0.01,0.8)
     # l.create_feature_track()
-    l.create_race_track()
+    track.createRaceTrack()
 
     fig = plt.figure(figsize=(10,7))
     plt.ion()
     ax1 = fig.add_subplot(1, 1, 1)
     # ax2 = fig.add_subplot(2, 1, 2)
-    ax1.plot(l.nodes[0,:],l.nodes[1,:],"k--",alpha=0.4)
-    ax1.plot(l.nodes_bound1[0,:],l.nodes_bound1[1,:],"r-")
-    ax1.plot(l.nodes_bound2[0,:],l.nodes_bound2[1,:],"r-")
+    ax1.plot(track.nodes[0,:],track.nodes[1,:],"k--",alpha=0.4)
+    ax1.plot(track.nodes_bound1[0,:],track.nodes_bound1[1,:],"r-")
+    ax1.plot(track.nodes_bound2[0,:],track.nodes_bound2[1,:],"r-")
     ax1.grid('on')
     ax1.axis('equal')
     # ax1.set_ylim([-5.5,1])

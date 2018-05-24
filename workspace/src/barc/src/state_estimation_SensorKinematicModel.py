@@ -16,15 +16,14 @@
 # ---------------------------------------------------------------------------
 
 import rospy
-from Localization_helpers import Localization
+from Localization_helpers import Track
 from barc.msg import ECU, pos_info, Vel_est
 from sensor_msgs.msg import Imu
-from marvelmind_nav.msg import hedge_pos, hedge_imu_fusion
+from marvelmind_nav.msg import hedge_imu_fusion
 from std_msgs.msg import Header
 from numpy import eye, zeros, diag, unwrap, tan, cos, sin, vstack, linalg
-from numpy import ones, polyval, delete, size, dot
+from numpy import ones, polyval, size, dot
 from scipy.linalg import inv
-from system_models import f_SensorKinematicModel, h_SensorKinematicModel
 from tf import transformations
 import math
 import numpy as np
@@ -41,11 +40,17 @@ def main():
     qa = 1000
     qp = 1000
     
+    # # For experiment
+    #                    # x,            y,            vx,          vy,       ax,       ay,      psi,    psidot
+    # Q = 0.1*diag([1./20*dt**5*qa,1./20*dt**5*qa,1./3*dt**3*qa,1./3*dt**3*qa,   dt*qa,   dt*qa, 1./3*dt**3*qp,  dt*qp])
+    #               # x_meas, y_meas,  vel_meas,  psiDot_meas, a_x_meas,  a_y_meas  vy_meas   
+    # R = 0.1*diag([100.0,    100.0,     1.0,         1.0,       100.0,    100.0,   10.0])
+
     # For experiment
-                       # x,            y,            vx,          vy,       ax,       ay,      psi,    psidot
-    Q = 0.1*diag([1/20*dt**5*qa,1/20*dt**5*qa,1/3*dt**3*qa,1/3*dt**3*qa,   dt*qa,   dt*qa, 1/3*dt**3*qp,  dt*qp])
-                  # x_meas, y_meas,  vel_meas,  psiDot_meas, a_x_meas,  a_y_meas  vy_meas   
-    R = 0.1*diag([100.0,    100.0,     1.0,         1.0,       100.0,    100.0,   10.0])
+            # x,    y,    vx,   vy,     ax,   ay,  psi,    psidot
+    Q = diag([1e-8, 1e-8, 2e-4, 2e-4,   2.,   2.,  2e-4,   2.])
+            # x_meas, y_meas, vel_meas, psiDot_meas, a_x_meas, a_y_meas, vy_meas   
+    R = diag([10.,    10.,    0.1,      0.1,         10.,      10.,      1.])
 
     # For simulation
     Q = diag(ones(8))
@@ -58,23 +63,30 @@ def main():
     ecu = EcuClass(t0)
     est = Estimator(t0,loop_rate,a_delay,df_delay,Q,R)
     
-    l   = Localization()
-    l.create_race_track()
+    track = Track(0.01,0.8)
+    track.createRaceTrack()
+    estMsg = pos_info()
     
     while not rospy.is_shutdown():
         
         est.estimateState(imu,gps,enc,ecu)
 
-        l.set_pos(est.x_est, est.y_est, est.yaw_est, est.vx_est, est.vy_est, est.psiDot_est)
-        l.find_s()
+        estMsg.s, estMsg.ey, estMsg.epsi = track.Localize(est.x_est, est.y_est, est.yaw_est)
         
-        ros_t = rospy.get_rostime()
-        est.state_pub_pos.publish(pos_info(Header(stamp=ros_t), l.s, l.ey, l.epsi, l.v, 
-                                                                est.x_est,      est.y_est,          
-                                                                est.vx_est,     est.vy_est, 
-                                                                est.yaw_est,    est.psiDot_est, 
-                                                                est.ax_est,     est.ay_est, 
-                                                                ecu.a,          ecu.df))
+        estMsg.header.stamp = rospy.get_rostime()
+        estMsg.v        = np.sqrt(est.vx_est**2 + est.vy_est**2)
+        estMsg.x        = est.x_est 
+        estMsg.y        = est.y_est
+        estMsg.v_x      = est.vx_est 
+        estMsg.v_y      = est.vy_est
+        estMsg.psi      = est.yaw_est
+        estMsg.psiDot   = est.psiDot_est
+        estMsg.a_x      = est.ax_est
+        estMsg.a_y      = est.ay_est
+        estMsg.u_a      = ecu.a
+        estMsg.u_df     = ecu.df
+
+        est.state_pub_pos.publish(estMsg)
 
         imu.saveHistory()
         gps.saveHistory()
@@ -121,7 +133,7 @@ def main():
                       df_his        = ecu.df_his,
                       ecu_time      = ecu.time_his)
 
-    print "finishing saveing state estimation data"
+    print "Finishing saveing state estimation data"
 
 
 class Estimator(object):
@@ -139,24 +151,36 @@ class Estimator(object):
             8.yaw_est_his   9.psiDot_est_his    10.psiDrift_est_his
         Time stamp
             1.t0 2.time_his 3.curr_time
+    Methods:
+        stateEstimate(imu,gps,enc,ecu):
+            Estimate current state from sensor data
+        ekf(y,u):
+            Extended Kalman filter
+        numerical_jac(func,x,u):
+            Calculate jacobian numerically
+        f(x,u):
+            System prediction model
+        h(x,u):
+            System measurement model
+
     """
 
     def __init__(self,t0,loop_rate,a_delay,df_delay,Q,R):
         """ Initialization
         Arguments:
             t0: starting measurement time
+
         """
         dt          = 1.0 / loop_rate
         self.rate   = rospy.Rate(loop_rate)
         L_f         = rospy.get_param("L_a")       # distance from CoG to front axel
         L_r         = rospy.get_param("L_b")       # distance from CoG to rear axel
-        vhMdl       = (L_f, L_r)
+        self.vhMdl  = (L_f, L_r)
         self.Q      = Q
         self.R      = R
         self.P      = np.eye(np.size(Q,0)) # initializationtial covariance matrix
         self.z_EKF  = np.zeros(np.size(Q,0)) # initial state mean
         self.dt     = dt
-        self.args   = (vhMdl, self.dt, 0)
         self.a_delay        = a_delay
         self.df_delay       = df_delay
         self.a_his          = [0.0]*int(a_delay/dt)
@@ -198,27 +222,25 @@ class Estimator(object):
         u = [self.a_his.pop(0), self.df_his.pop(0)]
         bta = 0.5 * u[1]
 
-        args = (u, self.args[0], self.args[1], self.args[2])
         y = np.array([gps.x, gps.y, enc.v_meas, imu.psiDot, imu.ax, imu.ay, sin(bta)*enc.v_meas])
 
-        (self.z_EKF, self.P) = self.ekf(f_SensorKinematicModel, self.z_EKF, self.P, h_SensorKinematicModel, y, self.Q, self.R, args)
-        (self.x_est, self.y_est, self.vx_est, self.vy_est, self.ax_est, self.ay_est, self.yaw_est, self.psiDot_est) = self.z_EKF
+        self.ekf(y,u)
 
 
-    def ekf(self, f, mx_k, P_k, h, y_kp1, Q, R, args):
+    def ekf(self, y, u):
         """
-         EKF   Extended Kalman Filter for nonlinear dynamic systems
-         ekf(f,mx,P,h,z,Q,R) returns state estimate, x and state covariance, P 
-         for nonlinear dynamic system:
-                   x_k+1 = f(x_k) + w_k
-                   y_k   = h(x_k) + v_k
-         where w ~ N(0,Q) meaning w is gaussian noise with covariance Q
-               v ~ N(0,R) meaning v is gaussian noise with covariance R
+        EKF   Extended Kalman Filter for nonlinear dynamic systems
+        ekf(f,mx,P,h,z,Q,R) returns state estimate, x and state covariance, P 
+        for nonlinear dynamic system:
+                  x_k+1 = f(x_k) + w_k
+                  y_k   = h(x_k) + v_k
+        where w ~ N(0,Q) meaning w is gaussian noise with covariance Q
+              v ~ N(0,R) meaning v is gaussian noise with covariance R
         Inputs:    f: function handle for f(x)
-                   mx_k: "a priori" state estimate
-                   P_k: "a priori" estimated state covariance
+                   z_EKF: "a priori" state estimate
+                   P: "a priori" estimated state covariance
                    h: fanction handle for h(x)
-                   y_kp1: current measurement
+                   y: current measurement
                    Q: process noise covariance 
                    R: measurement noise covariance
                    args: additional arguments to f(x, *args)
@@ -228,26 +250,28 @@ class Estimator(object):
         Notation: mx_k = E[x_k] and my_k = E[y_k], where m stands for "mean of"
         """
         
-        xDim    = mx_k.size                         # dimension of the state
-        mx_kp1  = f(mx_k, *args)                    # predict next state
-        A       = self.numerical_jac(f, mx_k, *args)     # linearize process model about current state
-        P_kp1   = dot(dot(A,P_k),A.T) + Q           # proprogate variance
-        my_kp1  = h(mx_kp1, *args)                         # predict future output
-        H       = self.numerical_jac(h, mx_kp1, *args)          # linearize measurement model about predicted next state
-        P12     = dot(P_kp1, H.T)                   # cross covariance
-        K       = dot(P12, inv( dot(H,P12) + R))    # Kalman filter gain
-        mx_kp1  = mx_kp1 + dot(K,(y_kp1 - my_kp1))  # state estimate
-        P_kp1   = dot(dot(K,R),K.T) + dot( dot( (eye(xDim) - dot(K,H)) , P_kp1)  ,  (eye(xDim) - dot(K,H)).T ) 
-        return (mx_kp1, P_kp1)
+        xDim    = self.z_EKF.size                           # dimension of the state
+        mx_kp1  = self.f(self.z_EKF, u)                     # predict next state
+        A       = self.numerical_jac(self.f, self.z_EKF, u) # linearize process model about current state
+        P_kp1   = dot(dot(A,self.P),A.T) + self.Q           # proprogate variance
+        my_kp1  = self.h(mx_kp1, u)                              # predict future output
+        H       = self.numerical_jac(self.h, mx_kp1, u)     # linearize measurement model about predicted next state
+        P12     = dot(P_kp1, H.T)                           # cross covariance
+        K       = dot(P12, inv( dot(H,P12) + self.R))       # Kalman filter gain
+        
+        self.z_EKF  = mx_kp1 + dot(K,(y - my_kp1))
+        self.P      = dot(dot(K,self.R),K.T) + dot( dot( (eye(xDim) - dot(K,H)) , P_kp1)  ,  (eye(xDim) - dot(K,H)).T )
+
+        (self.x_est, self.y_est, self.vx_est, self.vy_est, self.ax_est, self.ay_est, self.yaw_est, self.psiDot_est) = self.z_EKF
     
 
-    def numerical_jac(self,f,x, *args):
+    def numerical_jac(self,func,x,u):
         """
         Function to compute the numerical jacobian of a vector valued function 
         using final differences
         """
         # numerical gradient and diagonal hessian
-        y = f(x, *args)
+        y = func(x,u)
         
         jac = zeros( (y.size,x.size) )
         eps = 1e-5
@@ -255,12 +279,40 @@ class Estimator(object):
         
         for i in range(x.size):
             xp[i] = x[i] + eps/2.0
-            yhi = f(xp, *args)
+            yhi = func(xp, u)
             xp[i] = x[i] - eps/2.0
-            ylo = f(xp, *args)
+            ylo = func(xp, u)
             xp[i] = x[i]
             jac[:,i] = (yhi - ylo) / eps
         return jac
+
+    def f(self, z, u):
+        """ This Sensor model contains a pure Sensor-Model and a Kinematic model. They're independent from each other."""
+        (l_A,l_B) = self.vhMdl
+        bta = math.atan2(l_A*tan(u[1]),l_A+l_B)
+        dt = self.dt
+        zNext = [0]*8
+        zNext[0] = z[0] + dt*(cos(z[6])*z[2] - sin(z[6])*z[3])  # x
+        zNext[1] = z[1] + dt*(sin(z[6])*z[2] + cos(z[6])*z[3])  # y
+        zNext[2] = z[2] + dt*(z[4]+z[7]*z[3])                   # v_x
+        zNext[3] = z[3] + dt*(z[5]-z[7]*z[2])                   # v_y
+        zNext[4] = z[4]                                         # a_x
+        zNext[5] = z[5]                                         # a_y
+        zNext[6] = z[6] + dt*(z[7])                             # psi
+        zNext[7] = z[7]                                         # psidot
+        return np.array(zNext)
+
+    def h(self, x, u):
+        """ This is the measurement model to the kinematic<->sensor model above """
+        y = [0]*7
+        y[0] = x[0]   # x
+        y[1] = x[1]   # y
+        y[2] = x[2]   # vx
+        y[3] = x[7]   # psiDot
+        y[4] = x[4]   # a_x
+        y[5] = x[5]   # a_y
+        y[6] = x[3]   # vy
+        return np.array(y)
 
     def saveHistory(self):
         self.time_his.append(self.curr_time)
@@ -374,8 +426,7 @@ class GpsClass(object):
             t0: starting measurement time
         """
 
-        # rospy.Subscriber('hedge_imu_fusion', hedge_imu_fusion, self.gps_callback, queue_size=1)
-        rospy.Subscriber('hedge_pos', hedge_pos, self.gps_callback, queue_size=1)
+        rospy.Subscriber('hedge_imu_fusion', hedge_imu_fusion, self.gps_callback, queue_size=1)
 
         # GPS measurement
         self.x      = 0.0
