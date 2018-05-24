@@ -93,7 +93,8 @@ def pos_info_callback(data):
     v_vals.append(data.v)
     t_vals.append(rospy.get_rostime().to_sec())
     psi_curr = data.psi
-    psi_raw = data.psi_raw
+    psi_raw = 0
+    # psi_raw = data.psi_raw
 
 def real_val_callback(data):
     global real_x_vals, real_y_vals

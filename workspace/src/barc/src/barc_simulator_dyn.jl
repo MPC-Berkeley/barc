@@ -73,7 +73,7 @@ function main()
     s1  = Subscriber("ecu", ECU, ECU_callback, (u_current,cmd_log,), queue_size=1)::RobotOS.Subscriber{barc.msg.ECU}
 
     z_current = zeros(60000,8)
-    z_current[1,:] = [0.1 0.0 0.0 0.0 0.0 0.0 0.0 0.0]
+    z_current[1,:] = [0.02 0.0 0.0 0.0 0.0 0.0 0.0 0.0]
     # z_current[1,:] = [0.1 0.0 0.0 0.0 pi/6 0.0 0.0 0.0]
     slip_ang = zeros(60000,2)
 
@@ -137,6 +137,7 @@ function main()
         # d_f_his[end] = u_current[2]
         # u_current[2] = u_temp
         u_current[1] *= 1
+        # println(u_current)
 
         # println(d_f_his)
         # println("input from simulator node",round(u_current,2))
@@ -213,6 +214,7 @@ function main()
             real_data.psiDot = z_current[i,6] #+ n[3]
             real_data.psi    = z_current[i,5]
             real_data.v_x    = z_current[i,3] #+ n[1]
+            # println("v from simulator",z_current[i,3])
             real_data.v_y    = z_current[i,4] #+ n[2]
             real_data.x      = z_current[i,1]
             real_data.y      = z_current[i,2]
@@ -226,10 +228,10 @@ function main()
             if sum(dist_traveled .>= vel_dist_update)>=1 && z_current[i,3] > 0.1     # only update if at least one of the magnets has passed the sensor
                 dist_traveled[dist_traveled.>=vel_dist_update] = 0
                 vel_est.vel_est = convert(Float32,norm(z_current[i,3:4]))#+0.00*randn())
-                vel_est.vel_fl = convert(Float32,0)
-                vel_est.vel_fr = convert(Float32,0)
-                vel_est.vel_bl = convert(Float32,0)
-                vel_est.vel_br = convert(Float32,0)
+                vel_est.vel_fl = convert(Float32,norm(z_current[i,3:4]))
+                vel_est.vel_fr = convert(Float32,norm(z_current[i,3:4]))
+                vel_est.vel_bl = convert(Float32,norm(z_current[i,3:4]))
+                vel_est.vel_br = convert(Float32,norm(z_current[i,3:4]))
             end
             vel_est.header.stamp = t_ros
             publish(pub_vel, vel_est)
@@ -271,6 +273,7 @@ function main()
                 # gps_data.header.stamp = get_rostime()
                 gps_data.x_m = x
                 gps_data.y_m = y
+                # println("gps from simulator",x,y)
                 publish(pub_gps, gps_data)
             end
             sim_gps_interrupt -= 1

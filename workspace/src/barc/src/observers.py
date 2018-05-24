@@ -94,6 +94,8 @@ def ekf(f, mx_k, P_k, h, y_kp1, Q, R, args):
     H       = numerical_jac(h, mx_kp1, *args)          # linearize measurement model about predicted next state
     P12     = dot(P_kp1, H.T)                   # cross covariance
     K       = dot(P12, inv( dot(H,P12) + R))    # Kalman filter gain
+    print "measurement psidot", y_kp1[3]
+    print "estimation psidot ", my_kp1[3]
     mx_kp1  = mx_kp1 + dot(K,(y_kp1 - my_kp1))  # state estimate
     P_kp1   = dot(dot(K,R),K.T) + dot( dot( (eye(xDim) - dot(K,H)) , P_kp1)  ,  (eye(xDim) - dot(K,H)).T ) 
 

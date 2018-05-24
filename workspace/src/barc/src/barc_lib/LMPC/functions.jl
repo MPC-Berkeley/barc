@@ -416,7 +416,7 @@ end
 function InitializeParameters(mpcParams::MpcParams,mpcParams_4s::MpcParams,mpcParams_pF::MpcParams,modelParams::ModelParams,mpcSol::MpcSol,
                               selectedStates::SelectedStates,oldSS::SafeSetData,oldTraj::OldTrajectory,mpcCoeff::MpcCoeff,mpcCoeff_dummy::MpcCoeff,
                               LMPC_LAP::Int64,delay_df::Int64,delay_a::Int64,N::Int64,BUFFERSIZE::Int64)
-    simulator_flag   = false
+    simulator_flag   = true
 
     if simulator_flag == true   # if the BARC is in use
 

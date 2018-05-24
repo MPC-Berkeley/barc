@@ -317,6 +317,7 @@ function main()
             if lapStatus.currentLap<=1+max(selectedStates.feature_Nl,selectedStates.Nl) # pF CONTROLLER
                 # (xDot, yDot, psiDot, ePsi, eY, s, acc_f)
                 z_curr = [z_est[6],z_est[5],z_est[4],z_est[1],z_est[2],z_est[3]]
+                println("z_curr:",round(z_curr,2))
                 z_kin = [z_est[6],z_est[5],z_est[4],sqrt(z_est[1]^2+z_est[2]^2)]
                 # z_curr = xyFrame_to_trackFrame(z_true,track)
                 # z_kin = [z_curr[1],z_curr[2],z_curr[3],sqrt(z_curr[4]^2+z_curr[5]^2)]
