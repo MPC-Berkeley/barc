@@ -1,9 +1,9 @@
 import numpy as np
 import os
 import matplotlib.pyplot as plt
-from Localization_helpers import Localization
-l = Localization()
-l.create_race_track()
+from Localization_helpers import Track
+l = Track(0.01,0.8)
+l.createRaceTrack()
 
 # FIGURE 1 plotting of estimator output data
 homedir = os.path.expanduser("~")

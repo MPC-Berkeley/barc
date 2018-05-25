@@ -21,40 +21,39 @@ from barc.msg import ECU, pos_info, Vel_est
 from sensor_msgs.msg import Imu
 from marvelmind_nav.msg import hedge_imu_fusion
 from std_msgs.msg import Header
-from numpy import eye, zeros, diag, unwrap, tan, cos, sin, vstack, linalg
-from numpy import ones, polyval, size, dot
-from scipy.linalg import inv
+from numpy import eye, zeros, diag, tan, cos, sin, vstack, linalg
+from numpy import ones, polyval, size, dot, add
+from scipy.linalg import inv, cholesky
 from tf import transformations
 import math
 import numpy as np
 import os
-
 
 def main():
     # node initialization
     rospy.init_node("state_estimation")
     a_delay     = 0.0
     df_delay    = 0.2
-    loop_rate   = 50
-    dt = 1/loop_rate
-    qa = 1000
-    qp = 1000
+    loop_rate   = 50.0
+    dt = 1./loop_rate
+    qa = 1000.0
+    qp = 1000.0
     
     # # For experiment
-    #                    # x,            y,            vx,          vy,       ax,       ay,      psi,    psidot
-    # Q = 0.1*diag([1./20*dt**5*qa,1./20*dt**5*qa,1./3*dt**3*qa,1./3*dt**3*qa,   dt*qa,   dt*qa, 1./3*dt**3*qp,  dt*qp])
-    #               # x_meas, y_meas,  vel_meas,  psiDot_meas, a_x_meas,  a_y_meas  vy_meas   
-    # R = 0.1*diag([100.0,    100.0,     1.0,         1.0,       100.0,    100.0,   10.0])
+                       # x,            y,            vx,          vy,       ax,       ay,      psi,    psidot
+    Q = 0.1*diag([1/20*dt**5*qa,1/20*dt**5*qa,1/3*dt**3*qa,1/3*dt**3*qa,   dt*qa,   dt*qa, 1/3*dt**3*qp,  dt*qp])
+                  # x_meas, y_meas,  vel_meas,  vy_meas,   a_x_meas,  a_y_meas     psiDot_meas
+    R = 0.1*diag([100.0,    100.0,     1.0,   10.0,       100.0,    100.0,          1.0])
 
-    # For experiment
-            # x,    y,    vx,   vy,     ax,   ay,  psi,    psidot
-    Q = diag([1e-8, 1e-8, 2e-4, 2e-4,   2.,   2.,  2e-4,   2.])
-            # x_meas, y_meas, vel_meas, psiDot_meas, a_x_meas, a_y_meas, vy_meas   
-    R = diag([10.,    10.,    0.1,      0.1,         10.,      10.,      1.])
+    # # For experiment
+    #         # x,    y,    vx,   vy,     ax,   ay,  psi,    psidot
+    # Q = diag([1e-8, 1e-8, 2e-4, 2e-4,   2.,   2.,  2e-4,   2.])
+    #         # x_meas, y_meas, vel_meas, psiDot_meas, a_x_meas, a_y_meas, vy_meas   
+    # R = diag([10.,    10.,    0.1,      0.1,         10.,      10.,      1.])
 
     # For simulation
-    Q = diag(ones(8))
-    R = diag(ones(7))
+    # Q = diag(ones(8))
+    # R = diag(ones(7))
 
     t0 = rospy.get_rostime().to_sec()
     imu = ImuClass(t0)
@@ -69,7 +68,7 @@ def main():
     
     while not rospy.is_shutdown():
         
-        est.estimateState(imu,gps,enc,ecu)
+        est.estimateState(imu,gps,enc,ecu,est.ukf)
 
         estMsg.s, estMsg.ey, estMsg.epsi = track.Localize(est.x_est, est.y_est, est.yaw_est)
         
@@ -156,13 +155,14 @@ class Estimator(object):
             Estimate current state from sensor data
         ekf(y,u):
             Extended Kalman filter
+        ukf(y,u):
+            Unscented Kalman filter
         numerical_jac(func,x,u):
             Calculate jacobian numerically
         f(x,u):
             System prediction model
         h(x,u):
             System measurement model
-
     """
 
     def __init__(self,t0,loop_rate,a_delay,df_delay,Q,R):
@@ -179,7 +179,7 @@ class Estimator(object):
         self.Q      = Q
         self.R      = R
         self.P      = np.eye(np.size(Q,0)) # initializationtial covariance matrix
-        self.z_EKF  = np.zeros(np.size(Q,0)) # initial state mean
+        self.z      = np.zeros(np.size(Q,0)) # initial state mean
         self.dt     = dt
         self.a_delay        = a_delay
         self.df_delay       = df_delay
@@ -212,20 +212,18 @@ class Estimator(object):
         self.time_his           = [0.0]
 
     # ecu command update
-    def estimateState(self,imu,gps,enc,ecu):
+    def estimateState(self,imu,gps,enc,ecu,KF):
         """Do extended Kalman filter to estimate states"""
         self.curr_time = rospy.get_rostime().to_sec() - self.t0
 
         self.a_his.append(ecu.a)
         self.df_his.append(ecu.df)
-
         u = [self.a_his.pop(0), self.df_his.pop(0)]
+        
         bta = 0.5 * u[1]
+        y = np.array([gps.x, gps.y, enc.v_meas, sin(bta)*enc.v_meas, imu.ax, imu.ay, imu.psiDot])
 
-        y = np.array([gps.x, gps.y, enc.v_meas, imu.psiDot, imu.ax, imu.ay, sin(bta)*enc.v_meas])
-
-        self.ekf(y,u)
-
+        KF(y,u)
 
     def ekf(self, y, u):
         """
@@ -250,20 +248,66 @@ class Estimator(object):
         Notation: mx_k = E[x_k] and my_k = E[y_k], where m stands for "mean of"
         """
         
-        xDim    = self.z_EKF.size                           # dimension of the state
-        mx_kp1  = self.f(self.z_EKF, u)                     # predict next state
-        A       = self.numerical_jac(self.f, self.z_EKF, u) # linearize process model about current state
+        xDim    = self.z.size                           # dimension of the state
+        mx_kp1  = self.f(self.z, u)                     # predict next state
+        A       = self.numerical_jac(self.f, self.z, u) # linearize process model about current state
         P_kp1   = dot(dot(A,self.P),A.T) + self.Q           # proprogate variance
         my_kp1  = self.h(mx_kp1, u)                              # predict future output
         H       = self.numerical_jac(self.h, mx_kp1, u)     # linearize measurement model about predicted next state
         P12     = dot(P_kp1, H.T)                           # cross covariance
         K       = dot(P12, inv( dot(H,P12) + self.R))       # Kalman filter gain
         
-        self.z_EKF  = mx_kp1 + dot(K,(y - my_kp1))
-        self.P      = dot(dot(K,self.R),K.T) + dot( dot( (eye(xDim) - dot(K,H)) , P_kp1)  ,  (eye(xDim) - dot(K,H)).T )
+        self.z  = mx_kp1 + dot(K,(y - my_kp1))
+        self.P  = dot(dot(K,self.R),K.T) + dot( dot( (eye(xDim) - dot(K,H)) , P_kp1)  ,  (eye(xDim) - dot(K,H)).T )
 
-        (self.x_est, self.y_est, self.vx_est, self.vy_est, self.ax_est, self.ay_est, self.yaw_est, self.psiDot_est) = self.z_EKF
-    
+        (self.x_est, self.y_est, self.vx_est, self.vy_est, self.ax_est, self.ay_est, self.yaw_est, self.psiDot_est) = self.z
+
+
+    def ukf(self, y, u):
+        """
+        UKF   Unscented Kalman Filter for nonlinear dynamic systems
+        ekf(f,mx,P,h,z,Q,R) returns state estimate, x and state covariance, P 
+        for nonlinear dynamic system:
+                  x[k] = f(x[k-1],u[k-1]) + v[k-1]
+                  y[k] = h(x[k]) + w[k]
+        where v ~ N(0,Q) meaning v is gaussian noise with covariance Q
+              w ~ N(0,R) meaning w is gaussian noise with covariance R
+        Inputs:    f: function handle for f(x)
+                   h: function handle for h(x)
+                   y: current measurement
+                   Q: process noise covariance 
+                   R: measurement noise covariance
+        Output:    mx_k: "a posteriori" state estimate
+                   P_k: "a posteriori" state covariance
+                   
+        Notation: mx_k = E[x_k] and my_k = E[y_k], where m stands for "mean of"
+        """
+
+        # sigma-points: generate a list, "sm_km1"
+        xDim        = self.z.size
+        sqrtnP      = cholesky(xDim*self.P)
+        sm_km1      = list(add(self.z,sqrtnP))
+        sm_km1.extend(list(add(self.z,-sqrtnP)))
+
+        # prior update
+        sx_k = [self.f(s, u) for s in sm_km1]
+        mx_k = 1.0/len(sx_k)*sum(sx_k)
+        P_m  = self.Q + 1.0/len(sx_k)*sum([np.outer((sx-mx_k),(sx-mx_k)) for sx in sx_k])
+
+        # posterior update
+        sy_k = [self.h(s, u) for s in sx_k]
+        my_k = 1.0/len(sy_k)*sum(sy_k)
+        P_zz  = self.R + 1.0/len(sy_k)*sum([np.outer((sy-my_k),(sy-my_k)) for sy in sy_k])
+
+        # cross covariance
+        P_xz = 1.0/len(sy_k)*sum([np.outer((sx_k[i]-mx_k),(sy_k[i]-my_k)) for i in range(len(sy_k))])
+
+        # Kalman filter
+        K = dot(P_xz,inv(P_zz))
+        self.z = mx_k + dot(K, y-my_k)
+        self.P = P_m - dot(K, dot(P_zz, K.T))
+        
+        (self.x_est, self.y_est, self.vx_est, self.vy_est, self.ax_est, self.ay_est, self.yaw_est, self.psiDot_est) = self.z
 
     def numerical_jac(self,func,x,u):
         """
@@ -308,10 +352,10 @@ class Estimator(object):
         y[0] = x[0]   # x
         y[1] = x[1]   # y
         y[2] = x[2]   # vx
-        y[3] = x[7]   # psiDot
+        y[3] = x[3]   # vy
         y[4] = x[4]   # a_x
         y[5] = x[5]   # a_y
-        y[6] = x[3]   # vy
+        y[6] = x[7]   # psiDot
         return np.array(y)
 
     def saveHistory(self):
