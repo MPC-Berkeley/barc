@@ -62,8 +62,8 @@ def main():
     ecu = EcuClass(t0)
     est = Estimator(t0,loop_rate,a_delay,df_delay,Q,R)
 
-    rospy.Subscriber('imu/data', Imu, imu_callback, (imu), queue_size=1)
-    rospy.Subscriber('hedge_imu_fusion', hedge_imu_fusion, gps_callback, (gps), queue_size=1)
+    rospy.Subscriber('imu/data', Imu, imu.imu_callback, queue_size=1)
+    rospy.Subscriber('hedge_imu_fusion', hedge_imu_fusion, gps.gps_callback, queue_size=1)
     rospy.Subscriber('vel_est', Vel_est, enc.enc_callback, queue_size=1)
     rospy.Subscriber('ecu', ECU, ecu.ecu_callback, queue_size=1)
     est.state_pub_pos  = rospy.Publisher('pos_info', pos_info, queue_size=1)
@@ -423,6 +423,33 @@ class ImuClass(object):
         self.curr_time = 0.0
         self.prev_time = 0.0
 
+
+    def imu_callback(self,data):
+        """Unpack message from sensor, IMU"""
+        
+        self.curr_time = rospy.get_rostime().to_sec() - self.t0
+
+        if self.prev_time > 0:
+            self.yaw += self.psiDot * (self.curr_time-self.prev_time)
+
+        ori = data.orientation
+        quaternion = (ori.x, ori.y, ori.z, ori.w)
+        (roll_raw, pitch_raw, dummy) = transformations.euler_from_quaternion(quaternion)
+        self.roll   = roll_raw
+        self.pitch  = pitch_raw
+
+        w_z = data.angular_velocity.z
+        a_x = data.linear_acceleration.x
+        a_y = data.linear_acceleration.y
+        a_z = data.linear_acceleration.z
+
+        self.psiDot = w_z
+        self.ax = cos(-pitch_raw)*a_x + sin(-pitch_raw)*sin(-roll_raw)*a_y - sin(-pitch_raw)*cos(-roll_raw)*a_z
+        self.ay = cos(-roll_raw)*a_y + sin(-roll_raw)*a_z
+
+        self.prev_time = self.curr_time
+
+
     def saveHistory(self):
         """ Save measurement data into history array"""
 
@@ -467,6 +494,27 @@ class GpsClass(object):
         self.t0         = t0
         self.time_his   = np.array([0.0])
         self.curr_time  = 0.0
+
+    def gps_callback(self,data):
+        """Unpack message from sensor, GPS"""
+        self.curr_time = rospy.get_rostime().to_sec() - self.t0
+
+        self.x = data.x_m
+        self.y = data.y_m
+
+        # 1) x(t) ~ c0x + c1x * t + c2x * t^2
+        # 2) y(t) ~ c0y + c1y * t + c2y * t^2
+        # c_X = [c0x c1x c2x] and c_Y = [c0y c1y c2y] 
+        # n_intplt = 20
+        # if size(self.x_his,0) > n_intplt: # do interpolation when there is enough points
+        #     x_intplt = self.x_his[-n_intplt:]
+        #     y_intplt = self.y_his[-n_intplt:]
+        #     t_intplt = self.time_his[-n_intplt:]
+        #     t_matrix = vstack([t_intplt**2, t_intplt, ones(sz)]).T
+        #     self.c_X = linalg.lstsq(t_matrix, x_intplt)[0]
+        #     self.c_Y = linalg.lstsq(t_matrix, y_intplt)[0]
+        #     self.x = polyval(self.c_X, self.curr_time)
+        #     self.y = polyval(self.c_Y, self.curr_time)
 
     def saveHistory(self):
         self.time_his = np.append(self.time_his,self.curr_time)
@@ -583,53 +631,6 @@ class EcuClass(object):
         
         self.a_his.append(self.a)
         self.df_his.append(self.df)
-
-def imu_callback(data,self):
-    """Unpack message from sensor, IMU"""
-    
-    self.curr_time = rospy.get_rostime().to_sec() - self.t0
-
-    if self.prev_time > 0:
-        self.yaw += self.psiDot * (self.curr_time-self.prev_time)
-
-    ori = data.orientation
-    quaternion = (ori.x, ori.y, ori.z, ori.w)
-    (roll_raw, pitch_raw, dummy) = transformations.euler_from_quaternion(quaternion)
-    self.roll   = roll_raw
-    self.pitch  = pitch_raw
-
-    w_z = data.angular_velocity.z
-    a_x = data.linear_acceleration.x
-    a_y = data.linear_acceleration.y
-    a_z = data.linear_acceleration.z
-
-    self.psiDot = w_z
-    self.ax = cos(-pitch_raw)*a_x + sin(-pitch_raw)*sin(-roll_raw)*a_y - sin(-pitch_raw)*cos(-roll_raw)*a_z
-    self.ay = cos(-roll_raw)*a_y + sin(-roll_raw)*a_z
-
-    self.prev_time = self.curr_time
-
-def gps_callback(data,self):
-    """Unpack message from sensor, GPS"""
-    self.curr_time = rospy.get_rostime().to_sec() - self.t0
-
-    self.x = data.x_m
-    self.y = data.y_m
-
-    # 1) x(t) ~ c0x + c1x * t + c2x * t^2
-    # 2) y(t) ~ c0y + c1y * t + c2y * t^2
-    # c_X = [c0x c1x c2x] and c_Y = [c0y c1y c2y] 
-    # n_intplt = 20
-    # if size(self.x_his,0) > n_intplt: # do interpolation when there is enough points
-    #     x_intplt = self.x_his[-n_intplt:]
-    #     y_intplt = self.y_his[-n_intplt:]
-    #     t_intplt = self.time_his[-n_intplt:]
-    #     t_matrix = vstack([t_intplt**2, t_intplt, ones(sz)]).T
-    #     self.c_X = linalg.lstsq(t_matrix, x_intplt)[0]
-    #     self.c_Y = linalg.lstsq(t_matrix, y_intplt)[0]
-    #     self.x = polyval(self.c_X, self.curr_time)
-    #     self.y = polyval(self.c_Y, self.curr_time)
-
 
 if __name__ == '__main__':
     try:

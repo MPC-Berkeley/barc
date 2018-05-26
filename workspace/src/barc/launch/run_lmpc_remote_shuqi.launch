@@ -17,9 +17,8 @@
     <!-- Record -->
     <node machine="this-pc" pkg="barc" type="barc_record.jl" name="barc_record" output="screen" />
 
-    <!-- Estimator -->
-    <!--node machine="this-pc" pkg="barc" type="state_estimation_KinBkMdl_mixed.py" name="state_estimation_dynamic" output="screen"-->
-    <node machine="this-pc" pkg="barc" type="state_estimation_SensorKinematicModel.py" name="state_estimation_dynamic" output="screen">
+
+    <node machine="this-pc" pkg="barc" type="state_estimation_SensorKinematicModel_mess.py" name="state_estimation_dynamic_mess">
         <!-- ekf properties -->
         <param name="q_std" type="double" value="0.1" />
 
@@ -31,6 +30,19 @@
         <param name="est_mode" type="double" value="1" />
     </node>
 
+    <!-- Estimator -->
+    <!--node machine="this-pc" pkg="barc" type="state_estimation_KinBkMdl_mixed.py" name="state_estimation_dynamic" output="screen"-->
+    <node machine="this-pc" pkg="barc" type="state_estimation_SensorKinematicModel.py" name="state_estimation_dynamic">
+        <!-- ekf properties -->
+        <param name="q_std" type="double" value="0.1" />
+
+        <param name="psi_std" type="double" value="0.5" />
+        <param name="v_std" type="double" value="1.0" />
+        <param name="gps_std" type="double" value="2.0" />
+        <param name="ang_v_std" type="double" value="0.8" />
+
+        <param name="est_mode" type="double" value="1" />
+    </node>
     <!-- MPC CONTROL -->
     <node machine="this-pc" pkg="barc" type="LMPC_node.jl" name="MPC" output="screen" /> 
 

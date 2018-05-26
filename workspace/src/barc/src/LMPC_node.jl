@@ -690,7 +690,7 @@ function main()
             # cmd.servo   = convert(Float32,mpcSol.d_f)
             # cmd.motor   = convert(Float32,mpcSol.a_x)
 
-            cmd.servo   = convert(Float32,0.0)
+            cmd.servo   = convert(Float32,0.2)
             cmd.motor   = convert(Float32,0.0)
 
 
