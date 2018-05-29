@@ -48,7 +48,7 @@ function main()
 
     const SIM_FLAG         = false   # true: save the data in simulation folder, false: save the data in experiment folder
 
-    const PF_FLAG          = true  # true:only pF,     false:1 warm-up lap and LMPC
+    const PF_FLAG          = false  # true:only pF,     false:1 warm-up lap and LMPC
     const PID_PF           = false
 
     const LMPC_FLAG        = true   # true:IDEN_MODEL,  false:IDEN_KIN_LIN_MODEL(if both flags are false)
@@ -687,11 +687,11 @@ function main()
             
             # d_f_lp = d_f_lp + 0.3*(mpcSol.d_f-d_f_lp)
             # cmd.servo   = convert(Float32,d_f_lp)
-            # cmd.servo   = convert(Float32,mpcSol.d_f)
-            # cmd.motor   = convert(Float32,mpcSol.a_x)
+            cmd.servo   = convert(Float32,mpcSol.d_f)
+            cmd.motor   = convert(Float32,mpcSol.a_x)
 
-            cmd.servo   = convert(Float32,0.2)
-            cmd.motor   = convert(Float32,0.0)
+            # cmd.servo   = convert(Float32,0.2)
+            # cmd.motor   = convert(Float32,0.0)
 
 
             z_prev      = copy(mpcSol.z)

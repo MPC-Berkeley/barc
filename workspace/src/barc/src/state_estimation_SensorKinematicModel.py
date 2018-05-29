@@ -38,18 +38,24 @@ def main():
     dt = 1./loop_rate
     qa = 1000.0
     qp = 1000.0
-    
-    # # For experiment
-                       # x,            y,            vx,          vy,       ax,       ay,      psi,    psidot
-    Q = 0.1*diag([1/20*dt**5*qa,1/20*dt**5*qa,1/3*dt**3*qa,1/3*dt**3*qa,   dt*qa,   dt*qa, 1/3*dt**3*qp,  dt*qp])
-                  # x_meas, y_meas,  vel_meas,  vy_meas,   a_x_meas,  a_y_meas     psiDot_meas
-    R = 0.1*diag([100.0,    100.0,     1.0,   10.0,       100.0,    100.0,          1.0])
 
     # # For experiment
-    #         # x,    y,    vx,   vy,     ax,   ay,  psi,    psidot
-    # Q = diag([1e-8, 1e-8, 2e-4, 2e-4,   2.,   2.,  2e-4,   2.])
-    #         # x_meas, y_meas, vel_meas, psiDot_meas, a_x_meas, a_y_meas, vy_meas   
-    # R = diag([10.,    10.,    0.1,      0.1,         10.,      10.,      1.])
+    #                    # x,            y,            vx,          vy,       ax,       ay,      psi,    psidot
+    # Q = 0.1*diag([1/20*dt**5*qa,1/20*dt**5*qa,1/3*dt**3*qa,1/3*dt**3*qa,   dt*qa,   dt*qa, 1/3*dt**3*qp,  dt*qp])
+    #               # x_meas, y_meas,  vel_meas,    a_x_meas,  a_y_meas     psiDot_meas,  vy_meas 
+    # R = 0.1*diag([100.0,    100.0,     1.0,         100.0,    100.0,          1.0 ,     10.0])
+
+    # # For experiment
+    # #         # x,              y,    vx,        vy,           ax,       ay,         psi,    psidot
+    # Q = diag([(1e-4)**2, (1e-4)**2, (1e-2)**2, (1e-2)**2,   (10.)**2,   (10.)**2,  (1e-2)**2,   (1e0)**2])
+    # # Q = diag(0.*ones(8))
+    #         # x_meas,       y_meas,       vel_meas,      psiDot_meas,       a_x_meas, a_y_meas,     vy_meas   
+    # R = diag([(1e-1)**2,   (1e-1)**2,    (1e-1)**2,      (1e-1)**2,        (1.)**2,   (1.)**2,  (1e-2)**2])
+
+            # x,  y,  vx, vy,   ax,   ay,  psi,  psidot
+    Q = diag([0., 0., 0., 0.,   1.,   1.,  0.,   1.])
+            # x_meas, y_meas, vel_meas, a_x_meas, a_y_meas, psiDot_meas, vy_meas   
+    R = diag([10.,    10.,    0.1,      10.,         10.,      0.1,      0.01])
 
     # For simulation
     # Q = diag(ones(8))
@@ -61,12 +67,6 @@ def main():
     enc = EncClass(t0)
     ecu = EcuClass(t0)
     est = Estimator(t0,loop_rate,a_delay,df_delay,Q,R)
-
-    rospy.Subscriber('imu/data', Imu, imu_callback, (imu), queue_size=1)
-    rospy.Subscriber('hedge_imu_fusion', hedge_imu_fusion, gps_callback, (gps), queue_size=1)
-    rospy.Subscriber('vel_est', Vel_est, enc.enc_callback, queue_size=1)
-    rospy.Subscriber('ecu', ECU, ecu.ecu_callback, queue_size=1)
-    est.state_pub_pos  = rospy.Publisher('pos_info', pos_info, queue_size=1)
     
     track = Track(0.01,0.8)
     track.createRaceTrack()
@@ -189,13 +189,10 @@ class Estimator(object):
         self.dt     = dt
         self.a_delay        = a_delay
         self.df_delay       = df_delay
-        # self.a_his          = [0.0]*int(a_delay/dt)
-        # self.df_his         = [0.0]*int(df_delay/dt)
+        self.a_his          = [0.0]*int(a_delay/dt)
+        self.df_his         = [0.0]*int(df_delay/dt)
 
-        self.a_his          = [0.0]*1
-        self.df_his         = [0.0]*10
-
-        # self.state_pub_pos  = rospy.Publisher('pos_info', pos_info, queue_size=1)
+        self.state_pub_pos  = rospy.Publisher('pos_info', pos_info, queue_size=1)
         self.t0             = t0
 
         self.x_est          = 0.0
@@ -232,8 +229,7 @@ class Estimator(object):
         u = [ecu.a, self.df_his.pop(0)]
         
         bta = 0.5 * u[1]
-        y = np.array([gps.x, gps.y, enc.v_meas, sin(bta)*enc.v_meas, imu.ax, imu.ay, imu.psiDot])
-        y = np.array([gps.x, gps.y, enc.v_meas, 0, imu.ax, imu.ay, imu.psiDot])
+        y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot, sin(bta)*enc.v_meas])
 
         KF(y,u)
 
@@ -362,10 +358,10 @@ class Estimator(object):
         y[0] = x[0]   # x
         y[1] = x[1]   # y
         y[2] = x[2]   # vx
-        y[3] = x[3]   # vy
-        y[4] = x[4]   # a_x
-        y[5] = x[5]   # a_y
-        y[6] = x[7]   # psiDot
+        y[3] = x[4]   # a_x
+        y[4] = x[5]   # a_y
+        y[5] = x[7]   # psiDot
+        y[6] = x[3]   # vy
         return np.array(y)
 
     def saveHistory(self):
@@ -397,7 +393,7 @@ class ImuClass(object):
             t0: starting measurement time
         """
 
-        # rospy.Subscriber('imu/data', Imu, self.imu_callback, queue_size=1)
+        rospy.Subscriber('imu/data', Imu, self.imu_callback, queue_size=1)
 
         # Imu measurement
         self.yaw     = 0.0
@@ -422,6 +418,32 @@ class ImuClass(object):
         # Time for yawDot integration
         self.curr_time = 0.0
         self.prev_time = 0.0
+
+    def imu_callback(self,data):
+        """Unpack message from sensor, IMU"""
+        
+        self.curr_time = rospy.get_rostime().to_sec() - self.t0
+
+        if self.prev_time > 0:
+            self.yaw += self.psiDot * (self.curr_time-self.prev_time)
+   
+        ori = data.orientation
+        quaternion = (ori.x, ori.y, ori.z, ori.w)
+        (roll_raw, pitch_raw, dummy) = transformations.euler_from_quaternion(quaternion)
+        self.roll   = roll_raw
+        self.pitch  = pitch_raw
+
+        w_z = data.angular_velocity.z
+        a_x = data.linear_acceleration.x
+        a_y = data.linear_acceleration.y
+        a_z = data.linear_acceleration.z
+
+        self.psiDot = w_z
+        # Transformation from imu frame to vehicle frame (negative roll/pitch and reversed matrix multiplication to go back)
+        self.ax = cos(-pitch_raw)*a_x + sin(-pitch_raw)*sin(-roll_raw)*a_y - sin(-pitch_raw)*cos(-roll_raw)*a_z
+        self.ay = cos(-roll_raw)*a_y + sin(-roll_raw)*a_z
+
+        self.prev_time = self.curr_time
 
     def saveHistory(self):
         """ Save measurement data into history array"""
@@ -453,7 +475,7 @@ class GpsClass(object):
             t0: starting measurement time
         """
 
-        # rospy.Subscriber('hedge_imu_fusion', hedge_imu_fusion, self.gps_callback, queue_size=1)
+        rospy.Subscriber('hedge_imu_fusion', hedge_imu_fusion, self.gps_callback, queue_size=1)
 
         # GPS measurement
         self.x      = 0.0
@@ -467,6 +489,27 @@ class GpsClass(object):
         self.t0         = t0
         self.time_his   = np.array([0.0])
         self.curr_time  = 0.0
+
+    def gps_callback(self,data):
+        """Unpack message from sensor, GPS"""
+        self.curr_time = rospy.get_rostime().to_sec() - self.t0
+
+        self.x = data.x_m
+        self.y = data.y_m
+
+        # 1) x(t) ~ c0x + c1x * t + c2x * t^2
+        # 2) y(t) ~ c0y + c1y * t + c2y * t^2
+        # c_X = [c0x c1x c2x] and c_Y = [c0y c1y c2y] 
+        # n_intplt = 20
+        # if size(self.x_his,0) > n_intplt: # do interpolation when there is enough points
+        #     x_intplt = self.x_his[-n_intplt:]
+        #     y_intplt = self.y_his[-n_intplt:]
+        #     t_intplt = self.time_his[-n_intplt:]
+        #     t_matrix = vstack([t_intplt**2, t_intplt, ones(sz)]).T
+        #     self.c_X = linalg.lstsq(t_matrix, x_intplt)[0]
+        #     self.c_Y = linalg.lstsq(t_matrix, y_intplt)[0]
+        #     self.x = polyval(self.c_X, self.curr_time)
+        #     self.y = polyval(self.c_Y, self.curr_time)
 
     def saveHistory(self):
         self.time_his = np.append(self.time_his,self.curr_time)
@@ -490,7 +533,7 @@ class EncClass(object):
         Arguments:
             t0: starting measurement time
         """
-        # rospy.Subscriber('vel_est', Vel_est, self.enc_callback, queue_size=1)
+        rospy.Subscriber('vel_est', Vel_est, self.enc_callback, queue_size=1)
 
         # ENC measurement
         self.v_fl      = 0.0
@@ -556,19 +599,19 @@ class EcuClass(object):
         Arguments:
             t0: starting measurement time
         """
-        # rospy.Subscriber('ecu', ECU, self.ecu_callback, queue_size=1)
+        rospy.Subscriber('ecu', ECU, self.ecu_callback, queue_size=1)
 
         # ECU measurement
         self.a  = 0.0
         self.df = 0.0
         
         # ECU measurement history
-        self.a_his  = [0.0]
-        self.df_his = [0.0]
+        self.a_his  = []
+        self.df_his = []
         
         # time stamp
         self.t0         = t0
-        self.time_his   = [0.0]
+        self.time_his   = []
         self.curr_time  = 0.0
 
     def ecu_callback(self,data):
@@ -583,52 +626,6 @@ class EcuClass(object):
         
         self.a_his.append(self.a)
         self.df_his.append(self.df)
-
-def imu_callback(data,self):
-    """Unpack message from sensor, IMU"""
-    
-    self.curr_time = rospy.get_rostime().to_sec() - self.t0
-
-    if self.prev_time > 0:
-        self.yaw += self.psiDot * (self.curr_time-self.prev_time)
-
-    ori = data.orientation
-    quaternion = (ori.x, ori.y, ori.z, ori.w)
-    (roll_raw, pitch_raw, dummy) = transformations.euler_from_quaternion(quaternion)
-    self.roll   = roll_raw
-    self.pitch  = pitch_raw
-
-    w_z = data.angular_velocity.z
-    a_x = data.linear_acceleration.x
-    a_y = data.linear_acceleration.y
-    a_z = data.linear_acceleration.z
-
-    self.psiDot = w_z
-    self.ax = cos(-pitch_raw)*a_x + sin(-pitch_raw)*sin(-roll_raw)*a_y - sin(-pitch_raw)*cos(-roll_raw)*a_z
-    self.ay = cos(-roll_raw)*a_y + sin(-roll_raw)*a_z
-
-    self.prev_time = self.curr_time
-
-def gps_callback(data,self):
-    """Unpack message from sensor, GPS"""
-    self.curr_time = rospy.get_rostime().to_sec() - self.t0
-
-    self.x = data.x_m
-    self.y = data.y_m
-
-    # 1) x(t) ~ c0x + c1x * t + c2x * t^2
-    # 2) y(t) ~ c0y + c1y * t + c2y * t^2
-    # c_X = [c0x c1x c2x] and c_Y = [c0y c1y c2y] 
-    # n_intplt = 20
-    # if size(self.x_his,0) > n_intplt: # do interpolation when there is enough points
-    #     x_intplt = self.x_his[-n_intplt:]
-    #     y_intplt = self.y_his[-n_intplt:]
-    #     t_intplt = self.time_his[-n_intplt:]
-    #     t_matrix = vstack([t_intplt**2, t_intplt, ones(sz)]).T
-    #     self.c_X = linalg.lstsq(t_matrix, x_intplt)[0]
-    #     self.c_Y = linalg.lstsq(t_matrix, y_intplt)[0]
-    #     self.x = polyval(self.c_X, self.curr_time)
-    #     self.y = polyval(self.c_Y, self.curr_time)
 
 
 if __name__ == '__main__':
