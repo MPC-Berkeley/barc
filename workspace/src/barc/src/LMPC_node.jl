@@ -43,12 +43,9 @@ end
 function main()
     println("Starting LMPC node.")
     const BUFFERSIZE       = 500
-    const LMPC_LAP         = 30
+    const LMPC_LAP         = 6
 
-    const SIM_FLAG         = false   # true: save the data in simulation folder, false: save the data in experiment folder
-
-    const PF_FLAG          = true  # true:only pF,     false:1 warm-up lap and LMPC
-    const PID_PF           = false
+    const PF_FLAG          = false  # true:only pF,     false:1 warm-up lap and LMPC
 
     const LMPC_FLAG        = true   # true:IDEN_MODEL,  false:IDEN_KIN_LIN_MODEL(if both flags are false)
     const LMPC_DYN_FLAG    = false   # true:DYN_LIN_MODEL, false:IDEN_KIN_LIN_MODEL(if both flags are false)
@@ -58,8 +55,9 @@ function main()
 
     const TI_TV_FLAG       = true   # true:TI,          false:TV
 
-    const GP_LOCAL_FLAG    = false  # true:local GPR
+    const GP_LOCAL_FLAG    = true  # true:local GPR
     const GP_FULL_FLAG     = false  # true:full GPR
+    
     const GP_HISTORY_FLAG  = false  # true: GPR data is from last laps, false: GP data is from data base.
 
     const N                = 10
@@ -92,7 +90,7 @@ function main()
         file_name *= "_FULL_GP"
     end
 
-    if SIM_FLAG
+    if get_param("sim_flag")
         folder_name = "simulations"
     else
         folder_name = "experiments"
@@ -186,7 +184,11 @@ function main()
 
     if FEATURE_FLAG
         # FEATURE DATA READING
-        data = load("$(homedir())/simulations/Feature_Data/FeatureDataCollecting.jld")
+        if get_param("feature_flag")
+	        data = load("$(homedir())/simulations/Feature_Data/FeatureDataCollecting.jld")
+	    else
+	        data = load("$(homedir())/experiments/Feature_Data/FeatureDataCollecting.jld")
+	    end
         feature_z = data["feature_z"]
         feature_u = data["feature_u"]
         println("Number of total feature points from 8-shape:",size(feature_z,1))
@@ -214,7 +216,11 @@ function main()
                 end
             end
         end
-        data = load("$(homedir())/simulations/Feature_Data/FeatureData_GP-$(file_GP_name).jld")
+        if get_param("sim_flag")
+	        data = load("$(homedir())/simulations/Feature_Data/FeatureData_GP-$(file_GP_name).jld")
+	    else
+	        data = load("$(homedir())/experiments/Feature_Data/FeatureData_GP-$(file_GP_name).jld")
+	    end
         num_spare            = 30 # THE NUMBER OF POINTS SELECTED FOR SPARE GP
         feature_GP_z         = data["feature_GP_z"]
         feature_GP_u         = data["feature_GP_u"]
@@ -299,14 +305,22 @@ function main()
                     # DATA SAVING
                     run_time = Dates.format(now(),"yyyy-mm-dd-H:M")
                     log_path = "$(homedir())/$(folder_name)/LMPC-$(file_name)-$(run_time).jld"
-                    save(log_path,"log_cvx",log_cvx,"log_cvy",log_cvy,"log_cpsi",log_cpsi,
-                                  "oldTraj",oldTraj,"selectedStates",selectedStates,"oldSS",oldSS,"solHistory",solHistory,
-                                  "selectHistory",selectHistory,"selectFeatureHistory",selectFeatureHistory,"statusHistory",statusHistory,
-                                  "track",track,"modelParams",modelParams,"mpcParams",mpcParams)
+                    save(log_path,"log_cvx",log_cvx,"log_cvy",log_cvy,"log_cpsi",log_cpsi,"GP_vy_History",GP_vy_History,"GP_psidot_History",GP_psidot_History,
+				                  "oldTraj",oldTraj,"selectedStates",selectedStates,"oldSS",oldSS,"solHistory",solHistory,
+				                  "selectHistory",selectHistory,"selectFeatureHistory",selectFeatureHistory,"statusHistory",statusHistory,
+				                  "track",track,"modelParams",modelParams,"mpcParams",mpcParams)
                     # COLLECT ONE STEP PREDICTION ERROR FOR GPR
                     if !GP_LOCAL_FLAG && !GP_FULL_FLAG
                         run_time = Dates.format(now(),"yyyy-mm-dd-H:M")
-                        log_path = "$(homedir())/simulations/Feature_Data/FeatureData_GP-$(file_name).jld"
+                        if get_param("sim_flag")
+                        	log_path = "$(homedir())/simulations/Feature_Data/FeatureData_GP-$(file_name).jld"
+                        else
+                        	log_path = "$(homedir())/experiments/Feature_Data/FeatureData_GP-$(file_name).jld"
+                        end
+                        feature_GP_z        = feature_GP_z[1:k-1,:]
+				        feature_GP_u        = feature_GP_u[1:k-1,:]
+				        feature_GP_vy_e     = feature_GP_vy_e[1:k-1]
+				        feature_GP_psidot_e = feature_GP_psidot_e[1:k-1]
                         save(log_path,"feature_GP_z",feature_GP_z,"feature_GP_u",feature_GP_u,"feature_GP_vy_e",feature_GP_vy_e,"feature_GP_psidot_e",feature_GP_psidot_e) 
                     end
                 end
@@ -322,16 +336,18 @@ function main()
                 # z_kin = [z_curr[1],z_curr[2],z_curr[3],sqrt(z_curr[4]^2+z_curr[5]^2)]
                 # println("         state from LMPC nodes",round(mpcSol.z[2,:],2))
                 # println("estimate state from LMPC nodes",round(z_curr,2))
-                if PID_PF
-                    # mpcSol.u = PID_pathFollow(z_kin)
-                else
-                    (mpcSol.z,mpcSol.u,sol_status) = solveMpcProblem_pathFollow(mdl_pF,mpcParams_pF,modelParams,mpcSol,z_kin,z_prev,u_prev,track)
-                end
+                
+                (mpcSol.z,mpcSol.u,sol_status) = solveMpcProblem_pathFollow(mdl_pF,mpcParams_pF,modelParams,mpcSol,z_kin,z_prev,u_prev,track)
+                
             else # LMPC CONTROLLER
                 # FOR QUICK LMPC STARTING, the next time, change the path following lap number to 1 and change the initial lapStatus to selectedStates.
                 if PF_FLAG
                     # save("$(homedir())/simulations/path_following.jld","oldSS",oldSS,"oldSS_true",oldSS_true,"solHistory",solHistory)
-                    save("$(homedir())/simulations/path_following.jld","oldSS",oldSS,"solHistory",solHistory)
+                    if get_param("sim_flag")
+                    	save("$(homedir())/simulations/path_following.jld","oldSS",oldSS,"solHistory",solHistory)
+				    else
+                    	save("$(homedir())/experiments/path_following.jld","oldSS",oldSS,"solHistory",solHistory)
+				    end
                 end
                 
                 # (xDot, yDot, psiDot, ePsi, eY, s, acc_f)
@@ -676,16 +692,6 @@ function main()
                 mpcSol_to_pub.z_fore_y = z_fore_y
             end
 
-            # DATA UPDATE
-            # n = 0.06*randn()
-            # n = min(0.06,n)
-            # n = max(-0.06,n)
-            # mpcSol.d_f += n
-            # mpcSol.d_f = max(-0.1*pi,mpcSol.d_f)
-            # mpcSol.d_f = min(0.1*pi,mpcSol.d_f)
-            
-            # d_f_lp = d_f_lp + 0.3*(mpcSol.d_f-d_f_lp)
-            # cmd.servo   = convert(Float32,d_f_lp)
             cmd.servo   = convert(Float32,mpcSol.d_f)
             cmd.motor   = convert(Float32,mpcSol.a_x)
 
@@ -715,7 +721,11 @@ function main()
     # COLLECT ONE STEP PREDICTION ERROR FOR GPR 
     if !GP_LOCAL_FLAG && !GP_FULL_FLAG
         run_time = Dates.format(now(),"yyyy-mm-dd-H:M")
-        log_path = "$(homedir())/simulations/Feature_Data/FeatureData_GP-$(file_name).jld"
+        if get_param("sim_flag")
+	        log_path = "$(homedir())/simulations/Feature_Data/FeatureData_GP-$(file_name).jld"
+	    else
+	        log_path = "$(homedir())/experiments/Feature_Data/FeatureData_GP-$(file_name).jld"
+	    end
         # CUT THE FRONT AND REAR TAIL BEFORE SAVING THE DATA
         feature_GP_z        = feature_GP_z[1:k-1,:]
         feature_GP_u        = feature_GP_u[1:k-1,:]

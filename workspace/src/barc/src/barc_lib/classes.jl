@@ -153,8 +153,12 @@ type Track
         track=new()
 
         xy=[0.0 0.0] # 1.x 2.y
-        theta=[0.0]
-        # theta=[pi/4]
+        if get_param("feature_flag")
+            theta=[pi/4]
+        else
+            theta=[0.0]
+        end
+            
         curvature=[0.0]
         ds=0.01 # length of each segment
         width=0.8

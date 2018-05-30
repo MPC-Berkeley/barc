@@ -5,47 +5,44 @@
     <param name="L_b" type="double" value="0.125" />
     <param name="m" type="double" value="1.98" />
     <param name="I_z" type="double" value="0.24" />
-
+    <!-- Flags -->
+    <param name="sim_flag" type="bool" value="false" />
+    <param name="feature_flag" type="bool" value="false" />
+    <!-- Track parameters -->
+    <param name="ds" type="double" value="0.01" />
+    <param name="ey" type="double" value="0.8" />
+    <param name="ey_tighten" type="double" value="1.0" />
+    
     <!-- Machines -->
     <machine name="odroid" address="192.168.10.213" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_shuqi.sh"/>
 
     <machine name="this-pc" address="192.168.10.147" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc_shuqi.sh"/>
-    
-    <!-- START NODES -->
-    <!-- Simulator -->
-    <!--node machine="this-pc" pkg="barc" type="barc_simulator_dyn.jl" name="barc_sim" output="screen" /-->
-    <!-- Record -->
-    <node machine="this-pc" pkg="barc" type="barc_record.jl" name="barc_record" output="screen" />
-
-
-    <node machine="this-pc" pkg="barc" type="state_estimation_SensorKinematicModel_mess.py" name="state_estimation_dynamic_mess">
-        <!-- ekf properties -->
-        <param name="q_std" type="double" value="0.1" />
-
-        <param name="psi_std" type="double" value="0.5" />
-        <param name="v_std" type="double" value="1.0" />
-        <param name="gps_std" type="double" value="2.0" />
-        <param name="ang_v_std" type="double" value="0.8" />
-
-        <param name="est_mode" type="double" value="1" />
-    </node>
 
     <!-- Estimator -->
-    <!--node machine="this-pc" pkg="barc" type="state_estimation_KinBkMdl_mixed.py" name="state_estimation_dynamic" output="screen"-->
-    <node machine="this-pc" pkg="barc" type="state_estimation_SensorKinematicModel.py" name="state_estimation_dynamic">
+    <node machine="this-pc" pkg="barc" type="state_estimation.py" name="state_estimation_dynamic">
+        <!-- delay in state estuiamtor -->
+        <param name="delay_df" type="double" value="0.2" />
+        <param name="delay_a" type="double" value="0.0" />
         <!-- ekf properties -->
-        <param name="q_std" type="double" value="0.1" />
-
-        <param name="psi_std" type="double" value="0.5" />
-        <param name="v_std" type="double" value="1.0" />
-        <param name="gps_std" type="double" value="2.0" />
-        <param name="ang_v_std" type="double" value="0.8" />
-
-        <param name="est_mode" type="double" value="1" />
+        <param name="Q_x" type="double" value="0.0" />
+        <param name="Q_y" type="double" value="0.0" />
+        <param name="Q_vx" type="double" value="0.0" />
+        <param name="Q_vy" type="double" value="0.0" />
+        <param name="Q_ax" type="double" value="1.0" />
+        <param name="Q_ay" type="double" value="1.0" />
+        <param name="Q_psi" type="double" value="0.0" />
+        <param name="Q_psiDot" type="double" value="1.0" />
+        <param name="R_x" type="double" value="10.0" />
+        <param name="R_y" type="double" value="10.0" />
+        <param name="R_vx" type="double" value="0.1" />
+        <param name="R_vy" type="double" value="0.01" />
+        <param name="R_ax" type="double" value="10.0" />
+        <param name="R_ay" type="double" value="10.0" />
+        <param name="R_psiDot" type="double" value="0.1" />
+        <!-- ukf properties -->
     </node>
     <!-- MPC CONTROL -->
     <node machine="this-pc" pkg="barc" type="LMPC_node.jl" name="MPC" output="screen" /> 
-
 
     <!-- LOW LEVEL CONTROLLER -->
     <node machine="this-pc" pkg="barc" type="controller_low_level.py" name="low_level_controller" />
@@ -61,15 +58,8 @@
 
     <!-- GPS -->
     <node machine="odroid" pkg="marvelmind_nav" type="hedge_rcv_bin" name="indoor_gps" args="/dev/ttyACM1"/>
-
-    <!-- GPS -->
-    <!-- <node machine="odroid" pkg="marvelmind_nav" type="hedge_rcv_bin" name="indoor_gps2" args="/dev/ttyACM2" > -->
-        <!-- <remap from="hedge_pos_ang" to="hedge_pos_ang_2" /> -->
-        <!-- <remap from="hedge_imu_fusion" to="hedge_imu_fusion_2" /> -->
-    <!-- </node> -->
     
     <!-- ARDUINO -->
-    <!--  * encoders and ultrasound sensors -->
     <node machine="odroid" pkg="rosserial_python" type="serial_node.py" name="arduino_node" >
         <param name="port" value="/dev/ttyUSB0" />
     </node>

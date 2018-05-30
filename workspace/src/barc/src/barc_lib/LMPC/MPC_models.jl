@@ -31,7 +31,7 @@ type MpcModel_pF
         u_lb = [-1    -18/180*pi]
         u_ub = [ 2     18/180*pi]
         z_lb = [-Inf -Inf -Inf -0.5] # 1.s 2.ey 3.epsi 4.v
-        z_ub = [ Inf  Inf  Inf  2.5] # 1.s 2.ey 3.epsi 4.v
+        z_ub = [ Inf  Inf  Inf  3.0] # 1.s 2.ey 3.epsi 4.v
 
         c_f         = modelParams.c_f   # motor drag coefficient
         # MPC prameters
@@ -88,8 +88,6 @@ type MpcModel_pF
             @NLconstraint(mdl, z_Ol[i+1,2] == z_Ol[i,2] + dt*z_Ol[i,4]*sin(z_Ol[i,3]+bta[i])  )             # ey
             @NLconstraint(mdl, z_Ol[i+1,3] == z_Ol[i,3] + dt*(z_Ol[i,4]/L_a*sin(bta[i])-dsdt[i]*c[i])  )    # epsi
             @NLconstraint(mdl, z_Ol[i+1,4] == z_Ol[i,4] + dt*(u_Ol[i,1] - c_f*z_Ol[i,4]))                   # v
-            # low pass filter for steering
-            # @NLconstraint(mdl, z_Ol[i+1,5] == z_Ol[i,5] + dt*(u_Ol[i,2]-z_Ol[i,5])*0.3)
         end
 
         ###### ------ Cost definitions ------ ######
@@ -162,11 +160,11 @@ type MpcModel_convhull_dyn_iden
         # u_ub       = mpcParams.u_ub              # upper bounds for the control inputs
         # z_lb       = mpcParams.z_lb              # lower bounds for the states
         # z_ub       = mpcParams.z_ub              # upper bounds for the states
-        ey_max  = 0.8/2
+        ey_max  = get_param("ey")*get_param("ey_tighten")/2
         u_lb    = [ -0.5    -18/180*pi]
         u_ub    = [    2     18/180*pi]
         z_lb    = [-Inf -Inf -Inf    0 -Inf -Inf] # 1.s 2.ey 3.epsi 4.vx 5.vy 6.psi_dot
-        z_ub    = [ Inf  Inf  Inf  2.5  Inf  Inf] # 1.s 2.ey 3.epsi 4.vx 5.vy 6.psi_dot
+        z_ub    = [ Inf  Inf  Inf  3.0  Inf  Inf] # 1.s 2.ey 3.epsi 4.vx 5.vy 6.psi_dot
 
         N          = mpcParams.N                           # Prediction horizon
         QderivZ    = mpcParams.QderivZ::Array{Float64,1}   # weights for the derivative cost on the states
@@ -358,7 +356,7 @@ type MpcModel_convhull_kin_linear
 
         c_f        = modelParams.c_f
 
-        ey_max      = 0.8/2                    # bound for the state ey (distance from the center track). It is set as half of the width of the track for obvious reasons
+        ey_max  = get_param("ey")*get_param("ey_tighten")/2
 
         N          = mpcParams.N                           # Prediction horizon
         QderivZ    = mpcParams.QderivZ::Array{Float64,1}   # weights for the derivative cost on the states
@@ -535,7 +533,7 @@ type MpcModel_convhull_dyn_linear
         z_ub       = [ Inf  Inf  Inf  2.5  Inf  Inf] # 1.s 2.ey 3.epsi 4.vx 5.vy 6.psi_dot
         c_f        = modelParams.c_f
 
-        ey_max      = 0.8/2                    # bound for the state ey (distance from the center track). It is set as half of the width of the track for obvious reasons
+        ey_max  = get_param("ey")*get_param("ey_tighten")/2
 
         N          = mpcParams.N                           # Prediction horizon
         QderivZ    = mpcParams.QderivZ::Array{Float64,1}   # weights for the derivative cost on the states

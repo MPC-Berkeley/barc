@@ -21,7 +21,7 @@ from barc.msg import ECU, pos_info, Vel_est
 from sensor_msgs.msg import Imu
 from marvelmind_nav.msg import hedge_imu_fusion
 from std_msgs.msg import Header
-from numpy import eye, zeros, diag, tan, cos, sin, vstack, linalg
+from numpy import eye, zeros, diag, tan, cos, sin, vstack, linalg, pi
 from numpy import ones, polyval, size, dot, add
 from scipy.linalg import inv, cholesky
 from tf import transformations
@@ -32,14 +32,27 @@ import os
 def main():
     # node initialization
     rospy.init_node("state_estimation")
-    a_delay     = 0.0
-    df_delay    = 0.2
+    a_delay     = rospy.get_param("state_estimator/delay_a")
+    df_delay    = rospy.get_param("state_estimator/delay_df")
     loop_rate   = 50.0
    
-            # x,  y,  vx, vy,   ax,   ay,  psi,  psidot
-    Q = diag([0., 0., 0., 0.,   1.,   1.,  0.,   1.])
-            # x_meas, y_meas, vel_meas, a_x_meas, a_y_meas, psiDot_meas, vy_meas   
-    R = diag([10.,    10.,    0.1,      10.,         10.,      0.1,      0.01])
+    Q = eye(8)
+    Q[0,0] = rospy.get_param("state_estimator/Q_x")
+    Q[1,1] = rospy.get_param("state_estimator/Q_y")
+    Q[2,2] = rospy.get_param("state_estimator/Q_vx")
+    Q[3,3] = rospy.get_param("state_estimator/Q_vy")
+    Q[4,4] = rospy.get_param("state_estimator/Q_ax")
+    Q[5,5] = rospy.get_param("state_estimator/Q_ay")
+    Q[6,6] = rospy.get_param("state_estimator/Q_psi")
+    Q[7,7] = rospy.get_param("state_estimator/Q_psiDot")
+    R = eye(7)
+    R[0,0] = rospy.get_param("state_estimator/R_x")
+    R[1,1] = rospy.get_param("state_estimator/R_y")
+    R[2,2] = rospy.get_param("state_estimator/R_vx")
+    R[3,3] = rospy.get_param("state_estimator/R_ax")
+    R[4,4] = rospy.get_param("state_estimator/R_ay")
+    R[5,5] = rospy.get_param("state_estimator/R_psiDot")
+    R[6,6] = rospy.get_param("state_estimator/R_vy")
 
     t0 = rospy.get_rostime().to_sec()
     imu = ImuClass(t0)
@@ -48,8 +61,12 @@ def main():
     ecu = EcuClass(t0)
     est = Estimator(t0,loop_rate,a_delay,df_delay,Q,R)
     
-    track = Track(0.01,0.8)
-    track.createRaceTrack()
+    track = Track(rospy.get_param("ds"),rospy.get_param("ey"))
+    if rospy.get_param("feature_flag"):
+        track.createFeatureTrack()
+    else:
+        track.createRaceTrack()
+
     estMsg = pos_info()
     
     while not rospy.is_shutdown():
@@ -166,6 +183,7 @@ class Estimator(object):
         self.R      = R
         self.P      = np.eye(np.size(Q,0)) # initializationtial covariance matrix
         self.z      = np.zeros(np.size(Q,0)) # initial state mean
+        if rospy.get_param("feature_flag"): self.z[6]   = pi/4
         self.dt     = dt
         self.a_delay        = a_delay
         self.df_delay       = df_delay
@@ -187,16 +205,16 @@ class Estimator(object):
         self.psiDrift_est   = 0.0
         self.curr_time      = 0.0
 
-        self.x_est_his          = [0.0]
-        self.y_est_his          = [0.0]
-        self.vx_est_his         = [0.0]
-        self.vy_est_his         = [0.0]
-        self.v_est_his          = [0.0]
-        self.ax_est_his         = [0.0]
-        self.ay_est_his         = [0.0]
-        self.yaw_est_his        = [0.0]
-        self.psiDot_est_his     = [0.0]
-        self.time_his           = [0.0]
+        self.x_est_his          = []
+        self.y_est_his          = []
+        self.vx_est_his         = []
+        self.vy_est_his         = []
+        self.v_est_his          = []
+        self.ax_est_his         = []
+        self.ay_est_his         = []
+        self.yaw_est_his        = []
+        self.psiDot_est_his     = []
+        self.time_his           = []
 
     # ecu command update
     def estimateState(self,imu,gps,enc,ecu,KF):

@@ -14,7 +14,6 @@ using JLD
 include("barc_lib/classes.jl")
 include("barc_lib/LMPC/MPC_models.jl")
 include("barc_lib/LMPC/functions.jl")
-include("barc_lib/LMPC/coeffConstraintCost.jl")
 include("barc_lib/LMPC/solveMpcProblem.jl")
 include("barc_lib/simModel.jl")
 
@@ -46,7 +45,7 @@ function main()
     println("Starting LMPC_Feature_Collecting node.")
     const BUFFERSIZE       = 500
     const LMPC_LAP         = 10
-    const PF_FLAG          = false   # true:only pF,     false:1 warm-up lap and LMPC
+    const PF_FLAG          = true   # true:only pF,     false:1 warm-up lap and LMPC
     const LMPC_FLAG        = true   # true:IDEN_MODEL,  false:IDEN_KIN_LIN_MODEL
     const FEATURE_FLAG     = false  # true:8-shape,     false:history (this requires the corresponding change in 3 palces)
     const TI_TV_FLAG       = true   # true:TI,          false:TV
@@ -127,16 +126,10 @@ function main()
             # TRACK FEATURE DATA COLLECTING: it is important to put this at the beginning of the iteration to make the data consistant
             if lapStatus.currentLap>1
                 k = k + 1 # start counting from the second lap.
-                # z_curr = xyFrame_to_trackFrame(z_true,track)                
-                # (xDot, yDot, psiDot, ePsi, eY, s, acc_f)
-                feature_z[k,:,1] = [z_est[6],z_est[5],z_est[4],z_est[1],z_est[2],z_est[3]]
-                # feature_z[k,:,1] = z_curr
-                feature_z[k-1,:,2] = [z_est[6],z_est[5],z_est[4],z_est[1],z_est[2],z_est[3]]
-                # feature_z[k-1,:,2] = z_curr
-                feature_u[k,1] = u_sol[2,1] # acceleration delay is from MPC itself
+                feature_z[k,:,1] 	= [z_est[6],z_est[5],z_est[4],z_est[1],z_est[2],z_est[3]]
+                feature_z[k-1,:,2] 	= [z_est[6],z_est[5],z_est[4],z_est[1],z_est[2],z_est[3]]
+                feature_u[k,1] 	= u_sol[2,1] # acceleration delay is from MPC itself
                 feature_u[k+mpcParams.delay_df-1,2] = u_sol[1+mpcParams.delay_df,2] # another 2 steps delay is from the system
-                # println("feature_u from MPC",feature_u[k,:])
-                # println("current publishing u",u_sol[2,:])
             end
 
 
@@ -164,15 +157,6 @@ function main()
             println("$sol_status, Current Lap: ", lapStatus.currentLap, ", It: ", lapStatus.currentIt, ", v:", round(z_curr[4],2))
             # println("z_curr", round(z_curr,3))
 
-            # # ADDITIONAL NOISE ADDING, WHICH IS ONLY FOR SIMULATION
-            # n=randn(2)
-            # n_thre = [0.01,0.00001]
-            # n.*=n_thre
-            # n=min(n,n_thre)
-            # n=max(n,[0,-0.00001])
-            # u_sol[1+mpcParams_pF.delay_a,1]+=n[1]
-            # # u_sol[1+mpcParams_pF.delay_df,2]+=n[2]
-            
             mpcSol.a_x = u_sol[1+mpcParams_pF.delay_a,1] 
             mpcSol.d_f = u_sol[1+mpcParams_pF.delay_df,2]
             if length(mpcSol.df_his)==1
@@ -197,7 +181,11 @@ function main()
             # TRACK FEATURE DATA COLLECTING
             run_time = Dates.format(now(),"yyyy-mm-dd-H:M")
             if lapStatus.currentLap==length(v_ref) && z_est[6] > track.s[end]-0.5
-                log_path = "$(homedir())/simulations/Feature_Data/FeatureDataCollecting-$(run_time).jld"
+            	if get_param("sim_flag")
+	                log_path = "$(homedir())/simulations/Feature_Data/FeatureDataCollecting.jld"
+	            else
+	                log_path = "$(homedir())/experiments/Feature_Data/FeatureDataCollecting.jld"
+	            end
                 # CUT THE FRONT AND REAR TAIL BEFORE SAVING THE DATA
                 feature_z = feature_z[2+mpcParams.delay_df-1:k-1,:,:]
                 feature_u = feature_u[2+mpcParams.delay_df-1:k-1,:]
@@ -213,12 +201,16 @@ function main()
     end # END OF THE WHILE LOOP
     # DATA SAVING, trying to save as much as feature data as possible to do sys_id
     run_time = Dates.format(now(),"yyyy-mm-dd-H:M")
-    log_path = "$(homedir())/simulations/Feature_Data/FeatureDataCollecting-$(run_time).jld"
+    if get_param("sim_flag")
+        log_path = "$(homedir())/simulations/Feature_Data/FeatureDataCollecting.jld"
+    else
+        log_path = "$(homedir())/experiments/Feature_Data/FeatureDataCollecting.jld"
+    end
     # CUT THE FRONT AND REAR TAIL BEFORE SAVING THE DATA
     feature_z = feature_z[2+mpcParams.delay_df-1:k-1,:,:]
     feature_u = feature_u[2+mpcParams.delay_df-1:k-1,:]
     # DATA SAVING
-    save(log_path,"feature_z",feature_z,"feature_u",feature_u,"oldTraj",oldTraj)
+    save(log_path,"feature_z",feature_z,"feature_u",feature_u)
 end
 
 

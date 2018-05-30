@@ -126,7 +126,7 @@ ax1.plot(l.nodes[0],l.nodes[1],color="grey",linestyle="--", alpha=0.3)
 ax1.plot(l.nodes_bound1[0],l.nodes_bound1[1],color="red",alpha=0.3)
 ax1.plot(l.nodes_bound2[0],l.nodes_bound2[1],color="red",alpha=0.3)
 ax1.axis("equal")
-ax1.plot(x_est_his,y_est_his,color="green",label="est 1")
+ax1.plot(x_est_his,y_est_his,color="green")
 ax1.legend()
 
 # raw data and estimation data comparison

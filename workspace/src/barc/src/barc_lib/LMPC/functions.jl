@@ -416,9 +416,9 @@ end
 function InitializeParameters(mpcParams::MpcParams,mpcParams_4s::MpcParams,mpcParams_pF::MpcParams,modelParams::ModelParams,mpcSol::MpcSol,
                               selectedStates::SelectedStates,oldSS::SafeSetData,oldTraj::OldTrajectory,mpcCoeff::MpcCoeff,mpcCoeff_dummy::MpcCoeff,
                               LMPC_LAP::Int64,delay_df::Int64,delay_a::Int64,N::Int64,BUFFERSIZE::Int64)
-    simulator_flag   = false
+    simulator_flag   = get_param("sim_flag")
 
-    if simulator_flag == true   # if the BARC is in use
+    if simulator_flag == true   # if the simulator is in use
 
         mpcParams.N                 = N
         mpcParams.Q                 = [5.0,0.0,0.0,0.1,50.0,0.0]   # Q (only for path following mode)
@@ -451,9 +451,9 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_4s::MpcParams,mpcPa
         mpcParams_pF.delay_df       = delay_df                         # steering delay (number of steps)
         mpcParams_pF.delay_a        = delay_a                         # acceleration delay
 
-        modelParams.c_f             = 0.5       
+        modelParams.c_f             = 0.05       
 
-    elseif simulator_flag == false  # if the simulator is in use
+    elseif simulator_flag == false  # if the BARC is in use
 
         mpcParams.N                 = N
         mpcParams.Q                 = [5.0,0.0,0.0,0.1,50.0,0.0]   # Q (only for path following mode)
@@ -879,7 +879,7 @@ function GP_full_vy(z::Array{Float64,2},u::Array{Float64,2},feature_state::Array
     z = feature_state[:,4:8].-state[1,4:8]
     Z = 0.5*z[:,1].^2+5*z[:,2].^2+5*z[:,3].^2+0.5*z[:,4].^2+5*z[:,5].^2
     # Z = z[:,1].^2+z[:,2].^2+z[:,3].^2+z[:,4].^2+z[:,5].^2
-    k = 0.5^2*exp(-0.5*Z)
+    k = 0.1^2*exp(-0.5*Z)
     GP_e = k'*GP_prepare
     return GP_e[1]
 end
@@ -889,7 +889,7 @@ function GP_full_psidot(z::Array{Float64,2},u::Array{Float64,2},feature_state::A
     z = feature_state[:,4:8].-state[1,4:8]
     Z = 0.5*z[:,1].^2+5*z[:,2].^2+5*z[:,3].^2+0.5*z[:,4].^2+5*z[:,5].^2
     # Z = z[:,1].^2+z[:,2].^2+z[:,3].^2+z[:,4].^2+z[:,5].^2
-    k = 0.5^2*exp(-0.5*Z)
+    k = 0.1^2*exp(-0.5*Z)
     GP_e = k'*GP_prepare
     return GP_e[1]
 end
@@ -952,9 +952,9 @@ function createTrack(name::ASCIIString)
     elseif name == "MSC_lab"    
         # TRACK TO USE IN THE SMALL EXPERIMENT ROOM
         track_data = [Int(ceil(1.5*3*10)) 0;
-                      Int(ceil(1.5*3*120)) -pi;
+                      Int(ceil(1.5*3*120)) pi;
                       Int(ceil(1.5*3*20)) 0;
-                      Int(ceil(1.5*3*120)) -pi;
+                      Int(ceil(1.5*3*120)) pi;
                       Int(ceil(1.5*3*10)) 0]
     elseif name == "feature"
         # FEATURE TRACK DATA

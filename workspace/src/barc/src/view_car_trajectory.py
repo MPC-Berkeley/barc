@@ -128,7 +128,7 @@ def view_trajectory():
     rospy.init_node("car_view_trajectory_node", anonymous=True)
     # rospy.on_shutdown(show)
 
-    rospy.Subscriber("hedge_imu_fusion", hedge_imu_fusion, gps_callback, queue_size=1)
+    # rospy.Subscriber("hedge_imu_fusion", hedge_imu_fusion, gps_callback, queue_size=1)
     rospy.Subscriber("pos_info", pos_info, pos_info_callback, queue_size=1)
     rospy.Subscriber("real_val", pos_info, real_val_callback, queue_size=1)
     rospy.Subscriber("mpc_solution", mpc_solution, mpcSol_callback, queue_size=1)
@@ -142,9 +142,11 @@ def view_trajectory():
     YAW_FLAG = True
     ETS_TRUE_FLAG = False
     
-    track = Track(0.01,0.8)
-    # l.create_feature_track()
-    track.createRaceTrack()
+    track = Track(rospy.get_param("ds"),rospy.get_param("ey"))
+    if rospy.get_param("feature_flag"):
+        track.createFeatureTrack()
+    else:
+        track.createRaceTrack()
 
     fig = plt.figure(figsize=(10,7))
     plt.ion()
@@ -157,11 +159,11 @@ def view_trajectory():
     ax1.axis('equal')
     # ax1.set_ylim([-5.5,1])
 
-    loop_rate = 50
+    loop_rate = 50.0
     rate = rospy.Rate(loop_rate)
 
-    car_dx = 0.3
-    car_dy = 0.12
+    car_dx = rospy.get_param("L_a")
+    car_dy = 0.125/2
 
     car_xs_origin = [car_dx, car_dx, -car_dx, -car_dx, car_dx]
     car_ys_origin = [car_dy, -car_dy, -car_dy, car_dy, car_dy]
@@ -212,8 +214,8 @@ def view_trajectory():
         # if counter < counter_buffer:
         if (pos_info_s>0 and pos_info_s<0.5):
             # lap switching trajectory cleaning
-            gps_x_vals = [0,gps_x_vals[-1]]
-            gps_y_vals = [0,gps_y_vals[-1]]
+            # gps_x_vals = [0,gps_x_vals[-1]]
+            # gps_y_vals = [0,gps_y_vals[-1]]
             pos_info_x_vals = [0,pos_info_x_vals[-1]]
             pos_info_y_vals = [0,pos_info_y_vals[-1]]
             real_x_vals = [0,real_x_vals[-1]]
