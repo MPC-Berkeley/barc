@@ -7,8 +7,8 @@
     Julia Version: 0.4.7
 =#
 
-const MODE = "path_following"
-# const MODE = "learning"
+# const MODE = "path_following"
+const MODE = "learning"
 # const MODE = "racing"
 
 # const SYS_ID = true

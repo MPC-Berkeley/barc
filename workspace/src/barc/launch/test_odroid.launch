@@ -37,7 +37,7 @@
     </node>
     
     <!--DYNAMIC OBSERVER-->
-    <node machine="ubuntu-pc" pkg="barc" type="state_estimation_SensorKinematicModel_lukas_messy.py" name="state_estimation_dynamic_1" output="screen">
+    <node machine="ubuntu-pc" pkg="barc" type="state_estimation_SensorKinematicModel_lukas.py" name="state_estimation_dynamic_1" output="screen">
         <!-- ekf properties -->
         <param name="q_std" type="double" value="0.1" />
         <param name="psi_std" type="double" value="0.5" />
