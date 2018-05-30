@@ -220,8 +220,8 @@ if __name__ == "__main__":
     import pdb
     import matplotlib.pyplot as plt
 
-    track = Track(0.1, "test", 1.0)
-    # track = Track(0.1, "oval", 1.0)
+    # track = Track(0.1, "test", 1.0)
+    track = Track(0.1, "oval", 1.0)
 
     pdb.set_trace()
 
