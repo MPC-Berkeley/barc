@@ -35,31 +35,11 @@ def main():
     a_delay     = 0.0
     df_delay    = 0.2
     loop_rate   = 50.0
-    dt = 1./loop_rate
-    qa = 1000.0
-    qp = 1000.0
-
-    # # For experiment
-    #                    # x,            y,            vx,          vy,       ax,       ay,      psi,    psidot
-    # Q = 0.1*diag([1/20*dt**5*qa,1/20*dt**5*qa,1/3*dt**3*qa,1/3*dt**3*qa,   dt*qa,   dt*qa, 1/3*dt**3*qp,  dt*qp])
-    #               # x_meas, y_meas,  vel_meas,    a_x_meas,  a_y_meas     psiDot_meas,  vy_meas 
-    # R = 0.1*diag([100.0,    100.0,     1.0,         100.0,    100.0,          1.0 ,     10.0])
-
-    # # For experiment
-    # #         # x,              y,    vx,        vy,           ax,       ay,         psi,    psidot
-    # Q = diag([(1e-4)**2, (1e-4)**2, (1e-2)**2, (1e-2)**2,   (10.)**2,   (10.)**2,  (1e-2)**2,   (1e0)**2])
-    # # Q = diag(0.*ones(8))
-    #         # x_meas,       y_meas,       vel_meas,      psiDot_meas,       a_x_meas, a_y_meas,     vy_meas   
-    # R = diag([(1e-1)**2,   (1e-1)**2,    (1e-1)**2,      (1e-1)**2,        (1.)**2,   (1.)**2,  (1e-2)**2])
-
+   
             # x,  y,  vx, vy,   ax,   ay,  psi,  psidot
     Q = diag([0., 0., 0., 0.,   1.,   1.,  0.,   1.])
             # x_meas, y_meas, vel_meas, a_x_meas, a_y_meas, psiDot_meas, vy_meas   
     R = diag([10.,    10.,    0.1,      10.,         10.,      0.1,      0.01])
-
-    # For simulation
-    # Q = diag(ones(8))
-    # R = diag(ones(7))
 
     t0 = rospy.get_rostime().to_sec()
     imu = ImuClass(t0)

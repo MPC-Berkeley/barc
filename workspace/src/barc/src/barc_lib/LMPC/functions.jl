@@ -952,9 +952,9 @@ function createTrack(name::ASCIIString)
     elseif name == "MSC_lab"    
         # TRACK TO USE IN THE SMALL EXPERIMENT ROOM
         track_data = [Int(ceil(1.5*3*10)) 0;
-                      Int(ceil(1.5*3*120)) pi;
+                      Int(ceil(1.5*3*120)) -pi;
                       Int(ceil(1.5*3*20)) 0;
-                      Int(ceil(1.5*3*120)) pi;
+                      Int(ceil(1.5*3*120)) -pi;
                       Int(ceil(1.5*3*10)) 0]
     elseif name == "feature"
         # FEATURE TRACK DATA

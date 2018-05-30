@@ -206,9 +206,9 @@ class Track(object):
         
         # TRACK FOR MSC EXPERIMENT ROOM
         track_data = [[int(ceil(1.5*3*10)), 0],
-                      [int(ceil(1.5*3*120)), pi],
+                      [int(ceil(1.5*3*120)), -pi],
                       [int(ceil(1.5*3*20)), 0],
-                      [int(ceil(1.5*3*120)), pi],
+                      [int(ceil(1.5*3*120)), -pi],
                       [int(ceil(1.5*3*10)), 0]]
                       
         #   TRACK CONSTRUCTION

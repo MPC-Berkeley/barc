@@ -14,7 +14,6 @@ using JLD
 include("barc_lib/classes.jl")
 include("barc_lib/LMPC/MPC_models.jl")
 include("barc_lib/LMPC/functions.jl")
-include("barc_lib/LMPC/coeffConstraintCost.jl")
 include("barc_lib/LMPC/solveMpcProblem.jl")
 include("barc_lib/simModel.jl")
 
@@ -48,7 +47,7 @@ function main()
 
     const SIM_FLAG         = false   # true: save the data in simulation folder, false: save the data in experiment folder
 
-    const PF_FLAG          = false  # true:only pF,     false:1 warm-up lap and LMPC
+    const PF_FLAG          = true  # true:only pF,     false:1 warm-up lap and LMPC
     const PID_PF           = false
 
     const LMPC_FLAG        = true   # true:IDEN_MODEL,  false:IDEN_KIN_LIN_MODEL(if both flags are false)
