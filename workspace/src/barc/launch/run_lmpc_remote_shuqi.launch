@@ -19,7 +19,7 @@
     <machine name="this-pc" address="192.168.10.147" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc_shuqi.sh"/>
 
     <!-- Estimator -->
-    <node machine="this-pc" pkg="barc" type="state_estimation.py" name="state_estimation_dynamic">
+    <node machine="this-pc" pkg="barc" type="state_estimator.py" name="state_estimator">
         <!-- delay in state estuiamtor -->
         <param name="delay_df" type="double" value="0.2" />
         <param name="delay_a" type="double" value="0.0" />

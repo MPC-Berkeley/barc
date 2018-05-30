@@ -162,8 +162,8 @@ def view_trajectory():
     loop_rate = 50.0
     rate = rospy.Rate(loop_rate)
 
-    car_dx = rospy.get_param("L_a")
-    car_dy = 0.125/2
+    car_dx = 2*rospy.get_param("L_a")
+    car_dy = 0.125
 
     car_xs_origin = [car_dx, car_dx, -car_dx, -car_dx, car_dx]
     car_ys_origin = [car_dy, -car_dy, -car_dy, car_dy, car_dy]

@@ -45,7 +45,7 @@ function main()
     const BUFFERSIZE       = 500
     const LMPC_LAP         = 6
 
-    const PF_FLAG          = false  # true:only pF,     false:1 warm-up lap and LMPC
+    const PF_FLAG          = true  # true:only pF,     false:1 warm-up lap and LMPC
 
     const LMPC_FLAG        = true   # true:IDEN_MODEL,  false:IDEN_KIN_LIN_MODEL(if both flags are false)
     const LMPC_DYN_FLAG    = false   # true:DYN_LIN_MODEL, false:IDEN_KIN_LIN_MODEL(if both flags are false)
@@ -55,7 +55,7 @@ function main()
 
     const TI_TV_FLAG       = true   # true:TI,          false:TV
 
-    const GP_LOCAL_FLAG    = true  # true:local GPR
+    const GP_LOCAL_FLAG    = false  # true:local GPR
     const GP_FULL_FLAG     = false  # true:full GPR
     
     const GP_HISTORY_FLAG  = false  # true: GPR data is from last laps, false: GP data is from data base.
@@ -695,8 +695,8 @@ function main()
             cmd.servo   = convert(Float32,mpcSol.d_f)
             cmd.motor   = convert(Float32,mpcSol.a_x)
 
-            # cmd.servo   = convert(Float32,0.2)
-            # cmd.motor   = convert(Float32,0.0)
+            cmd.servo   = convert(Float32,-0.2)
+            cmd.motor   = convert(Float32,0.0)
 
 
             z_prev      = copy(mpcSol.z)

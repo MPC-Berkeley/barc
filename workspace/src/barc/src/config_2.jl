@@ -7,13 +7,13 @@
     Julia Version: 0.4.7
 =#
 
-# const MODE = "path_following"
-const MODE = "learning"
+const MODE = "path_following"
+# const MODE = "learning"
 # const MODE = "racing"
 
 # const SYS_ID = true
 
-const INITIALIZATION_TYPE = "inner"
+const INITIALIZATION_TYPE = "center"
 
 if MODE == "path_following"
 	const NUM_PF_LAPS = 5
@@ -34,7 +34,7 @@ end
 
 const NUM_AGENTS = 1
 
-const HORIZON = 8
+const HORIZON = 10
 const NUM_CONSIDERED_LAPS = 4
 const NUM_HORIZONS = 1.5
 # const SELECTION_SHIFT = 0
