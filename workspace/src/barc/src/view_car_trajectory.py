@@ -47,6 +47,8 @@ def main():
         if insideMap == 1:
             fig.canvas.draw()
 
+        rate.sleep()
+
 class EstimationAndMesuredData():
     """Object collecting closed loop data points
     Attributes:

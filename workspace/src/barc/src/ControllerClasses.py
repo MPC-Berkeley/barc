@@ -27,6 +27,6 @@ class PID:
         """
         vt = self.vt
         Steering = -2.0 * x0[5] - 0.5 * x0[3]
-        Accelera = 0.1 * 1.5 * (vt - x0[0])
-        self.uPred[0, 0] = np.maximum(-0.6, np.minimum(Steering, 0.6))
-        self.uPred[0, 1] = np.maximum(-0.5, np.minimum(Accelera, 0.5))
+        Accelera = 1.5 * (vt - x0[0])
+        self.uPred[0, 0] = np.maximum(-0.6, np.minimum(Steering, 0.6)) + np.maximum(-0.45, np.min(np.random.randn() * 0.25, 0.45))
+        self.uPred[0, 1] = np.maximum(-2.5, np.minimum(Accelera, 2.5)) + np.maximum(-0.2, np.min(np.random.randn() * 0.10, 0.2))

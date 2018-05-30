@@ -189,7 +189,7 @@ function main()
             imu_meas.t[imu_meas.i] = t
             imu_meas.z[imu_meas.i,:] = [yaw psiDot]
             imu_meas.i += 1
-            imu_data.orientation = geometry_msgs.msg.Quaternion(cos(yaw/2), sin(yaw/2), 0, 0)
+            # imu_data.orientation = geometry_msgs.msg.Quaternion(cos(yaw/2), sin(yaw/2), 0, 0)
             imu_data.orientation = geometry_msgs.msg.Quaternion(0, 0, sin(yaw/2), cos(yaw/2))
             imu_data.angular_velocity = Vector3(0,0,psiDot)
             imu_data.header.stamp = t_ros

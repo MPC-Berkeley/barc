@@ -299,7 +299,7 @@ class Map():
             ey   = 10000
             epsi = 10000
             print "Error!! POINT OUT OF THE TRACK!!!! <=================="
-            pdb.set_trace()
+            # pdb.set_trace()
 
         return s, ey, epsi, CompletedFlag
 

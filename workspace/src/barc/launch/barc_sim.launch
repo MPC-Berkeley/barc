@@ -27,7 +27,7 @@
     </node>
 
     <!-- LOW LEVEL CONTROLLER -->
-    <node pkg="barc" type="controller_low_level.py" name="low_level_controller" />
+    <!--<node pkg="barc" type="controller_low_level.py" name="low_level_controller" /> -->
 
      <!-- CONTROL -->
     <node pkg="barc" type="LMPC.py" name="control" output="screen" />
