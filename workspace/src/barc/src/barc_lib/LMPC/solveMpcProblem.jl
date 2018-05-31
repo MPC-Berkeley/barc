@@ -439,3 +439,32 @@ function solveMpcProblem_convhull_dyn_linear(mdl::MpcModel_convhull_dyn_linear,m
     # println("Solved, status = $sol_status")
     return sol_z,sol_u,sol_status
 end
+
+function solveMpcProblem_convhull_kin(mdl::MpcModel_convhull_kin,mpcSol::MpcSol,
+                                      zCurr::Array{Float64,1},
+                                      zPrev::Array{Float64,2},uPrev::Array{Float64,2},selectedStates::SelectedStates,track::Track,
+                                      GP_e_vy::Array{Float64,1},GP_e_psidot::Array{Float64,1})
+
+    selStates       = selectedStates.selStates
+    statesCost      = selectedStates.statesCost
+
+    z_curvature=vcat(zCurr',zPrev[3:end,:])
+    curvature=curvature_prediction(z_curvature,track)
+
+    # Update current initial condition, curvature and System ID coefficients
+    setvalue(mdl.z0,zCurr)
+    setvalue(mdl.uPrev,uPrev)
+    setvalue(mdl.df_his,mpcSol.df_his)
+    setvalue(mdl.c,curvature)           # Track curvature
+    setvalue(mdl.selStates,selStates)
+    setvalue(mdl.statesCost,statesCost)
+    setvalue(mdl.GP_e_vy,GP_e_vy)
+    setvalue(mdl.GP_e_psidot,GP_e_psidot)
+
+    # Solve Problem and return solution
+    sol_status  = solve(mdl.mdl)
+    sol_u       = getvalue(mdl.u_Ol)
+    sol_z       = getvalue(mdl.z_Ol)
+    println("Solved, status = $sol_status")
+    return sol_z,sol_u,sol_status
+end

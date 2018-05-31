@@ -47,8 +47,9 @@ function main()
 
     const PF_FLAG          = false  # true:only pF,     false:1 warm-up lap and LMPC
 
-    const LMPC_FLAG        = true   # true:IDEN_MODEL,  false:IDEN_KIN_LIN_MODEL(if both flags are false)
-    const LMPC_DYN_FLAG    = false   # true:DYN_LIN_MODEL, false:IDEN_KIN_LIN_MODEL(if both flags are false)
+    const LMPC_FLAG        = false   # true:IDEN_MODEL,  false:IDEN_KIN_LIN_MODEL(if all flags are false)
+    const LMPC_DYN_FLAG    = false   # true:DYN_LIN_MODEL, false:IDEN_KIN_LIN_MODEL(if all flags are false)
+    const LMPC_KIN_FLAG    = true   # true:KIN_MODEL,  false:IDEN_KIN_LIN_MODEL(if all flags are false)
 
     const FEATURE_FLAG     = false  # true:8-shape,     false:history (this requires the corresponding change in 3 palces)
     const NORM_SPACE_FLAG  = true  # true:2-norm,      false: space critirion
@@ -61,7 +62,7 @@ function main()
     const GP_HISTORY_FLAG  = false  # true: GPR data is from last laps, false: GP data is from data base.
 
     const N                = 10
-    const delay_df         = 2
+    const delay_df         = 3
     const delay_a          = 1
     
     if PF_FLAG
@@ -75,6 +76,8 @@ function main()
             end
         elseif LMPC_DYN_FLAG
             file_name = "DYN_LIN"
+        elseif LMPC_KIN_FLAG
+        	file_name = "KIN"
         else
             file_name = "SYS_ID_KIN_LIN"
             if TI_TV_FLAG
@@ -155,6 +158,7 @@ function main()
     statusHistory       = Array{ASCIIString}(BUFFERSIZE,num_lap)
 
     mdl_pF           = MpcModel_pF(mpcParams_pF,modelParams)
+    mdl_kin     	 = MpcModel_convhull_kin(mpcParams_4s,modelParams,selectedStates)
     mdl_convhull     = MpcModel_convhull_dyn_iden(mpcParams,modelParams,selectedStates)
     mdl_kin_lin      = MpcModel_convhull_kin_linear(mpcParams_4s,modelParams,selectedStates)
     mdl_dyn_lin      = MpcModel_convhull_dyn_linear(mpcParams,modelParams,selectedStates)
@@ -178,6 +182,7 @@ function main()
         (~,~,~)=solveMpcProblem_convhull_dyn_linear(mdl_dyn_lin,mpcSol,mpcParams,modelParams,lapStatus,rand(mpcParams.N+1,6),rand(mpcParams.N,2),rand(mpcParams.N+1,6),rand(mpcParams.N,2),selectedStates_dummy,track,rand(mpcParams.N),rand(mpcParams.N))
         selectedStates_dummy.selStates=s6_to_s4(selectedStates_dummy.selStates)
         (~,~,~)=solveMpcProblem_convhull_kin_linear(mdl_kin_lin,mpcSol,mpcParams_4s,modelParams,rand(mpcParams.N+1,4),rand(mpcParams.N,2),rand(mpcParams.N+1,4),rand(mpcParams.N,2),selectedStates_dummy,track)
+        (~,~,~)=solveMpcProblem_convhull_kin(mdl_kin,mpcSol,rand(4),rand(mpcParams.N+1,4),rand(mpcParams.N,2),selectedStates_dummy,track,rand(mpcParams.N),rand(mpcParams.N))
         (~,~,~)=car_pre_dyn(rand(1,6)+1,rand(mpcParams.N,2),track,modelParams,6)
         (~,~,~)=find_SS_dist(solHistory,rand(1,6),rand(1,2),lapStatus,selectedStates)
     end
@@ -481,6 +486,30 @@ function main()
                     tic()
                     (mpcSol.z,mpcSol.u,sol_status)=solveMpcProblem_convhull_dyn_linear(mdl_dyn_lin,mpcSol,mpcParams,modelParams,lapStatus,z_linear,u_linear,z_prev,u_prev,selectedStates,track,GP_e_vy,GP_e_psidot)
                     toc()
+
+                elseif LMPC_KIN_FLAG
+                	z_curr = [z_est[6],z_est[5],z_est[4],z_est[1],z_est[2],z_est[3]]
+	                z_kin = [z_est[6],z_est[5],z_est[4],sqrt(z_est[1]^2+z_est[2]^2)]
+	                GP_e_vy     = zeros(mpcParams.N)
+                    GP_e_psidot = zeros(mpcParams.N)
+                    z_to_iden = vcat(z_kin',z_prev[3:end,:])
+                    u_to_iden = vcat(u_prev[2:end,:],u_prev[end,:])
+                    for i = 1:mpcParams.N
+                        if GP_LOCAL_FLAG
+                            GP_e_vy[i]      = regre(z_to_iden[i,:],u_to_iden[i,:],feature_GP_vy_e,feature_GP_z,feature_GP_u)
+                            GP_e_psidot[i]  = regre(z_to_iden[i,:],u_to_iden[i,:],feature_GP_vy_e,feature_GP_z,feature_GP_u)
+                        elseif GP_FULL_FLAG
+                            GP_e_vy[i]      = GP_full_vy(z_to_iden[i,:],u_to_iden[i,:],GP_feature,GP_e_vy_prepare)
+                            GP_e_psidot[i]  = GP_full_psidot(z_to_iden[i,:],u_to_iden[i,:],GP_feature,GP_e_psi_dot_prepare)
+                        else
+                            GP_e_vy[i]      = 0
+                            GP_e_psidot[i]  = 0
+                        end
+                    end
+                    # SAFESET SELECTION
+                    selectedStates=find_SS(oldSS,selectedStates,z_curr[1],z_prev,lapStatus,modelParams,mpcParams_4s,track)
+                    selectedStates.selStates=s6_to_s4(selectedStates.selStates)
+                	(mpcSol.z,mpcSol.u,sol_status) = solveMpcProblem_convhull_kin(mdl_kin,mpcSol,z_kin,z_prev,u_prev,selectedStates,track,GP_e_vy,GP_e_psidot)
                 else 
                     ######################################################################
                     ############### CHOICE 3: DO MPC ON KIN_LIN MODEL ####################
@@ -657,7 +686,7 @@ function main()
             end
 
             statusHistory[lapStatus.currentIt,lapStatus.currentLap] = "$sol_status"
-            if !LMPC_DYN_FLAG && !PF_FLAG && lapStatus.currentLap > 1+max(selectedStates.feature_Nl,selectedStates.Nl) 
+            if !LMPC_DYN_FLAG && !LMPC_KIN_FLAG && !PF_FLAG && lapStatus.currentLap > 1+max(selectedStates.feature_Nl,selectedStates.Nl) 
                 selectFeatureHistory[lapStatus.currentIt,lapStatus.currentLap,:,:] = z_iden_plot
             end
             if (!PF_FLAG && lapStatus.currentLap > 1+max(selectedStates.feature_Nl,selectedStates.Nl))

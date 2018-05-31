@@ -114,6 +114,182 @@ type MpcModel_pF
     end
 end
 
+type MpcModel_convhull_kin
+
+    mdl::JuMP.Model
+
+    z0::Array{JuMP.NonlinearParameter,1}
+    c::Array{JuMP.NonlinearParameter,1}
+    selStates::Array{JuMP.NonlinearParameter,2}
+    statesCost::Array{JuMP.NonlinearParameter,1}
+    uPrev::Array{JuMP.NonlinearParameter,2}
+
+    eps_lane::Array{JuMP.Variable,1}
+    alpha::Array{JuMP.Variable,1}
+    z_Ol::Array{JuMP.Variable,2}
+    u_Ol::Array{JuMP.Variable,2}
+
+    derivCost::JuMP.NonlinearExpression
+    laneCost::JuMP.NonlinearExpression
+    terminalCost::JuMP.NonlinearExpression
+    slackS::JuMP.NonlinearExpression
+    slackEy::JuMP.NonlinearExpression
+    slackEpsi::JuMP.NonlinearExpression
+    slackV::JuMP.NonlinearExpression
+
+    a_his::Array{JuMP.NonlinearParameter,1}
+    df_his::Array{JuMP.NonlinearParameter,1}
+
+    GP_e_vy::Array{JuMP.NonlinearParameter,1}
+    GP_e_psidot::Array{JuMP.NonlinearParameter,1}
+
+    function MpcModel_convhull_kin(mpcParams::MpcParams,modelParams::ModelParams,selectedStates::SelectedStates)
+        m = new(); n_state=4
+        #### Initialize parameters
+        dt         = modelParams.dt                # time step
+        L_a        = modelParams.l_A               # distance from CoM of the car to the front wheels
+        L_b        = modelParams.l_B               # distance from CoM of the car to the rear wheels
+        # u_lb       = mpcParams.u_lb
+        # u_ub       = mpcParams.u_ub
+        # z_lb       = mpcParams.z_lb
+        # z_ub       = mpcParams.z_ub
+        u_lb = [-1    -18/180*pi]
+        u_ub = [ 2     18/180*pi]
+        z_lb = [-Inf -Inf -Inf -0.5] # 1.s 2.ey 3.epsi 4.v
+        z_ub = [ Inf  Inf  Inf  3.0] # 1.s 2.ey 3.epsi 4.v
+        c_f        = modelParams.c_f
+
+        ey_max      = get_param("ey")*get_param("ey_tighten")/2
+
+        N          = mpcParams.N                           # Prediction horizon
+        QderivZ    = mpcParams.QderivZ::Array{Float64,1}   # weights for the derivative cost on the states
+        QderivU    = mpcParams.QderivU::Array{Float64,1}   # weights for the derivative cost on the control inputs
+        R          = mpcParams.R::Array{Float64,1}         # weights on the control inputs
+        Q_term_cost= mpcParams.Q_term_cost::Float64        # weights on terminal cost
+        Q_lane     = mpcParams.Q_lane::Float64             # weight on the soft constraint on the lane
+        Q_vel      = mpcParams.Q_vel::Float64             # weight on the soft constraint for the max velocity
+        Q_slack    = mpcParams.Q_slack
+
+        Np         = selectedStates.Np::Int64              # how many states to select
+        Nl         = selectedStates.Nl::Int64              # how many previous laps to select
+
+        mdl = Model(solver = IpoptSolver(print_level=0,linear_solver="ma27")) #,max_cpu_time=0.09))#,check_derivatives_for_naninf="yes"))#,linear_solver="ma57",print_user_options="yes"))
+
+        @variable( mdl, z_Ol[1:(N+1),1:n_state])
+        @variable( mdl, u_Ol[1:N,1:2])
+        @variable( mdl, eps_lane[1:N+1] >= 0)   # eps for soft lane constraints
+        @variable( mdl, alpha[1:Nl*Np] >= 0)    # coefficients of the convex hull
+
+        # Set bounds
+        z_lb_4s = ones(N+1,1)*z_lb # lower bounds on states: hard constraints
+        z_ub_4s = ones(N+1,1)*z_ub # upper bounds on states: hard constraints
+        u_lb_4s = ones(N,1)  *u_lb # lower bounds on steering: hard constraints
+        u_ub_4s = ones(N,1)  *u_ub # upper bounds on steering: hard constraints
+
+        for i=1:2
+            for j=1:N
+                setlowerbound(u_Ol[j,i], u_lb_4s[j,i])
+                setupperbound(u_Ol[j,i], u_ub_4s[j,i])
+            end
+        end
+        for i=1:n_state
+            for j=1:N+1
+                setlowerbound(z_Ol[j,i], z_lb_4s[j,i])
+                setupperbound(z_Ol[j,i], z_ub_4s[j,i])
+            end
+        end
+
+        @NLparameter(mdl, z0[i=1:n_state] == 0)
+        @NLparameter(mdl, c[1:N]==0)
+        @NLparameter(mdl, uPrev[1:N,1:2] == 0)
+        @NLparameter(mdl, selStates[1:Nl*Np,1:n_state] == 0)                                 # states from the previous trajectories selected in "convhullStates"
+        @NLparameter(mdl, statesCost[1:Nl*Np] == 0)                                    # costs of the states selected in "convhullStates"
+		@NLparameter(mdl, df_his[1:mpcParams.delay_df] == 0)
+        @NLparameter(mdl, a_his[1:mpcParams.delay_a] == 0)
+
+        @NLparameter(mdl, GP_e_vy[i=1:N] == 0)
+        @NLparameter(mdl, GP_e_psidot[i=1:N] == 0)
+
+        @NLconstraint(mdl, [i=2:N+1], z_Ol[i,2] <= ey_max + eps_lane[i])
+        @NLconstraint(mdl, [i=2:N+1], z_Ol[i,2] >= -ey_max - eps_lane[i])
+        @NLconstraint(mdl, sum{alpha[i], i=1:Nl*Np} == 1)                        # constraint on the coefficients of the convex hull
+
+        @NLconstraint(mdl, [i=1:mpcParams.delay_a], u_Ol[i,1] == a_his[i]) # steering delay is 1 for simulation and 3 for experiment
+        @NLconstraint(mdl, [i=1:mpcParams.delay_df], u_Ol[i,2] == df_his[i]) # steering delay is 1 for simulation and 3 for experiment
+
+        @NLexpression(mdl, bta[i=1:N], atan( L_b / (L_a + L_b) * tan(u_Ol[i,2])))
+        @NLexpression(mdl, dsdt[i=1:N], z_Ol[i,4]*cos(z_Ol[i,3]+bta[i])/(1-z_Ol[i,2]*c[i]))
+
+        # System dynamics
+        @NLconstraint(mdl, [i=1:4], z_Ol[1,i] == z0[i])         # initial condition
+        for i=1:N
+            @NLconstraint(mdl, z_Ol[i+1,1] == z_Ol[i,1] + dt*dsdt[i])                                       # s
+            @NLconstraint(mdl, z_Ol[i+1,2] == z_Ol[i,2] + dt*z_Ol[i,4]*sin(z_Ol[i,3]+bta[i])  )             # ey
+            @NLconstraint(mdl, z_Ol[i+1,3] == z_Ol[i,3] + dt*(z_Ol[i,4]/L_b*sin(bta[i])-dsdt[i]*c[i])  )    # epsi
+            @NLconstraint(mdl, z_Ol[i+1,4] == z_Ol[i,4] + dt*(u_Ol[i,1] - c_f*z_Ol[i,4]))                   # v
+        end
+
+        @NLconstraint(mdl, u_Ol[1,2]-uPrev[1,2] <= 0.12)
+        @NLconstraint(mdl, u_Ol[1,2]-uPrev[1,2] >= -0.12)
+        for i=1:N-1 # Constraints on u:
+            @NLconstraint(mdl, u_Ol[i+1,2]-u_Ol[i,2] <= 0.12)
+            @NLconstraint(mdl, u_Ol[i+1,2]-u_Ol[i,2] >= -0.12)
+        end
+
+        # for i=1:4
+        #     @NLconstraint(mdl, z_Ol[N+1,i] == sum(alpha[j]*selStates[j,i] for j=1:Nl*Np))
+        # end
+
+        # Cost functions
+        # Derivative cost
+        @NLexpression(mdl, derivCost, sum{QderivZ[j]*(sum{(z_Ol[i,j]-z_Ol[i+1,j])^2 , i=1:N}) , j=1:4} +
+                                      sum{QderivU[j]*(sum{(u_Ol[i,j]-u_Ol[i+1,j])^2 , i=1:N-1}+(uPrev[1,j]-u_Ol[1,j])^2) , j=1:2})
+        # Lane cost (soft)
+        @NLexpression(mdl, laneCost, Q_lane*sum{10.0*eps_lane[i]+50.0*eps_lane[i]^2 , i=2:N+1})
+        # Terminal Cost
+        @NLexpression(mdl, terminalCost , Q_term_cost*sum{alpha[i]*statesCost[i] , i=1:Nl*Np})
+        #----------------------------------
+        # Slack cost on s
+        @NLexpression(mdl, slackS, (z_Ol[N+1,1] - sum{alpha[j]*selStates[j,1] , j=1:Nl*Np})^2)
+        # Slack cost on ey
+        @NLexpression(mdl, slackEy, (z_Ol[N+1,2] - sum{alpha[j]*selStates[j,2] , j=1:Nl*Np})^2)
+        # Slack cost on ePsi
+        @NLexpression(mdl, slackEpsi, (z_Ol[N+1,3] - sum{alpha[j]*selStates[j,3] , j=1:Nl*Np})^2)
+        # Slack cost on v
+        @NLexpression(mdl, slackV, (z_Ol[N+1,4] - sum{alpha[j]*selStates[j,4] , j=1:Nl*Np})^2)
+
+        @NLobjective(mdl, Min, derivCost + laneCost + terminalCost + Q_slack[1]*slackS + Q_slack[2]*slackEy + Q_slack[3]*slackEpsi + Q_slack[4]*slackV) #+ Q_slack[5]*slackEy + Q_slack[6]*slackS) #+ controlCost
+
+        m.mdl = mdl
+        m.z0 = z0
+        m.c = c
+        m.z_Ol = z_Ol
+        m.u_Ol = u_Ol
+        m.uPrev = uPrev
+
+        m.derivCost = derivCost
+        m.laneCost = laneCost
+        m.terminalCost= terminalCost # terminal cost
+        m.selStates   = selStates    # selected states
+        m.statesCost  = statesCost   # cost of the selected states
+        m.alpha       = alpha        # parameters of the convex hull
+        m.eps_lane    = eps_lane
+
+        m.slackS      = slackS
+        m.slackEy     = slackEy
+        m.slackEpsi   = slackEpsi
+        m.slackV      = slackV
+
+        m.a_his 	= a_his
+        m.df_his 	= df_his
+
+        m.GP_e_vy     = GP_e_vy
+        m.GP_e_psidot = GP_e_psidot
+
+        return m
+    end
+end
+
 type MpcModel_convhull_dyn_iden
 
     mdl::JuMP.Model
@@ -675,4 +851,5 @@ type MpcModel_convhull_dyn_linear
         return m
     end
 end
+
 
