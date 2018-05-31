@@ -1,5 +1,10 @@
 #!/usr/bin/env python
-
+"""
+    File name: state_estimator.py
+    Author: Shuqi Xu
+    Email: shuqixu@kth.se
+    Python Version: 2.7.12
+"""
 # ---------------------------------------------------------------------------
 # Licensing Information: You are free to use or extend these projects for
 # education or reserach purposes provided that (1) you retain this notice
@@ -11,8 +16,6 @@
 # (jon.gonzales@berkeley.edu). The cloud services integation with ROS was developed
 # by Kiet Lam  (kiet.lam@berkeley.edu). The web-server app Dator was
 # based on an open source project by Bruce Wootton
-
-# This estimator was developed by Shuqi Xu (shuqixu@berkeley.edu)
 # ---------------------------------------------------------------------------
 
 import rospy
