@@ -144,7 +144,7 @@ class low_level_control(object):
         elif FxR > 0:
             #self.motor_pwm = max(94,91 + 6.5*FxR)   # using writeMicroseconds() in Arduino
             # self.motor_pwm = 91 + 6.5*FxR   # using writeMicroseconds() in Arduino
-            self.motor_pwm = 91 + 6.5*FxR   # using writeMicroseconds() in Arduino
+            self.motor_pwm = 91 + 7.5*FxR   # using writeMicroseconds() in Arduino
             # self.motor_pwm = ESCacc(self.vx, FxR)
             # self.motor_pwm = max(94,90.74 + 6.17*FxR)
             #self.motor_pwm = 90.74 + 6.17*FxR

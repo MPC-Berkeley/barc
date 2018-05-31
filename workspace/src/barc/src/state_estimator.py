@@ -226,8 +226,8 @@ class Estimator(object):
 
         self.a_his.append(ecu.a)
         self.df_his.append(ecu.df)
-        # u = [self.a_his.pop(0), self.df_his.pop(0)]
-        u = [ecu.a, self.df_his.pop(0)]
+        u = [self.a_his.pop(0), self.df_his.pop(0)]
+        # u = [ecu.a, self.df_his.pop(0)]
         
         bta = 0.5 * u[1]
         y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot, sin(bta)*enc.v_meas])

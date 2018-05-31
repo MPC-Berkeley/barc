@@ -209,7 +209,7 @@ function coeff_iden_dist(idenStates::Array{Float64,3},idenInputs::Array{Float64,
     # println(z)
     # println(u)
     size(z,1)==size(u,1) ? nothing : error("state and input in coeff_iden() need to have the same dimensions")
-    A_vx=zeros(size(z,1),3)
+    A_vx=zeros(size(z,1),6)
     A_vy=zeros(size(z,1),4)
     A_psi=zeros(size(z,1),3)
     # y_vx=diff(z[:,1,:],2)
@@ -253,6 +253,9 @@ function coeff_iden_dist(idenStates::Array{Float64,3},idenInputs::Array{Float64,
         A_vx[i,1]=z[i,2,1]*z[i,3,1]
         A_vx[i,2]=z[i,1,1]
         A_vx[i,3]=u[i,1]
+        A_vx[i,4]=z[i,3,1]/z[i,1,1]
+        A_vx[i,5]=z[i,2,1]/z[i,1,1]
+        A_vx[i,6]=u[i,2]
         A_vy[i,1]=z[i,2,1]/z[i,1,1]
         A_vy[i,2]=z[i,1,1]*z[i,3,1]
         A_vy[i,3]=z[i,3,1]/z[i,1,1]
@@ -262,9 +265,9 @@ function coeff_iden_dist(idenStates::Array{Float64,3},idenInputs::Array{Float64,
         A_psi[i,3]=u[i,2]
     end
     # BACKSLASH OPERATOR WITHOUT REGULIZATION
-    # c_Vx = A_vx\y_vx
-    # c_Vy = A_vy\y_vy
-    # c_Psi = A_psi\y_psi
+    c_Vx = A_vx\y_vx
+    c_Vy = A_vy\y_vy
+    c_Psi = A_psi\y_psi
 
     # BY IVS()
     # c_Vx = inv(A_vx'*A_vx)*A_vx'*y_vx
@@ -272,18 +275,18 @@ function coeff_iden_dist(idenStates::Array{Float64,3},idenInputs::Array{Float64,
     # c_Psi = inv(A_psi'*A_psi)*A_psi'*y_psi
 
     # BACKSLASH WITH REGULARIZATION
-    mu_Vx = zeros(3,3); mu_Vx[1,1] = 1e-5
-    mu_Vy = zeros(4,4); mu_Vy[1,1] = 1e-5
-    mu_Psi = zeros(3,3); mu_Psi[2,2] = 1e-5
-    c_Vx = (A_vx'*A_vx+mu_Vx)\(A_vx'*y_vx)
-    c_Vy = (A_vy'*A_vy+mu_Vy)\(A_vy'*y_vy)
-    c_Psi = (A_psi'*A_psi+mu_Psi)\(A_psi'*y_psi)
+    # mu_Vx = zeros(3,3); mu_Vx[1,1] = 1e-5
+    # mu_Vy = zeros(4,4); mu_Vy[1,1] = 1e-5
+    # mu_Psi = zeros(3,3); mu_Psi[2,2] = 1e-5
+    # c_Vx = (A_vx'*A_vx+mu_Vx)\(A_vx'*y_vx)
+    # c_Vy = (A_vy'*A_vy+mu_Vy)\(A_vy'*y_vy)
+    # c_Psi = (A_psi'*A_psi+mu_Psi)\(A_psi'*y_psi)
 
 
     # println("c_Vx is $c_Vx")
     # println("c_Vx is $c_Vy")
     # println("c_Vx is $c_Psi")
-    c_Vx[1] = max(-0.3,min(0.3,c_Vx[1]))
+    # c_Vx[1] = max(-0.3,min(0.3,c_Vx[1]))
     # c_Vy[2] = max(-1,min(1,c_Vy[2]))
     # c_Vy[3] = max(-1,min(1,c_Vy[3]))
 
@@ -460,20 +463,20 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_4s::MpcParams,mpcPa
         mpcParams.vPathFollowing    = 1.0                           # reference speed for first lap of path following
         mpcParams.R                 = 0*[10.0,10.0]                 # put weights on a and d_f
         mpcParams.QderivZ           = 10.0*[0,0,1,1,1,1]             # cost matrix for derivative cost of states
-        mpcParams.QderivU           = 100*[4.0,1.0] #NOTE Set this to [5.0, 0/40.0]              # cost matrix for derivative cost of inputs
-        mpcParams.Q_term_cost       = 1.0                        # scaling of Q-function
+        mpcParams.QderivU           = 1*[1.0,5.0] #NOTE Set this to [5.0, 0/40.0]              # cost matrix for derivative cost of inputs
+        mpcParams.Q_term_cost       = 0.1                        # scaling of Q-function
         mpcParams.delay_df          = delay_df                             # steering delay
         mpcParams.delay_a           = delay_a                             # acceleration delay
         mpcParams.Q_lane            = 16                      # weight on the soft constraint for the lane
-        mpcParams.Q_slack           = 1.0*[50.0,80.0,30.0,20.0,1.0,10.0]#[20.0,10.0,10.0,30.0,80.0,50.0]  #s,ey,epsi,vx,vy,psiDot
+        mpcParams.Q_slack           = 3.0*[20.0,20.0,20.0,5.0,5.0,5.0]#[20.0,10.0,10.0,30.0,80.0,50.0]  #s,ey,epsi,vx,vy,psiDot
 
         mpcParams_4s.N              = N
         mpcParams_4s.R              = 0.0*[1,1]
         mpcParams_4s.QderivZ        = 1.0*[0,0.1,0.1,2]
-        mpcParams_4s.QderivU        = 1.0*[1,1]
-        mpcParams_4s.Q_term_cost    = 3e-1 # scaling of Q-function
+        mpcParams_4s.QderivU        = 1.0*[1.0,0.5]
+        mpcParams_4s.Q_term_cost    = 0.5 # scaling of Q-function
         mpcParams_4s.Q_lane         = 10.0 # weight on the soft constraint for the lane bounds
-        mpcParams_4s.Q_slack        = 5.0*[1,1,1,1]
+        mpcParams_4s.Q_slack        = 30.0*[1,1,1,1]
         mpcParams_4s.delay_df          = delay_df                             # steering delay
         mpcParams_4s.delay_a           = delay_a                             # acceleration delay
 
@@ -514,11 +517,11 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_4s::MpcParams,mpcPa
     oldTraj.oldTraj             = NaN*ones(5*BUFFERSIZE,7,num_lap)
     oldTraj.count               = ones(num_lap)
 
-    mpcCoeff.c_Vx               = zeros(mpcParams.N,3)
+    mpcCoeff.c_Vx               = zeros(mpcParams.N,6)
     mpcCoeff.c_Vy               = zeros(mpcParams.N,4)
     mpcCoeff.c_Psi              = zeros(mpcParams.N,3)
 
-    mpcCoeff_dummy.c_Vx         = zeros(1,3)
+    mpcCoeff_dummy.c_Vx         = zeros(1,6)
     mpcCoeff_dummy.c_Vy         = zeros(1,4)
     mpcCoeff_dummy.c_Psi        = zeros(1,3)
 

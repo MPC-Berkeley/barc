@@ -153,7 +153,7 @@ type MpcModel_convhull_kin
         # u_ub       = mpcParams.u_ub
         # z_lb       = mpcParams.z_lb
         # z_ub       = mpcParams.z_ub
-        u_lb = [-1    -18/180*pi]
+        u_lb = [-2    -18/180*pi]
         u_ub = [ 2     18/180*pi]
         z_lb = [-Inf -Inf -Inf -0.5] # 1.s 2.ey 3.epsi 4.v
         z_ub = [ Inf  Inf  Inf  3.0] # 1.s 2.ey 3.epsi 4.v
@@ -173,7 +173,7 @@ type MpcModel_convhull_kin
         Np         = selectedStates.Np::Int64              # how many states to select
         Nl         = selectedStates.Nl::Int64              # how many previous laps to select
 
-        mdl = Model(solver = IpoptSolver(print_level=0,linear_solver="ma27")) #,max_cpu_time=0.09))#,check_derivatives_for_naninf="yes"))#,linear_solver="ma57",print_user_options="yes"))
+        mdl = Model(solver = IpoptSolver(print_level=0,max_cpu_time=0.09,linear_solver="ma27")) #,max_cpu_time=0.09))#,check_derivatives_for_naninf="yes"))#,linear_solver="ma57",print_user_options="yes"))
 
         @variable( mdl, z_Ol[1:(N+1),1:n_state])
         @variable( mdl, u_Ol[1:N,1:2])
@@ -245,7 +245,7 @@ type MpcModel_convhull_kin
         @NLexpression(mdl, derivCost, sum{QderivZ[j]*(sum{(z_Ol[i,j]-z_Ol[i+1,j])^2 , i=1:N}) , j=1:4} +
                                       sum{QderivU[j]*(sum{(u_Ol[i,j]-u_Ol[i+1,j])^2 , i=1:N-1}+(uPrev[1,j]-u_Ol[1,j])^2) , j=1:2})
         # Lane cost (soft)
-        @NLexpression(mdl, laneCost, Q_lane*sum{10.0*eps_lane[i]+50.0*eps_lane[i]^2 , i=2:N+1})
+        @NLexpression(mdl, laneCost, Q_lane*sum{1.0*eps_lane[i]+20.0*eps_lane[i]^2 , i=2:N+1})
         # Terminal Cost
         @NLexpression(mdl, terminalCost , Q_term_cost*sum{alpha[i]*statesCost[i] , i=1:Nl*Np})
         #----------------------------------
@@ -338,9 +338,9 @@ type MpcModel_convhull_dyn_iden
         # z_ub       = mpcParams.z_ub              # upper bounds for the states
         ey_max  = get_param("ey")*get_param("ey_tighten")/2
         u_lb    = [ -0.5    -18/180*pi]
-        u_ub    = [    2     18/180*pi]
+        u_ub    = [  3.0     18/180*pi]
         z_lb    = [-Inf -Inf -Inf    0 -Inf -Inf] # 1.s 2.ey 3.epsi 4.vx 5.vy 6.psi_dot
-        z_ub    = [ Inf  Inf  Inf  3.0  Inf  Inf] # 1.s 2.ey 3.epsi 4.vx 5.vy 6.psi_dot
+        z_ub    = [ Inf  Inf  Inf  6.0  Inf  Inf] # 1.s 2.ey 3.epsi 4.vx 5.vy 6.psi_dot
 
         N          = mpcParams.N                           # Prediction horizon
         QderivZ    = mpcParams.QderivZ::Array{Float64,1}   # weights for the derivative cost on the states
@@ -380,7 +380,7 @@ type MpcModel_convhull_dyn_iden
         @NLparameter(mdl, GP_e_vy[i=1:N] == 0)
         @NLparameter(mdl, GP_e_psidot[i=1:N] == 0)
         @NLparameter(mdl, c[1:N] == 0)
-        @NLparameter(mdl, c_Vx[1:N,1:3]  == 0)    # system identification parameters
+        @NLparameter(mdl, c_Vx[1:N,1:6]  == 0)    # system identification parameters
         @NLparameter(mdl, c_Vy[1:N,1:4]  == 0)    # system identification parameters
         @NLparameter(mdl, c_Psi[1:N,1:3] == 0)    # system identification parameters
         @NLparameter(mdl, uPrev[1:N,1:2] == 0)
@@ -408,18 +408,19 @@ type MpcModel_convhull_dyn_iden
             @NLconstraint(mdl, z_Ol[i+1,1]  == z_Ol[i,1] + dt * dsdt[i])                                                # s
             @NLconstraint(mdl, z_Ol[i+1,2]  == z_Ol[i,2] + dt * (z_Ol[i,4]*sin(z_Ol[i,3]) + z_Ol[i,5]*cos(z_Ol[i,3])))  # eY
             @NLconstraint(mdl, z_Ol[i+1,3]  == z_Ol[i,3] + dt * (z_Ol[i,6]-dsdt[i]*c[i]))                               # ePsi
-            @NLconstraint(mdl, z_Ol[i+1,4]  == z_Ol[i,4] + c_Vx[i,1]*z_Ol[i,5]*z_Ol[i,6] + c_Vx[i,2]*z_Ol[i,4] + c_Vx[i,3]*u_Ol[i,1])                                         # vx
-            # @NLconstraint(mdl, z_Ol[i+1,4]  == z_Ol[i,4] + 0.1*z_Ol[i,5]*z_Ol[i,6] + c_Vx[i,2]*z_Ol[i,4] + c_Vx[i,3]*u_Ol[i,1])                                         # vx
+            # @NLconstraint(mdl, z_Ol[i+1,4]  == z_Ol[i,4] + c_Vx[i,1]*z_Ol[i,5]*z_Ol[i,6] + c_Vx[i,2]*z_Ol[i,4] + c_Vx[i,3]*u_Ol[i,1])                                         # vx
+            # @NLconstraint(mdl, z_Ol[i+1,4]  == z_Ol[i,4] + c_Vx[i,1]*z_Ol[i,5]*z_Ol[i,6] + c_Vx[i,2]*z_Ol[i,4] + c_Vx[i,3]*u_Ol[i,1] + c_Vx[i,4]*z_Ol[i,6]/z_Ol[i,4] + c_Vx[i,5]*z_Ol[i,5]/z_Ol[i,4] + c_Vx[i,6]*u_Ol[i,2])                                         # vx
+            @NLconstraint(mdl, z_Ol[i+1,4]  == z_Ol[i,4] + 0.1*z_Ol[i,5]*z_Ol[i,6] + c_Vx[i,2]*z_Ol[i,4] + c_Vx[i,3]*u_Ol[i,1] + c_Vx[i,4]*z_Ol[i,6]/z_Ol[i,4] + c_Vx[i,5]*z_Ol[i,5]/z_Ol[i,4] + c_Vx[i,6]*u_Ol[i,2])                                         # vx
             @NLconstraint(mdl, z_Ol[i+1,5]  == z_Ol[i,5] + c_Vy[i,1]*z_Ol[i,5]/z_Ol[i,4] + c_Vy[i,2]*z_Ol[i,4]*z_Ol[i,6] + c_Vy[i,3]*z_Ol[i,6]/z_Ol[i,4] + c_Vy[i,4]*u_Ol[i,2] + GP_e_vy[i]) # vy
             @NLconstraint(mdl, z_Ol[i+1,6]  == z_Ol[i,6] + c_Psi[i,1]*z_Ol[i,6]/z_Ol[i,4] + c_Psi[i,2]*z_Ol[i,5]/z_Ol[i,4] + c_Psi[i,3]*u_Ol[i,2] + GP_e_psidot[i])                            # psiDot
         end
 
-        @NLconstraint(mdl, u_Ol[1,2]-uPrev[1,2] <= 0.12)
-        @NLconstraint(mdl, u_Ol[1,2]-uPrev[1,2] >= -0.12)
-        for i=1:N-1 # hard constraints on u, which means this confition is really serious
-            @NLconstraint(mdl, u_Ol[i+1,2]-u_Ol[i,2] <= 0.12)
-            @NLconstraint(mdl, u_Ol[i+1,2]-u_Ol[i,2] >= -0.12)
-        end
+        # @NLconstraint(mdl, u_Ol[1,2]-uPrev[1,2] <= 0.12)
+        # @NLconstraint(mdl, u_Ol[1,2]-uPrev[1,2] >= -0.12)
+        # for i=1:N-1 # hard constraints on u, which means this confition is really serious
+        #     @NLconstraint(mdl, u_Ol[i+1,2]-u_Ol[i,2] <= 0.12)
+        #     @NLconstraint(mdl, u_Ol[i+1,2]-u_Ol[i,2] >= -0.12)
+        # end
         # Cost functions
         @NLexpression(mdl, derivCost, sum{QderivZ[j]*(sum{(z_Ol[i,j]-z_Ol[i+1,j])^2 ,i=1:N}), j=1:n_state} +
                                       sum{QderivU[j]*(sum{(u_Ol[i,j]-u_Ol[i+1,j])^2 ,i=1:N-1} + (uPrev[1,j]-u_Ol[1,j])^2) ,j=1:n_input} )

@@ -58,6 +58,8 @@ lapStatus   = LapStatus(1,1,false,false,0.3)
 
 
 # end
+figure("lap")
+plot(solHistory.cost)
 
 # STATE AND SYS_ID PARAMETERS PLOT FOR LAPS DONE
 if ARGS[1] == "record" || ARGS[1]=="both"
@@ -76,10 +78,16 @@ if ARGS[1] == "record" || ARGS[1]=="both"
         plot([current_x,current_x],[-0.3,0.3],color="grey",linestyle="--")
         ylabel("vy")
 
+        # subplot(3,2,5)
+        # plot(current_x+1:current_x+x_len,solHistory.z[1:x_len,i,1,6],color="blue")
+        # plot([current_x,current_x],[-3,3],color="grey",linestyle="--")
+        # ylabel("psi_dot")
+
         subplot(3,2,5)
-        plot(current_x+1:current_x+x_len,solHistory.z[1:x_len,i,1,6],color="blue")
+        plot(current_x+1:current_x+x_len,solHistory.u[1:x_len,i,1,1],color="blue",label="a")
         plot([current_x,current_x],[-3,3],color="grey",linestyle="--")
         ylabel("psi_dot")
+
         i += 1
         if i>length(solHistory.cost)
             break

@@ -45,7 +45,7 @@ function main()
     const BUFFERSIZE       = 500
     const LMPC_LAP         = 30
 
-    const PF_FLAG          = true  # true:only pF,     false:1 warm-up lap and LMPC
+    const PF_FLAG          = false  # true:only pF,     false:1 warm-up lap and LMPC
 
     const LMPC_FLAG        = false   # true:IDEN_MODEL,  false:IDEN_KIN_LIN_MODEL(if all flags are false)
     const LMPC_DYN_FLAG    = false   # true:DYN_LIN_MODEL, false:IDEN_KIN_LIN_MODEL(if all flags are false)
@@ -61,7 +61,7 @@ function main()
     
     const GP_HISTORY_FLAG  = false  # true: GPR data is from last laps, false: GP data is from data base.
 
-    const N                = 10
+    const N                = 20
     const delay_df         = 3
     const delay_a          = 1
     
@@ -106,7 +106,7 @@ function main()
     TI_TV_FLAG ? println("Time invariant SYS_ID") : println("Time variant SYS_ID")
     println("N=$N, delay_df=$delay_df, delay_a=$delay_a")
     
-    track_data       = createTrack("3110")
+    track_data       = createTrack("basic")
     track            = Track(track_data)
     track_fe         = createTrack("feature")
     track_f          = Track(track_fe)
@@ -147,7 +147,7 @@ function main()
     s2          = Subscriber("real_val", pos_info, ST_callback, (z_true,),queue_size=1)::RobotOS.Subscriber{barc.msg.pos_info}
 
     num_lap             = LMPC_LAP+1+max(selectedStates.Nl,selectedStates.feature_Nl)
-    log_cvx             = zeros(BUFFERSIZE,mpcParams.N,3,num_lap)
+    log_cvx             = zeros(BUFFERSIZE,mpcParams.N,6,num_lap)
     log_cvy             = zeros(BUFFERSIZE,mpcParams.N,4,num_lap)
     log_cpsi            = zeros(BUFFERSIZE,mpcParams.N,3,num_lap)
     solHistory          = SolHistory(BUFFERSIZE,mpcParams.N,6,num_lap)
@@ -256,7 +256,11 @@ function main()
         lapStatus.currentLap = 1
     else
         lapStatus.currentLap = 1+max(selectedStates.feature_Nl,selectedStates.Nl)
-        data  = load("$(homedir())/simulations/path_following.jld")
+        if get_param("sim_flag")
+            data  = load("$(homedir())/simulations/path_following.jld")
+        else
+            data  = load("$(homedir())/experiments/path_following.jld")
+        end
         oldSS = data["oldSS"]
         solHistory = data["solHistory"]
     end
@@ -714,12 +718,13 @@ function main()
             mpcSol_to_pub.z_s = mpcSol.z[:,1]
             mpcSol_to_pub.SS_s = selectedStates.selStates[:,1]
             # FORECASTING POINTS FROM THE DYNAMIC MODEL
-            if length(z_curr)==6
-                (z_fore,~,~) = car_pre_dyn_true(z_curr,mpcSol.u,track,modelParams,6)
-                (z_fore_x,z_fore_y) = trackFrame_to_xyFrame(z_fore,track)
-                mpcSol_to_pub.z_fore_x = z_fore_x
-                mpcSol_to_pub.z_fore_y = z_fore_y
-            end
+            
+            # if length(z_curr)==6
+            #     (z_fore,~,~) = car_pre_dyn_true(z_curr,mpcSol.u,track,modelParams,6)
+            #     (z_fore_x,z_fore_y) = trackFrame_to_xyFrame(z_fore,track)
+            #     mpcSol_to_pub.z_fore_x = z_fore_x
+            #     mpcSol_to_pub.z_fore_y = z_fore_y
+            # end
 
             cmd.servo   = convert(Float32,mpcSol.d_f)
             cmd.motor   = convert(Float32,mpcSol.a_x)
