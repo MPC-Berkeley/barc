@@ -80,7 +80,7 @@ function main()
     println("track maximum curvature is: ",round(track.max_curvature,3))
     
     # FEATURE DATA INITIALIZATION
-    v_ref = vcat([0.8],0.8:0.05:2.5)
+    v_ref = vcat([2.0],2.0:0.2:4.0)
 
     feature_z   = zeros(100000,6,2)
     feature_u   = zeros(100000,2)

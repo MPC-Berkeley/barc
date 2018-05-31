@@ -43,9 +43,9 @@ end
 function main()
     println("Starting LMPC node.")
     const BUFFERSIZE       = 500
-    const LMPC_LAP         = 6
+    const LMPC_LAP         = 30
 
-    const PF_FLAG          = true  # true:only pF,     false:1 warm-up lap and LMPC
+    const PF_FLAG          = false  # true:only pF,     false:1 warm-up lap and LMPC
 
     const LMPC_FLAG        = true   # true:IDEN_MODEL,  false:IDEN_KIN_LIN_MODEL(if both flags are false)
     const LMPC_DYN_FLAG    = false   # true:DYN_LIN_MODEL, false:IDEN_KIN_LIN_MODEL(if both flags are false)
@@ -61,7 +61,7 @@ function main()
     const GP_HISTORY_FLAG  = false  # true: GPR data is from last laps, false: GP data is from data base.
 
     const N                = 10
-    const delay_df         = 3
+    const delay_df         = 2
     const delay_a          = 1
     
     if PF_FLAG

@@ -461,7 +461,7 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_4s::MpcParams,mpcPa
         mpcParams.R                 = 0*[10.0,10.0]                 # put weights on a and d_f
         mpcParams.QderivZ           = 10.0*[0,0,1,1,1,1]             # cost matrix for derivative cost of states
         mpcParams.QderivU           = 100*[4.0,1.0] #NOTE Set this to [5.0, 0/40.0]              # cost matrix for derivative cost of inputs
-        mpcParams.Q_term_cost       = 3                        # scaling of Q-function
+        mpcParams.Q_term_cost       = 1.0                        # scaling of Q-function
         mpcParams.delay_df          = delay_df                             # steering delay
         mpcParams.delay_a           = delay_a                             # acceleration delay
         mpcParams.Q_lane            = 16                      # weight on the soft constraint for the lane
@@ -481,7 +481,7 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_4s::MpcParams,mpcPa
         mpcParams_pF.Q              = [0.0,20.0,2.0,10.0]
         mpcParams_pF.R              = 2*[1.0,0.1]               # put weights on a and d_f
         mpcParams_pF.QderivZ        = 1.0*[0.0,1.0,1.0,1.0]           # cost matrix for derivative cost of states
-        mpcParams_pF.QderivU        = 0.1*[1,0.01]                # cost matrix for derivative cost of inputs
+        mpcParams_pF.QderivU        = 0.1*[1,50]                # cost matrix for derivative cost of inputs
         mpcParams_pF.vPathFollowing = 1.0                       # reference speed for first lap of path following
         mpcParams_pF.delay_df       = delay_df                         # steering delay (number of steps)
         mpcParams_pF.delay_a        = delay_a                         # acceleration delay
@@ -967,7 +967,7 @@ function createTrack(name::ASCIIString)
         R_kin = 0.8
         num_kin = Int(round(angle/ ( ds/R_kin ) * 2))
         num = max(Int(round(angle/ ( ds/R ) * 2)),num_kin)
-        num=Int(ceil(num*1.3))
+        num=Int(ceil(num*1.0))
         track_data=[num -angle;
                     num  angle]
     else

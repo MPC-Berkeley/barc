@@ -101,7 +101,7 @@ class Track(object):
         R_kin   = 0.8
         num_kin = int(round(angle/ ( ds/R_kin ) * 2))
         num     = max(int(round(angle/ ( ds/R ) * 2)),num_kin)
-        num     = int(ceil(num*1.3))
+        num     = int(ceil(num*1.0))
         
         # TRACK CONSTRUCTION
         self.addCurve(num,-angle)
