@@ -45,7 +45,7 @@ function main()
     const BUFFERSIZE       = 500
     const LMPC_LAP         = 30
 
-    const PF_FLAG          = false  # true:only pF,     false:1 warm-up lap and LMPC
+    const PF_FLAG          = true  # true:only pF,     false:1 warm-up lap and LMPC
 
     const LMPC_FLAG        = false   # true:IDEN_MODEL,  false:IDEN_KIN_LIN_MODEL(if all flags are false)
     const LMPC_DYN_FLAG    = false   # true:DYN_LIN_MODEL, false:IDEN_KIN_LIN_MODEL(if all flags are false)
@@ -106,7 +106,7 @@ function main()
     TI_TV_FLAG ? println("Time invariant SYS_ID") : println("Time variant SYS_ID")
     println("N=$N, delay_df=$delay_df, delay_a=$delay_a")
     
-    track_data       = createTrack("MSC_lab")
+    track_data       = createTrack("3110")
     track            = Track(track_data)
     track_fe         = createTrack("feature")
     track_f          = Track(track_fe)

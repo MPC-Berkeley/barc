@@ -914,41 +914,41 @@ function createTrack(name::ASCIIString)
         # EXPERIEMENT TRACK DATA
         num = 100
         track_data=[Int(ceil(2*80)) 0;
-                    Int(ceil(2*num)) -pi/2;
+                    Int(ceil(2*num)) pi/2;
                     Int(ceil(2*(80+47))) 0;
-                    Int(ceil(2*num)) -pi/2;
+                    Int(ceil(2*num)) pi/2;
                     Int(ceil(2*50)) 0;
+                    Int(ceil(2*num)) pi/2;
+                    Int(ceil(2*4)) 0;
                     Int(ceil(2*num)) -pi/2;
+                    Int(ceil(2*30)) 0;
+                    Int(ceil(2*num)) pi/2;
                     Int(ceil(2*4)) 0;
                     Int(ceil(2*num)) pi/2;
-                    Int(ceil(2*30)) 0;
-                    Int(ceil(2*num)) -pi/2;
-                    Int(ceil(2*4)) 0;
-                    Int(ceil(2*num)) -pi/2;
                     Int(ceil(2*(71+48))) 0]
     elseif name == "basic"
         # Basic experiment track
-        # track_data = [Int(ceil(3*60)) 0;
-        #               Int(ceil(3*80)) -pi/2;
-        #               Int(ceil(3*20)) 0;
-        #               Int(ceil(3*80)) -pi/2;
-        #               Int(ceil(3*40)) pi/10;
-        #               Int(ceil(3*60)) -pi/5;
-        #               Int(ceil(3*40)) pi/10;
-        #               Int(ceil(3*80)) -pi/2;
-        #               Int(ceil(3*20)) 0;
-        #               Int(ceil(3*80)) -pi/2;
-        #               Int(ceil(3*75)) 0]
+        track_data = [Int(ceil(3*60)) 0;
+                      Int(ceil(3*80)) pi/2;
+                      Int(ceil(3*20)) 0;
+                      Int(ceil(3*80)) pi/2;
+                      Int(ceil(3*40)) -pi/10;
+                      Int(ceil(3*60)) pi/5;
+                      Int(ceil(3*40)) -pi/10;
+                      Int(ceil(3*80)) pi/2;
+                      Int(ceil(3*20)) 0;
+                      Int(ceil(3*80)) pi/2;
+                      Int(ceil(3*75)) 0]
 
-        track_data = [Int(ceil(2.8*40)) 0;
-                      Int(ceil(2.8*120)) -pi/2;
-                      Int(ceil(2.8*5)) 0;
-                      Int(ceil(2.8*120)) -pi/2;
-                      Int(ceil(2.8*80)) 0;
-                      Int(ceil(2.8*120)) -pi/2;
-                      Int(ceil(2.8*5)) 0;
-                      Int(ceil(2.8*120)) -pi/2;
-                      Int(ceil(2.8*40)) 0]
+        # track_data = [Int(ceil(2.8*40)) 0;
+        #               Int(ceil(2.8*120)) -pi/2;
+        #               Int(ceil(2.8*5)) 0;
+        #               Int(ceil(2.8*120)) -pi/2;
+        #               Int(ceil(2.8*80)) 0;
+        #               Int(ceil(2.8*120)) -pi/2;
+        #               Int(ceil(2.8*5)) 0;
+        #               Int(ceil(2.8*120)) -pi/2;
+        #               Int(ceil(2.8*40)) 0]
     elseif name == "MSC_lab"    
         # TRACK TO USE IN THE SMALL EXPERIMENT ROOM
         track_data = [Int(ceil(1.5*3*10)) 0;

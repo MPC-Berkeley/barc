@@ -166,32 +166,32 @@ class Track(object):
         #             [211,0]]
         
         # track for room 3110
-        # num = 100 # 60
-        # track_data=[[int(ceil(2*80)) ,0],
-        #             [int(ceil(2*num)), -pi/2],
-        #             [int(ceil(2*(80+47))) ,0],
-        #             [int(ceil(2*num)), -pi/2],
-        #             [int(ceil(2*50)) ,0],
-        #             [int(ceil(2*num)), -pi/2],
-        #             [int(ceil(2*4))  , 0],
-        #             [int(ceil(2*num)), pi/2],
-        #             [int(ceil(2*30)) ,0],
-        #             [int(ceil(2*num)), -pi/2],
-        #             [int(ceil(2*4)) ,0],
-        #             [int(ceil(2*num)), -pi/2],
-        #             [int(ceil(2*(71+48))) ,0]]  
+        num = 100 # 60
+        track_data=[[int(ceil(2*80)) ,0],
+                    [int(ceil(2*num)), pi/2],
+                    [int(ceil(2*(80+47))) ,0],
+                    [int(ceil(2*num)), pi/2],
+                    [int(ceil(2*50)) ,0],
+                    [int(ceil(2*num)), pi/2],
+                    [int(ceil(2*4))  , 0],
+                    [int(ceil(2*num)), -pi/2],
+                    [int(ceil(2*30)) ,0],
+                    [int(ceil(2*num)), pi/2],
+                    [int(ceil(2*4)) ,0],
+                    [int(ceil(2*num)), pi/2],
+                    [int(ceil(2*(71+48))) ,0]]  
 
         # Basic track for experiment          
         # track_data = [[int(ceil(3*60)), 0],
-        #               [int(ceil(3*80)), -pi/2],
+        #               [int(ceil(3*80)), pi/2],
         #               [int(ceil(3*20)), 0],
-        #               [int(ceil(3*80)), -pi/2],
-        #               [int(ceil(3*40)), pi/10],
-        #               [int(ceil(3*60)), -pi/5],
-        #               [int(ceil(3*40)), pi/10],
-        #               [int(ceil(3*80)), -pi/2],
+        #               [int(ceil(3*80)), pi/2],
+        #               [int(ceil(3*40)), -pi/10],
+        #               [int(ceil(3*60)), pi/5],
+        #               [int(ceil(3*40)), -pi/10],
+        #               [int(ceil(3*80)), pi/2],
         #               [int(ceil(3*20)), 0],
-        #               [int(ceil(3*80)), -pi/2],
+        #               [int(ceil(3*80)), pi/2],
         #               [int(ceil(3*75)), 0]]
 
         # track_data = [[int(ceil(2.8*40)), 0],
@@ -205,11 +205,11 @@ class Track(object):
         #               [int(ceil(2.8*40)), 0]]
         
         # TRACK FOR MSC EXPERIMENT ROOM
-        track_data = [[int(ceil(1.5*3*10)), 0],
-                      [int(ceil(1.5*3*120)), pi],
-                      [int(ceil(1.5*3*20)), 0],
-                      [int(ceil(1.5*3*120)), pi],
-                      [int(ceil(1.5*3*10)), 0]]
+        # track_data = [[int(ceil(1.5*3*10)), 0],
+        #               [int(ceil(1.5*3*120)), pi],
+        #               [int(ceil(1.5*3*20)), 0],
+        #               [int(ceil(1.5*3*120)), pi],
+        #               [int(ceil(1.5*3*10)), 0]]
                       
         #   TRACK CONSTRUCTION
         for i in range(len(track_data)):
