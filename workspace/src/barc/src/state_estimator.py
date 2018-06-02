@@ -205,7 +205,7 @@ class Estimator(object):
         self.yaw_est        = 0.0
         self.psiDot_est     = 0.0
         self.psiDrift_est   = 0.0
-        self.curr_time      = 0.0
+        self.curr_time      = rospy.get_rostime().to_sec()
 
         self.x_est_his          = []
         self.y_est_his          = []
@@ -416,8 +416,8 @@ class ImuClass(object):
         self.time_his    = []
 
         # Time for yawDot integration
-        self.curr_time = 0.0
-        self.prev_time = 0.0
+        self.curr_time = rospy.get_rostime().to_sec()
+        self.prev_time = self.curr_time
 
     def imu_callback(self,data):
         """Unpack message from sensor, IMU"""
@@ -488,7 +488,7 @@ class GpsClass(object):
         # time stamp
         self.t0         = t0
         self.time_his   = np.array([])
-        self.curr_time  = 0.0
+        self.curr_time  = rospy.get_rostime().to_sec() 
 
     def gps_callback(self,data):
         """Unpack message from sensor, GPS"""
@@ -554,7 +554,7 @@ class EncClass(object):
         self.v_prev     = 0.0
         self.t0         = t0
         self.time_his   = []
-        self.curr_time  = 0.0
+        self.curr_time  = rospy.get_rostime().to_sec()
 
     def enc_callback(self,data):
         """Unpack message from sensor, ENC"""

@@ -37,11 +37,20 @@ def main():
     ecu = EcuClass()
 
     counter = 0
+    a_his 	= [0.0]*int(rospy.get_param("simulator/delay_a")/rospy.get_param("simulator/dt"))
+    df_his 	= [0.0]*int(rospy.get_param("simulator/delay_df")/rospy.get_param("simulator/dt"))
     while not rospy.is_shutdown():
-		sim.f(ecu.u)
+    	# Simulator delay
+		a_his.append(ecu.u[0])
+		df_his.append(ecu.u[1])
+		u = [a_his.pop(0), df_his.pop(0)]
+
+		sim.f(u)
+
 		imu.update(sim)
 		gps.update(sim)
 		enc.update(sim)
+
 		sim.saveHistory()
 
 		gps.gps_pub()
@@ -85,7 +94,7 @@ class Simulator(object):
 		self.mu= rospy.get_param("simulator/mu")
 		self.g = rospy.get_param("simulator/g")
 
-		self.x 		= 0.1
+		self.x 		= 0.02
 		self.y 		= 0.0
 		self.vx 	= 0.0
 		self.vy 	= 0.0
@@ -108,7 +117,7 @@ class Simulator(object):
 		self.psiDot_his = []
 
 		self.dt 		= rospy.get_param("simulator/dt")
-		self.rate 		= rospy.Rate(1/self.dt)
+		self.rate 		= rospy.Rate(1.0/self.dt)
 		self.time_his 	= []
 
 	def f(self,u):
@@ -122,17 +131,26 @@ class Simulator(object):
 		FyF = -self.pacejka(a_F)
 		FyR = -self.pacejka(a_R)
 
-		if abs(a_F) > 30/180*pi or abs(a_R) > 30/180*pi:
+		if abs(a_F) > 30.0/180.0*pi or abs(a_R) > 30.0/180.0*pi:
 			print "WARNING: Large slip angles in simulation"
 
-		self.x 		+= self.dt*(cos(self.yaw)*self.vx - sin(self.yaw)*self.vy)
-		self.y 		+= self.dt*(sin(self.yaw)*self.vx + cos(self.yaw)*self.vy)
-		self.ax 	 = u[0] - self.c_f*self.vx# - FyF*sin(u[1])
-		self.ay 	 = 1/self.m*(FyF*cos(u[1])+FyR)
-		self.vx 	+= self.dt*(self.ax + self.psiDot*self.vy)
-		self.vy 	+= self.dt*(self.ay - self.psiDot*self.vx)
-		self.yaw 	+= self.dt*(self.psiDot)                                        
-		self.psiDot += self.dt*(1/self.I_z*(self.L_f*FyF*cos(u[1]) - self.L_r*FyR))
+		x 	= self.x
+		y 	= self.y
+		ax 	= self.ax
+		ay 	= self.ay
+		vx 	= self.vx
+		vy 	= self.vy
+		yaw = self.yaw
+		psiDot = self.psiDot
+
+		self.x 		+= self.dt*(cos(yaw)*vx - sin(yaw)*vy)
+		self.y 		+= self.dt*(sin(yaw)*vx + cos(yaw)*vy)
+		self.vx 	+= self.dt*(ax + psiDot*vy)
+		self.vy 	+= self.dt*(ay - psiDot*vx)
+		self.ax 	 = u[0] - self.c_f*vx# - FyF*sin(u[1])
+		self.ay 	 = 1.0/self.m*(FyF*cos(u[1])+FyR)
+		self.yaw 	+= self.dt*(psiDot)                                        
+		self.psiDot += self.dt*(1.0/self.I_z*(self.L_f*FyF*cos(u[1]) - self.L_r*FyR))
 
 		self.vx = abs(self.vx)
 	
@@ -161,7 +179,7 @@ class ImuClass(object):
 		self.ax_std 	= rospy.get_param("simulator/ax_std")
 		self.ay_std 	= rospy.get_param("simulator/ay_std")
 		self.psiDot_std = rospy.get_param("simulator/psiDot_std")
-		self.n_bound = rospy.get_param("simulator/n_bound")
+		self.n_bound 	= rospy.get_param("simulator/n_bound")
 
 		self.msg = Imu()
 

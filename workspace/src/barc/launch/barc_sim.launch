@@ -22,6 +22,9 @@
 
     <!-- SIMULATOR -->
     <node pkg="barc" type="barc_simulator_dyn.py" name="simulator" output="screen">
+        <!-- delay in the simulator -->
+        <param name="delay_df" type="double" value="0.2" />
+        <param name="delay_a" type="double" value="0.0" />
         <!-- simulator model parameters -->
         <param name="c_f" type="double" value="0.05" />
         <param name="dt" type="double" value="0.01" />
@@ -37,7 +40,7 @@
         <param name="v_std" type="double" value="0.0" />    
         <param name="ax_std" type="double" value="1.0" />
         <param name="ay_std" type="double" value="1.0" />
-        <param name="psiDot_std" type="double" value="0.05" />
+        <param name="psiDot_std" type="double" value="0.0" />
     </node>
 
     <!--DYNAMIC OBSERVER-->
