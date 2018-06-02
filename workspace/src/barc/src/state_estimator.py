@@ -175,7 +175,6 @@ class Estimator(object):
         """ Initialization
         Arguments:
             t0: starting measurement time
-
         """
         dt          = 1.0 / loop_rate
         self.rate   = rospy.Rate(loop_rate)
@@ -222,7 +221,7 @@ class Estimator(object):
     # ecu command update
     def estimateState(self,imu,gps,enc,ecu,KF):
         """Do extended Kalman filter to estimate states"""
-        self.curr_time = rospy.get_rostime().to_sec() - self.t0
+        self.curr_time = rospy.get_rostime().to_sec()
 
         self.a_his.append(ecu.a)
         self.df_his.append(ecu.df)
@@ -405,16 +404,16 @@ class ImuClass(object):
         self.pitch   = 0.0
         
         # Imu measurement history
-        self.yaw_his     = [0.0]
-        self.psiDot_his  = [0.0]
-        self.ax_his      = [0.0]
-        self.ay_his      = [0.0]
-        self.roll_his    = [0.0]
-        self.pitch_his   = [0.0]
+        self.yaw_his     = []
+        self.psiDot_his  = []
+        self.ax_his      = []
+        self.ay_his      = []
+        self.roll_his    = []
+        self.pitch_his   = []
         
         # time stamp
         self.t0          = t0
-        self.time_his    = [0.0]
+        self.time_his    = []
 
         # Time for yawDot integration
         self.curr_time = 0.0
@@ -423,7 +422,7 @@ class ImuClass(object):
     def imu_callback(self,data):
         """Unpack message from sensor, IMU"""
         
-        self.curr_time = rospy.get_rostime().to_sec() - self.t0
+        self.curr_time = rospy.get_rostime().to_sec()
 
         if self.prev_time > 0:
             self.yaw += self.psiDot * (self.curr_time-self.prev_time)
@@ -483,17 +482,17 @@ class GpsClass(object):
         self.y      = 0.0
         
         # GPS measurement history
-        self.x_his  = np.array([0.0])
-        self.y_his  = np.array([0.0])
+        self.x_his  = np.array([])
+        self.y_his  = np.array([])
         
         # time stamp
         self.t0         = t0
-        self.time_his   = np.array([0.0])
+        self.time_his   = np.array([])
         self.curr_time  = 0.0
 
     def gps_callback(self,data):
         """Unpack message from sensor, GPS"""
-        self.curr_time = rospy.get_rostime().to_sec() - self.t0
+        self.curr_time = rospy.get_rostime().to_sec()
 
         self.x = data.x_m
         self.y = data.y_m
@@ -544,22 +543,22 @@ class EncClass(object):
         self.v_meas    = 0.0
         
         # ENC measurement history
-        self.v_fl_his    = [0.0]
-        self.v_fr_his    = [0.0]
-        self.v_rl_his    = [0.0]
-        self.v_rr_his    = [0.0]
-        self.v_meas_his  = [0.0]
+        self.v_fl_his    = []
+        self.v_fr_his    = []
+        self.v_rl_his    = []
+        self.v_rr_his    = []
+        self.v_meas_his  = []
         
         # time stamp
         self.v_count    = 0
         self.v_prev     = 0.0
         self.t0         = t0
-        self.time_his   = [0.0]
+        self.time_his   = []
         self.curr_time  = 0.0
 
     def enc_callback(self,data):
         """Unpack message from sensor, ENC"""
-        self.curr_time = rospy.get_rostime().to_sec() - self.t0
+        self.curr_time = rospy.get_rostime().to_sec()
 
         self.v_fl = data.vel_fl
         self.v_fr = data.vel_fr
@@ -613,11 +612,11 @@ class EcuClass(object):
         # time stamp
         self.t0         = t0
         self.time_his   = []
-        self.curr_time  = 0.0
+        self.curr_time  = rospy.get_rostime().to_sec()
 
     def ecu_callback(self,data):
         """Unpack message from sensor, ECU"""
-        self.curr_time = rospy.get_rostime().to_sec() - self.t0
+        self.curr_time = rospy.get_rostime().to_sec()
 
         self.a  = data.motor
         self.df = data.servo

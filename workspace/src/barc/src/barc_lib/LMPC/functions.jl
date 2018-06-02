@@ -450,7 +450,7 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_4s::MpcParams,mpcPa
         mpcParams_pF.R              = 0*[1.0,1.0]               # put weights on a and d_f
         mpcParams_pF.QderivZ        = 1.0*[0.0,0,1.0,0]           # cost matrix for derivative cost of states
         mpcParams_pF.QderivU        = 1*[2,1]                # cost matrix for derivative cost of inputs
-        mpcParams_pF.vPathFollowing = 1.5                       # reference speed for first lap of path following
+        mpcParams_pF.vPathFollowing = 1.0                       # reference speed for first lap of path following
         mpcParams_pF.delay_df       = delay_df                         # steering delay (number of steps)
         mpcParams_pF.delay_a        = delay_a                         # acceleration delay
 

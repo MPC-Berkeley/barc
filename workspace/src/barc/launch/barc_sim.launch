@@ -1,11 +1,10 @@
 <launch>
-
     <!-- SYSTEM MODEL -->
     <!-- vehicle parameters -->
     <param name="L_a" type="double" value="0.125" />
     <param name="L_b" type="double" value="0.125" />
     <param name="m" type="double" value="1.98" />
-    <param name="I_z" type="double" value="0.24" />
+    <param name="I_z" type="double" value="0.03" />
     <!-- flags -->
     <param name="sim_flag" type="bool" value="true" />
     <param name="feature_flag" type="bool" value="false" />
@@ -22,7 +21,24 @@
     <node pkg="barc" type="view_car_trajectory.py" name="visualization" />
 
     <!-- SIMULATOR -->
-    <node pkg="barc" type="barc_simulator_dyn.jl" name="barc_sim" output="screen" />
+    <node pkg="barc" type="barc_simulator_dyn.py" name="simulator" output="screen">
+        <!-- simulator model parameters -->
+        <param name="c_f" type="double" value="0.05" />
+        <param name="dt" type="double" value="0.01" />
+        <!-- Tire model parameters -->
+        <param name="B" type="double" value="6.0" />
+        <param name="C" type="double" value="1.6" />
+        <param name="mu" type="double" value="0.8" />
+        <param name="g" type="double" value="9.81" />
+        <!-- simulator sensor noise -->
+        <param name="n_bound" type="double" value="1.5" />
+        <param name="x_std" type="double" value="0.02" />
+        <param name="y_std" type="double" value="0.02" />    
+        <param name="v_std" type="double" value="0.0" />    
+        <param name="ax_std" type="double" value="1.0" />
+        <param name="ay_std" type="double" value="1.0" />
+        <param name="psiDot_std" type="double" value="0.05" />
+    </node>
 
     <!--DYNAMIC OBSERVER-->
     <node pkg="barc" type="state_estimator.py" name="state_estimator" output="screen">
