@@ -49,7 +49,7 @@ a_his 		= npz_ecu["a_his"]
 df_his 		= npz_ecu["df_his"]
 ecu_time  	= npz_ecu["ecu_time"]
 
-
+# FIGURE 1 plotting of estimator data
 num_col_plt = 3
 num_row_plt = 1
 fig = plt.figure("Estimator")
@@ -94,10 +94,12 @@ num_plot = 2
 fig = plt.figure("GPS")
 ax1 = fig.add_subplot(num_plot,1,1,ylabel="x")
 ax1.plot(gps_time, x_his, 	label="x")
+ax1.plot(estimator_time, x_est_his, 	label="x_est")
 ax1.legend()
 ax1.grid()
 ax2 = fig.add_subplot(num_plot,1,2,ylabel="y")
 ax2.plot(gps_time, y_his, 	label="y")
+ax2.plot(estimator_time, y_est_his, 	label="y_est")
 ax2.legend()
 ax2.grid()
 
@@ -130,25 +132,25 @@ ax1.plot(x_est_his,y_est_his,color="green")
 ax1.legend()
 
 # raw data and estimation data comparison
-# num_plot = 3
-# fig = plt.figure("raw data and est data comparison")
-# ax2 = fig.add_subplot(num_plot,1,1,ylabel="ax")
-# ax2.plot(imu_time, a_x_meas_his, ".", 	label="ax_meas")
-# ax2.plot(estimator_time, ax_est_his, 	label="ax_est")
-# ax2.plot(estimator_time, a_his, "--",	label="cmd.acc")
-# ax2.legend()
-# ax2.grid()
-# ax3 = fig.add_subplot(num_plot,1,2,ylabel="ay")
-# ax3.plot(imu_time, a_y_meas_his, ".", 	label="ay_meas")
-# ax3.plot(estimator_time, ay_est_his, 	label="ay_est")
-# ax3.plot(estimator_time, df_his, "--",	label="cmd.df")
-# ax3.legend()
-# ax3.grid()
-# ax4 = fig.add_subplot(num_plot,1,3,ylabel="psidot")
-# ax4.plot(imu_time, psidot_raw_his, ".", label="psidot_meas")
-# ax4.plot(estimator_time,psi_dot_est_his,label="psidot_est")
-# ax4.plot(estimator_time, df_his, "--",	label="cmd.df")
-# ax4.legend()
-# ax4.grid()
+num_plot = 3
+fig = plt.figure("raw data and est data comparison")
+ax2 = fig.add_subplot(num_plot,1,1,ylabel="ax")
+ax2.plot(imu_time, ax_his, ".", 	label="ax_meas")
+ax2.plot(estimator_time, ax_est_his, 	label="ax_est")
+ax2.plot(estimator_time, a_his, "--",	label="cmd.acc")
+ax2.legend()
+ax2.grid()
+ax3 = fig.add_subplot(num_plot,1,2,ylabel="ay")
+ax3.plot(imu_time, ay_his, ".", 	label="ay_meas")
+ax3.plot(estimator_time, ay_est_his, 	label="ay_est")
+ax3.plot(estimator_time, df_his, "--",	label="cmd.df")
+ax3.legend()
+ax3.grid()
+ax4 = fig.add_subplot(num_plot,1,3,ylabel="psidot")
+ax4.plot(imu_time, psiDot_his, ".", label="psidot_meas")
+ax4.plot(estimator_time,psiDot_est_his,label="psidot_est")
+ax4.plot(estimator_time, df_his, "--",	label="cmd.df")
+ax4.legend()
+ax4.grid()
 
 plt.show()

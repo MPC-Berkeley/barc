@@ -47,9 +47,9 @@ function main()
 
     const PF_FLAG          = false  # true:only pF,     false:1 warm-up lap and LMPC
 
-    const LMPC_FLAG        = false   # true:IDEN_MODEL,  false:IDEN_KIN_LIN_MODEL(if all flags are false)
+    const LMPC_FLAG        = true   # true:IDEN_MODEL,  false:IDEN_KIN_LIN_MODEL(if all flags are false)
     const LMPC_DYN_FLAG    = false   # true:DYN_LIN_MODEL, false:IDEN_KIN_LIN_MODEL(if all flags are false)
-    const LMPC_KIN_FLAG    = true   # true:KIN_MODEL,  false:IDEN_KIN_LIN_MODEL(if all flags are false)
+    const LMPC_KIN_FLAG    = false   # true:KIN_MODEL,  false:IDEN_KIN_LIN_MODEL(if all flags are false)
 
     const FEATURE_FLAG     = false  # true:8-shape,     false:history (this requires the corresponding change in 3 palces)
     const NORM_SPACE_FLAG  = true  # true:2-norm,      false: space critirion
@@ -61,7 +61,7 @@ function main()
     
     const GP_HISTORY_FLAG  = false  # true: GPR data is from last laps, false: GP data is from data base.
 
-    const N                = 20
+    const N                = 10
     const delay_df         = 3
     const delay_a          = 1
     
