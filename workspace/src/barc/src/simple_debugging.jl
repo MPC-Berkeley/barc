@@ -32,14 +32,14 @@ run_time = Dates.format(now(),"yyyy-mm-dd")
 # else
 
 # find the newest experiment time until now
-file_names = readdir("$(homedir())/experiments/")
+file_names = readdir("$(homedir())/experiments/0531_to_check/")
 file_times = zeros(length(file_names))
 for i = 1:length(file_names)
-    file_times[i] = mtime("$(homedir())/experiments/$(file_names[i])")
+    file_times[i] = mtime("$(homedir())/experiments/0531_to_check/$(file_names[i])")
 end
-(~,idx) = findmax(file_times)
+(~,idx) = findmin(file_times)
 
-data        = load("$(homedir())/experiments/$(file_names[idx])")
+data        = load("$(homedir())/experiments/0531_to_check/$(file_names[idx])")
 oldSS       = data["oldSS"]
 selectedStates          = data["selectedStates"]
 solHistory              = data["solHistory"]
@@ -78,15 +78,15 @@ if ARGS[1] == "record" || ARGS[1]=="both"
         plot([current_x,current_x],[-0.3,0.3],color="grey",linestyle="--")
         ylabel("vy")
 
-        # subplot(3,2,5)
-        # plot(current_x+1:current_x+x_len,solHistory.z[1:x_len,i,1,6],color="blue")
-        # plot([current_x,current_x],[-3,3],color="grey",linestyle="--")
-        # ylabel("psi_dot")
-
         subplot(3,2,5)
-        plot(current_x+1:current_x+x_len,solHistory.u[1:x_len,i,1,1],color="blue",label="a")
+        plot(current_x+1:current_x+x_len,solHistory.z[1:x_len,i,1,6],color="blue")
         plot([current_x,current_x],[-3,3],color="grey",linestyle="--")
         ylabel("psi_dot")
+
+        # subplot(3,2,5)
+        # plot(current_x+1:current_x+x_len,solHistory.u[1:x_len,i,1,1],color="blue",label="a")
+        # plot([current_x,current_x],[-3,3],color="grey",linestyle="--")
+        # ylabel("psi_dot")
 
         i += 1
         if i>length(solHistory.cost)
@@ -404,7 +404,7 @@ if ARGS[1] == "prediction"
     ylabel("y [m]")
     axis("equal")
 
-    # UPDATE AND SAVE THE PLOT FOR EVERY LMPC LAPS
+    # # UPDATE AND SAVE THE PLOT FOR EVERY LMPC LAPS
     # GP_flag = false
     # if length(ARGS) == 2
     #     lap = 1
@@ -416,7 +416,7 @@ if ARGS[1] == "prediction"
     #     GP_psidot_plt, = ax_s_psidot[:plot](NaN*ones(mpcParams.N),NaN*ones(mpcParams.N),"ro")
     #     GP_flag = true
     # end
-    lap = 2 + max(selectedStates.Nl,selectedStates.feature_Nl)  # starting lap of LMPC
+    lap = 10 + max(selectedStates.Nl,selectedStates.feature_Nl)  # starting lap of LMPC
 
 
     while solHistory.cost[lap] > 10

@@ -265,9 +265,9 @@ function coeff_iden_dist(idenStates::Array{Float64,3},idenInputs::Array{Float64,
         A_psi[i,3]=u[i,2]
     end
     # BACKSLASH OPERATOR WITHOUT REGULIZATION
-    c_Vx = A_vx\y_vx
-    c_Vy = A_vy\y_vy
-    c_Psi = A_psi\y_psi
+    # c_Vx = A_vx\y_vx
+    # c_Vy = A_vy\y_vy
+    # c_Psi = A_psi\y_psi
 
     # BY IVS()
     # c_Vx = inv(A_vx'*A_vx)*A_vx'*y_vx
@@ -275,12 +275,12 @@ function coeff_iden_dist(idenStates::Array{Float64,3},idenInputs::Array{Float64,
     # c_Psi = inv(A_psi'*A_psi)*A_psi'*y_psi
 
     # BACKSLASH WITH REGULARIZATION
-    # mu_Vx = zeros(3,3); mu_Vx[1,1] = 1e-5
-    # mu_Vy = zeros(4,4); mu_Vy[1,1] = 1e-5
-    # mu_Psi = zeros(3,3); mu_Psi[2,2] = 1e-5
-    # c_Vx = (A_vx'*A_vx+mu_Vx)\(A_vx'*y_vx)
-    # c_Vy = (A_vy'*A_vy+mu_Vy)\(A_vy'*y_vy)
-    # c_Psi = (A_psi'*A_psi+mu_Psi)\(A_psi'*y_psi)
+    mu_Vx = zeros(6,6); mu_Vx[1,1] = 1e-5
+    mu_Vy = zeros(4,4); mu_Vy[1,1] = 1e-5
+    mu_Psi = zeros(3,3); mu_Psi[2,2] = 1e-5
+    c_Vx = (A_vx'*A_vx+mu_Vx)\(A_vx'*y_vx)
+    c_Vy = (A_vy'*A_vy+mu_Vy)\(A_vy'*y_vy)
+    c_Psi = (A_psi'*A_psi+mu_Psi)\(A_psi'*y_psi)
 
 
     # println("c_Vx is $c_Vx")
