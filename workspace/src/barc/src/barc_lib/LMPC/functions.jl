@@ -155,6 +155,42 @@ function find_feature_dist(z_feature::Array{Float64,3},u_feature::Array{Float64,
     return iden_z, iden_u, iden_z_plot
 end
 
+function find_feature_dist_simple(z_feature::Array{Float64,3},u_feature::Array{Float64,2},z_curr::Array{Float64,2},u_curr::Array{Float64,2},selectedStates::SelectedStates)
+    Np=selectedStates.feature_Np # Just to make life easier, we directly put a specific number here
+    # Clear the safe set data of previous iteration
+    iden_z=zeros(Np,5,2)
+    iden_z_plot=zeros(Np,6)
+    iden_u=zeros(Np,2)
+
+    # curr_state=hcat(z_curr[1],z_curr[4:6]',u_curr')
+    # norm_state=[0.5 1 0.1 1 1 0.3] # [1 0.1 1] are the normed state, the first state is for "s", which is for putting some weight on the track place
+    curr_state=hcat(z_curr[4:6]',u_curr)
+
+    norm_state=[1 0.1 1 1 0.2] # [1 0.1 1] are the normed state, the first state is for "s", which is for putting some weight on the track place
+    # norm_state=[1 1 1 1/2 1/2] # [1 0.1 1] are the normed state, the first state is for "s", which is for putting some weight on the track place
+    dummy_state=z_feature[:,:,1]
+    dummy_input=u_feature
+    # cal_state=Float64[] # stored for normalization calculation
+    cal_state=hcat(dummy_state,dummy_input)
+    dummy_norm=zeros(size(dummy_state,1),2)
+
+    norm_dist=(curr_state.-cal_state[:,4:8])./norm_state
+    dummy_norm[:,1]=norm_dist[:,1].^2+norm_dist[:,2].^2+norm_dist[:,3].^2+norm_dist[:,4].^2+norm_dist[:,5].^2
+    dummy_norm[:,2]=1:size(dummy_state,1)
+    dummy_norm=sortrows(dummy_norm) # pick up the first minimum Np points
+    # println(dummy_norm[1:Np,:])
+    for i=1:Np
+        iden_z[i,:,1]=z_feature[Int(dummy_norm[i,2]),4:8,1]
+        iden_z[i,:,2]=z_feature[Int(dummy_norm[i,2]),4:8,2]
+        iden_z_plot[i,:]=dummy_state[Int(dummy_norm[i,2]),1:6,1]
+        iden_u[i,:]=dummy_input[Int(dummy_norm[i,2]),:]
+    end
+
+    # iden_z: Npx3x2 states selected for system identification
+    # iden_u: Npx2 inputs selected for system identification
+    return iden_z, iden_u, iden_z_plot
+end
+
 # THE DIFFERENCE TO THE FUNCTON ABOVE IS THAT THIS ONE IS SELECTING THE FEATURE POINTS FROM THE HISTORY
 function find_SS_dist(solHistory::SolHistory,z_curr::Array{Float64,2},u_curr::Array{Float64,2},lapStatus::LapStatus,selectedStates::SelectedStates)
 
@@ -293,6 +329,137 @@ function coeff_iden_dist(idenStates::Array{Float64,3},idenInputs::Array{Float64,
     return c_Vx, c_Vy, c_Psi
 end
 
+function find_SS_dist_simple(solHistory::SolHistory,z_curr::Array{Float64,2},u_curr::Array{Float64,2},lapStatus::LapStatus,selectedStates::SelectedStates)
+
+    Nl=selectedStates.feature_Nl
+    Np=selectedStates.feature_Np
+    # Clear the safe set data of previous iteration
+    iden_z=zeros(Np,5,2)
+    iden_z_plot=zeros(Np,6)
+    iden_u=zeros(Np,2)
+
+    # curr_state=hcat(z_curr[1],z_curr[4:6]',u_curr')
+    # norm_state=[0.5 1 0.1 1 1 0.3] # [1 0.1 1] are the normed state, the first state is for "s", which is for putting some weight on the track place
+    curr_state=hcat(z_curr[4:6]',u_curr)
+    norm_state=[1 0.1 1 1 0.2] # [1 0.1 1] are the normed state, the first state is for "s", which is for putting some weight on the track place
+    dummy_state=Array{Float64}(0,8)
+    dummy_input=Array{Float64}(0,2)
+    cal_state=Array{Float64}(0,8) # stored for normalization calculation
+
+    # collect out all the state and input history data
+    # at maximum, Nl laps data will be collected, it was actually reshaped into the whole history
+    for i=max(1,lapStatus.currentLap-Nl):max(1,(lapStatus.currentLap-1))
+        dummy_state=vcat(dummy_state,reshape(solHistory.z[1:Int(solHistory.cost[i]),i,1,:],Int(solHistory.cost[i]),8))
+        dummy_input=vcat(dummy_input,reshape(solHistory.u[1:Int(solHistory.cost[i]),i,1,:],Int(solHistory.cost[i]),2))
+    end
+    # println(size(dummy_state))
+    # println(size(dummy_input))
+    cal_state=vcat(cal_state,hcat(dummy_state[:,1:6],dummy_input))
+    dummy_norm=zeros(size(dummy_state,1)-1,2)
+    for i=1:size(dummy_state,1)-1 # The last state point will be removed
+        # dummy_norm[i,1]=norm((curr_state-cal_state[i,vcat(1,4:8)]')./norm_state) # this is the state after normalization
+        norm_dist=(curr_state.-cal_state[i,4:8])./norm_state
+        dummy_norm[i,1]=norm_dist[1]^2+norm_dist[2]^2+norm_dist[3]^2+norm_dist[4]^2+norm_dist[5]^2
+        # dummy_norm[i,1]=norm((curr_state-cal_state[i,4:8])./norm_state) # this is the state after normalization
+        dummy_norm[i,2]=i
+    end
+
+    dummy_norm=sortrows(dummy_norm) # pick up the first minimum Np points
+
+    for i=1:min(Np,size(dummy_norm,1))
+        iden_z[i,:,1]=dummy_state[Int(dummy_norm[i,2]),4:8]
+        # iden_z[i,:,2]=dummy_state[Int(dummy_norm[i,2])+1,4:8]
+        iden_z_plot[i,:]=dummy_state[Int(dummy_norm[i,2]),1:6]
+        iden_u[i,:]=dummy_input[Int(dummy_norm[i,2]),:]
+    end
+    # iden_z: Npx3x2 states selected for system identification
+    # iden_u: Npx2 inputs selected for system identification
+    return iden_z, iden_u, iden_z_plot
+end
+
+function coeff_iden_dist_simple(idenStates::Array{Float64,3},idenInputs::Array{Float64,2})
+    z = idenStates
+    # z[:,2,:]*=10
+    u = idenInputs
+    # println(z)
+    # println(u)
+    size(z,1)==size(u,1) ? nothing : error("state and input in coeff_iden() need to have the same dimensions")
+    A_vx=zeros(size(z,1),3)
+    A_vy=zeros(size(z,1),1)
+    # y_vx=diff(z[:,1,:],2)
+    # y_vy=diff(z[:,2,:],2)
+    # y_psi=diff(z[:,3,:],2)
+
+    # n = 0.02*randn(size(z,1),1)
+    # n = max(n,-0.1)
+    # n = min(n, 0.1)
+    # z[:,1,1]+=n
+
+    # n = 0.005*randn(size(z,1),1)
+    # n = max(n,-0.005)
+    # n = min(n, 0.005)
+    # z[:,2,1]+=n
+
+    # n = 0.05*randn(size(z,1),1)
+    # n = max(n,-0.05)
+    # n = min(n, 0.05)
+    # z[:,3,1]+=n
+
+    # n = 0.05*randn(size(z,1),1)
+    # n = max(n,-0.05)
+    # n = min(n, 0.05)
+    # u[:,1]+=n
+
+    # n = 0.01*randn(size(z,1),1)
+    # n = max(n,-0.01)
+    # n = min(n, 0.01)
+    # u[:,2]+=n
+
+    # y_vx=diff(reshape(z[:,1,:],size(z,1),size(z,3)),2)
+    # y_vy=diff(reshape(z[:,2,:],size(z,1),size(z,3)),2)#/10
+    # y_psi=diff(reshape(z[:,3,:],size(z,1),size(z,3)),2)
+
+    y_vx = z[:,4,1]
+    y_vy = z[:,5,1]
+
+    for i=1:size(z,1)
+        A_vx[i,1]=u[i,1]
+        A_vx[i,2]=z[i,1,1]
+        A_vx[i,3]=u[i,2]
+        
+        A_vy[i,1]=u[i,2]
+    end
+    # BACKSLASH OPERATOR WITHOUT REGULIZATION
+    c_Vx = A_vx\y_vx
+    c_Vy = A_vy\y_vy
+    # c_Psi = A_psi\y_psi
+
+    # BY IVS()
+    # c_Vx = inv(A_vx'*A_vx)*A_vx'*y_vx
+    # c_Vy = inv(A_vy'*A_vy)*A_vy'*y_vy
+    # c_Psi = inv(A_psi'*A_psi)*A_psi'*y_psi
+
+    # BACKSLASH WITH REGULARIZATION
+    # mu_Vx = zeros(6,6); mu_Vx[1,1] = 1e-5
+    # mu_Vy = zeros(4,4); mu_Vy[1,1] = 1e-5
+    # mu_Psi = zeros(3,3); mu_Psi[2,2] = 1e-5
+    # c_Vx = (A_vx'*A_vx+mu_Vx)\(A_vx'*y_vx)
+    # c_Vy = (A_vy'*A_vy+mu_Vy)\(A_vy'*y_vy)
+    # c_Psi = (A_psi'*A_psi+mu_Psi)\(A_psi'*y_psi)
+
+
+    # println("c_Vx is $c_Vx")
+    # println("c_Vx is $c_Vy")
+    # println("c_Vx is $c_Psi")
+    # c_Vx[1] = max(-0.3,min(0.3,c_Vx[1]))
+    # c_Vy[2] = max(-1,min(1,c_Vy[2]))
+    # c_Vy[3] = max(-1,min(1,c_Vy[3]))
+
+    # println(typeof(c_Vx))
+    # println(typeof(c_Vy))
+    return c_Vx, c_Vy[1]
+end
+
 function find_SS(safeSetData::SafeSetData,selectedStates::SelectedStates,
                  s_curr::Float64,z_prev::Array{Float64,2},lapStatus::LapStatus,
                  modelParams::ModelParams,mpcParams::MpcParams,track::Track)
@@ -421,27 +588,27 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_4s::MpcParams,mpcPa
                               LMPC_LAP::Int64,delay_df::Int64,delay_a::Int64,N::Int64,BUFFERSIZE::Int64)
     simulator_flag   = get_param("sim_flag")
 
-    if simulator_flag == true   # if the simulator is in use
+    if simulator_flag   # if the simulator is in use
 
         mpcParams.N                 = N
         mpcParams.Q                 = [5.0,0.0,0.0,0.1,50.0,0.0]   # Q (only for path following mode)
         mpcParams.vPathFollowing    = 1.0                           # reference speed for first lap of path following
         mpcParams.R                 = 0*[10.0,10.0]                 # put weights on a and d_f
         mpcParams.QderivZ           = 1.0*[0,0.1,0.1,2,0.1,0.0]             # cost matrix for derivative cost of states
-        mpcParams.QderivU           = 1.0*[1.0,1.0] #NOTE Set this to [5.0, 0/40.0]              # cost matrix for derivative cost of inputs
-        mpcParams.Q_term_cost       = 0.5                        # scaling of Q-function
+        mpcParams.QderivU           = 1.0*[0.01,0.5] #NOTE Set this to [5.0, 0/40.0]              # cost matrix for derivative cost of inputs
+        mpcParams.Q_term_cost       = 2.0                        # scaling of Q-function
         mpcParams.delay_df          = delay_df                             # steering delay
         mpcParams.delay_a           = delay_a                             # acceleration delay
         mpcParams.Q_lane            = 10                      # weight on the soft constraint for the lane
-        mpcParams.Q_slack           = 50.0*[1.0,1.0,1.0,1.0,1.0,1.0]#[20.0,10.0,10.0,30.0,80.0,50.0]  #s,ey,epsi,vx,vy,psiDot
+        mpcParams.Q_slack           = 50.0*[1.0,5.0,5.0,1.0,1.0,1.0]#[20.0,10.0,10.0,30.0,80.0,50.0]  #s,ey,epsi,vx,vy,psiDot
 
         mpcParams_4s.N              = N
         mpcParams_4s.R              = 0.0*[1,1]
         mpcParams_4s.QderivZ        = 1.0*[0,0.1,0.1,2]
-        mpcParams_4s.QderivU        = 1.0*[1,1]
-        mpcParams_4s.Q_term_cost    = 3e-1 # scaling of Q-function
+        mpcParams_4s.QderivU        = 1.0*[0.1,1]
+        mpcParams_4s.Q_term_cost    = 1.0 # scaling of Q-function
         mpcParams_4s.Q_lane         = 10.0 # weight on the soft constraint for the lane bounds
-        mpcParams_4s.Q_slack        = 5.0*[1,1,1,1]
+        mpcParams_4s.Q_slack        = 50.0*[1,1,1,1]
         mpcParams_4s.delay_df          = delay_df                             # steering delay
         mpcParams_4s.delay_a           = delay_a                             # acceleration delay
 
@@ -456,7 +623,7 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_4s::MpcParams,mpcPa
 
         modelParams.c_f             = 0.05       
 
-    elseif simulator_flag == false  # if the BARC is in use
+    else  # if the BARC is in use
 
         mpcParams.N                 = N
         mpcParams.Q                 = [5.0,0.0,0.0,0.1,50.0,0.0]   # Q (only for path following mode)
@@ -493,7 +660,7 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_4s::MpcParams,mpcPa
 
     end
 
-    selectedStates.Np           = 20        # please select an even number
+    selectedStates.Np           = 10        # please select an even number
     selectedStates.Nl           = 2        # Number of previous laps to include in the convex hull
     selectedStates.feature_Np   = 60        # Number of points from previous laps to do SYS_ID
     selectedStates.feature_Nl   = 2         # Number of previous laps to do SYS_ID 
@@ -521,9 +688,17 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_4s::MpcParams,mpcPa
     mpcCoeff.c_Vy               = zeros(mpcParams.N,4)
     mpcCoeff.c_Psi              = zeros(mpcParams.N,3)
 
+    # mpcCoeff.c_Vx               = zeros(mpcParams.N,3)
+    # mpcCoeff.c_Vy               = zeros(mpcParams.N)
+    # mpcCoeff.c_Psi              = zeros(mpcParams.N)
+
     mpcCoeff_dummy.c_Vx         = zeros(1,6)
     mpcCoeff_dummy.c_Vy         = zeros(1,4)
     mpcCoeff_dummy.c_Psi        = zeros(1,3)
+
+    # mpcCoeff_dummy.c_Vx         = zeros(1,6)
+    # mpcCoeff_dummy.c_Vy         = zeros(1)
+    # mpcCoeff_dummy.c_Psi        = zeros(1)
 
     mpcSol.z    = zeros(N+1,4)
     mpcSol.u    = hcat(0.5*ones(N),zeros(N))

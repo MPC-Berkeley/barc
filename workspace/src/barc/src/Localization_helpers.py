@@ -255,22 +255,28 @@ class Track(object):
 
         # 1. Localize s
         l_ran = 1 # LOCALIZATION RANGE: useful when track is overlaping
-        if self.s > self.track_s[-1]-l_ran:
-            idx_candidate_1     = (self.track_s+l_ran>=self.track_s[-1])
-            idx_candidate_2     = (self.track_s<=l_ran)
-            x_candidate         = hstack((self.nodes[0,:][idx_candidate_1],self.nodes[0,:][idx_candidate_2]))
-            y_candidate         = hstack((self.nodes[1,:][idx_candidate_1],self.nodes[1,:][idx_candidate_2]))
-            nodes_candidate     = array([x_candidate,y_candidate])
-            s_candidate         = hstack((self.track_s[idx_candidate_1],self.track_s[idx_candidate_2]))
-            idx_curr_candidate  = hstack((self.track_idx[idx_candidate_1],self.track_idx[idx_candidate_2]))
-        else:
-            dist_s              = self.track_s - self.s
-            idx_candidate       = (dist_s>=0) & (dist_s<l_ran) # the car can travel 0.3m maximumly within 0.1s  
-            x_candidate         = self.nodes[0,:][idx_candidate]
-            y_candidate         = self.nodes[1,:][idx_candidate]
-            nodes_candidate     = array([x_candidate,y_candidate])
-            s_candidate         = self.track_s[idx_candidate]
-            idx_curr_candidate  = self.track_idx[idx_candidate]
+        # if self.s > self.track_s[-1]-l_ran:
+        #     idx_candidate_1     = (self.track_s+l_ran>=self.track_s[-1])
+        #     idx_candidate_2     = (self.track_s<=l_ran)
+        #     x_candidate         = hstack((self.nodes[0,:][idx_candidate_1],self.nodes[0,:][idx_candidate_2]))
+        #     y_candidate         = hstack((self.nodes[1,:][idx_candidate_1],self.nodes[1,:][idx_candidate_2]))
+        #     nodes_candidate     = array([x_candidate,y_candidate])
+        #     s_candidate         = hstack((self.track_s[idx_candidate_1],self.track_s[idx_candidate_2]))
+        #     idx_curr_candidate  = hstack((self.track_idx[idx_candidate_1],self.track_idx[idx_candidate_2]))
+        # else:
+
+
+        dist_s              = self.track_s - self.s
+        # idx_candidate       = (dist_s>=0) & (dist_s<l_ran) # the car can travel 0.3m maximumly within 0.1s  
+        idx_candidate       = dist_s>-10000
+        x_candidate         = self.nodes[0,:][idx_candidate]
+        y_candidate         = self.nodes[1,:][idx_candidate]
+        nodes_candidate     = array([x_candidate,y_candidate])
+        s_candidate         = self.track_s[idx_candidate]
+        idx_curr_candidate  = self.track_idx[idx_candidate]
+
+
+        
 
         dist            = sum((self.pos*ones([len(x_candidate),2])-nodes_candidate.transpose())**2,1)
         idx_min         = argmin(dist)

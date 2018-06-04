@@ -14,7 +14,7 @@
     <param name="ey_tighten" type="double" value="1.0" />
 
     <!-- CONTROL -->
-    <node pkg="barc" type="LMPC_node_feature_data_collecting.jl" name="control" output="screen" />
+    <node pkg="barc" type="LMPC_node_feature_data_collecting_new_ID.jl" name="control" output="screen" />
 
     <!-- VISUALIZATION -->
     <node pkg="barc" type="view_car_trajectory.py" name="visualization" output="screen" />

@@ -43,11 +43,11 @@ gps_time  	= npz_gps["gps_time"]
 # v_rr_his 	= npz_enc["v_rr_his"]
 # enc_time  	= npz_enc["enc_time"]
 
-# pathSave = os.path.join(homedir,"barc_debugging/estimator_ecu.npz")
-# npz_ecu = np.load(pathSave)
-# a_his 		= npz_ecu["a_his"]
-# df_his 		= npz_ecu["df_his"]
-# ecu_time  	= npz_ecu["ecu_time"]
+pathSave = os.path.join(homedir,"barc_debugging/estimator_ecu_mess.npz")
+npz_ecu = np.load(pathSave)
+a_his 		= npz_ecu["a_his"]
+df_his 		= npz_ecu["df_his"]
+ecu_time  	= npz_ecu["ecu_time"]
 
 # # FIGURE 1 plotting of estimator data
 # num_col_plt = 3
@@ -103,13 +103,13 @@ ax2.plot(estimator_time, y_est_his, 	label="y_est")
 ax2.legend()
 ax2.grid()
 
-# # ecu plot
-# fig = plt.figure("input")
-# ax4 = fig.add_subplot(1,1,1,ylabel="ax")
-# ax4.plot(ecu_time, df_his, "-",	label="cmd.df")
-# ax4.plot(ecu_time, a_his, "--",	label="cmd.a")
-# ax4.legend()
-# ax4.grid()
+# ecu plot
+fig = plt.figure("input")
+ax4 = fig.add_subplot(1,1,1,ylabel="ax")
+ax4.plot(ecu_time, df_his, "-",	label="cmd.df")
+ax4.plot(ecu_time, a_his, "--",	label="cmd.a")
+ax4.legend()
+ax4.grid()
 
 # # enc plot
 # fig = plt.figure("encoder")

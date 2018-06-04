@@ -129,6 +129,44 @@ function solveMpcProblem_convhull_dyn_iden(mdl::MpcModel_convhull_dyn_iden,mpcSo
    return sol_z,sol_u,sol_status
 end
 
+function solveMpcProblem_convhull_dyn_iden_simple(mdl::MpcModel_convhull_dyn_iden_simple,mpcSol::MpcSol,
+                                           mpcCoeff::MpcCoeff,zCurr::Array{Float64,1},
+                                           zPrev::Array{Float64,2},uPrev::Array{Float64,2},selectedStates::SelectedStates,track::Track,
+                                           GP_e_vy::Array{Float64,1},GP_e_psidot::Array{Float64,1})
+
+   # IMPORTANT: this warm start must be done manually when swiching the lap, but here, this warm start is done in the swiching lap section outside
+   # setvalue(mdl.z_Ol,vcat(zPrev[2:end,:],zPrev[end,:]))
+   # setvalue(mdl.u_Ol,vcat(uPrev[2:end,:],uPrev[end,:]))
+   
+   # zeros in the model initialization is dangerous for optimization: invalid number might occur when divided by zero happends
+
+   selStates       = selectedStates.selStates
+   statesCost      = selectedStates.statesCost
+
+   z_curvature=vcat(zCurr',zPrev[3:end,:])
+   curvature=curvature_prediction(z_curvature,track)
+
+   # Update current initial condition, curvature and System ID coefficients
+   setvalue(mdl.z0,zCurr)
+   setvalue(mdl.uPrev,uPrev)
+   setvalue(mdl.df_his,mpcSol.df_his)
+   setvalue(mdl.c,curvature)       # Track curvature
+   setvalue(mdl.c_Vx,mpcCoeff.c_Vx)         # System ID coefficients
+   setvalue(mdl.c_Vy,mpcCoeff.c_Vy)
+   setvalue(mdl.psiDot,mpcCoeff.c_Psi)
+   setvalue(mdl.selStates,selStates)
+   setvalue(mdl.statesCost,statesCost)
+   setvalue(mdl.GP_e_vy,GP_e_vy)
+   setvalue(mdl.GP_e_psidot,GP_e_psidot)
+
+   # Solve Problem and return solution
+   sol_status  = solve(mdl.mdl)
+   sol_u       = getvalue(mdl.u_Ol)
+   sol_z       = getvalue(mdl.z_Ol)
+   # println("Solved, status = $sol_status")
+   return sol_z,sol_u,sol_status
+end
+
 function solveMpcProblem_convhull_kin_linear(mdl::MpcModel_convhull_kin_linear,mpcSol::MpcSol,mpcParams::MpcParams,modelParams::ModelParams,
                                              z_linear::Array{Float64,2},u_linear::Array{Float64,2},
                                              zPrev::Array{Float64,2},uPrev::Array{Float64,2}, # this is the delta state hot start
@@ -466,5 +504,6 @@ function solveMpcProblem_convhull_kin(mdl::MpcModel_convhull_kin,mpcSol::MpcSol,
     sol_u       = getvalue(mdl.u_Ol)
     sol_z       = getvalue(mdl.z_Ol)
     println("Solved, status = $sol_status")
+    println(getvalue(mdl.terminalCost))
     return sol_z,sol_u,sol_status
 end

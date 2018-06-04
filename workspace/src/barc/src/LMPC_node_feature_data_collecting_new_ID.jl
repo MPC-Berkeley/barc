@@ -19,9 +19,10 @@ include("barc_lib/simModel.jl")
 
 # This function is called whenever a new state estimate is received.
 # It saves this estimate in oldTraj and uses it in the MPC formulation (see in main)
-function SE_callback(msg::pos_info,acc_f::Array{Float64},lapStatus::LapStatus,posInfo::PosInfo,mpcSol::MpcSol,oldTraj::OldTrajectory,z_est::Array{Float64,1},x_est::Array{Float64,1})         # update current position and track data
+function SE_callback(msg::pos_info,acc_f::Array{Float64},lapStatus::LapStatus,posInfo::PosInfo,mpcSol::MpcSol,a_est,z_est::Array{Float64,1},x_est::Array{Float64,1})         # update current position and track data
     # update mpc initial condition
     z_est[:]                  = [msg.v_x,msg.v_y,msg.psiDot,msg.epsi,msg.ey,msg.s,acc_f[1]] # the last variable is filtered acceleration
+    a_est[:]                  = [msg.a_x,msg.a_y]
     x_est[:]                  = [msg.x,msg.y,msg.psi,msg.v]
 
     # check if lap needs to be switched
@@ -70,6 +71,7 @@ function main()
     selectedStates   = SelectedStates()
     oldSS            = SafeSetData()
     z_est            = zeros(7)          # (xDot, yDot, psiDot, ePsi, eY, s, acc_f)
+    a_est            = zeros(2)          # (xDot, yDot, psiDot, ePsi, eY, s, acc_f)
     z_true           = zeros(6)          # (xDot, yDot, psiDot)
     x_est            = zeros(4)          # (x, y, psi, v)
     cmd              = ECU()             # CONTROL SIGNAL MESSAGE INITIALIZATION
@@ -82,7 +84,7 @@ function main()
     # FEATURE DATA INITIALIZATION
     v_ref = vcat([0.8],0.8:0.1:2.0)
 
-    feature_z   = zeros(100000,6,2)
+    feature_z   = zeros(100000,8,2)
     feature_u   = zeros(100000,2)
 
     # DATA LOGGING VARIABLE INITIALIZATION
@@ -98,7 +100,7 @@ function main()
     mpcSol_pub = Publisher("mpc_solution", mpc_solution, queue_size=1)::RobotOS.Publisher{barc.msg.mpc_solution}
     # The subscriber passes arguments (coeffCurvature and z_est) which are updated by the callback function:
     acc_f = [0.0]
-    s1 = Subscriber("pos_info", pos_info, SE_callback, (acc_f,lapStatus,posInfo,mpcSol,oldTraj,z_est,x_est),queue_size=50)::RobotOS.Subscriber{barc.msg.pos_info}
+    s1 = Subscriber("pos_info", pos_info, SE_callback, (acc_f,lapStatus,posInfo,mpcSol,a_est,z_est,x_est),queue_size=50)::RobotOS.Subscriber{barc.msg.pos_info}
     # s2 = Subscriber("real_val", pos_info, ST_callback, (z_true,),queue_size=1)::RobotOS.Subscriber{barc.msg.pos_info}
     # Note: Choose queue size long enough so that no pos_info packets get lost! They are important for system ID!
     run_id = get_param("run_id")
@@ -126,8 +128,8 @@ function main()
             # TRACK FEATURE DATA COLLECTING: it is important to put this at the beginning of the iteration to make the data consistant
             if lapStatus.currentLap>1
                 k = k + 1 # start counting from the second lap.
-                feature_z[k,:,1] 	= [z_est[6],z_est[5],z_est[4],z_est[1],z_est[2],z_est[3]]
-                feature_z[k-1,:,2] 	= [z_est[6],z_est[5],z_est[4],z_est[1],z_est[2],z_est[3]]
+                feature_z[k,:,1] 	= [z_est[6],z_est[5],z_est[4],z_est[1],z_est[2],z_est[3],a_est[1],a_est[2]]
+                feature_z[k-1,:,2] 	= [z_est[6],z_est[5],z_est[4],z_est[1],z_est[2],z_est[3],a_est[1],a_est[2]]
                 feature_u[k,1] 	= u_sol[2,1] # acceleration delay is from MPC itself
                 feature_u[k+mpcParams.delay_df-1,2] = u_sol[1+mpcParams.delay_df,2] # another 2 steps delay is from the system
             end

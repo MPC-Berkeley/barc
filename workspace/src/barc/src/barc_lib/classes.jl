@@ -18,6 +18,10 @@ type MpcCoeff           # coefficients for trajectory approximation
     c_Vy::Array{Float64,2}
     c_Psi::Array{Float64,2}
     MpcCoeff(c_Vx=zeros(10,6),c_Vy=zeros(10,4),c_Psi=zeros(10,3)) = new(c_Vx, c_Vy, c_Psi)
+    # c_Vx::Array{Float64,2}
+    # c_Vy::Array{Float64,1}
+    # c_Psi::Array{Float64,1}
+    # MpcCoeff(c_Vx=zeros(10,3),c_Vy=zeros(10),c_Psi=zeros(10)) = new(c_Vx, c_Vy, c_Psi)
 end
 
 type OldTrajectory      # information about previous trajectories

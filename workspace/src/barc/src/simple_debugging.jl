@@ -35,7 +35,7 @@ run_time = Dates.format(now(),"yyyy-mm-dd")
 file_names = readdir("$(homedir())/simulations/")
 file_times = zeros(length(file_names))
 for i = 1:length(file_names)
-    file_times[i] = mtime("$(homedir())/simulations/$(file_names[i])")
+    file_times[i] = ctime("$(homedir())/simulations/$(file_names[i])")
 end
 (~,idx) = findmax(file_times)
 
@@ -58,8 +58,8 @@ lapStatus   = LapStatus(1,1,false,false,0.3)
 
 
 # end
-figure("lap")
-plot(solHistory.cost)
+# figure("lap")
+# plot(solHistory.cost)
 
 # STATE AND SYS_ID PARAMETERS PLOT FOR LAPS DONE
 if ARGS[1] == "record" || ARGS[1]=="both"
@@ -100,7 +100,7 @@ if ARGS[1] == "record" || ARGS[1]=="both"
         i == 1 ? current_x = 0 : current_x = sum(solHistory.cost[1:i-1])
         x_len = Int(solHistory.cost[i])
         subplot(3,2,2)
-        for j=1:3
+        for j=1:size(log_cvx,3)
             if i == 1
                 if j == 1
                     plot(current_x+1:current_x+x_len,log_cvx[1:x_len,1,j,i],color="blue",label="cvx_$j")
@@ -123,7 +123,7 @@ if ARGS[1] == "record" || ARGS[1]=="both"
         legend(); ylabel("cvx")
 
         subplot(3,2,4)
-        for j=1:4
+        for j=1:size(log_cvy,3)
             if i == 1
                 if j == 1
                     plot(current_x+1:current_x+x_len,log_cvy[1:x_len,1,j,i],color="blue",label="cvy_$j")
@@ -150,7 +150,7 @@ if ARGS[1] == "record" || ARGS[1]=="both"
         legend(); ylabel("cvy")
 
         subplot(3,2,6)
-        for j=1:3
+        for j=1:size(log_cpsi,3)
             if i == 1
                 if j == 1
                     plot(current_x+1:current_x+x_len,log_cpsi[1:x_len,1,j,i],color="blue",label="cpsi_$j")
@@ -404,8 +404,8 @@ if ARGS[1] == "prediction"
     ylabel("y [m]")
     axis("equal")
 
-    # # UPDATE AND SAVE THE PLOT FOR EVERY LMPC LAPS
-    # GP_flag = false
+    # UPDATE AND SAVE THE PLOT FOR EVERY LMPC LAPS
+    GP_flag = false
     # if length(ARGS) == 2
     #     lap = 1
     # elseif ARGS[3] == "LMPC"
@@ -416,7 +416,7 @@ if ARGS[1] == "prediction"
     #     GP_psidot_plt, = ax_s_psidot[:plot](NaN*ones(mpcParams.N),NaN*ones(mpcParams.N),"ro")
     #     GP_flag = true
     # end
-    lap = 10 + max(selectedStates.Nl,selectedStates.feature_Nl)  # starting lap of LMPC
+    lap = 2 + max(selectedStates.Nl,selectedStates.feature_Nl)  # starting lap of LMPC
 
 
     while solHistory.cost[lap] > 10
