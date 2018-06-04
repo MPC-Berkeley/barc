@@ -32,14 +32,14 @@ run_time = Dates.format(now(),"yyyy-mm-dd")
 # else
 
 # find the newest experiment time until now
-file_names = readdir("$(homedir())/experiments/0531_to_check/")
+file_names = readdir("$(homedir())/simulations/")
 file_times = zeros(length(file_names))
 for i = 1:length(file_names)
-    file_times[i] = mtime("$(homedir())/experiments/0531_to_check/$(file_names[i])")
+    file_times[i] = mtime("$(homedir())/simulations/$(file_names[i])")
 end
-(~,idx) = findmin(file_times)
+(~,idx) = findmax(file_times)
 
-data        = load("$(homedir())/experiments/0531_to_check/$(file_names[idx])")
+data        = load("$(homedir())/simulations/$(file_names[idx])")
 oldSS       = data["oldSS"]
 selectedStates          = data["selectedStates"]
 solHistory              = data["solHistory"]
