@@ -21,6 +21,7 @@ type MpcModel_pF
     function MpcModel_pF(mpcParams_pF::MpcParams,modelParams::ModelParams)
         m = new()
         # Model parameters
+        # dt         = 0.04                # time step
         dt          = modelParams.dt
         L_a         = modelParams.l_A
         L_b         = modelParams.l_B
@@ -146,7 +147,8 @@ type MpcModel_convhull_kin
     function MpcModel_convhull_kin(mpcParams::MpcParams,modelParams::ModelParams,selectedStates::SelectedStates)
         m = new(); n_state=4
         #### Initialize parameters
-        dt         = modelParams.dt                # time step
+        # dt         = modelParams.dt                # time step
+        dt         = 0.04                # time step
         L_a        = modelParams.l_A               # distance from CoM of the car to the front wheels
         L_b        = modelParams.l_B               # distance from CoM of the car to the rear wheels
         # u_lb       = mpcParams.u_lb

@@ -237,8 +237,9 @@ function main()
     println("Finished LMPC NODE initialization.")
     counter = 0
     while ! is_shutdown()
-        if z_est[6] > 0    
-
+        println(z_est[6])
+        if z_est[6] >= 0    
+            tic()
             # CONTROL SIGNAL PUBLISHING
             cmd.header.stamp            = get_rostime()
             mpcSol_to_pub.header.stamp  = get_rostime()     
@@ -260,8 +261,8 @@ function main()
 
                 setvalue(mdl_pF.z_Ol[1:mpcParams.N,1],mpcSol.z[2:mpcParams.N+1,1]-posInfo.s_target)
                 setvalue(mdl_pF.z_Ol[mpcParams.N+1,1],mpcSol.z[mpcParams.N+1,1]-posInfo.s_target)
-                setvalue(mdl_convhull.z_Ol[1:mpcParams.N,1],mpcSol.z[2:mpcParams.N+1,1]-posInfo.s_target)
-                setvalue(mdl_convhull.z_Ol[mpcParams.N+1,1],mpcSol.z[mpcParams.N+1,1]-posInfo.s_target)
+                setvalue(mdl_kin.z_Ol[1:mpcParams.N,1],mpcSol.z[2:mpcParams.N+1,1]-posInfo.s_target)
+                setvalue(mdl_kin.z_Ol[mpcParams.N+1,1],mpcSol.z[mpcParams.N+1,1]-posInfo.s_target)
 
                 if z_prev[1,1]>posInfo.s_target
                     z_prev[:,1] -= posInfo.s_target
@@ -321,7 +322,7 @@ function main()
                 # (xDot, yDot, psiDot, ePsi, eY, s, acc_f)
                 z_curr = [z_est[6],z_est[5],z_est[4],z_est[1],z_est[2],z_est[3]]
                 if LMPC_KIN_FLAG
-                    tic()
+                    # tic()
                 	z_curr = [z_est[6],z_est[5],z_est[4],z_est[1],z_est[2],z_est[3]]
 	                z_kin = [z_est[6],z_est[5],z_est[4],sqrt(z_est[1]^2+z_est[2]^2)]
 	                GP_e_vy     = zeros(mpcParams.N)
@@ -346,7 +347,7 @@ function main()
                     # println(selectedStates)
                 	(mpcSol.z,mpcSol.u,sol_status) = solveMpcProblem_convhull_kin(mdl_kin,mpcSol,z_kin,z_prev,u_prev,selectedStates,track,GP_e_vy,GP_e_psidot)
                     println(mpcSol.u)
-                    toc()
+                    # toc()
                 
                 end # end of IF:IDEN_MODEL/DYN_LIN_MODEL/IDEN_KIN_LIN_MODEL
 
@@ -401,7 +402,7 @@ function main()
             
             if (PF_FLAG || (!PF_FLAG && lapStatus.currentLap > 1+max(selectedStates.feature_Nl,selectedStates.Nl)))
                 # println("saving history data")
-                if counter >= 5
+                if counter >= 10
                     solHistory.z[lapStatus.currentIt,lapStatus.currentLap,:,1:n_state]=mpcSol.z
                     solHistory.z[lapStatus.currentIt,lapStatus.currentLap,1,4:6]=z_curr[4:6]  # [z_est[1],z_est[2],z_est[3]] # THIS LINE IS REALLY IMPORTANT FOR SYS_ID FROM pF
                     # solHistory.z[lapStatus.currentIt,lapStatus.currentLap,1,4:6]=[z_true[3],z_true[4],z_true[6]] # THIS LINE IS REALLY IMPORTANT FOR SYS_ID FROM pF
@@ -460,7 +461,7 @@ function main()
 
             z_prev      = copy(mpcSol.z)
             u_prev      = copy(mpcSol.u)
-            # toc()
+            toc()
             println("$sol_status Current Lap: ", lapStatus.currentLap, ", It: ", lapStatus.currentIt, " v: $(z_est[1])")
             # lapStatus.currentIt += 1
         else
@@ -468,7 +469,7 @@ function main()
         end
         counter += 1
         println(counter)
-        rossleep(loop_rate)
+        # rossleep(loop_rate)
     end # END OF THE WHILE LOOP
     # THIS IS FOR THE LAST NO FINISHED LAP
     solHistory.cost[lapStatus.currentLap]   = lapStatus.currentIt-1

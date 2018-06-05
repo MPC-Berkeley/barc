@@ -21,8 +21,8 @@
     <!-- Estimator -->
     <node machine="this-pc" pkg="barc" type="state_estimator.py" name="state_estimator">
         <!-- delay in state estuiamtor -->
-        <param name="delay_df" type="double" value="0.2" />
-        <param name="delay_a" type="double" value="0.1" />
+        <param name="delay_df" type="double" value="0.0" />
+        <param name="delay_a" type="double" value="0.0" />
         <!-- ekf properties -->
         <param name="Q_x" type="double" value="0.0" />
         <param name="Q_y" type="double" value="0.0" />
@@ -42,7 +42,7 @@
         <!-- ukf properties -->
     </node>
     <!-- MPC CONTROL -->
-    <node machine="this-pc" pkg="barc" type="LMPC_node.jl" name="MPC" output="screen" /> 
+    <node machine="this-pc" pkg="barc" type="LMPC_node_100.jl" name="MPC" output="screen" /> 
 
     <!-- LOW LEVEL CONTROLLER -->
     <node machine="this-pc" pkg="barc" type="controller_low_level.py" name="low_level_controller" />
