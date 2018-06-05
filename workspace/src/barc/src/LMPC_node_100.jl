@@ -10,139 +10,90 @@ using JuMP
 using Ipopt
 using JLD
 
-# log msg
 include("barc_lib/classes.jl")
 include("barc_lib/LMPC/MPC_models.jl")
 include("barc_lib/LMPC/functions.jl")
 include("barc_lib/LMPC/solveMpcProblem.jl")
 include("barc_lib/simModel.jl")
 
-function SE_callback(msg::pos_info,acc_f::Array{Float64},lapStatus::LapStatus,posInfo::PosInfo,mpcSol::MpcSol,oldTraj::OldTrajectory,z_est::Array{Float64,1},x_est::Array{Float64,1})
-    z_est[:]                  = [msg.v_x,msg.v_y,msg.psiDot,msg.epsi,msg.ey,msg.s,acc_f[1]] # the last variable is filtered acceleration
-    # z_est[:]                  = [msg.v_x,msg.v_y,msg.psiDot,msg.epsi,msg.ey,msg.s,acc_f[1]] # the last variable is filtered acceleration
-    x_est[:]                  = [msg.x,msg.y,msg.psi,msg.v]
+function SE_callback(msg::pos_info,lapStatus::LapStatus,posInfo::PosInfo)
+    #=
+    Inputs: 
+        1. pos_info: ROS topic msg type
+        2. lapStatus: user defined type from class.jl
+        3. posInfo: user defined type from class.jl
+    =#
+    posInfo.s       = pos_info.s
+    posInfo.ey      = pos_info.ey
+    posInfo.epsi    = pos_info.epsi
+    posInfo.v       = pos_info.v
+    posInfo.x       = pos_info.x
+    posInfo.y       = pos_info.y
+    posInfo.vx      = pos_info.v_x
+    posInfo.vy      = pos_info.v_y
+    posInfo.psi     = pos_info.psi
+    posInfo.psiDot  = pos_info.psiDot
+    posInfo.ax      = pos_info.a_x
+    posInfo.ay      = pos_info.a_y
+    posInfo.a       = pos_info.u_a
+    posInfo.df      = pos_info.u_df
     
-    if z_est[6] <= lapStatus.s_lapTrigger && lapStatus.switchLap
+    if posInfo.s <= lapStatus.s_lapTrigger && lapStatus.switchLap
         lapStatus.nextLap = true
         lapStatus.switchLap = false
-    elseif z_est[6] > lapStatus.s_lapTrigger
+    elseif posInfo.s > lapStatus.s_lapTrigger
         lapStatus.switchLap = true
     end
-
-    # save current state in oldTraj
-    oldTraj.oldTraj[oldTraj.count[lapStatus.currentLap],:,lapStatus.currentLap] = z_est
-    oldTraj.count[lapStatus.currentLap] += 1
 end
 
-function ST_callback(msg::pos_info,z_true::Array{Float64,1})
-    z_true[:] = [msg.x,msg.y,msg.v_x,msg.v_y,msg.psi,msg.psiDot]
-    # println("z_true from LMPC node",round(z_true,4))
-end
-
-# This is the main function, it is called when the node is started.
 function main()
     println("Starting LMPC node.")
     const BUFFERSIZE       = 500
     const LMPC_LAP         = 30
 
     const PF_FLAG          = false  # true:only pF,     false:1 warm-up lap and LMPC
-
-    const LMPC_FLAG        = false   # true:IDEN_MODEL,  false:IDEN_KIN_LIN_MODEL(if all flags are false)
-    const LMPC_DYN_FLAG    = false   # true:DYN_LIN_MODEL, false:IDEN_KIN_LIN_MODEL(if all flags are false)
-    const LMPC_KIN_FLAG    = true   # true:KIN_MODEL,  false:IDEN_KIN_LIN_MODEL(if all flags are false)
-
-    const FEATURE_FLAG     = false  # true:8-shape,     false:history (this requires the corresponding change in 3 palces)
-    const NORM_SPACE_FLAG  = true  # true:2-norm,      false: space critirion
-
-    const TI_TV_FLAG       = true   # true:TI,          false:TV
-
     const GP_LOCAL_FLAG    = false  # true:local GPR
     const GP_FULL_FLAG     = false  # true:full GPR
     
-    const GP_HISTORY_FLAG  = false  # true: GPR data is from last laps, false: GP data is from data base.
-
-    const N                = 5
-    const delay_df         = 1
-    const delay_a          = 1
+    const N                = get_param("controller/N")
+    const delay_df         = get_param("controller/delay_df")
+    const delay_a          = get_param("controller/delay_a")
     
     if PF_FLAG
         file_name = "PF"
     else
-        if LMPC_FLAG # CONTROLLER FLAG
-            if TI_TV_FLAG
-                file_name = "SYS_ID_TI"
-            else
-                file_name = "SYS_ID_TV"
-            end
-        elseif LMPC_DYN_FLAG
-            file_name = "DYN_LIN"
-        elseif LMPC_KIN_FLAG
-        	file_name = "KIN"
-        else
-            file_name = "SYS_ID_KIN_LIN"
-            if TI_TV_FLAG
-                file_name *= "_TI"
-            else
-                file_name *= "_TV"
-            end
+        if GP_LOCAL_FLAG
+            file_name = "KIN_LOCAL_GP"
+        elseif GP_FULL_FLAG
+            file_name = "KIN_FULL_GP"
         end
     end
-    if GP_LOCAL_FLAG
-        file_name *= "_LOCAL_GP"
-    elseif GP_FULL_FLAG
-        file_name *= "_FULL_GP"
-    end
-
     if get_param("sim_flag")
         folder_name = "simulations"
     else
         folder_name = "experiments"
     end
 
-
-
-    PF_FLAG ? println("Path following") : println("Learning MPC")
-    FEATURE_FLAG ? println("Feature data: 8-shape database") : println("Feature data: History data base")
-    TI_TV_FLAG ? println("Time invariant SYS_ID") : println("Time variant SYS_ID")
-    println("N=$N, delay_df=$delay_df, delay_a=$delay_a")
-    
     track_data       = createTrack("basic")
     track            = Track(track_data)
-    track_fe         = createTrack("feature")
-    track_f          = Track(track_fe)
-    oldTraj          = OldTrajectory()
-    posInfo          = PosInfo();  posInfo.s_target=track.s;
     lapStatus        = LapStatus(1,1,false,false,0.3)
-    mpcCoeff         = MpcCoeff()
-    mpcCoeff_dummy   = MpcCoeff()
     mpcSol           = MpcSol()
     modelParams      = ModelParams()
-    mpcParams_pF     = MpcParams()
     mpcParams        = MpcParams()
-    mpcParams_4s     = MpcParams()
     selectedStates   = SelectedStates()
     oldSS            = SafeSetData()
-    z_est            = zeros(7)          # (xDot, yDot, psiDot, ePsi, eY, s, acc_f)
-    z_true           = zeros(6)          # (xDot, yDot, psiDot)
-    x_est            = zeros(4)          # (x, y, psi, v)
-    cmd              = ECU()             # CONTROL SIGNAL MESSAGE INITIALIZATION
+    posInfo          = PosInfo()
+
     mpcSol_to_pub    = mpc_solution()    # MPC SOLUTION PUBLISHING MESSAGE INITIALIZATION
-    InitializeParameters(mpcParams,mpcParams_4s,mpcParams_pF,modelParams,mpcSol,
-                         selectedStates,oldSS,oldTraj,mpcCoeff,mpcCoeff_dummy,
-                         LMPC_LAP,delay_df,delay_a,N,BUFFERSIZE)
-    z_prev           = mpcSol.z
-    u_prev           = mpcSol.u
-    GP_e_vy          = zeros(mpcParams.N)
-    GP_e_psidot      = zeros(mpcParams.N)
+    cmd              = ECU()             # CONTROL SIGNAL MESSAGE INITIALIZATION
+    
 
     # NODE INITIALIZATION
     init_node("mpc_traj")
-    # loop_rate   = Rate(1/modelParams.dt)
     loop_rate   = Rate(50.0)
     pub         = Publisher("ecu", ECU, queue_size=1)::RobotOS.Publisher{barc.msg.ECU}
-    mpcSol_pub  = Publisher("mpc_solution", mpc_solution, queue_size=1)::RobotOS.Publisher{barc.msg.mpc_solution}; acc_f = [0.0]
-    s1          = Subscriber("pos_info", pos_info, SE_callback, (acc_f,lapStatus,posInfo,mpcSol,oldTraj,z_est,x_est),queue_size=1)::RobotOS.Subscriber{barc.msg.pos_info}
-    s2          = Subscriber("real_val", pos_info, ST_callback, (z_true,),queue_size=1)::RobotOS.Subscriber{barc.msg.pos_info}
+    mpcSol_pub  = Publisher("mpc_solution", mpc_solution, queue_size=1)::RobotOS.Publisher{barc.msg.mpc_solution}
+    s1          = Subscriber("pos_info", pos_info, SE_callback, (acc_f,lapStatus,mpcSol,oldTraj,z_est,x_est),queue_size=1)::RobotOS.Subscriber{barc.msg.pos_info}
 
     num_lap             = LMPC_LAP+1+max(selectedStates.Nl,selectedStates.feature_Nl)
     solHistory          = SolHistory(BUFFERSIZE,mpcParams.N,6,num_lap)
@@ -169,24 +120,7 @@ function main()
     if GP_LOCAL_FLAG || GP_FULL_FLAG
         # FEATURE DATA READING FOR GPR # THIS PART NEEDS TO BE COMMENTED OUT FOR THE FIRST TIME LMPC FOR GP DATA COLLECTING
         if PF_FLAG
-            file_GP_name = "PF"
-        else
-            if LMPC_FLAG # CONTROLLER FLAG
-                if TI_TV_FLAG
-                    file_GP_name = "SYS_ID_TI"
-                else
-                    file_GP_name = "SYS_ID_TV"
-                end
-            elseif LMPC_DYN_FLAG
-                file_GP_name = "DYN_LIN"
-            else
-                file_name = "SYS_ID_KIN_LIN"
-                if TI_TV_FLAG
-                    file_GP_name *= "_TI"
-                else
-                    file_GP_name *= "_TV"
-                end
-            end
+            file_GP_name = "KIN"
         end
         if get_param("sim_flag")
 	        data = load("$(homedir())/simulations/Feature_Data/FeatureData_GP-$(file_GP_name).jld")
@@ -207,8 +141,6 @@ function main()
         GP_e_psi_dot_prepare = GP_prepare(feature_GP_psidot_e,feature_GP_z,feature_GP_u)
         GP_feature           = hcat(feature_GP_z,feature_GP_u)
 
-        # GP RELATED FUNCTION DUMMY CALLING
-        # regre(rand(1,6),rand(1,2),feature_GP_vy_e,feature_GP_z,feature_GP_u)
         GP_full_vy(rand(1,6),rand(1,2),GP_feature,GP_e_vy_prepare)
         GP_full_psidot(rand(1,6),rand(1,2),GP_feature,GP_e_vy_prepare)
     else # THIS IS FOR COLLECTING FEATURE DATA FOR GPR
@@ -231,20 +163,10 @@ function main()
         oldSS = data["oldSS"]
         solHistory = data["solHistory"]
     end
-    println(lapStatus)
-    println("track maximum curvature: ",track.max_curvature)
 
-    println("Finished LMPC NODE initialization.")
     counter = 0
     while ! is_shutdown()
         if z_est[6] > 0    
-
-            # CONTROL SIGNAL PUBLISHING
-            cmd.header.stamp            = get_rostime()
-            mpcSol_to_pub.header.stamp  = get_rostime()     
-            # publish(pub, cmd)
-            # publish(mpcSol_pub, mpcSol_to_pub)
-
             # LAP SWITCHING
             if lapStatus.nextLap
                 println("Finishing one lap at iteration ",lapStatus.currentIt)
@@ -258,13 +180,13 @@ function main()
 
                 lapStatus.nextLap = false
 
-                setvalue(mdl_pF.z_Ol[1:mpcParams.N,1],mpcSol.z[2:mpcParams.N+1,1]-posInfo.s_target)
-                setvalue(mdl_pF.z_Ol[mpcParams.N+1,1],mpcSol.z[mpcParams.N+1,1]-posInfo.s_target)
-                setvalue(mdl_convhull.z_Ol[1:mpcParams.N,1],mpcSol.z[2:mpcParams.N+1,1]-posInfo.s_target)
-                setvalue(mdl_convhull.z_Ol[mpcParams.N+1,1],mpcSol.z[mpcParams.N+1,1]-posInfo.s_target)
+                setvalue(mdl_pF.z_Ol[1:mpcParams.N,1],mpcSol.z[2:mpcParams.N+1,1]-track.s)
+                setvalue(mdl_pF.z_Ol[mpcParams.N+1,1],mpcSol.z[mpcParams.N+1,1]-track.s)
+                setvalue(mdl_convhull.z_Ol[1:mpcParams.N,1],mpcSol.z[2:mpcParams.N+1,1]-track.s)
+                setvalue(mdl_convhull.z_Ol[mpcParams.N+1,1],mpcSol.z[mpcParams.N+1,1]-track.s)
 
-                if z_prev[1,1]>posInfo.s_target
-                    z_prev[:,1] -= posInfo.s_target
+                if z_prev[1,1]>track.s
+                    z_prev[:,1] -= track.s
                 end
 
                 lapStatus.currentLap += 1
@@ -502,10 +424,3 @@ end
 if ! isinteractive()
     main()
 end
-
-# zCurr[1] = v_x
-# zCurr[2] = v_y
-# zCurr[3] = psiDot
-# zCurr[4] = ePsi
-# zCurr[5] = eY
-# zCurr[6] = s

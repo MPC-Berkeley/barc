@@ -8,11 +8,6 @@ type LapStatus
     s_lapTrigger::Float64
 end
 
-# Structure of coeffConst:
-# 1st dimension is the polynomial coefficient
-# 2nd dimension specifies the state (1 = eY, 2 = ePsi, 3 = v or 1 = xDot, 2 = yDot, 3 = psiDot, 4 = ePsi, 5 = eY)
-# 3th dimension specifies one of the two lap numbers between which are iterated
-
 type MpcCoeff           # coefficients for trajectory approximation
     c_Vx::Array{Float64,2}
     c_Vy::Array{Float64,2}
@@ -22,12 +17,6 @@ type MpcCoeff           # coefficients for trajectory approximation
     # c_Vy::Array{Float64,1}
     # c_Psi::Array{Float64,1}
     # MpcCoeff(c_Vx=zeros(10,3),c_Vy=zeros(10),c_Psi=zeros(10)) = new(c_Vx, c_Vy, c_Psi)
-end
-
-type OldTrajectory      # information about previous trajectories
-    oldTraj::Array{Float64}             # contains all states over all laps
-    count::Array{Int64}                 # contains the counter for each lap
-    OldTrajectory(oldTraj=Float64[],count=Int64[]) = new(oldTraj,count)
 end
 
 type SolHistory
@@ -43,80 +32,124 @@ type SolHistory
     end
 end
 
-# To make the data structure to be compatible with my own simulation code, idx_start and idx_end in SafeSetData are acturally not used, since I am using other way to cantacate the laps.
-type SafeSetData
-    oldSS::Array{Float64}           # contains data from previous laps usefull to build the safe set
-    cost2target::Array{Float64}     # cost to arrive at the target, i.e. how many iterations from the start to the end of the lap
-    oldCost::Array{Int64}               # contains costs of laps
-    count::Array{Int64}                 # contains the counter for each lap
-    oldSS_xy::Array{Float64}
-    SafeSetData(oldSS=Float64[],cost2target=Float64[],oldCost=Int64[],count=Int64[],oldSS_xy=Float64[]) =
-    new(oldSS,cost2target,oldCost,count,oldSS_xy)
+type SafeSet
+    oldSS::Array{Float64}
+    oldCost::Array{Int64}
+    Np::Int64
+    Nl::Int64
+    selStates::Array{Float64,2}
+    statesCost::Array{Float64,1}
+    function SafeSet(BUFFERSIZE::Int64,lapNum::Int64)
+        SS = new()
+        n_state     = get_param("controller/n_state")
+        SS.oldSS    = NaN*ones(BUFFERSIZE,n_state,lapNum)
+        SS.oldCost  = ones(num_lap)
+        SS.Np   = get_param("controller/Np")
+        SS.Nl   = get_param("controller/Nl")
+        SS.selStates = zeros(sel.Nl*sel.Np,n_state)
+        SS.stateCost = zeros(sel.Nl*sel.Np)
+        return SS
+    end
 end
 
-type SelectedStates                 # Values needed for the convex hull formulation
-    selStates::Array{Float64}       # selected states from previous laps ...
-    statesCost::Array{Float64}      # ... and their related costs
-    Np::Int64                       # number of states to select from each previous lap
-    Nl::Int64                       # number of previous laps to include in the convex hull
-    feature_Np::Int64               # this is for feature points selcted from history
-    feature_Nl::Int64               # this is for feature points selected from history
-    SelectedStates(selStates=Float64[],statesCost=Float64[],Np=10,Nl=2,feature_Np=30,feature_Nl=5) = new(selStates,statesCost,Np,Nl,feature_Np,feature_Nl)
+type SysID
+    feature_Np::Int64
+    feature_Nl::Int64
+    feature_z::Int64
+    feature_u::Int64
+    function SelectedStates()
+        sysID = new()        
+        n_state          = get_param("controller/n_state")
+        sysID.feature_Np = get_param("controller/feature_Np")
+        sysID.feature_Nl = get_param("controller/feature_Nl")
+        sysID.feature_z = zeros(sysID.feature_Np*sysID.feature_Nl,n_state)
+        sysID.feature_u = zeros(sysID.feature_Np*sysID.feature_Nl,n_state)
+        return selectedStates
+    end
 end
 
-type MpcParams          # parameters for MPC solver
+type MpcParams
+    # parameters for both PF and LMPC
     N::Int64
-    nz::Int64
+    # parameters for PF
     Q::Array{Float64,1}
-    Q_term::Array{Float64,1}
-    R::Array{Float64,1}
     vPathFollowing::Float64
+    # parameters for LMPC
+    R::Array{Float64,1}
     QderivZ::Array{Float64,1}
     QderivU::Array{Float64,1}
-    Q_term_cost::Float64
-    delay_df::Int64
-    delay_a::Int64
-    Q_lane::Float64                # weight on the soft constraint for the lane
-    Q_vel::Float64                 # weight on the soft constraint for the maximum velocity
-    Q_slack::Array{Float64,1}               # weight on the slack variables for the terminal constraint
-    Q_obs::Array{Float64}          # weight used to esclude some of the old trajectories from the optimization problem
-    MpcParams(N=0,nz=0,Q=Float64[],Q_term=Float64[],R=Float64[],vPathFollowing=1.0,QderivZ=Float64[],QderivU=Float64[],Q_term_cost=1.0,delay_df=0,delay_a=0,Q_lane=1.0,Q_vel=1.0,Q_slack=Float64[],Q_obs=Float64[])=
-    new(N,nz,Q,Q_term,R,vPathFollowing,QderivZ,QderivU,Q_term_cost,delay_df,delay_a,Q_lane,Q_vel,Q_slack,Q_obs)
-end
-
-type PosInfo            # current position information
-    s::Float64
-    s_target::Float64
-    PosInfo(s=0,s_target=0) = new(s,s_target)
+    Q_term::Float64
+    Q_lane::Float64
+    Q_slack::Array{Float64,1}
+    function MpcParams()
+        mpcParams = new()
+        mpcParams.N = get_param("controller/N")
+        return mpcParams
+    end
 end
 
 type MpcSol             # MPC solution output
+    u::Array{Float64,2}
+    z::Array{Float64,2}
+    u_prev::Array{Float64,2}
+    z_prev::Array{Float64,2}
+    GP_e_vy::Array{Float64,1}
+    GP_e_psiDot::Array{Float64,1}
     a_x::Float64
     d_f::Float64
-    solverStatus::Symbol
-    u::Array{Float64}
-    z::Array{Float64}
-    cost::Array{Float64}
-    eps_alpha::Array{Float64}
-    costSlack::Array{Float64}
     df_his::Array{Float64,1}
     a_his::Array{Float64,1}
-    MpcSol(a_x=0.0,d_f=0.0,solverStatus=Symbol(),u=Float64[],z=Float64[],cost=Float64[],eps_alpha=Float64[],costSlack=Float64[],df_his=Float64[],a_his=Float64[]) = new(a_x,d_f,solverStatus,u,z,cost,eps_alpha,costSlack,df_his,a_his)
+    function MpcSol()
+        mpcSol  = new()
+        N       = get_param("controller/N")
+        n_state = get_param("controller/n_state")
+        mpcSol.u        = zeros(N,2)
+        mpcSol.z        = zeros(N+1,n_state)
+        mpcSol.u_prev   = zeros(N,2)
+        mpcSol.z_prev   = zeros(N+1,n_state)
+        mpcSol.GP_e_vy  = zeros(N)
+        mpcSol.GP_e_psiDot = zeros(N)
+        mpcSol.a_x      = 0.0
+        mpcSol.d_f      = 0.0
+        mpcSol.a_his    = zeros(get_param("controller/delay_a"))
+        mpcSol.df_his   = zeros(get_param("controller/delay_a"))
+        return mpcSol
+    end
 end
 
-type ModelParams
-    l_A::Float64
-    l_B::Float64
-    m::Float64
-    I_z::Float64
-    dt::Float64
-    u_lb::Array{Float64}  
-    u_ub::Array{Float64}
-    z_lb::Array{Float64}
-    z_ub::Array{Float64}
-    c0::Array{Float64}
-    c_f::Float64
-    ModelParams(l_A=0.25,l_B=0.25,m=1.98,I_z=0.24,dt=0.1,u_lb=Float64[],u_ub=Float64[],z_lb=Float64[],z_ub=Float64[],c0=Float64[],c_f=0.0) = new(l_A,l_B,m,I_z,dt,u_lb,u_ub,z_lb,z_ub,c0,c_f)
+type PosInfo
+    s::Float64
+    ey::Float64
+    epsi::Float64
+    v::Float64
+    x::Float64
+    y::Float64
+    vx::Float64
+    vy::Float64
+    psi::Float64
+    psiDot::Float64
+    ax::Float64
+    ay::Float64
+    a::Float64
+    df::Float64
+    function PosInfo()
+        posInfo = new()
+        posInfo.s       = 0.0
+        posInfo.ey      = 0.0
+        posInfo.epsi    = 0.0
+        posInfo.v       = 0.0
+        posInfo.x       = 0.0
+        posInfo.y       = 0.0
+        posInfo.vx      = 0.0
+        posInfo.vy      = 0.0
+        posInfo.psi     = 0.0
+        posInfo.psiDot  = 0.0
+        posInfo.ax      = 0.0
+        posInfo.ay      = 0.0
+        posInfo.a       = 0.0
+        posInfo.df      = 0.0
+        return posInfo
+    end
 end
 
 # THIS IS THE CORRESPONDING TRACK DATA IN JULIA
@@ -194,7 +227,6 @@ type Track
         track.s=(track.n_node-1)*track.ds # Important: exclude the last point from the track length!
         return track
     end
-    # The last point of this function is actually a dummy point
 end
 
 
