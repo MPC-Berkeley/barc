@@ -47,7 +47,7 @@ def main():
     map = Map()                                              # Map
     
     # Choose Controller and Number of Laps
-    PickController = "TV_MPC"
+    PickController = "PID"
     NumberOfLaps   = 20
     vt = 1.0
     PathFollowingLaps = 1
