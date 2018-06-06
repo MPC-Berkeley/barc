@@ -48,8 +48,7 @@ def main():
     NumberOfLaps   = 20
     vt = 1.0
     PathFollowingLaps = 1
-    ControllerPID = PID(vt) 
-    Controller,  OpenLoopData   = ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode)
+    ControllerLap0, Controller,  OpenLoopData   = ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode)
                  
     # Initialize variables for main loop
     GlobalState      = np.zeros(6)
@@ -85,17 +84,17 @@ def main():
         if (insideTrack == 1):
             startTimer = datetime.datetime.now()
             if LapNumber < PathFollowingLaps :        # First path following lap
-                ControllerPID.solve(LocalState)
-                cmd.servo = ControllerPID.uPred[0,0]
-                cmd.motor = ControllerPID.uPred[0,1]
+                ControllerLap0.solve(LocalState)
+                cmd.servo = ControllerLap0.uPred[0,0]
+                cmd.motor = ControllerLap0.uPred[0,1]
                 uApplied = np.array([cmd.servo, cmd.motor])
                 # Publish input
                 input_commands.publish(cmd)
 
             elif PickController == "PID":
-                ControllerPID.solve(LocalState)
-                cmd.servo = ControllerPID.uPred[0,0]
-                cmd.motor = ControllerPID.uPred[0,1]
+                Controller.solve(LocalState)
+                cmd.servo = Controller.uPred[0,0]
+                cmd.motor = Controller.uPred[0,1]
                 uApplied = np.array([cmd.servo, cmd.motor])
                 # Publish input
                 input_commands.publish(cmd)
@@ -220,6 +219,21 @@ class LMPCprediction():
 def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode):
     OpenLoopData = 0.0
     if PickController == 'PID':
+        ControllerLap0 = PID(vt) 
+    else:
+        file_data = open(sys.path[0]+'/data/'+mode+'/ClosedLoopDataPID.obj', 'rb')
+        ClosedLoopDataPID = pickle.load(file_data)
+        file_data.close()
+        lamb = 0.0000001
+        A, B, Error = Regression(ClosedLoopDataPID.x, ClosedLoopDataPID.u, lamb)
+        print "A matrix: \n", A
+        print "B matrix: \n", B      
+        Q = 1*np.diag([1.0, 1.0, 1, 10.0, 0.0, 10.0]) # vx, vy, wz, epsi, s, ey
+        R = np.diag([1.0, 1.0]) # delta, a
+        N = 12
+        ControllerLap0 = PathFollowingLTI_MPC(A, B, Q, R, N, vt)
+
+    if PickController == 'PID':
         Controller = PID(vt)                                # PID controller
     elif PickController == "TI_MPC":
         file_data = open(sys.path[0]+'/data/'+mode+'/ClosedLoopDataPID.obj', 'rb')
@@ -263,7 +277,7 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode):
         Qslack  = 10 * np.diag([10, 1, 1, 1, 10, 1])          # Cost on the slack variable for the terminal constraint
         Q_LMPC  =  0 * np.diag([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])  # State cost x = [vx, vy, wz, epsi, s, ey]
         R_LMPC  =  2 * np.diag([1.0, 1.0])                      # Input cost u = [delta, a]
-        dR_LMPC =  0 * np.array([1.0, 1.0])                     # Input rate cost u
+        dR_LMPC =  5 * np.array([1.0, 1.0])                     # Input rate cost u
         Controller = ControllerLMPC(numSS_Points, numSS_it, N, Qslack, Q_LMPC, R_LMPC, dR_LMPC, 6, 2, shift, 
                                         dt, map, Laps, TimeLMPC, LMPC_Solver, SysID_Solver, flag_LTV)
         Controller.addTrajectory(ClosedLoopDataPID)
@@ -271,7 +285,7 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode):
         OpenLoopData = LMPCprediction(N, 6, 2, TimeLMPC, numSS_Points, Laps)
         print "Here!"
 
-    return Controller, OpenLoopData       
+    return ControllerLap0, Controller, OpenLoopData       
 
 class EstimatorData(object):
     """Data from estimator"""
