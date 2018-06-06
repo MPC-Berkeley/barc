@@ -161,7 +161,7 @@ def main():
         rate.sleep()
 
     # Save Data
-    file_data = open(sys.path[0]+'/data/ClosedLoopData/'+mode+'/'+PickController+'.obj', 'wb')
+    file_data = open(sys.path[0]+'/data/'+mode+'/ClosedLoopData'+PickController+'.obj', 'wb')
     pickle.dump(ClosedLoopData, file_data)
     pickle.dump(Controller, file_data)
     pickle.dump(OpenLoopData, file_data)    

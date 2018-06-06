@@ -30,7 +30,9 @@
     <!--<node pkg="barc" type="controller_low_level.py" name="low_level_controller" /> -->
 
      <!-- CONTROL -->
-    <node pkg="barc" type="LMPC.py" name="control" output="screen" />
+    <node pkg="barc" type="ControllerMain.py" name="control" output="screen">
+        <param name="mode" type="str" value="simulations" />
+    </node>
 
 
 </launch>

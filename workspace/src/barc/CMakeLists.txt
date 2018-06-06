@@ -51,6 +51,7 @@ add_message_files(
    ECU.msg
    Vel_est.msg
    prediction.msg
+   SafeSetGlob.msg
    selected_states.msg
    xy_prediction.msg
    theta.msg
