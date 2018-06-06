@@ -167,7 +167,6 @@ class ControllerLMPC():
         it = self.it
 
         self.TimeSS[it] = ClosedLoopData.SimTime
-        print "Points in SS: ", ClosedLoopData.SimTime
         self.SS[0:(self.TimeSS[it] + 1), :, it] = ClosedLoopData.x[0:(self.TimeSS[it] + 1), :]
         self.SS_glob[0:(self.TimeSS[it] + 1), :, it] = ClosedLoopData.x_glob[0:(self.TimeSS[it] + 1), :]
         self.uSS[0:self.TimeSS[it], :, it]      = ClosedLoopData.u[0:(self.TimeSS[it]), :]

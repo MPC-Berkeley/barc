@@ -122,8 +122,8 @@ def main():
             
 
             # Record data
-            if PickController != "LMPC":
-                GlobalState[4] = GlobalState[4] + LapNumber*map.TrackLength
+            if (PickController != "LMPC") and (LapNumber >= 1):
+                GlobalState[4] = GlobalState[4] + (LapNumber - 1)*map.TrackLength
                 ClosedLoopData.addMeasurement(GlobalState, LocalState, uApplied)
             else:
                 ClosedLoopData.addMeasurement(GlobalState, LocalState, uApplied)
@@ -139,12 +139,12 @@ def main():
                 SS_glob_sel.SSy       = Controller.SS_glob_PointSelectedTot[5, :]
                 sel_safe_set.publish(SS_glob_sel)
                 
-                Controller.addPoint(LocalState, GlobalState, uApplied, TimeCounter)
                 OpenLoopData.PredictedStates[:,:,TimeCounter, Controller.it]   = Controller.xPred
                 OpenLoopData.PredictedInputs[:, :, TimeCounter, Controller.it] = Controller.uPred
                 OpenLoopData.SSused[:, :, TimeCounter, Controller.it]          = Controller.SS_PointSelectedTot
                 OpenLoopData.Qfunused[:, TimeCounter, Controller.it]           = Controller.Qfun_SelectedTot
 
+                Controller.addPoint(LocalState, GlobalState, uApplied, TimeCounter)
         else:                                        # If car out of the track
             cmd.servo = 0
             cmd.motor = 0
@@ -169,6 +169,78 @@ def main():
 # ===============================================================================================================================
 # ==================================================== END OF MAIN ==============================================================
 # ===============================================================================================================================
+def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode):
+    OpenLoopData = 0.0
+    if PickController == 'PID':
+        ControllerLap0 = PID(vt) 
+    else:
+        file_data = open(sys.path[0]+'/data/'+mode+'/ClosedLoopDataPID.obj', 'rb')
+        ClosedLoopDataPID = pickle.load(file_data)
+        file_data.close()
+        lamb = 0.0000001
+        A, B, Error = Regression(ClosedLoopDataPID.x, ClosedLoopDataPID.u, lamb)
+        print "A matrix: \n", A
+        print "B matrix: \n", B      
+        Q = 1*np.diag([1.0, 1.0, 1, 10.0, 0.0, 10.0]) # vx, vy, wz, epsi, s, ey
+        R = np.diag([1.0, 1.0]) # delta, a
+        N = 12
+        ControllerLap0 = PathFollowingLTI_MPC(A, B, Q, R, N, vt)
+
+    if PickController == 'PID':
+        Controller = PID(vt)                                # PID controller
+    elif PickController == "TI_MPC":
+        file_data = open(sys.path[0]+'/data/'+mode+'/ClosedLoopDataPID.obj', 'rb')
+        ClosedLoopDataPID = pickle.load(file_data)
+        file_data.close()
+        lamb = 0.0000001
+        A, B, Error = Regression(ClosedLoopDataPID.x, ClosedLoopDataPID.u, lamb)
+        print "A matrix: \n", A
+        print "B matrix: \n", B      
+        Q = 1*np.diag([1.0, 1.0, 1, 10.0, 0.0, 10.0]) # vx, vy, wz, epsi, s, ey
+        R = np.diag([1.0, 1.0]) # delta, a
+        N = 12
+        Controller = PathFollowingLTI_MPC(A, B, Q, R, N, vt)
+    elif PickController == "TV_MPC":
+        file_data = open(sys.path[0]+'/data/'+mode+'/ClosedLoopDataPID.obj', 'rb')
+        ClosedLoopDataPID = pickle.load(file_data)
+        file_data.close()
+        Q = 1*np.diag([1.0, 1.0, 1, 10.0, 0.0, 50.0]) # vx, vy, wz, epsi, s, ey
+        R = np.diag([1.0, 1.0]) # delta, a
+        N = 12
+        Controller = PathFollowingLTV_MPC(Q, R, N, vt, ClosedLoopDataPID.x[0:ClosedLoopDataPID.SimTime, :], 
+                                                       ClosedLoopDataPID.u[0:ClosedLoopDataPID.SimTime, :], dt, map, "OSQP")
+    elif PickController == "LMPC":
+        file_data = open(sys.path[0]+'/data/'+mode+'/ClosedLoopDataPID.obj', 'rb')
+        ClosedLoopDataPID = pickle.load(file_data)
+        file_data.close()
+        file_data = open(sys.path[0]+'/data/'+mode+'/ClosedLoopDataTI_MPC.obj', 'rb')
+        ClosedLoopDataTI_MPC = pickle.load(file_data)
+        file_data.close()
+        Laps       = NumberOfLaps+2   # Total LMPC laps
+        # Safe Set Parameters
+        flag_LTV = True
+        TimeLMPC   = 400              # Simulation time
+        N = 12
+        LMPC_Solver = "OSQP"          # Can pick CVX for cvxopt or OSQP. For OSQP uncomment line 14 in LMPC.py
+        SysID_Solver = "scipy"        # Can pick CVX, OSQP or scipy. For OSQP uncomment line 14 in LMPC.py  
+        numSS_it = 2                  # Number of trajectories used at each iteration to build the safe set
+        numSS_Points = 32 + N         # Number of points to select from each trajectory to build the safe set
+        shift = N / 2                     # Given the closed point, x_t^j, to the x(t) select the SS points from x_{t+shift}^j
+        # Tuning Parameters
+        Qslack  = 10 * np.diag([10, 1, 1, 1, 10, 1])          # Cost on the slack variable for the terminal constraint
+        Q_LMPC  =  0 * np.diag([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])  # State cost x = [vx, vy, wz, epsi, s, ey]
+        R_LMPC  =  2 * np.diag([1.0, 1.0])                      # Input cost u = [delta, a]
+        dR_LMPC =  5 * np.array([1.0, 1.0])                     # Input rate cost u
+        Controller = ControllerLMPC(numSS_Points, numSS_it, N, Qslack, Q_LMPC, R_LMPC, dR_LMPC, 6, 2, shift, 
+                                        dt, map, Laps, TimeLMPC, LMPC_Solver, SysID_Solver, flag_LTV)
+        # Controller.addTrajectory(ClosedLoopDataPID)
+        Controller.addTrajectory(ClosedLoopDataTI_MPC)
+        OpenLoopData = LMPCprediction(N, 6, 2, TimeLMPC, numSS_Points, Laps)
+        print "Here!"
+
+    return ControllerLap0, Controller, OpenLoopData       
+
+
 class PID:
     """Create the PID controller used for path following at constant speed
     Attributes:
@@ -215,77 +287,6 @@ class LMPCprediction():
 
         self.SSused   = np.zeros((n , numSS_Points, TimeLMPC, Laps))
         self.Qfunused = np.zeros((numSS_Points, TimeLMPC, Laps))
-
-def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode):
-    OpenLoopData = 0.0
-    if PickController == 'PID':
-        ControllerLap0 = PID(vt) 
-    else:
-        file_data = open(sys.path[0]+'/data/'+mode+'/ClosedLoopDataPID.obj', 'rb')
-        ClosedLoopDataPID = pickle.load(file_data)
-        file_data.close()
-        lamb = 0.0000001
-        A, B, Error = Regression(ClosedLoopDataPID.x, ClosedLoopDataPID.u, lamb)
-        print "A matrix: \n", A
-        print "B matrix: \n", B      
-        Q = 1*np.diag([1.0, 1.0, 1, 10.0, 0.0, 10.0]) # vx, vy, wz, epsi, s, ey
-        R = np.diag([1.0, 1.0]) # delta, a
-        N = 12
-        ControllerLap0 = PathFollowingLTI_MPC(A, B, Q, R, N, vt)
-
-    if PickController == 'PID':
-        Controller = PID(vt)                                # PID controller
-    elif PickController == "TI_MPC":
-        file_data = open(sys.path[0]+'/data/'+mode+'/ClosedLoopDataPID.obj', 'rb')
-        ClosedLoopDataPID = pickle.load(file_data)
-        file_data.close()
-        lamb = 0.0000001
-        A, B, Error = Regression(ClosedLoopDataPID.x, ClosedLoopDataPID.u, lamb)
-        print "A matrix: \n", A
-        print "B matrix: \n", B      
-        Q = 1*np.diag([1.0, 1.0, 1, 10.0, 0.0, 10.0]) # vx, vy, wz, epsi, s, ey
-        R = np.diag([1.0, 1.0]) # delta, a
-        N = 12
-        Controller = PathFollowingLTI_MPC(A, B, Q, R, N, vt)
-    elif PickController == "TV_MPC":
-        file_data = open(sys.path[0]+'/data/'+mode+'/ClosedLoopDataPID.obj', 'rb')
-        ClosedLoopDataPID = pickle.load(file_data)
-        file_data.close()
-        Q = 1*np.diag([1.0, 1.0, 1, 10.0, 0.0, 50.0]) # vx, vy, wz, epsi, s, ey
-        R = np.diag([1.0, 1.0]) # delta, a
-        N = 12
-        Controller = PathFollowingLTV_MPC(Q, R, N, vt, ClosedLoopDataPID.x[0:ClosedLoopDataPID.SimTime, :], 
-                                                       ClosedLoopDataPID.u[0:ClosedLoopDataPID.SimTime, :], dt, map, "OSQP")
-    elif PickController == "LMPC":
-        file_data = open(sys.path[0]+'/data/'+mode+'/ClosedLoopDataPID.obj', 'rb')
-        ClosedLoopDataPID = pickle.load(file_data)
-        file_data.close()
-        file_data = open(sys.path[0]+'/data/'+mode+'/ClosedLoopDataTV_MPC.obj', 'rb')
-        ClosedLoopDataTV_MPC = pickle.load(file_data)
-        file_data.close()
-        Laps       = NumberOfLaps+2   # Total LMPC laps
-        # Safe Set Parameters
-        flag_LTV = True
-        TimeLMPC   = 400              # Simulation time
-        N = 12
-        LMPC_Solver = "OSQP"          # Can pick CVX for cvxopt or OSQP. For OSQP uncomment line 14 in LMPC.py
-        SysID_Solver = "scipy"          # Can pick CVX, OSQP or scipy. For OSQP uncomment line 14 in LMPC.py  
-        numSS_it = 2                  # Number of trajectories used at each iteration to build the safe set
-        numSS_Points = 32 + N         # Number of points to select from each trajectory to build the safe set
-        shift = N / 2                     # Given the closed point, x_t^j, to the x(t) select the SS points from x_{t+shift}^j
-        # Tuning Parameters
-        Qslack  = 10 * np.diag([10, 1, 1, 1, 10, 1])          # Cost on the slack variable for the terminal constraint
-        Q_LMPC  =  0 * np.diag([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])  # State cost x = [vx, vy, wz, epsi, s, ey]
-        R_LMPC  =  2 * np.diag([1.0, 1.0])                      # Input cost u = [delta, a]
-        dR_LMPC =  5 * np.array([1.0, 1.0])                     # Input rate cost u
-        Controller = ControllerLMPC(numSS_Points, numSS_it, N, Qslack, Q_LMPC, R_LMPC, dR_LMPC, 6, 2, shift, 
-                                        dt, map, Laps, TimeLMPC, LMPC_Solver, SysID_Solver, flag_LTV)
-        Controller.addTrajectory(ClosedLoopDataPID)
-        Controller.addTrajectory(ClosedLoopDataTV_MPC)
-        OpenLoopData = LMPCprediction(N, 6, 2, TimeLMPC, numSS_Points, Laps)
-        print "Here!"
-
-    return ControllerLap0, Controller, OpenLoopData       
 
 class EstimatorData(object):
     """Data from estimator"""
