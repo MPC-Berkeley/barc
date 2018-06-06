@@ -3,6 +3,7 @@
 import numpy as np
 import pdb
 import numpy.linalg as la
+import rospy
 
 class Map():
     """map object
@@ -14,18 +15,29 @@ class Map():
         width: track width
         Modify the vector spec to change the geometry of the track
         """
-        self.width = 1.0
-        spec = np.array([[60 * 0.03, 0],
-                         [80 * 0.03, -80 * 0.03 * 2 / np.pi],
-                         # Note s = 1 * np.pi / 2 and r = -1 ---> Angle spanned = np.pi / 2
-                         [20 * 0.03, 0],
-                         [80 * 0.03, -80 * 0.03 * 2 / np.pi],
-                         [40 * 0.03, +40 * 0.03 * 10 / np.pi],
-                         [60 * 0.03, -60 * 0.03 * 5 / np.pi],
-                         [40 * 0.03, +40 * 0.03 * 10 / np.pi],
-                         [80 * 0.03, -80 * 0.03 * 2 / np.pi],
-                         [20 * 0.03, 0],
-                         [80 * 0.03, -80 * 0.03 * 2 / np.pi]])
+        selectedTrack = rospy.get_param("trackShape")
+        if selectedTrack == "3110":
+            self.width = 1.0
+            spec = np.array([[60 * 0.03, 0],
+                             [80 * 0.03, -80 * 0.03 * 2 / np.pi],
+                             # Note s = 1 * np.pi / 2 and r = -1 ---> Angle spanned = np.pi / 2
+                             [20 * 0.03, 0],
+                             [80 * 0.03, -80 * 0.03 * 2 / np.pi],
+                             [40 * 0.03, +40 * 0.03 * 10 / np.pi],
+                             [60 * 0.03, -60 * 0.03 * 5 / np.pi],
+                             [40 * 0.03, +40 * 0.03 * 10 / np.pi],
+                             [80 * 0.03, -80 * 0.03 * 2 / np.pi],
+                             [20 * 0.03, 0],
+                             [80 * 0.03, -80 * 0.03 * 2 / np.pi]])
+
+        elif selectedTrack == "oval":
+            self.width = 0.5 
+            spec = np.array([[1.0, 0],
+                             [4.5, -4.5 / np.pi],
+                             # Note s = 1 * np.pi / 2 and r = -1 ---> Angle spanned = np.pi / 2
+                             [2.0, 0],
+                             [4.5, -4.5 / np.pi],
+                             [1.0, 0]])
 
         # Now given the above segments we compute the (x, y) points of the track and the angle of the tangent vector (psi) at
         # these points. For each segment we compute the (x, y, psi) coordinate at the last point of the segment. Furthermore,

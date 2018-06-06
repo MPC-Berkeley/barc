@@ -6,13 +6,13 @@
     <param name="L_b" type="double" value="0.125" />
     <param name="m" type="double" value="1.98" />
     <param name="I_z" type="double" value="0.03" />
+    
     <!-- flags -->
     <param name="sim_flag" type="bool" value="true" />
     <param name="feature_flag" type="bool" value="false" />
+    
     <!-- Track parameters -->
-    <param name="ds" type="double" value="0.01" />
-    <param name="ey" type="double" value="0.8" />
-    <param name="ey_tighten" type="double" value="1.0" />
+    <param name="trackShape" type="str" value="oval" />
 
    
     <!-- VISUALIZATION -->

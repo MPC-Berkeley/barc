@@ -40,11 +40,12 @@ def main():
     if StateView == True:
         fig, linevx, linevy, linewz, lineepsi, lineey, line_tr, line_pred = _initializeFigure(map)
     else:
-        fig, line_tr, line_pred, line_SS, line_cl, rec = _initializeFigure_xy(map)
+        fig, axtr, line_tr, line_pred, line_SS, line_cl, rec = _initializeFigure_xy(map)
 
 
     ClosedLoopTraj_x = []
     ClosedLoopTraj_y = []
+    maxVx = 0.0
 
     while not rospy.is_shutdown():
         estimatedStates = data.readEstimatedData()
@@ -94,6 +95,11 @@ def main():
         
         rec.set_xy(np.array([car_x, car_y]).T)
 
+        maxVx = np.maximum(maxVx, estimatedStates[0])
+
+        StringValue = "vx: "+str(estimatedStates[0])+" max vx: "+str(maxVx)
+        axtr.set_title(StringValue)
+        
         if insideMap == 1:
             fig.canvas.draw()
 
@@ -178,7 +184,7 @@ def _initializeFigure_xy(map):
 
     plt.show()
 
-    return fig, line_tr, line_pred, line_SS, line_cl, rec
+    return fig, axtr, line_tr, line_pred, line_SS, line_cl, rec
 
 
 def _initializeFigure(map):

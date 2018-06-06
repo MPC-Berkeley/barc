@@ -9,7 +9,6 @@
 import sys
 sys.path.append(sys.path[0]+'/ControllersObject')
 sys.path.append(sys.path[0]+'/Utilities')
-print sys.path
 import datetime
 import rospy
 from track_fnc import Map
@@ -48,7 +47,7 @@ def main():
     map = Map()                                              # Map
     
     # Choose Controller and Number of Laps
-    PickController = "LMPC"
+    PickController = "TV_MPC"
     NumberOfLaps   = 20
     vt = 1.0
     PathFollowingLaps = 1
