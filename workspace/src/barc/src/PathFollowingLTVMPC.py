@@ -99,6 +99,20 @@ class PathFollowingLTV_MPC:
         self.xPred = self.xPred.T
         self.uPred = self.uPred.T
 
+    def oneStepPrediction(self, x, u, UpdateModel = 0):
+        """Propagate the model one step foreward
+        Arguments:
+            x: current state
+            u: current input
+        """
+        startTimer = datetime.datetime.now()
+        endTimer = datetime.datetime.now(); deltaTimer = endTimer - startTimer
+
+        if self.A == []:
+            x_next = x
+        else:
+            x_next = np.dot(self.A[0], x) + np.dot(self.B[0], u) + np.squeeze(self.C[0])
+        return x_next, deltaTimer
 # ======================================================================================================================
 # ======================================================================================================================
 # =============================== Internal functions for MPC reformulation to QP =======================================

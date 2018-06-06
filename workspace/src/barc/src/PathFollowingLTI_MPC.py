@@ -63,6 +63,18 @@ class PathFollowingLTI_MPC:
         self.xPred = np.squeeze(np.transpose(np.reshape(Solution[np.arange(n * (N + 1))], (N + 1, n)))).T
         self.uPred = np.squeeze(np.transpose(np.reshape(Solution[n * (N + 1) + np.arange(d * N)], (N, d)))).T
 
+    def oneStepPrediction(self, x, u, UpdateModel = 0):
+        """Propagate the model one step foreward
+        Arguments:
+            x: current state
+            u: current input
+        """
+        startTimer = datetime.datetime.now()
+        endTimer = datetime.datetime.now(); deltaTimer = endTimer - startTimer
+
+        x_next = np.dot(self.A, x) + np.dot(self.B, u)
+        return x_next, deltaTimer
+
 # ======================================================================================================================
 # ======================================================================================================================
 # =============================== Internal functions for MPC reformulation to QP =======================================
