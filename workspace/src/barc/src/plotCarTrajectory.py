@@ -13,6 +13,9 @@
 # real time with referenced to the track defined a priori.
 #
 # ---------------------------------------------------------------------------
+import sys
+sys.path.append(sys.path[0]+'/ControllersObject')
+sys.path.append(sys.path[0]+'/Utilities')
 
 import rospy
 from marvelmind_nav.msg import hedge_pos
