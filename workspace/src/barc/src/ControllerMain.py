@@ -6,6 +6,9 @@
     Email: ugo.rosolia@berkeley.edu
     Python Version: 2.7.12
 '''
+import sys
+sys.path.append(sys.path[0]+'/ControllersObject')
+print sys.path
 import datetime
 import rospy
 from track_fnc import Map
@@ -210,9 +213,6 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode):
         Controller = PathFollowingLTV_MPC(Q, R, N, vt, ClosedLoopDataPID.x[0:ClosedLoopDataPID.SimTime, :], 
                                                        ClosedLoopDataPID.u[0:ClosedLoopDataPID.SimTime, :], dt, map, "OSQP")
     elif PickController == "LMPC":
-        file_data = open(sys.path[0]+'/data/'+mode+'/ClosedLoopDataPID.obj', 'rb')
-        ClosedLoopDataPID = pickle.load(file_data)
-        file_data.close()
         file_data = open(sys.path[0]+'/data/'+mode+'/ClosedLoopDataTI_MPC.obj', 'rb')
         ClosedLoopDataTI_MPC = pickle.load(file_data)
         file_data.close()
@@ -236,7 +236,7 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode):
         # Controller.addTrajectory(ClosedLoopDataPID)
         Controller.addTrajectory(ClosedLoopDataTI_MPC)
         OpenLoopData = LMPCprediction(N, 6, 2, TimeLMPC, numSS_Points, Laps)
-        print "Here!"
+        print "LMPC initialized!"
 
     return ControllerLap0, Controller, OpenLoopData       
 
