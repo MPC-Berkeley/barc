@@ -2,7 +2,7 @@ from scipy import linalg, sparse
 import numpy as np
 from cvxopt.solvers import qp
 from cvxopt import spmatrix, matrix, solvers
-from Utilities import Curvature
+from utilities import Curvature
 import datetime
 import numpy as np
 from numpy import linalg as la
@@ -425,7 +425,16 @@ def LocLinReg(h, x, u, x0, yIndex, stateFeatures, inputFeatures, scaling, qp, ma
     indexTot =  np.squeeze(np.where(norm < h))
 
     if (indexTot.shape[0] >= MaxNumPoint):
+        # startTimer = datetime.datetime.now()
         index = np.argsort(norm)[0:MaxNumPoint]
+        # endTimer = datetime.datetime.now(); deltaTimer = endTimer - startTimer
+
+
+        # startTimer = datetime.datetime.now()
+        # index = np.argpartition(norm, np.arange(0, MaxNumPoint))
+        # endTimer = datetime.datetime.now(); deltaTimer1 = endTimer - startTimer
+        # print deltaTimer, deltaTimer1
+        
         # MinNorm = np.argmin(norm)
         # if MinNorm+MaxNumPoint >= indexTot.shape[0]:
         #     index = indexTot[indexTot.shape[0]-MaxNumPoint:indexTot.shape[0]]

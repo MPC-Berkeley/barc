@@ -20,7 +20,7 @@ sys.path.append(sys.path[0]+'/Utilities')
 import rospy
 from marvelmind_nav.msg import hedge_pos
 import numpy as np
-from track_fnc import Map
+from trackInitialization import Map
 from barc.msg import pos_info, prediction, SafeSetGlob
 import matplotlib.pyplot as plt    
 import pdb

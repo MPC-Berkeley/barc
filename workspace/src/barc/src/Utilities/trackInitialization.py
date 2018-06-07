@@ -10,12 +10,16 @@ class Map():
     Attributes:
         getGlobalPosition: convert position from (s, ey) to (X,Y)
     """
-    def __init__(self):
+    def __init__(self, flagTrackShape = 0):
         """Initialization
         width: track width
         Modify the vector spec to change the geometry of the track
         """
-        selectedTrack = rospy.get_param("trackShape")
+        if flagTrackShape == 0:
+            selectedTrack = rospy.get_param("trackShape")
+        else:
+            selectedTrack = "oval"
+
         if selectedTrack == "3110":
             self.width = 1.0
             spec = np.array([[60 * 0.03, 0],

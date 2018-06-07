@@ -6,7 +6,7 @@ from scipy import linalg
 from scipy import sparse
 from cvxopt.solvers import qp
 import datetime
-from Utilities import Curvature
+from utilities import Curvature
 from numpy import hstack, inf, ones
 from scipy.sparse import vstack
 from osqp import OSQP

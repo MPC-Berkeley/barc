@@ -1,20 +1,66 @@
+import sys
+sys.path.append(sys.path[0]+'/ControllersObject')
+sys.path.append(sys.path[0]+'/Utilities')
+from dataStructures import LMPCprediction, EstimatorData, ClosedLoopDataObj, LMPCprediction
+
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 import matplotlib.patches as patches
-from LMPC import ClosedLoopDataObj
+from LMPC import ControllerLMPC
 import sys
 import pickle
 import pdb
-from track_fnc import Map
+from trackInitialization import Map
+
 
 def main():
-    file_data = open(sys.path[0]+'/data/ClosedLoopDataPID.obj', 'rb')
-    ClosedLoopDataPID = pickle.load(file_data)
+    file_data = open(sys.path[0]+'/data/simulations/ClosedLoopDataLMPC.obj', 'rb')
+    ClosedLoopData = pickle.load(file_data)
+    LMPController = pickle.load(file_data)
+    LMPCOpenLoopData = pickle.load(file_data)    
     file_data.close()
-    map = Map()
-    plotTrajectory(map, ClosedLoopDataPID)
+    map = Map(1)
+
+    plotOneStepPreditionError(LMPController, LMPCOpenLoopData)
+    plotClosedLoopLMPC(LMPController, map)
+    plt.show()
     
+def plotOneStepPreditionError(LMPController, LMPCOpenLoopData):
+    TimeSS  = LMPController.TimeSS
+    SS      = LMPController.SS
+    uSS     = LMPController.uSS
+    TotNumberIt = LMPController.it
+    oneStepPredictionError = LMPCOpenLoopData.oneStepPredictionError
+
+    plt.figure(10)
+    plt.subplot(611)
+    for i in range(2, TotNumberIt):
+        plt.plot(SS[1:TimeSS[i], 4, i], oneStepPredictionError[0, 1:TimeSS[i], i], '-o', label=i)
+        plt.legend()
+    plt.ylabel('vx')
+    plt.subplot(612)
+    for i in range(2, TotNumberIt):
+        plt.plot(SS[1:TimeSS[i], 4, i], oneStepPredictionError[1, 1:TimeSS[i], i], '-o')
+    plt.ylabel('vy')
+    plt.subplot(613)
+    for i in range(2, TotNumberIt):
+        plt.plot(SS[1:TimeSS[i], 4, i], oneStepPredictionError[2, 1:TimeSS[i], i], '-o')
+    plt.ylabel('wz')
+    plt.subplot(614)
+    for i in range(2, TotNumberIt):
+        plt.plot(SS[1:TimeSS[i], 4, i], oneStepPredictionError[3, 1:TimeSS[i], i], '-o')
+    plt.ylabel('epsi')
+    plt.subplot(615)
+    for i in range(2, TotNumberIt):
+        plt.plot(SS[1:TimeSS[i], 4, i], oneStepPredictionError[4, 1:TimeSS[i], i], '-o')
+    plt.ylabel('s')
+    plt.subplot(616)
+    for i in range(2, TotNumberIt):
+        plt.plot(SS[1:TimeSS[i], 4, i], oneStepPredictionError[5, 1:TimeSS[i], i], '-o')
+    plt.ylabel('ey')
+
+
 
 def plotTrajectory(map, ClosedLoop):
     x = ClosedLoop.x
