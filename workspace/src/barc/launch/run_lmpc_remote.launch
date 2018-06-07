@@ -46,7 +46,7 @@
 
     <!-- LMPC CONTROL -->
     <node machine="this-pc" pkg="barc" type="controllerMain.py" name="control" output="screen">
-        <param name="mode" type="str" value="simulations" />
+        <param name="mode" type="str" value="experiments" />
     </node>
 
     <!-- LOW LEVEL CONTROLLER -->

@@ -12,7 +12,7 @@
     <param name="feature_flag" type="bool" value="false" />
     
     <!-- Track parameters -->
-    <param name="trackShape" type="str" value="oval" />
+    <param name="trackShape" type="str" value="3110" />
 
    
     <!-- VISUALIZATION -->
