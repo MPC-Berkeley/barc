@@ -20,8 +20,8 @@ using QuickHull
 @pyimport matplotlib as mpl
 @pyimport matplotlib.collections as collections 
 
-include("barc_lib/classes.jl")
-include("barc_lib/LMPC/functions.jl")
+# include("Library/modules.jl")
+# using Types
 
 # FLAG FOR PLOTTING THE SELECTED POINTS
 const select_flag = false
@@ -40,20 +40,21 @@ end
 (~,idx) = findmax(file_times)
 
 data        = load("$(homedir())/simulations/$(file_names[idx])")
-oldSS       = data["oldSS"]
-selectedStates          = data["selectedStates"]
-solHistory              = data["solHistory"]
+log_cvx = data["log_cvx"]
+log_cvy = data["log_cvy"]
+log_cpsi = data["log_cpsi"]
+history = data["history"]
+track = data["track"]
+selectedStates          = data["SS"]
+solHistory              = data["history"]
 selectHistory           = data["selectHistory"]
-GP_vy_History           = data["GP_vy_History"]
-GP_psidot_History       = data["GP_psidot_History"]
-selectFeatureHistory    = data["selectFeatureHistory"]
-statusHistory           = data["statusHistory"]
-track       = data["track"]
+GP_vy_History           = data["GP_vy"]
+GP_psidot_History       = data["GP_psiDot"]
+selectFeatureHistory    = history.feature_z
+
 modelParams = data["modelParams"]
 mpcParams   = data["mpcParams"]
-log_cvx     = data["log_cvx"]
-log_cvy     = data["log_cvy"]
-log_cpsi    = data["log_cpsi"]
+
 lapStatus   = LapStatus(1,1,false,false,0.3)
 
 
@@ -431,10 +432,6 @@ if ARGS[1] == "prediction"
         if lap <= 1 + max(selectedStates.Nl,selectedStates.feature_Nl)
             # UPDATE THE PLOT OF THE CURRENT LAP CLOSE LOOP TRAJECTORY
             for j = 1:Int(solHistory.cost[lap])
-                # SIMULATE THE TRUE MODEL, WHICH SHOULD BE TURNED OFF FOR EXPERIMENTS
-                true_state, ~, ~ = car_pre_dyn(reshape(solHistory.z[j,lap,1,:],1,size(solHistory.z,4)),
-                                               reshape(solHistory.u[j,lap,:,:],size(solHistory.u,3),size(solHistory.u,4)),track,modelParams,6)
-
                 # UPDATE THE PLOTTING DATA
                 for i = 1 : 5
                     update_prediction(pre_hs[i], solHistory.z[j,lap,:,1], solHistory.z[j,lap,:,1+i], track)

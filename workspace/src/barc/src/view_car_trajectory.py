@@ -16,7 +16,7 @@
 
 import rospy
 from Localization_helpers import Track
-from barc.msg import ECU, pos_info, Vel_est, mpc_solution
+from barc.msg import ECU, pos_info, Vel_est, mpc_visual
 from sensor_msgs.msg import Imu
 from marvelmind_nav.msg import hedge_imu_fusion
 from numpy import eye, array, zeros, diag, unwrap, tan, cos, sin, vstack, linalg, append, ones, polyval, delete, size, empty, linspace
@@ -30,7 +30,7 @@ import numpy as np
 global gps_x_vals, gps_y_vals, gps_x_prev, gps_y_prev, real_x_vals, real_y_vals
 global pos_info_x_vals, pos_info_y_vals, pos_info_s
 global v_vals, t_vals, psi_curr, psi_raw
-global z_x, z_y, SS_x, SS_y, z_vx, SS_vx, z_s, SS_s, z_fore_x, z_fore_y, z_iden_x, z_iden_y # x and y for mpcSol prediction
+global z_x, z_y, SS_x, SS_y, z_vx, SS_vx, z_s, SS_s, z_iden_x, z_iden_y # x and y for mpcSol prediction
 
 gps_x_vals = []
 gps_y_vals = []
@@ -51,8 +51,6 @@ psi_raw = 0.0
 
 z_x = ones(11)
 z_y = ones(11)
-z_fore_x = ones(11)
-z_fore_y = ones(11)
 
 SS_x = zeros(20)
 SS_y = zeros(20)
@@ -101,7 +99,7 @@ def real_val_callback(data):
 
 
 def mpcSol_callback(data):
-    global z_x, z_y, SS_x, SS_y, z_vx, SS_vx, z_s, SS_s, z_fore_x, z_fore_y, z_iden_x, z_iden_y
+    global z_x, z_y, SS_x, SS_y, z_vx, SS_vx, z_s, SS_s, z_iden_x, z_iden_y
     z_x = data.z_x
     z_y = data.z_y 
     SS_x = data.SS_x
@@ -110,8 +108,6 @@ def mpcSol_callback(data):
     SS_vx = data.SS_vx
     z_s = data.z_s
     SS_s = data.SS_s
-    z_fore_x = data.z_fore_x
-    z_fore_y = data.z_fore_y
     z_iden_x = data.z_iden_x
     z_iden_y = data.z_iden_y
 
@@ -123,7 +119,7 @@ def view_trajectory():
     global gps_x_vals, gps_y_vals, gps_x_prev, gps_y_prev, real_x_vals, real_y_vals
     global pos_info_x_vals, pos_info_y_vals, pos_info_s
     global v_vals, t_vals, psi_curr, psi_raw
-    global z_x, z_y, SS_x, SS_y, z_vx, SSvx, z_s, SS_s, z_fore_x, z_fore_y, z_iden_x, z_iden_y
+    global z_x, z_y, SS_x, SS_y, z_vx, SSvx, z_s, SS_s, z_iden_x, z_iden_y
 
     rospy.init_node("car_view_trajectory_node", anonymous=True)
     # rospy.on_shutdown(show)
@@ -131,12 +127,11 @@ def view_trajectory():
     # rospy.Subscriber("hedge_imu_fusion", hedge_imu_fusion, gps_callback, queue_size=1)
     rospy.Subscriber("pos_info", pos_info, pos_info_callback, queue_size=1)
     rospy.Subscriber("real_val", pos_info, real_val_callback, queue_size=1)
-    rospy.Subscriber("mpc_solution", mpc_solution, mpcSol_callback, queue_size=1)
+    rospy.Subscriber("mpc_visual", mpc_visual, mpcSol_callback, queue_size=1)
 
     # FLAGS FOR PLOTTING
     PRE_FLAG = True
     SS_FLAG  = True
-    FORE_FLAG= False
     IDEN_FLAG= True
     GPS_FLAG = False
     YAW_FLAG = True
@@ -179,9 +174,6 @@ def view_trajectory():
     
     if SS_FLAG:
         SS_plot, = ax1.plot([0 for i in range(20)],[0 for i in range(20)],"ro",alpha=0.2)
-    
-    if FORE_FLAG:
-        fore_plot, = ax1.plot([0 for i in range(11)],[0 for i in range(11)],"k.")
 
     if IDEN_FLAG:    
         iden_plot, = ax1.plot([0 for i in range(30)],[0 for i in range(30)],"go",alpha=0.3)
@@ -274,9 +266,6 @@ def view_trajectory():
         #     ax2.set_ylim([min(min(z_vx),min(SS_vx)), max(max(z_vx),max(SS_vx))])
         if PRE_FLAG:
             pre_plot.set_data(z_x,z_y)
-
-        if FORE_FLAG:
-            fore_plot.set_data(z_fore_x,z_fore_y)
         
         if IDEN_FLAG:
             iden_plot.set_data(z_iden_x,z_iden_y)
