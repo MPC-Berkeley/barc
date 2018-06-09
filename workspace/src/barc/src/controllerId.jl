@@ -1,6 +1,6 @@
 #!/usr/bin/env julia
 #=
-    File name: controllerKin.jl
+    File name: controllerId.jl
     Author: Shuqi Xu
     Email: shuqixu@kth.se
     Julia Version: 0.4.7
@@ -17,16 +17,22 @@ using JLD
 
 include("Library/modules.jl")
 include("Library/models.jl")
-import mpcModels: MdlPf, MdlKin
-import solveMpcProblem: solvePf, solveKin
+import mpcModels: MdlPf, MdlId
+import solveMpcProblem: solvePf, solveId
 using Types
 using ControllerHelper, TrackHelper
-using GPRFuncs, SafeSetFuncs, DataSavingFuncs
+using SysIDFuncs, GPRFuncs, SafeSetFuncs, DataSavingFuncs
 
 function main()
     println("Starting LMPC node.")
     BUFFERSIZE  = get_param("BUFFERSIZE")
-    raceSet     = RaceSet("KIN")
+
+    if get_param("controller/TV_FLAG")
+        raceSet = RaceSet("SYS_ID_TV")
+    else
+        raceSet = RaceSet("SYS_ID_TI")
+    end
+
     track       = Track(createTrack("basic"))
     posInfo     = PosInfo()
     sysID       = SysID()
@@ -35,7 +41,13 @@ function main()
     lapStatus   = LapStatus()
     mpcSol      = MpcSol()
     mpcParams   = MpcParams()
-    gpData      = GPData("KIN")
+
+    if get_param("controller/TV_FLAG")
+        gpData = GPData("SYS_ID_TV")
+    else
+        gpData = GPData("SYS_ID_TI")
+    end
+
     mpc_vis     = mpc_visual()  # published msg
     cmd         = ECU()         # published msg
     agent       = Agent(track,posInfo,sysID,SS,lapStatus,mpcSol,
@@ -45,10 +57,12 @@ function main()
     mdlPf   = MdlPf(agent)
     solvePf(mdlPf,agent)
     if !raceSet.PF_FLAG
-        mdlLMPC = MdlKin(agent)
+        mdlLMPC = MdlId(agent)
+        sysIdTi(agent)
+        sysIdTv(agent)
         GPR(agent)
         findSS(agent)
-        solveKin(mdlLMPC,agent)
+        solveId(mdlLMPC,agent)
     end
     historyCollect(agent)
     gpDataCollect(agent)
@@ -64,14 +78,20 @@ function main()
         # CONTROL SIGNAL PUBLISHING
         publish(ecu_pub, cmd)
 
-        # LAP SWITCHING
+        # THINGS TO DO DURING LAP SWITCHING
         if lapStatus.nextLap
+            # LAP SWITCHING
             lapSwitch(agent)
+
+            # WARM START WHEN SWITCHING THE LAPS
             if raceSet.PF_FLAG
                 setvalue(mdlPf.z_Ol[:,1],   mpcSol.z_prev[:,1]-track.s)
             else
+                buildFeatureSet(agent)
                 setvalue(mdlLMPC.z_Ol[:,1], mpcSol.z_prev[:,1]-track.s)
             end
+
+            # DATA SAVING AFTER FINISHING ALL LAPS
             if lapStatus.lap > raceSet.num_lap
                 saveHistory(agent)
                 if !raceSet.GP_LOCAL_FLAG && !raceSet.GP_FULL_FLAG
@@ -83,15 +103,31 @@ function main()
         # CONTROLLER
         if lapStatus.lap<=1+raceSet.PF_LAP
             solvePf(mdlPf,agent)
-        else                 
+        else
+            # PATH FOLLOWING DATA SAVING AFTER FINISHING PF LAPS
             if raceSet.PF_FLAG
                 savePF(agent)
                 println("Finish path following.")
                 break
             end
+
+            # SYS ID
+            if raceSet.TV_FLAG
+                sysIdTv(agent)
+            else
+                sysIdTi(agent)
+            end
+
+            # GAUSSIAN PROCESS
             GPR(agent)
+
+            # SAFESET CONSTRUCTION
             findSS(agent)
-        	solveKin(mdlLMPC,agent)
+
+            # SOLVE LMPC
+        	solveId(mdlLMPC,agent)
+
+            # COLLECT GAUSSIAN PROCESS FEATURE DATA
             if !raceSet.GP_LOCAL_FLAG && !raceSet.GP_FULL_FLAG && lapStatus.it>1
                 gpDataCollect(agent)
             end
@@ -107,7 +143,7 @@ function main()
         rossleep(loop_rate)
     end
 
-    # DATA SAVING AFTER FINISHING SIMULATION/EXPERIMENT
+    # DATA SAVING IF SIMULATION/EXPERIMENT IS KILLED
     if !raceSet.PF_FLAG
         saveHistory(agent)
         if !raceSet.GP_LOCAL_FLAG && !raceSet.GP_FULL_FLAG

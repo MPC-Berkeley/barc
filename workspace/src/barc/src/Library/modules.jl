@@ -1,3 +1,4 @@
+__precompile__()
 #=
     File name: funtions.jl
     Author: Shuqi Xu
@@ -240,8 +241,8 @@ export SafeSet,SysID,MpcSol,MpcParams,ModelParams,GPData
             if get_param("sim_flag")
                 mpcParams.Q             = [0.0,50.0,5.0,20.0]
                 mpcParams.R             = 0*[10.0,10.0]
-                mpcParams.QderivU       = 1.0*[0.01,0.5]
-                mpcParams.Q_term_cost   = 0.5
+                mpcParams.QderivU       = 1.0*[1.0,5.0]
+                mpcParams.Q_term_cost   = 0.05
                 mpcParams.Q_lane        = 10.0
                 if mpcParams.n_state == 6
                     mpcParams.QderivZ = 1.0*[0,0.1,0.1,2,0.1,0.0]
@@ -271,17 +272,28 @@ export SafeSet,SysID,MpcSol,MpcParams,ModelParams,GPData
     type ModelParams
         L_a::Float64
         L_b::Float64
+        dt::Float64
         m::Float64
         I_z::Float64
         c_f::Float64
+        B::Float64
+        C::Float64
+        mu::Float64
+        g::Float64
         function ModelParams()
             modelParams = new()
             modelParams.L_a = get_param("L_a")
             modelParams.L_b = get_param("L_b")
+            modelParams.dt  = get_param("controller/dt")
             modelParams.m   = get_param("m")
             modelParams.I_z = get_param("I_z")
-            modelParams.c_f = get_param("c_f")
-        end # Only used for functions from CarSim module
+            modelParams.c_f = get_param("controller/c_f")
+            modelParams.B  = get_param("simulator/B")
+            modelParams.C  = get_param("simulator/C")
+            modelParams.mu = get_param("simulator/mu")
+            modelParams.g  = get_param("simulator/g")
+            return modelParams
+        end # Only used for: functions from CarSim module and DynLin controller
     end
 
     type History
@@ -409,20 +421,26 @@ export SafeSet,SysID,MpcSol,MpcParams,ModelParams,GPData
         # Feature data for SYS ID
         feature_Np::Int64
         feature_Nl::Int64
-        feature_z::Array{Float64}
-        feature_u::Array{Float64}
+        feature_z::Array{Float64,2}
+        feature_u::Array{Float64,2}
+        feature::Array{Float64,2}
+        select_z::Array{Float64,3}
+        select_u::Array{Float64,2}
         # SYS ID result
         c_Vx::Array{Float64}
         c_Vy::Array{Float64}
         c_Psi::Array{Float64}
         function SysID()
             sysID = new()        
-            N       = get_param("controller/N")
+            N = get_param("controller/N")
             # Feature data for SYS ID
             sysID.feature_Np = get_param("controller/feature_Np")
             sysID.feature_Nl = get_param("controller/feature_Nl")
-            sysID.feature_z = zeros(sysID.feature_Np,6)
-            sysID.feature_u = zeros(sysID.feature_Np,2)
+            sysID.feature_z = zeros(2*sysID.feature_Np,6) # The size of this array will be overwritten
+            sysID.feature_u = zeros(2*sysID.feature_Np,2) # The size of this array will be overwritten
+            sysID.feature   = zeros(2*sysID.feature_Np,8) # The size of this array will be overwritten
+            sysID.select_z  = zeros(sysID.feature_Np,6,2)
+            sysID.select_u  = zeros(sysID.feature_Np,2)
             # SYS ID result 
             sysID.c_Vx  = zeros(N,3)
             sysID.c_Vy  = zeros(N,4)
@@ -517,6 +535,7 @@ export SafeSet,SysID,MpcSol,MpcParams,ModelParams,GPData
         num_lap::Int64
         sim_flag::Bool
         PF_FLAG::Bool
+        TV_FLAG::Bool # dummy attribute for controller without SYSID
         GP_LOCAL_FLAG::Bool
         GP_FULL_FLAG::Bool
         folder_name::ASCIIString
@@ -528,6 +547,7 @@ export SafeSet,SysID,MpcSol,MpcParams,ModelParams,GPData
             raceSet.PF_FLAG         = get_param("PF_flag")
             raceSet.num_lap         = 1+raceSet.LMPC_LAP+raceSet.PF_LAP # 1 is for warm up
             raceSet.sim_flag        = get_param("sim_flag")
+            raceSet.TV_FLAG         = get_param("controller/TV_FLAG")
             raceSet.GP_LOCAL_FLAG   = get_param("controller/GP_LOCAL_FLAG")
             raceSet.GP_FULL_FLAG    = get_param("controller/GP_FULL_FLAG")
             if get_param("sim_flag")
@@ -616,11 +636,12 @@ export SafeSet,SysID,MpcSol,MpcParams,ModelParams,GPData
         mpcSol::MpcSol
         history::History
         mpcParams::MpcParams
+        modelParams::ModelParams
         gpData::GPData
         raceSet::RaceSet
         cmd::ECU
         function Agent(track::Track,posInfo::PosInfo,sysID::SysID,SS::SafeSet,lapStatus::LapStatus,mpcSol::MpcSol,
-                       history::History,mpcParams::MpcParams,gpData::GPData,raceSet::RaceSet,cmd::ECU)
+                       history::History,mpcParams::MpcParams,modelParams::ModelParams,gpData::GPData,raceSet::RaceSet,cmd::ECU)
             agent = new()
             agent.track     = track
             agent.posInfo   = posInfo
@@ -630,6 +651,7 @@ export SafeSet,SysID,MpcSol,MpcParams,ModelParams,GPData
             agent.mpcSol    = mpcSol
             agent.history   = history
             agent.mpcParams = mpcParams
+            agent.modelParams= modelParams
             agent.gpData    = gpData
             agent.raceSet   = raceSet
             agent.cmd       = cmd
@@ -645,9 +667,11 @@ export curvature_prediction, lapSwitch, SE_callback, visualUpdate
 
     function find_idx(s::Float64,track::Track)
         idx = Int(ceil(s/track.ds)+1)
+        # println(idx)
         if idx > track.n_node
             idx -= track.n_node
         end
+        # prtinln(idx)
         return idx
     end
 
@@ -737,115 +761,66 @@ export curvature_prediction, lapSwitch, SE_callback, visualUpdate
         mpc_vis.SS_vx = agent.SS.selStates[:,4]
         mpc_vis.z_s   = agent.mpcSol.z[:,1]
         mpc_vis.SS_s  = agent.SS.selStates[:,1]
+        (z_iden_x, z_iden_y) = trackFrame_to_xyFrame(agent.sysID.select_z[:,:,1],agent.track)
+        mpc_vis.z_iden_x  = z_iden_x
+        mpc_vis.z_iden_y  = z_iden_y
     end
 end # end of module ControllerHelper
 
 module SysIDFuncs
 using Types
-export find_feature_dist, find_SS_dist
-export coeff_iden_dist
-    function find_feature_dist(agent::Agent)
-        Np = agent.sysID.feature_Np
-        iden_z      = zeros(Np,3,2)
-        iden_z_plot = zeros(Np,6)
-        iden_u      = zeros(Np,2)
-
-        curr_state=hcat(z_curr[4:6]',u_curr)
-
-        norm_state=[1 0.1 1 1 0.2] # [1 0.1 1] are the normed state, the first state is for "s", which is for putting some weight on the track place
-        # norm_state=[1 1 1 1/2 1/2] # [1 0.1 1] are the normed state, the first state is for "s", which is for putting some weight on the track place
-        dummy_state=z_feature[:,:,1]
-        dummy_input=u_feature
-        # cal_state=Float64[] # stored for normalization calculation
-        cal_state=hcat(dummy_state,dummy_input)
-        dummy_norm=zeros(size(dummy_state,1),2)
-
-        norm_dist=(curr_state.-cal_state[:,4:8])./norm_state
-        dummy_norm[:,1]=norm_dist[:,1].^2+norm_dist[:,2].^2+norm_dist[:,3].^2+norm_dist[:,4].^2+norm_dist[:,5].^2
-        dummy_norm[:,2]=1:size(dummy_state,1)
-        dummy_norm=sortrows(dummy_norm) # pick up the first minimum Np points
-        # println(dummy_norm[1:Np,:])
-        for i=1:Np
-            iden_z[i,:,1]=z_feature[Int(dummy_norm[i,2]),4:6,1]
-            iden_z[i,:,2]=z_feature[Int(dummy_norm[i,2]),4:6,2]
-            iden_z_plot[i,:]=dummy_state[Int(dummy_norm[i,2]),:,1]
-            iden_u[i,:]=dummy_input[Int(dummy_norm[i,2]),:]
+export buildFeatureSet, sysIdTi, sysIdTv
+    function buildFeatureSet(agent::Agent)
+        # THIS FUNCTION IS ONLY NEEDS TO BE CALLED ONCE EACH LAP
+        Nl = agent.sysID.feature_Nl
+        z = Array{Float64,2}(0,6)
+        u = Array{Float64,2}(0,2)
+        for i in (agent.lapStatus.lap-Nl) : (agent.lapStatus.lap-1)
+            cost = Int(agent.history.cost[i])
+            z = vcat(z,reshape(agent.history.z[1:cost,i,1,:],cost,6))
+            u = vcat(u,reshape(agent.history.u[1:cost,i,1,:],cost,2))
         end
-        return iden_z, iden_u, iden_z_plot
+        agent.sysID.feature_z = z
+        agent.sysID.feature_u = u
+        agent.sysID.feature = hcat(z,u)
     end
 
-    function find_SS_dist(agent::Agent)
+    function findFeature(agent::Agent,curr_state::Array{Float64})
+        norm_state = [1 0.1 1 1 0.2]
+        norm_idx   = zeros(size(agent.sysID.feature,1)-1,2)
 
-        Nl=selectedStates.feature_Nl
-        Np=selectedStates.feature_Np
-        # Clear the safe set data of previous iteration
-        iden_z=zeros(Np,3,2)
-        iden_z_plot=zeros(Np,6)
-        iden_u=zeros(Np,2)
-
-        # curr_state=hcat(z_curr[1],z_curr[4:6]',u_curr')
-        # norm_state=[0.5 1 0.1 1 1 0.3] # [1 0.1 1] are the normed state, the first state is for "s", which is for putting some weight on the track place
-        curr_state=hcat(z_curr[4:6]',u_curr)
-        norm_state=[1 0.1 1 1 0.2] # [1 0.1 1] are the normed state, the first state is for "s", which is for putting some weight on the track place
-        dummy_state=Array{Float64}(0,6)
-        dummy_input=Array{Float64}(0,2)
-        cal_state=Array{Float64}(0,8) # stored for normalization calculation
-
-        # collect out all the state and input history data
-        # at maximum, Nl laps data will be collected, it was actually reshaped into the whole history
-        for i=max(1,lapStatus.currentLap-Nl):max(1,(lapStatus.currentLap-1))
-            dummy_state=vcat(dummy_state,reshape(solHistory.z[1:Int(solHistory.cost[i]),i,1,:],Int(solHistory.cost[i]),6))
-            dummy_input=vcat(dummy_input,reshape(solHistory.u[1:Int(solHistory.cost[i]),i,1,:],Int(solHistory.cost[i]),2))
+        norm_dist  = (curr_state.-agent.sysID.feature[1:end-1,4:8])./norm_state
+        norm_idx[:,1] = sum(norm_dist.^2,2)
+        norm_idx[:,2] = 1:size(norm_idx,1)
+        norm_idx = sortrows(norm_idx)
+        for i=1:agent.sysID.feature_Np
+            agent.sysID.select_z[i,:,1] = agent.sysID.feature[Int(norm_idx[i,2]),1:6]
+            agent.sysID.select_z[i,:,2] = agent.sysID.feature[Int(norm_idx[i,2])+1,1:6]
+            agent.sysID.select_u[i,:]   = agent.sysID.feature[Int(norm_idx[i,2]),7:8]
         end
-        cal_state=vcat(cal_state,hcat(dummy_state,dummy_input))
-        dummy_norm=zeros(size(dummy_state,1)-1,2)
-        for i=1:size(dummy_state,1)-1 # The last state point will be removed
-            # dummy_norm[i,1]=norm((curr_state-cal_state[i,vcat(1,4:8)]')./norm_state) # this is the state after normalization
-            norm_dist=(curr_state.-cal_state[i,4:8])./norm_state
-            dummy_norm[i,1]=norm_dist[1]^2+norm_dist[2]^2+norm_dist[3]^2+norm_dist[4]^2+norm_dist[5]^2
-            # dummy_norm[i,1]=norm((curr_state-cal_state[i,4:8])./norm_state) # this is the state after normalization
-            dummy_norm[i,2]=i
-        end
-
-        dummy_norm=sortrows(dummy_norm) # pick up the first minimum Np points
-
-        for i=1:min(Np,size(dummy_norm,1))
-            iden_z[i,:,1]=dummy_state[Int(dummy_norm[i,2]),4:6]
-            iden_z[i,:,2]=dummy_state[Int(dummy_norm[i,2])+1,4:6]
-            iden_z_plot[i,:]=dummy_state[Int(dummy_norm[i,2]),:]
-            iden_u[i,:]=dummy_input[Int(dummy_norm[i,2]),:]
-        end
-        # iden_z: Npx3x2 states selected for system identification
-        # iden_u: Npx2 inputs selected for system identification
-        return iden_z, iden_u, iden_z_plot
     end
 
-    function coeff_iden_dist(agent::Agent)
-        z = idenStates
-        u = idenInputs
-        size(z,1)==size(u,1) ? nothing : error("state and input in coeff_iden() need to have the same dimensions")
-        A_vx=zeros(size(z,1),6)
-        A_vy=zeros(size(z,1),4)
-        A_psi=zeros(size(z,1),3)
+    function coeffId(agent::Agent,ID_idx::Int64)
 
-        y_vx = z[:,1,2] - z[:,1,1]
-        y_vy = z[:,2,2] - z[:,2,1]
-        y_psi = z[:,3,2] - z[:,3,1]
+        A_vx = zeros(agent.sysID.feature_Np,3)
+        A_vy = zeros(agent.sysID.feature_Np,4)
+        A_psi= zeros(agent.sysID.feature_Np,3)
 
-        for i=1:size(z,1)
-            A_vx[i,1]=z[i,2,1]*z[i,3,1]
-            A_vx[i,2]=z[i,1,1]
-            A_vx[i,3]=u[i,1]
-            A_vx[i,4]=z[i,3,1]/z[i,1,1]
-            A_vx[i,5]=z[i,2,1]/z[i,1,1]
-            A_vx[i,6]=u[i,2]
-            A_vy[i,1]=z[i,2,1]/z[i,1,1]
-            A_vy[i,2]=z[i,1,1]*z[i,3,1]
-            A_vy[i,3]=z[i,3,1]/z[i,1,1]
-            A_vy[i,4]=u[i,2]
-            A_psi[i,1]=z[i,3,1]/z[i,1,1]
-            A_psi[i,2]=z[i,2,1]/z[i,1,1]
-            A_psi[i,3]=u[i,2]
+        y_vx  = agent.sysID.select_z[:,4,2] - agent.sysID.select_z[:,4,1]
+        y_vy  = agent.sysID.select_z[:,5,2] - agent.sysID.select_z[:,5,1]
+        y_psi = agent.sysID.select_z[:,6,2] - agent.sysID.select_z[:,6,1]
+
+        for i=1:agent.sysID.feature_Np
+            A_vx[i,1]   = agent.sysID.select_z[i,5,1]*agent.sysID.select_z[i,6,1]
+            A_vx[i,2]   = agent.sysID.select_z[i,4,1]
+            A_vx[i,3]   = agent.sysID.select_u[i,1]
+            A_vy[i,1]   = agent.sysID.select_z[i,5,1]/agent.sysID.select_z[i,4,1]
+            A_vy[i,2]   = agent.sysID.select_z[i,4,1]*agent.sysID.select_z[i,6,1]
+            A_vy[i,3]   = agent.sysID.select_z[i,6,1]/agent.sysID.select_z[i,4,1]
+            A_vy[i,4]   = agent.sysID.select_u[i,2]
+            A_psi[i,1]  = agent.sysID.select_z[i,6,1]/agent.sysID.select_z[i,4,1]
+            A_psi[i,2]  = agent.sysID.select_z[i,5,1]/agent.sysID.select_z[i,4,1]
+            A_psi[i,3]  = agent.sysID.select_u[i,2]
         end
         # BACKSLASH OPERATOR WITHOUT REGULIZATION
         # c_Vx = A_vx\y_vx
@@ -858,12 +833,12 @@ export coeff_iden_dist
         # c_Psi = inv(A_psi'*A_psi)*A_psi'*y_psi
 
         # BACKSLASH WITH REGULARIZATION
-        mu_Vx = zeros(6,6); mu_Vx[1,1] = 1e-5
+        mu_Vx = zeros(3,3); mu_Vx[1,1] = 1e-5
         mu_Vy = zeros(4,4); mu_Vy[1,1] = 1e-5
         mu_Psi = zeros(3,3); mu_Psi[2,2] = 1e-5
-        c_Vx = (A_vx'*A_vx+mu_Vx)\(A_vx'*y_vx)
-        c_Vy = (A_vy'*A_vy+mu_Vy)\(A_vy'*y_vy)
-        c_Psi = (A_psi'*A_psi+mu_Psi)\(A_psi'*y_psi)
+        agent.sysID.c_Vx[ID_idx,:]  = (A_vx'*A_vx+mu_Vx)\(A_vx'*y_vx)
+        agent.sysID.c_Vy[ID_idx,:]  = (A_vy'*A_vy+mu_Vy)\(A_vy'*y_vy)
+        agent.sysID.c_Psi[ID_idx,:] = (A_psi'*A_psi+mu_Psi)\(A_psi'*y_psi)
 
 
         # println("c_Vx is $c_Vx")
@@ -872,8 +847,26 @@ export coeff_iden_dist
         # c_Vx[1] = max(-0.3,min(0.3,c_Vx[1]))
         # c_Vy[2] = max(-1,min(1,c_Vy[2]))
         # c_Vy[3] = max(-1,min(1,c_Vy[3]))
+    end
 
-        return c_Vx, c_Vy, c_Psi
+    function sysIdTi(agent::Agent)
+        curr_state = [agent.posInfo.vx agent.posInfo.vy agent.posInfo.psiDot agent.mpcSol.u[1,1] agent.mpcSol.u[1,2]]
+        findFeature(agent,curr_state)
+        coeffId(agent,1)
+        for i in 2:agent.mpcParams.N
+            agent.sysID.c_Vx[i,:]   = agent.sysID.c_Vx[1,:] 
+            agent.sysID.c_Vy[i,:]   = agent.sysID.c_Vy[1,:]
+            agent.sysID.c_Psi[i,:]  = agent.sysID.c_Psi[1,:]
+        end 
+    end
+
+    function sysIdTv(agent::Agent)
+        curr_state = [agent.posInfo.vx agent.posInfo.vy agent.posInfo.psiDot agent.mpcSol.u[1,1] agent.mpcSol.u[1,2]]
+        state = vcat(curr_state,hcat(agent.mpcSol.z_prev[3:end,4:6],agent.mpcSol.u_prev[2:end,:]))
+        for i in 1:agent.mpcParams.N
+            findFeature(agent,state[i,:])
+            coeffId(agent,i)
+        end
     end
 end # end of SysIDFunc module
 
@@ -892,9 +885,9 @@ export findSS
 
         cost_correction = findmin(agent.SS.oldCost[agent.lapStatus.lap-Nl-1:agent.lapStatus.lap-1])[1]
         for i=1:Nl
-            SS_befo=agent.SS.oldSS[:,:,agent.lapStatus.lap-i-1] # inculde those unfilled zeros spots
-            SS_curr=agent.SS.oldSS[:,:,agent.lapStatus.lap-i]   # inculde those unfilled zeros spots
-            SS_next=agent.SS.oldSS[:,:,agent.lapStatus.lap-i+1] # inculde those unfilled zeros spots
+            SS_befo=agent.SS.oldSS[:,1:agent.mpcParams.n_state,agent.lapStatus.lap-i-1] # inculde those unfilled zeros spots
+            SS_curr=agent.SS.oldSS[:,1:agent.mpcParams.n_state,agent.lapStatus.lap-i]   # inculde those unfilled zeros spots
+            SS_next=agent.SS.oldSS[:,1:agent.mpcParams.n_state,agent.lapStatus.lap-i+1] # inculde those unfilled zeros spots
             all_s=SS_curr[1:Int(agent.SS.oldCost[agent.lapStatus.lap-i]),1]
             if target_s>agent.track.s
                 target_s-=agent.track.s
@@ -1094,8 +1087,8 @@ using ControllerHelper
 
     function car_sim_dyn(z::Array{Float64},u::Array{Float64},dt::Float64,track::Track,modelParams::ModelParams)
         # s, ey, epsi, vx, vy, Psidot
-        L_f = modelParams.l_A
-        L_r = modelParams.l_B
+        L_f = modelParams.L_a
+        L_r = modelParams.L_a
         m   = modelParams.m
         I_z = modelParams.I_z
         c_f = modelParams.c_f   # motor drag coefficient
@@ -1106,7 +1099,7 @@ using ControllerHelper
             a_F     = atan((z[5] + L_f*z[6])/abs(z[4])) - u[2]
             a_R     = atan((z[5] - L_r*z[6])/abs(z[4]))
         else
-            warn("too low speed, not able to simulate the dynamic model")
+            # warn("too low speed, not able to simulate the dynamic model")
         end
         if max(abs(a_F),abs(a_R))>30/180*pi
             # warn("Large tire angles: a_F = $a_F, a_R = $a_R, xDot = $(z[4]), d_F = $(u[2])")
@@ -1210,11 +1203,7 @@ export historyCollect, gpDataCollect
             agent.history.z[agent.lapStatus.it,agent.lapStatus.lap,:,1:agent.mpcParams.n_state]=agent.mpcSol.z
             agent.history.z[agent.lapStatus.it,agent.lapStatus.lap,1,4:6]=z_curr[4:6]
             agent.history.u[agent.lapStatus.it,agent.lapStatus.lap,:,:]=agent.mpcSol.u
-            if agent.mpcParams.n_state == 6
-                agent.SS.oldSS[agent.lapStatus.it,:,agent.lapStatus.lap]=z_curr
-            elseif agent.mpcParams.n_state == 4
-                agent.SS.oldSS[agent.lapStatus.it,:,agent.lapStatus.lap]=[agent.posInfo.s, agent.posInfo.ey, agent.posInfo.epsi, agent.posInfo.v]
-            end
+            agent.SS.oldSS[agent.lapStatus.it,:,agent.lapStatus.lap]=z_curr
             agent.lapStatus.it += 1
         end
         
@@ -1224,8 +1213,8 @@ export historyCollect, gpDataCollect
         end
 
         # SysID history
-        agent.history.feature_z[agent.lapStatus.it,agent.lapStatus.lap,:,:] = agent.sysID.feature_z
-        agent.history.feature_u[agent.lapStatus.it,agent.lapStatus.lap,:,:] = agent.sysID.feature_u
+        agent.history.feature_z[agent.lapStatus.it,agent.lapStatus.lap,:,:] = agent.sysID.select_z[:,:,1]
+        agent.history.feature_u[agent.lapStatus.it,agent.lapStatus.lap,:,:] = agent.sysID.select_u
 
         # GP history
         if !agent.raceSet.GP_LOCAL_FLAG || !agent.raceSet.GP_FULL_FLAG
@@ -1241,14 +1230,10 @@ export historyCollect, gpDataCollect
     function saveGPData(agent::Agent)
         run_time = Dates.format(now(),"yyyy-mm-dd-H:M")
         log_path = "$(homedir())/$(agent.raceSet.folder_name)/GP-$(agent.raceSet.file_name)-$(run_time).jld"
-        feature_GP_z         = data["feature_GP_z"]
-        feature_GP_u         = data["feature_GP_u"]
-        feature_GP_vy_e      = data["feature_GP_vy_e"]
-        feature_GP_psidot_e  = data["feature_GP_psidot_e"]
         save(log_path,  "feature_GP_z",         agent.gpData.feature_GP_z,  
                         "feature_GP_u",         agent.gpData.feature_GP_u,  
                         "feature_GP_vy_e",      agent.gpData.feature_GP_vy_e, 
-                        "feature_GP_psidot_e",  agent.gpData.feature_GP_psidot_e)
+                        "feature_GP_psidot_e",  agent.gpData.feature_GP_psiDot_e)
         println("Finish saving GP data to $log_path in controller node.")
     end
 
@@ -1256,8 +1241,8 @@ export historyCollect, gpDataCollect
         agent.gpData.feature_GP_z[agent.gpData.counter,:] = agent.mpcSol.z_prev[1,:]
         agent.gpData.feature_GP_u[agent.gpData.counter,:] = agent.mpcSol.u_prev[1,:]
         if agent.mpcParams.n_state == 6
-            agent.gpData.feature_GP_vy_e[agent.gpData.counter]      = agent.mpcSol.z[1,5]-mpcSol.z_prev[2,5]
-            agent.gpData.feature_GP_psiDot_e[agent.gpData.counter]  = agent.mpcSol.z[1,6]-mpcSol.z_prev[2,6]
+            agent.gpData.feature_GP_vy_e[agent.gpData.counter]      = agent.mpcSol.z[1,5]-agent.mpcSol.z_prev[2,5]
+            agent.gpData.feature_GP_psiDot_e[agent.gpData.counter]  = agent.mpcSol.z[1,6]-agent.mpcSol.z_prev[2,6]
         end
         agent.gpData.counter += 1
     end
