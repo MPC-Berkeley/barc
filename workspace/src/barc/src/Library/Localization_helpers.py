@@ -128,7 +128,7 @@ class Track(object):
         self.track_s    = array([ds*i for i in range(self.n)])
         self.track_idx  = array([i for i in range(self.n)])
 
-        print "number of nodes: %i"%self.n, "length: %f"%((self.n)*ds)
+        print "Python: %f m"%((self.n-1)*ds), ", %i"%self.n
 
     def createRaceTrack(self):
         """Track construction for feature data collecting"""

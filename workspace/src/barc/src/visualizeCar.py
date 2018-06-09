@@ -1,17 +1,21 @@
 #!/usr/bin/env python
-
+"""
+    File name: visualizeCar.py
+    Author: Shuqi Xu
+    Email: shuqixu@kth.se
+    Python Version: 2.7.12
+"""
 # ---------------------------------------------------------------------------
 # Licensing Information: You are free to use or extend these projects for
 # education or reserach purposes provided that (1) you retain this notice
 # and (2) you provide clear attribution to UC Berkeley, including a link
 # to http://barc-project.com
 #
-# Author: J. Noonan
-# Email: jpnoonan@berkeley.edu
-#
-# This code provides a way to see the car's trajectory, orientation, and velocity profile in 
-# real time with referenced to the track defined a priori.
-#
+# Attibution Information: The barc project ROS code-base was developed
+# at UC Berkeley in the Model Predictive Control (MPC) lab by Jon Gonzales
+# (jon.gonzales@berkeley.edu). The cloud services integation with ROS was developed
+# by Kiet Lam  (kiet.lam@berkeley.edu). The web-server app Dator was
+# based on an open source project by Bruce Wootton
 # ---------------------------------------------------------------------------
 
 import rospy
@@ -23,122 +27,96 @@ from Localization_helpers import Track
 from barc.msg import ECU, pos_info, Vel_est, mpc_visual
 from sensor_msgs.msg import Imu
 from marvelmind_nav.msg import hedge_imu_fusion
-from numpy import eye, array, zeros, diag, unwrap, tan, cos, sin, vstack, linalg, append, ones, polyval, delete, size, empty, linspace
-from numpy import ones, polyval, delete, size
-from tf import transformations
-import math
+from numpy import eye, array, zeros, cos, sin, vstack, append
+from numpy import ones, size, matrix
 import matplotlib.pyplot as plt
 import numpy as np
 
-global gps_x_vals, gps_y_vals, gps_x_prev, gps_y_prev, real_x_vals, real_y_vals
-global pos_info_x_vals, pos_info_y_vals, pos_info_s
-global v_vals, t_vals, psi_curr, psi_raw
-global z_x, z_y, SS_x, SS_y, z_vx, SS_vx, z_s, SS_s, z_iden_x, z_iden_y # x and y for mpcSol prediction
 
-gps_x_vals = []
-gps_y_vals = []
-gps_x_prev = 0.0
-gps_y_prev = 0.0
+class Plotter(object):
+    """ 
+    doc string
+    """
+    def __init__(self):
+        # NODE INITIALIZATION
+        rospy.init_node("visualizeCar")
+        rospy.Subscriber("pos_info",   pos_info,   self.posInfo_callback, queue_size=1)
+        rospy.Subscriber("mpc_visual", mpc_visual, self.mpcVis_callback, queue_size=1)
 
-pos_info_x_vals = [0]
-pos_info_y_vals = [0]
-pos_info_s      = 0
+        # FIGURE INITIALIZATION
+        plt.ion()
+        self.fig = plt.figure("Race")
+        self.ax  = self.fig.add_subplot(1,1,1)
 
-real_x_vals = [0]
-real_y_vals = [0]
+        # PLOT DATA INITIALIZATION
+        self.x = 0.0
+        self.y = 0.0
+        self.s_prev = 0.0
+        car_dx = 2*rospy.get_param("L_a")
+        car_dy = 0.125
+        car_x = [car_dx, car_dx, -car_dx, -car_dx, car_dx]
+        car_y = [car_dy, -car_dy, -car_dy, car_dy, car_dy]
+        self.car_origin = vstack((array(car_x), array(car_y)))
+        self.car_update = vstack((array(car_x), array(car_y)))
+        self.car_h, = self.ax.plot(car_x,car_y,"k-")
+        self.traj_x = []
+        self.traj_y = []
+        self.traj_h, = self.ax.plot(self.traj_x,self.traj_y,"b")
+        self.pre_x = zeros(rospy.get_param("controller/N"))
+        self.pre_y = zeros(rospy.get_param("controller/N"))
+        self.pre_h, = self.ax.plot(self.pre_x,self.pre_y,"b*-")
+        self.SS_x = zeros(rospy.get_param("controller/Nl")*rospy.get_param("controller/Np"))
+        self.SS_y = zeros(rospy.get_param("controller/Nl")*rospy.get_param("controller/Np"))
+        self.SS_h, = self.ax.plot(self.SS_x,self.SS_y,"ro",alpha=0.3)
+        self.sysID_x = zeros(rospy.get_param("controller/feature_Nl")*rospy.get_param("controller/feature_Np"))
+        self.sysID_y = zeros(rospy.get_param("controller/feature_Nl")*rospy.get_param("controller/feature_Np"))
+        self.sysID_h, = self.ax.plot(self.sysID_x,self.sysID_y,"go",alpha=0.3)
 
-v_vals = []
-t_vals = []
-psi_curr = 0.0
-psi_raw = 0.0
+    def updatePlot(self):
+        self.car_h.set_data(self.car_update[0],self.car_update[1])
 
-z_x = ones(11)
-z_y = ones(11)
+        num = min(len(self.traj_x),len(self.traj_y))
+        self.traj_h.set_data(self.traj_x[:num],self.traj_y[:num])
 
-SS_x = zeros(20)
-SS_y = zeros(20)
+        self.pre_h.set_data(self.pre_x,self.pre_y)
+        self.SS_h.set_data(self.SS_x,self.SS_y)
+        self.sysID_h.set_data(self.sysID_x,self.sysID_y)
 
-z_vx = zeros(11)
-z_s = zeros(11)
-SS_vx = zeros(20)
-SS_s = zeros(20)
+    def plotTrack(self,track):
+        self.ax.plot(track.nodes[0,:],       track.nodes[1,:],       "k--", alpha=0.4)
+        self.ax.plot(track.nodes_bound1[0,:],track.nodes_bound1[1,:],"r-")
+        self.ax.plot(track.nodes_bound2[0,:],track.nodes_bound2[1,:],"r-")
+        # self.ax.grid('on')
+        self.ax.axis('equal')
+        plt.show()
 
-z_iden_x = zeros(30)
-z_iden_y = zeros(30)
+    def posInfo_callback(self, posInfo):
+        self.x = posInfo.x
+        self.y = posInfo.y
+        if posInfo.s<self.s_prev:
+            self.traj_x = []
+            self.traj_y = []
+        else:
+            self.traj_x.append(posInfo.x)
+            self.traj_y.append(posInfo.y)
+        self.s_prev = posInfo.s
+        R = matrix([[cos(posInfo.psi), -sin(posInfo.psi)], [sin(posInfo.psi), cos(posInfo.psi)]])
+        car = R * self.car_origin
+        self.car_update[0] = car[0] + self.x
+        self.car_update[1] = car[1] + self.y
 
-def gps_callback(data):
-    global gps_x_vals, gps_y_vals, gps_x_prev, gps_y_prev, z_vx, SS_vx
+    def mpcVis_callback(self,mpc_vis):
+        self.pre_x   = mpc_vis.z_x
+        self.pre_y   = mpc_vis.z_y
+        self.SS_x    = mpc_vis.SS_x
+        self.SS_y    = mpc_vis.SS_y
+        self.sysID_x = mpc_vis.z_iden_x
+        self.sysID_y = mpc_vis.z_iden_y
 
-    dist = (gps_x_prev - data.x_m)**2 + (gps_y_prev - data.y_m)**2
-    if dist < 1:
-        gps_x_vals.append(data.x_m)
-        gps_y_vals.append(data.y_m)
-        gps_x_prev = data.x_m
-        gps_y_prev = data.y_m
-    else:
-        gps_x_vals.append(gps_x_prev)
-        gps_y_vals.append(gps_y_prev)
-    
-
-def pos_info_callback(data):
-    global pos_info_x_vals, pos_info_y_vals, pos_info_s
-    global v_vals, t_vals, psi_curr, psi_raw
-    
-    pos_info_x_vals.append(data.x)
-    pos_info_y_vals.append(data.y)
-    pos_info_s = data.s
-
-    v_vals.append(data.v)
-    t_vals.append(rospy.get_rostime().to_sec())
-    psi_curr = data.psi
-    psi_raw = 0
-    # psi_raw = data.psi_raw
-
-def real_val_callback(data):
-    global real_x_vals, real_y_vals
-    real_x_vals.append(data.x)
-    real_y_vals.append(data.y)
-
-
-
-def mpcSol_callback(data):
-    global z_x, z_y, SS_x, SS_y, z_vx, SS_vx, z_s, SS_s, z_iden_x, z_iden_y
-    z_x = data.z_x
-    z_y = data.z_y 
-    SS_x = data.SS_x
-    SS_y = data.SS_y
-    z_vx = data.z_vx
-    SS_vx = data.SS_vx
-    z_s = data.z_s
-    SS_s = data.SS_s
-    z_iden_x = data.z_iden_x
-    z_iden_y = data.z_iden_y
-
-# def show():
-#     plt.show()
-
-def view_trajectory():
-
-    global gps_x_vals, gps_y_vals, gps_x_prev, gps_y_prev, real_x_vals, real_y_vals
-    global pos_info_x_vals, pos_info_y_vals, pos_info_s
-    global v_vals, t_vals, psi_curr, psi_raw
-    global z_x, z_y, SS_x, SS_y, z_vx, SSvx, z_s, SS_s, z_iden_x, z_iden_y
-
-    rospy.init_node("car_view_trajectory_node", anonymous=True)
-    # rospy.on_shutdown(show)
-
-    # rospy.Subscriber("hedge_imu_fusion", hedge_imu_fusion, gps_callback, queue_size=1)
-    rospy.Subscriber("pos_info", pos_info, pos_info_callback, queue_size=1)
-    rospy.Subscriber("real_val", pos_info, real_val_callback, queue_size=1)
-    rospy.Subscriber("mpc_visual", mpc_visual, mpcSol_callback, queue_size=1)
-
-    # FLAGS FOR PLOTTING
-    PRE_FLAG = True
-    SS_FLAG  = True
-    IDEN_FLAG= True
-    GPS_FLAG = False
-    YAW_FLAG = True
-    ETS_TRUE_FLAG = False
+def main():
+    plotter = Plotter()
+    loop_rate = 50.0
+    rate = rospy.Rate(loop_rate)
     
     track = Track(rospy.get_param("ds"),rospy.get_param("ey"))
     if rospy.get_param("feature_flag"):
@@ -146,148 +124,15 @@ def view_trajectory():
     else:
         track.createRaceTrack()
 
-    fig = plt.figure(figsize=(10,7))
-    plt.ion()
-    ax1 = fig.add_subplot(1, 1, 1)
-    # ax2 = fig.add_subplot(2, 1, 2)
-    ax1.plot(track.nodes[0,:],track.nodes[1,:],"k--",alpha=0.4)
-    ax1.plot(track.nodes_bound1[0,:],track.nodes_bound1[1,:],"r-")
-    ax1.plot(track.nodes_bound2[0,:],track.nodes_bound2[1,:],"r-")
-    ax1.grid('on')
-    ax1.axis('equal')
-    # ax1.set_ylim([-5.5,1])
-
-    loop_rate = 50.0
-    rate = rospy.Rate(loop_rate)
-
-    car_dx = 2*rospy.get_param("L_a")
-    car_dy = 0.125
-
-    car_xs_origin = [car_dx, car_dx, -car_dx, -car_dx, car_dx]
-    car_ys_origin = [car_dy, -car_dy, -car_dy, car_dy, car_dy]
-    car_plot, = ax1.plot(car_xs_origin,car_ys_origin,"k-")
-
-    if YAW_FLAG:
-        yaw_raw_plot, = ax1.plot(car_xs_origin,car_ys_origin,"r-")
-
-    car_center_plot, = ax1.plot(0,0,"ko",alpha=0.4)
-
-    if PRE_FLAG:
-        pre_plot, = ax1.plot([0 for i in range(11)],[0 for i in range(11)],"b-*")
+    plotter.plotTrack(track)
     
-    if SS_FLAG:
-        SS_plot, = ax1.plot([0 for i in range(20)],[0 for i in range(20)],"ro",alpha=0.2)
-
-    if IDEN_FLAG:    
-        iden_plot, = ax1.plot([0 for i in range(30)],[0 for i in range(30)],"go",alpha=0.3)
-
-    if GPS_FLAG:
-        num = min(len(gps_x_vals),len(gps_y_vals))
-        GPS_plot, = ax1.plot(gps_x_vals, gps_y_vals, 'b-', label="GPS data path")
-
-    num = min(len(pos_info_x_vals),len(pos_info_y_vals))
-    pos_plot, = ax1.plot(pos_info_x_vals[:num], pos_info_y_vals[:num], 'g-', label="pos data path")
-
-    # ax2 PLOT CHOICE 1: V_X HISTORY PLOT
-    # t_vals_zeroed = [t - t_vals[0] for t in t_vals]
-    # num = min(len(t_vals_zeroed),len(v_vals))
-    # v_plot, = ax2.plot(t_vals_zeroed[:num], v_vals[:num], 'm-')
-    # ax2.set_ylim([0,2.5])
-
-    # ax2 PLOT CHOICE 2: V_X SS AND PREDICTION PLOT
-    # v_plot, = ax2.plot(z_s,z_vx,"b-")
-    # SS_v_plot, = ax2.plot(SS_s,SS_vx,"k*")
-    # ax2.set_xlim([min(z_s), max(SS_s)])
-    # ax2.set_ylim([min(min(z_vx),min(SS_vx)), max(max(z_vx),max(SS_vx))])
-
-    plt.show()
-    car_frame = np.vstack((np.array(car_xs_origin), np.array(car_ys_origin)))
-
-    counter_buffer = 600
-    counter = 1
     while not rospy.is_shutdown():
-        # if counter < counter_buffer:
-        if (pos_info_s>0 and pos_info_s<0.5):
-            # lap switching trajectory cleaning
-            # gps_x_vals = [0,gps_x_vals[-1]]
-            # gps_y_vals = [0,gps_y_vals[-1]]
-            pos_info_x_vals = [0,pos_info_x_vals[-1]]
-            pos_info_y_vals = [0,pos_info_y_vals[-1]]
-            real_x_vals = [0,real_x_vals[-1]]
-            real_y_vals = [0,real_y_vals[-1]]
-
-            # gps_x_vals = [0,0]
-            # gps_y_vals = [0,0]
-            # pos_info_x_vals = [0,0]
-            # pos_info_y_vals = [0,0]
-        
-        if ETS_TRUE_FLAG:
-            x = real_x_vals[len(real_x_vals)-1]
-            y = real_y_vals[len(real_y_vals)-1]
-        else:        
-            x = pos_info_x_vals[len(pos_info_x_vals)-1]
-            y = pos_info_y_vals[len(pos_info_y_vals)-1]
-        # ax1.plot(x, y, 'gs', label="Car current pos")
-
-        R = np.matrix([[np.cos(psi_curr), -np.sin(psi_curr)], [np.sin(psi_curr), np.cos(psi_curr)]])
-
-        rotated_car_frame = R * car_frame
-        car_xs = np.array(rotated_car_frame[0,:])[0] + x
-        car_ys = np.array(rotated_car_frame[1,:])[0] + y
-
-        car_plot.set_data([car_xs[i] for i in range(5)], [car_ys[i] for i in range(5)])
-        car_center_plot.set_data(x,y)
-
-        if YAW_FLAG:
-            R_yaw_raw = np.matrix([[np.cos(psi_raw), -np.sin(psi_raw)], [np.sin(psi_raw), np.cos(psi_raw)]])
-            yaw_raw_rotated_car_frame = R_yaw_raw * car_frame
-            car_xs = np.array(rotated_car_frame[0,:])[0] + x
-            car_ys = np.array(rotated_car_frame[1,:])[0] + y
-            yaw_raw_plot.set_data([car_xs[i] for i in range(5)], [car_ys[i] for i in range(5)])
-
-        if GPS_FLAG:
-            num = min(len(gps_x_vals),len(gps_y_vals))
-            GPS_plot.set_data(gps_x_vals[:num], gps_y_vals[:num])
-
-        if ETS_TRUE_FLAG:
-            num = min(len(real_x_vals),len(real_y_vals))
-            pos_plot.set_data(real_x_vals[:num], real_y_vals[:num])
-        else:
-            num = min(len(pos_info_x_vals),len(pos_info_y_vals))
-            pos_plot.set_data(pos_info_x_vals[:num], pos_info_y_vals[:num])
-
-        # ax2 PLOT CHOICE 1: V_X HISTORY PLOT
-        # v_plot.set_data(z_vx)
-
-        # ax2 PLOT CHOICE 2: V_X SS AND PREDICTION PLOT
-        # v_plot.set_data(z_s,z_vx)
-        # SS_v_plot.set_data(SS_s,SS_vx)
-        # if len(z_s) == 0:
-        #     pass
-        # else:
-        #     ax2.set_xlim([min(z_s), max(SS_s)])
-        #     ax2.set_ylim([min(min(z_vx),min(SS_vx)), max(max(z_vx),max(SS_vx))])
-        if PRE_FLAG:
-            pre_plot.set_data(z_x,z_y)
-        
-        if IDEN_FLAG:
-            iden_plot.set_data(z_iden_x,z_iden_y)
-        
-        if SS_FLAG:
-            SS_plot.set_data(SS_x,SS_y)
-        
-        fig.canvas.draw()
-        counter+=1
-        # print(counter)
+        plotter.updatePlot()
+        plotter.fig.canvas.draw()
         rate.sleep()
-
-
-    # plt.ioff()
-    # plt.show()
-    
 
 if __name__ == '__main__':
     try:
-        view_trajectory()
+        main()
     except rospy.ROSInterruptException:
         pass

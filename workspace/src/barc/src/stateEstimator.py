@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-    File name: state_estimator.py
+    File name: stateEstimator.py
     Author: Shuqi Xu
     Email: shuqixu@kth.se
     Python Version: 2.7.12
