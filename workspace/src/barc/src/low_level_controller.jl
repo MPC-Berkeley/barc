@@ -47,7 +47,15 @@ function pwm_converter!(low_level_controller::LowLevelController,
     # to pwm angle units (i.e. to send command signal to actuators)
     # convert desired steering angle to degrees, saturate based on input limits
 
-    low_level_controller.servo_pwm = 90.0 + 89.0 * Float64(steering_angle)
+    node_name = get_name()[2 : end]
+
+    if node_name == "agent_1"
+        # println("AGENT 1 STEERING!!!!")
+        low_level_controller.servo_pwm = 90.0 + 89.0 * Float64(steering_angle)
+    else
+        # println("AGENT 2 STEERING!!!!")
+        low_level_controller.servo_pwm = 83.3 + 103.1 * Float64(steering_angle)
+    end
 
     # compute motor command
     FxR = Float64(acceleration)

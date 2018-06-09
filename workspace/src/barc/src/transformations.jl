@@ -38,6 +38,11 @@ function s_to_xy(track::Track, s_coord::Array{Float64})
 	s1_xy = track.xy_coords[xy1_index, :]
 
 	theta = track.thetas[xy1_index]
+
+    if xy1_index + 1 > size(track.thetas, 1)
+        xy1_index = size(track.thetas, 1)
+    end
+    
     abs_delta_theta = abs(track.thetas[xy1_index + 1] - theta)
     delta_s = s - track.s_coord[xy1_index]
 

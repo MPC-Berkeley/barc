@@ -11,6 +11,12 @@
 const MODE = "learning"
 # const MODE = "racing"
 
+if MODE == "racing"
+	const NUM_AGENTS = 2
+else 
+	const NUM_AGENTS = 1
+end
+
 # const SYS_ID = true
 
 const INITIALIZATION_TYPE = "center"
@@ -32,16 +38,14 @@ elseif MODE == "racing"
 	const NUM_LOADED_LAPS = 5 + 30 + 30 + 30
 end
 
-const NUM_AGENTS = 1
-
-const HORIZON = 10
+const HORIZON = 12
 const NUM_CONSIDERED_LAPS = 4
-const NUM_HORIZONS = 1.5
+const NUM_HORIZONS = 2.0
 # const SELECTION_SHIFT = 0
 const SELECTION_SHIFT = Int64(HORIZON / 2) # round(Int64, 1 * HORIZON) 
 # const NUM_CONSIDERED_STATES = 2 * HORIZON * NUM_CONSIDERED_LAPS
 const NUM_CONSIDERED_STATES = round(Int64, NUM_HORIZONS * HORIZON) * NUM_CONSIDERED_LAPS
-const NUM_STATES_BUFFER = 30
+const NUM_STATES_BUFFER = 61
 const SYS_ID_BEFORE = 15
 const SYS_ID_AFTER = 15
 @assert NUM_STATES_BUFFER > NUM_CONSIDERED_STATES / NUM_CONSIDERED_LAPS
@@ -52,8 +56,9 @@ const INIT_STATES = [0.0 0.0 0.0 0.0 0.0 0.0]
 const V_MAX = [2.0; 2.5]
 const COLOR = ["red"; "blue"]
 # const TRACK_NAME = "track_3"
-const TRACK_NAME = "oval"
-const TRACK_WIDTH = 0.8
+# const TRACK_NAME = "oval"
+const TRACK_NAME = "l_shape"
+const TRACK_WIDTH = 1.0
 const TRACK_DIR = "/home/lukas/tracks/"
 const POLYNOMIAL_CURVATURE = false
 

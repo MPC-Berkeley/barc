@@ -12,7 +12,7 @@
     <!-- MACHINES -->
     <machine name="yoga" address="127.0.0.1" user="lukas" timeout="20.0" env-loader="/home/lukas/barc/env_loader_yoga.sh" />
     <!-- <machine name="yoga" address="192.168.10.74" user="lukas" timeout="20.0" env-loader="/home/lukas/barc/env_loader_yoga.sh" /> -->
-    <machine name="this-pc" address="192.168.10.147" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc.sh"/>
+    <machine name="ubuntu-pc" address="127.0.0.1" user="mpcubuntu" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc.sh"/>
 
     <machine name="odroid" address="192.168.10.213" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid.sh"/>
 
@@ -24,7 +24,7 @@
         <param name="mass" type="double" value="1.98" />
         <param name="time_offset" type="double" value="0.0" />
         <param name="delay_a" type="int" value="1" />
-        <param name="delay_df" type="int" value="3" />
+        <param name="delay_df" type="int" value="1" />
         <param name="sim" type="str" value="simulation" />
 
         <remap from="pos_info" to="agent_1/pos_info" />
@@ -55,7 +55,7 @@
     </node>
 
     <!-- SIMULATOR -->
-    <node machine="ubuntu-pc" pkg="barc" type="barc_simulator_dyn.jl" name="barc_sim_1" output="screen">
+    <node machine="ubuntu-pc" pkg="barc" type="barc_simulator_dyn_lukas.jl" name="barc_sim_1" output="screen">
         <remap from="hedge_imu_fusion" to="agent_1/hedge_imu_fusion" />
         <remap from="imu/data" to="agent_1/imu/data" />
         <remap from="vel_est" to="agent_1/vel_est" />

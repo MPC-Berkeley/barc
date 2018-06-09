@@ -357,7 +357,7 @@ function replay_prediction(file, track::Track)
 	prev_curvature_dots, prev_curvature_lines = plot_propagated_curvature(ax_s_c, track, 
 															   predicted_s,
 													 		   predicted_s, color)
-
+	#=
 	for iteration = 2 : start_index
 		predicted_s = squeeze(all_predictions[iteration, :, :], 1)
 
@@ -369,6 +369,7 @@ function replay_prediction(file, track::Track)
 
 		plt[:pause](0.001)
 	end
+	=#
 
 	test_selection = all_selected_states[start_index]
 	selected_states = zeros(1, 6)
@@ -462,7 +463,7 @@ function replay_prediction(file, track::Track)
 
 		prev_s = predicted_s[1, 1]
 
-		fig[:savefig]("/home/lukas/predictions/iteration_$(iteration).jpg", dpi=100)
+		fig[:savefig]("/home/mpcubuntu/lukas/prediction/iteration_$(iteration).png", dpi=100)
 		plt[:pause](0.1)
 	end
 end
@@ -608,6 +609,28 @@ function replay_data(file)
 		ax[i][:set_xlim]([1, sum(end_indeces)])
 	end
 
+    fig_ang = figure("Inputs " * figure_string)
+    ax_acc = fig_ang[:add_subplot](2, 1, 1)
+    xlabel("Iteration")
+    ylabel("a [m / s^2]")
+    ax_angle = fig_ang[:add_subplot](2, 1, 2)
+    xlabel("Iteration")
+    ylabel("d_f [rad]")
+
+    for i = 1 : size(trajectories_s, 1)
+    # for i = size(trajectories_s, 1)
+        acc = data["previous_inputs"][i, 1 : end_indeces[i] + 2 * NUM_STATES_BUFFER, 1]
+        ax_acc[:plot](1 : size(acc, 2), acc', "-", label="lap $(i)")
+
+        angle = data["previous_inputs"][i, 1 : end_indeces[i] + 2 * NUM_STATES_BUFFER, 2]
+        ax_angle[:plot](1 : size(angle, 2), angle', "-", label="lap $(i)")
+    end
+
+    ax_acc[:legend](loc="bottom right")
+    ax_angle[:legend](loc="bottom right")
+
+
+
 	plt[:show]()
 end
 
@@ -731,8 +754,10 @@ function replay_recording(file)
 	# start_lap = 1 
 	# num_laps = 5
 
+	#=
 	start_lap = 96
-	num_laps = 105
+	num_laps = 125
+	=#
 
 	laps = collect(start_lap : num_laps)
 	plot_trajectories(track, laps, trajectories_s, trajectories_xy, file)

@@ -107,21 +107,7 @@ function race(num_laps::Int64)
     init!(low_level_controller)
 
 	if LEARNING
-		#=
-		init_path_following!(optimizer_path_following, track)
-
-		if SYS_ID
-			# Initialize all necessary optimizers in the beginning
-			# init_lmpc_regression!(optimizer, track)
-			init_path_following_regression!(optimizer, track)
-		else 
-			init_learning_mpc!(optimizer, track)
-		end
-		=#
-
-		# Do the system identification once to speed up the whole process
-		# identify_system!(agent)
-		select_states(agent)
+		select_states(agent, track)
 		if NUM_AGENTS == 1
 			solveMpcProblem_convhull(mpc_model_convhull, optimizer, agent, track)
 		else
@@ -131,44 +117,6 @@ function race(num_laps::Int64)
 		# Warm start optimizer
 		max_acc = agent.input_upper_bound[1]
 		warm_start_input = repmat([max_acc 0.0], HORIZON)
-
-		#=
-		if size(getvalue(optimizer.states_s), 2) == 6
-			warm_start_states = zeros(agent.predicted_s)
-			warm_start_states[:, 5] = cumsum([0.0; agent.dt * max_acc * ones(HORIZON)])
-			# For the system identification the solution is warm started based 
-			# on the speed of the path_following
-			if SYS_ID
-				# warm_start_states[:, 5] += CURRENT_REFERENCE[4]
-				warm_start_states[:, 5] = CURRENT_REFERENCE[4]
-			end
-			warm_start_states[:, 1] = cumsum(agent.dt * warm_start_states[:, 5])
-		elseif size(getvalue(optimizer.states_s), 2) == 4
-			warm_start_states = zeros(size(agent.predicted_s, 1), 4)
-			warm_start_states[:, 4] = cumsum([0.0; agent.dt * max_acc * ones(HORIZON)])
-			if SYS_ID
-				# warm_start_states[:, 5] += CURRENT_REFERENCE[4]
-				warm_start_states[:, 4] = CURRENT_REFERENCE[4]
-			end
-			warm_start_states[:, 1] = cumsum(agent.dt * warm_start_states[:, 4])
-		elseif size(getvalue(optimizer.states_s), 2) == 5
-			warm_start_states = zeros(size(agent.predicted_s, 1), 5)
-			if SYS_ID
-				# warm_start_states[:, 5] += CURRENT_REFERENCE[4]
-				warm_start_states[:, 4] = CURRENT_REFERENCE[4]
-			end
-			warm_start_states[:, 1] = cumsum(agent.dt * warm_start_states[:, 4])
-			println("warm start states: ", warm_start_states)
-		else
-			println("WRONG SIZE OF STATES")
-			exit()
-		end
-
-		# println("WARM START STATES: ", warm_start_states)
-		# println("WARM START INPUTS: ", warm_start_input)
-		setvalue(optimizer.states_s, warm_start_states)
-		setvalue(optimizer.inputs, warm_start_input)
-		=#
 	else
 		# init_path_following!(optimizer, track)
 	end
@@ -246,26 +194,12 @@ function xy_callback(msg::pos_info, agent::Agent, track::Track)
 		current_xy[3] = msg.v_x
 		current_xy[4] = msg.v_y
 		current_xy[5] = msg.psi
-		# println("Psi before: ", msg.psi)
-
-		current_xy[5] = atan2(sin(msg.psi), cos(msg.psi))  # (msg.psi + pi) % (2 * pi ) - pi
-		#=
-		if msg.psi < - pi 
-			current_xy[5] -= floor(msg.psi / (2 * pi)) * 2 * pi
-			# current_xy[5] -= min(ceil(msg.psi / (2 * pi)), - 1.0) * 2 * pi
-		elseif msg.psi > pi
-			current_xy[5] -= ceil(msg.psi / (2 * pi)) * 2 * pi
-			# current_xy[5] -= max(floor(msg.psi / (2 * pi)), 1.0) * 2 * pi
-		end
-		=#
-		# println("Psi after: ", current_xy[5])
+		current_xy[5] = atan2(sin(msg.psi), cos(msg.psi)) 
 		current_xy[6] = msg.psiDot
 		set_current_xy!(agent, current_xy, track)
 		agent.state_initialized = true
 
 		current_time = to_sec(get_rostime())
-	    # println("States time: ", current_time)
-	    # println("States delta: ", current_time - agent.time_states)
 	    agent.time_states = current_time
 	end
 end
@@ -276,8 +210,6 @@ function publish_inputs(optimizer::Optimizer, input_pub, agent::Agent)
 	optimizer.first_input.servo = optimizer.solution_inputs[1, 2]
 	println(optimizer.solution_inputs)
     publish(input_pub, optimizer.first_input)
-    # println("Input time: ", current_time)
-    # println("Input delta: ", current_time - agent.time_inputs)
     agent.time_inputs = current_time
 end
 
@@ -309,6 +241,9 @@ function race_lap!(agent::Agent, optimizer::Optimizer,
 	mapping = [5, 6, 4]
 
 	while !is_shutdown() && iteration <= MAXIMUM_NUM_ITERATIONS && !finished
+		lap_index = current_lap + num_loaded_laps
+		agent.iterations_needed[lap_index] = agent.current_iteration - 1
+
 		# Get ROS time. Don't set to zero, because needs to be comparable to 
 		# the other agent.
 		time_now = to_sec(get_rostime())
@@ -327,13 +262,8 @@ function race_lap!(agent::Agent, optimizer::Optimizer,
 		# Convert and send the calculated steering commands
 		pwm_converter!(low_level_controller, agent.current_input[1], 
 		 			   agent.current_input[2])
-		# Two step input delay for steering
-		# pwm_converter!(low_level_controller, agent.current_input[1], 
-		#			   agent.optimal_inputs[3, 2]) 
 
 		agent.blocked = true
-
-	    # println("DELTA TIMES: ", agent.time_states - agent.time_inputs)
 
 		race_iteration!(agent, optimizer, low_level_controller, track, xy_pub, 
 						theta_pub, selection_pub, mpc_model)
@@ -377,14 +307,6 @@ function race_lap!(agent::Agent, optimizer::Optimizer,
 			agent.previous_inputs[lap_index, current_iteration, :] = agent.previous_inputs[lap_index - 1, iteration_index, :]
 		end
 
-		# TODO:
-		#=
-		#  Prevents restoration failure. 
-		if agent.predicted_s[2, 1] > track.total_length
-			warm_start_solution(optimizer, track.total_length)
-		end
-		=#
-
 		if LEARNING && agent.current_lap > NUM_PF_LAPS
 			agent.all_predictions[agent.counter[end], :, :] = agent.predicted_s
 		else
@@ -425,6 +347,7 @@ function race_lap!(agent::Agent, optimizer::Optimizer,
  
 			lap_index = current_lap + num_loaded_laps
 			agent.iterations_needed[lap_index] = agent.current_iteration - 1
+			println("UPDATED INDEX FOR LAP: ", lap_index)
 
 			# Reset states and inputs
 			agent.states_s = zeros(agent.states_s)
@@ -451,13 +374,6 @@ function race_lap!(agent::Agent, optimizer::Optimizer,
 			end
 
 			agent.current_lap += 1
-
-			#=
-			agent_counter = agent.counter[agent.current_session]
-			current_dynamics = [agent.states_s[1, mapping] agent.inputs[1, :]]
-			agent.dynamics[agent.num_sessions, agent_counter, :] = current_dynamics
-			agent.counter[agent.current_session] += 1
-			=#
 
 			# Set iteration to 2, because the next lap has already been 
 			# reached
@@ -488,7 +404,6 @@ function race_lap!(agent::Agent, optimizer::Optimizer,
 
 		agent.state_initialized = false
 		agent.blocked = false
-		# simulator.elapsed_time += simulator.agents[1].dt
 
 		rossleep(loop_rate)
 	end
@@ -543,11 +458,11 @@ function race_iteration!(agent::Agent, optimizer::Optimizer,
 			# solve_path_following!(optimizer, track, CURRENT_REFERENCE)
 		else 
 			if NUM_AGENTS == 1
-				select_states(agent)
+				select_states(agent, track)
 			# elseif distance > NUM_HORIZONS * HORIZON * track.ds || leading
 			elseif distance > 8.0 * track.ds || leading
 				chosen_lap = NUM_LOADED_LAPS
-				select_states(agent)
+				select_states(agent,track)
 			else
 				adv_agent_e_y = optimizer.adv_predictions_s[end, 2]
 				# adv_agent_e_y = adv_agent.predicted_s[end, 2]

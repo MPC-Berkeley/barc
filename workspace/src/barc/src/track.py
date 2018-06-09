@@ -63,6 +63,8 @@ class Track:
             self.oval_track()
         elif self.shape == "test":
             self.test_track()
+        elif self.shape == "l_shape":
+            self.l_shape()
         else:
             raise ValueError("Track %s is not available" % self.shape)
 
@@ -147,6 +149,21 @@ class Track:
         self.add_segment(6.0, 0.0)
         """
 
+    def l_shape(self):
+        self.add_segment(1.5, 0.0)
+        self.add_segment(2.2, np.pi / 2)
+        self.add_segment(0.1, 0.0)
+        self.add_segment(2.2, np.pi / 2)
+        self.add_segment(0.1, 0.0)
+        self.add_segment(2.2, - np.pi / 2)
+        self.add_segment(0.1, 0.0)
+        self.add_segment(2.2, np.pi / 2)
+        self.add_segment(0.1, 0.0)
+        self.add_segment(2.2, np.pi / 2)
+        self.add_segment(3.0, 0.0)
+        self.add_segment(2.2, np.pi / 2)
+        self.add_segment(1.5, 0.0)
+
     def test_track(self):
         denominator = 3.5
         small = False
@@ -165,13 +182,13 @@ class Track:
             self.add_segment(1.8, 0.0)
         else:
             self.add_segment(1.5, 0.0)
-            self.add_segment(2.0, - np.pi / 2)
+            self.add_segment(2.0, np.pi / 2)
             self.add_segment(1.5, 0.0)
-            self.add_segment(2.0, - np.pi / 2)
+            self.add_segment(2.0, np.pi / 2)
             self.add_segment(3.0, 0.0)
-            self.add_segment(2.0, - np.pi / 2)
+            self.add_segment(2.0, np.pi / 2)
             self.add_segment(1.5, 0.0)
-            self.add_segment(2.0, - np.pi / 2)
+            self.add_segment(2.0, np.pi / 2)
             self.add_segment(1.5, 0.0)
 
             """

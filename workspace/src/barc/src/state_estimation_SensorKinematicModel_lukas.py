@@ -33,8 +33,15 @@ def main():
     # node initialization
     rospy.init_node("state_estimation")
     a_delay     = 0.0
-    df_delay    = 0.2
+    df_delay    = 0.0
     loop_rate   = 50.0
+
+    """
+            # x,  y,  vx, vy,   ax,   ay,  psi,  psidot
+    Q = diag([0., 0., 0., 0.,   1.,   1.,  0.,   1.])
+            # x_meas, y_meas, vel_meas, a_x_meas, a_y_meas, psiDot_meas, vy_meas   
+    R = diag([10.,    10.,    0.1,      10.,         10.,      0.1,      0.01])
+    """
    
             # x,  y,  vx, vy,   ax,   ay,  psi,  psidot
     Q = diag([0., 0., 0., 0.,   1.,   1.,  0.,   1.])
@@ -515,6 +522,12 @@ class EncClass(object):
         """
         rospy.Subscriber('vel_est', Vel_est, self.enc_callback, queue_size=1)
 
+	node_name = rospy.get_name()
+        if node_name[-1] == "2":
+            self.use_both_encoders = False
+        else:
+            self.use_both_encoders = True
+
         # ENC measurement
         self.v_fl      = 0.0
         self.v_fr      = 0.0
@@ -544,7 +557,12 @@ class EncClass(object):
         self.v_fr = data.vel_fr
         self.v_rl = data.vel_bl
         self.v_rr = data.vel_br
-        v_est = (self.v_rl + self.v_rr)/2
+
+	if self.use_both_encoders:
+            v_est = (self.v_rl + self.v_rr)/2
+        else:
+            v_est = self.v_rr
+
         if v_est != self.v_prev:
             self.v_meas = v_est
             self.v_prev = v_est

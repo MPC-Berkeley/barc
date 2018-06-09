@@ -473,8 +473,9 @@ if __name__ == "__main__":
     try:
         rospy.init_node("plotting_stuff")
         colors = ["blue"]
-        # track = Track(ds=0.1, shape="test", width=0.8)
-        track = Track(ds=0.1, shape="oval", width=0.8)
+        # track = Track(ds=0.1, shape="test", width=1.0)
+        # track = Track(ds=0.1, shape="oval", width=1.0)
+        track = Track(ds=0.1, shape="l_shape", width=1.0)
         plotter = Plotter(track, colors)
 
         loop_rate = 20

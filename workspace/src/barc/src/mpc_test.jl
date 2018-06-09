@@ -263,12 +263,12 @@ type MpcModel_convhull
 
         # Q = [5.0, 0.0, 0.0, 0.1, 50.0, 0.0]  # Q (only for path following mode)
         Q = [0.0, 10.0, 1.0, 10.0]  # Q (only for path following mode)
-        R = 0 * [1.0, 1.0]  # put weights on a and d_f
+        R = 0.0 * [1.0, 1.0]  # put weights on a and d_f
         # R = 0.0 * [0.05, 1.0]  # put weights on a and d_f
         # QderivZ = 1.0 * [1, 1, 1, 1, 1, 1]  # cost matrix for derivative cost of states
-        QderivZ = 10.0 * [0, 0, 1, 1, 1, 1.0]  # cost matrix for derivative cost of states
+        QderivZ = 1.0 * [1, 1, 1, 1, 1, 1.0]  # cost matrix for derivative cost of states
         # QderivU = 0.1 * [1, 1]  #NOTE Set this to [5.0, 0/40.0]              # cost matrix for derivative cost of inputs
-        QderivU = 5.0 * 5.0 * 4.0 * [4.0, 1.0]
+        QderivU = 1.0 * 1.0 * 1.0 * [15.0, 0.1]
         # delay_df = 3  # steering delay
         # delay_df = 0
         # delay_a = 1  # acceleration delay
@@ -279,13 +279,15 @@ type MpcModel_convhull
         vPathFollowing = 1.0  # reference speed for first lap of path following
         # Q_term = 1.0 * [20.0, 1.0, 10.0, 20.0, 50.0]  # weights for terminal constraints (LMPC, for xDot,yDot,psiDot,ePsi,eY).Not used if using convex hull
         
-        Q_term_cost = 3.0  # scaling of Q-function
+        Q_term_cost = 1.0  # scaling of Q-function
         # Q_lane = 100.0  # weight on the soft constraint for the lane
         # Q_lane = 4.0
         Q_lane = 16.0
         # Q_vel = 1  # weight on the soft constraint for the maximum velocity
-        # Q_slack = 1 * [20.0, 1.0, 10.0, 30.0, 80.0, 50.0]  #[20.0,10.0,10.0,30.0,80.0,50.0]  #vx,vy,psiDot,ePsi,eY,s
-        Q_slack = 1.1 * [40.0, 1.0, 10.0, 30.0, 80.0, 50.0]
+        # Q_slack = 0.5 * [20.0, 5.0, 20.0, 30.0, 80.0, 50.0]  #[20.0,10.0,10.0,30.0,80.0,50.0]  #vx,vy,psiDot,ePsi,eY,s
+        # Q_slack = 3.0 * [5.0, 5.0, 5.0, 20.0, 20.0, 20.0]
+        # Q_slack = 1.1 * [40.0, 1.0, 10.0, 30.0, 80.0, 50.0]
+        Q_slack = 1.0 * [100.0, 1.0, 1.0, 1.0, 5.0, 10.0]
         # Q_obs = ones(Nl * selectedStates.Np)  # weight to esclude some of the old trajectories
 
         println("prediction horizon = ", N)
@@ -311,7 +313,7 @@ type MpcModel_convhull
         z_lb_6s = ones(N + 1, 1) * [0.1 -Inf -Inf -Inf -Inf -Inf -Inf]  # lower bounds on states
         z_ub_6s = ones(N + 1, 1) * [3.5  Inf Inf  Inf  Inf  Inf Inf]  # upper bounds
         u_lb_6s = ones(N, 1) * [-1.3  -0.3]  # lower bounds on steering
-        u_ub_6s = ones(N, 1) * [2.0   0.3]  # upper bounds
+        u_ub_6s = ones(N, 1) * [3.0   0.3]  # upper bounds
 
         for i = 1 : 2
             for j = 1 : N
@@ -428,6 +430,7 @@ type MpcModel_convhull
             @NLconstraint(mdl, z_Ol[i + 1, 6] == z_Ol[i, 6] + dt * dsdt[i])                                                                                                
         end
 
+        #=
         @NLconstraint(mdl, u_Ol[1, 2] - uPrev[1, 2] <= 0.12)
         @NLconstraint(mdl, u_Ol[1, 2] - uPrev[1, 2] >= - 0.12)
 
@@ -435,6 +438,7 @@ type MpcModel_convhull
             @NLconstraint(mdl, u_Ol[i + 1, 2] - u_Ol[i, 2] <= 0.12)
             @NLconstraint(mdl, u_Ol[i + 1, 2] - u_Ol[i, 2] >= - 0.12)
         end
+        =#
 
         # Cost functions
         # Derivative cost

@@ -427,7 +427,7 @@ function load_trajectories!(agent::Agent, filenames::Array{ASCIIString})
  end
 =#
 
-function select_states(agent::Agent)
+function select_states(agent::Agent, track::Track)
 	num_recorded_laps = NUM_LOADED_LAPS + agent.current_lap - 1
 
 	iteration = agent.current_iteration
@@ -435,7 +435,7 @@ function select_states(agent::Agent)
 	current_s = agent.states_s[iteration, 1]
 
 	# Check if we're already in the next lap
-	if abs(prev_s - current_s) >= 0.5 * TRACK_WIDTH && iteration > 1
+	if abs(prev_s - current_s) >= 0.5 * track.total_length && iteration > 1
 		num_recorded_laps += 1
 	end
 
@@ -569,9 +569,14 @@ function select_states(agent::Agent)
 			squeeze(agent.trajectories_xy[i, 
 					closest_index[i] : closest_index[i] + round(Int64, NUM_HORIZONS * horizon) - 1, :], 
 					1)		
+
 		agent.selected_states_cost[counter : counter + round(Int64, NUM_HORIZONS * horizon) - 1, :] = 
 			collect((round(Int64, NUM_HORIZONS * horizon) : - 1 : 1) + agent.iterations_needed[i] - min_iteration) 
-					
+
+		#=
+		agent.selected_states_cost[counter : counter + round(Int64, NUM_HORIZONS * horizon) - 1, :] = 
+			collect(0 : - 1 : - (round(Int64, NUM_HORIZONS * horizon) - 1)) + agent.iterations_needed[i] - closest_index[i]
+		=#
 		agent.all_selected_states[agent.counter[end]][iteration_number] = (i, closest_index[i] : closest_index[i] + round(Int64, NUM_HORIZONS * horizon) - 1)
 
 		counter += round(Int64, NUM_HORIZONS * horizon)
@@ -584,7 +589,8 @@ function select_states(agent::Agent)
 		end
 	end
 
-	identify_system!(agent)
+	laps_for_sysid = selected_laps[1 : 2]
+	identify_system!(agent, laps_for_sysid)
 end
 
 
@@ -595,12 +601,10 @@ function select_states_smartly(agent::Agent, adv_e_y::Float64, adv_s::Array{Floa
 	prev_s = agent.predicted_s[1, 1]
 	current_s = agent.states_s[iteration, 1]
 
-	#=
 	# Check if we're already in the next lap
 	if abs(prev_s - current_s) >= 0.5 * track.total_length && iteration > 1
 		num_recorded_laps += 1
 	end
-	=#
 
 	horizon = size(agent.optimal_inputs)[1]
 	num_considered_states = size(agent.selected_states_s)[1]
@@ -807,10 +811,11 @@ function select_states_smartly(agent::Agent, adv_e_y::Float64, adv_s::Array{Floa
 		end
 	end
 
-	identify_system!(agent)
+	laps_for_sysid = selected_laps[1 : 2]
+	identify_system!(agent, laps_for_sysid)
 end
 
-function identify_system!(agent::Agent)
+function identify_system!(agent::Agent, laps::Array{Int64})
 	num_states = 50  # number of states used for system identification
 	num_previous = SYS_ID_BEFORE
 	num_after = SYS_ID_AFTER
@@ -858,315 +863,73 @@ function identify_system!(agent::Agent)
 
 	summed_iterations = cumsum([1; agent.iterations_needed])
 
-	#=
-	# Loading Shuqi's data for debugging
-	if !agent.loaded_sys_id_data
-		data = load("/home/lukas/Downloads/efficient_feature_data_process.jld")
-		z = data["z_feature"]
-		u = data["u_feature"]
+	#######################################################################
+	# Selection based on previous lap # 
+	#######################################################################
+	# Find closest states in terms of s
+	@assert NUM_LOADED_LAPS > 1
 
-		# Initialize dynamic_states
-		dynamic_states = zeros(size(z, 1), 5)
+	selected_dynamics = []
 
-		# Mapping: [s, e_y, e_psi, v_x, v_y, psi_dot] --> [v_x v_y psi_dot]
-		mapping = [4, 5, 6]
-		dynamic_states[:, 1 : 3] = z[:, mapping, 1]
-		dynamic_states[:, 4 : 5] = u
+	println("LAPS: ", laps)
 
-		next_dynamics = z[:, mapping, 2]
-
-		agent.loaded_sys_id_data = true
-		agent.dynamic_states = dynamic_states
-		agent.next_dynamics = next_dynamics
-	end
-
-	dynamic_states = agent.dynamic_states
-	next_dynamics = agent.next_dynamics
-
-	# Calcualte euclidean distances and sort
-	norm_on_dynamics = colwise(Euclidean(), dynamic_states', current_dynamics)
-	sorted_indeces = sortperm(norm_on_dynamics)[1 : num_states]
-
-	selected_dynamics = dynamic_states[sorted_indeces, :]
-	next_dynamics = next_dynamics[sorted_indeces, :]
-	
-	# End using Loading Shuqi's data
-	=#
-
-	vx_tolerance = 0.05
-	acc_tolerance = 0.05
-	steering_tolerance = 0.05
-	psi_dot_tolerance = 0.1
-
-	list = []
-
-	for session = 1 : agent.num_sessions
-		for i = 1 : agent.counter[session] - max(agent.delay_a, agent.delay_df)
-			recorded_dynamics = agent.dynamics[session, i, :]
-			if recorded_dynamics[1] < v_x + vx_tolerance &&
-				recorded_dynamics[1] > v_x - vx_tolerance
-				if recorded_dynamics[4] < acc + acc_tolerance &&
-					recorded_dynamics[4] > acc - acc_tolerance
-					if recorded_dynamics[5] < steering + steering_tolerance &&
-						recorded_dynamics[5] > steering - steering_tolerance
-						if recorded_dynamics[3] < psi_dot + psi_dot_tolerance &&
-							recorded_dynamics[3] > psi_dot - psi_dot_tolerance
-							append!(list, [(session, i)])
-						end
-					end
-				end
-			end
-		end
-	end
-
-	length_list = size(list, 1)
-	# println("LENGTH OF LIST: ", length_list)
-
-	if false
-	# if length_list >= SYS_ID_AFTER
-	# if MODE == "racing" && length_list > num_states # || current_dynamics[1] > 1.1
-	# if true
-		####################################################################
-		# Selection based on norm_on_dynamics #
-		####################################################################
-		# println("LIST IS LONG ENOUGH!")
-		#=
-		# Initialize matrix for all the previous laps
-		dynamic_states = zeros(total_recorded_states, 5)
-
-		println("total recorded states: ", total_recorded_states)
-
-		# TODO: Only create once and then add to it. 
-		for i = 1 : num_recorded_laps
-			previous_dynamics = zeros(agent.iterations_needed[i], 5)
-			indeces = num_buffer + 1 : agent.iterations_needed[i] + num_buffer
-			previous_dynamics[:, 1 : 3] = agent.trajectories_s[i, indeces, mapping]
-			previous_dynamics[:, 4 : 5] = agent.previous_inputs[i, indeces, :]
-			dynamic_states[summed_iterations[i] : summed_iterations[i + 1] - 1, :] = previous_dynamics
-		end
-
-		if current_iteration > 2
-			current_lap_dynamics = zeros(current_iteration - 1, 5)
-			indeces = 1 : current_iteration - 1
-			current_lap_dynamics[:, 1 : 3] = agent.states_s[indeces, mapping]
-			current_lap_dynamics[:, 4 : 5] = agent.inputs[indeces, :]
-			dynamic_states[summed_iterations[end] : end, :] = current_lap_dynamics
-		end
-		=#
-
-		dynamic_states = zeros(length_list, 5)
-		next_dynamics = zeros(length_list, 3)
-		index = 1
-
-		for (i, j) in list
-			if j < max(agent.delay_a, agent.delay_df)
-				j = max(agent.delay_a, agent.delay_df) + 1
-			end
-			dynamic_states[index, 1 : 3] = agent.dynamics[i, j, 1 : 3]
-			dynamic_states[index, 4] = agent.dynamics[i, j - agent.delay_a, 4]
-			dynamic_states[index, 5] = agent.dynamics[i, j - agent.delay_df, 5]
-			next_dynamics[index, :] = agent.dynamics[i, j + 1, 1 : 3]
-			index += 1
-		end
-
-		# println("size dynamic states: ", size(dynamic_states))
-
-		# Calcualte euclidean distances and sort
-		norm_on_dynamics = colwise(Euclidean(), dynamic_states[:, 3]', [current_dynamics[3]])
-		# norm_on_dynamics = findmin(abs(dynamic_states[:, 3]))
-		# norm_on_dynamics = colwise(Euclidean(), dynamic_states[:, 1]', [current_dynamics[1]])
-		# norm_on_dynamics = colwise(Euclidean(), dynamic_states', current_dynamics)
-		# norm_on_dynamics = colwise(Euclidean(), dynamic_states[:, 1 : 3]', current_dynamics[1 : 3])
-		# println("size norm on dynamics: ", size(norm_on_dynamics))
-		sorted_indeces = sortperm(norm_on_dynamics)[1 : num_states]
-		# println("sorted indeces: ", sorted_indeces)
-
-		#=
-		# --> otherwise can't form the difference, just take the previous state then
-		for i = 1 : num_states
-			if sorted_indeces[i] in (summed_iterations[2 : end] - 1)
-				sorted_indeces[i] -= 1
-			elseif sorted_indeces[i] == total_recorded_states
-				sorted_indeces[i] -= 1
-			end
-		end
-		=#
-
-		#=
-		# Delete states with negative velocites or very small velocities. 
-		# Shouldn't be relevant
-		for i = size(sorted_indeces, 1) : - 1 : 1
-			if dynamic_states[sorted_indeces[i], 2] < 1e-5 || 
-				dynamic_states[sorted_indeces[i], 3] < 1e-5
-				deleteat!(sorted_indeces, i)
-			end
-		end
-		=#
-
-		for i = size(sorted_indeces, 1) : - 1 : 1
-			if dynamic_states[sorted_indeces[i], 1] < 1e-5
-				deleteat!(sorted_indeces, i)
-			end
-		end
-
-		# println("sorted indeces: ", sorted_indeces)
-
-		# selected_dynamics = dynamic_states[sorted_indeces, :]
-		# next_dynamics = dynamic_states[sorted_indeces + 1, :]
-		selected_dynamics = dynamic_states[sorted_indeces, :]
-		# println("SELECTED dynamics: ", selected_dynamics)
-		next_dynamics = next_dynamics[sorted_indeces, :]
-		# println("NEXT dynamics: ", next_dynamics)
-
-		#######################################################################
-	else
-	# elseif MODE == "learning"
-		#######################################################################
-		# Selection based on previous lap # 
-		#######################################################################
-		# Find closest states in terms of s
-
+	for lap in laps
+		println("LAP: ", lap)
 		# previous_lap = agent.current_lap - 1 + NUM_LOADED_LAPS
-		# Use previous lap for now, but only if it is not in:
-		# {1, NUM_LOADED_LAPS, NUM_LOADED_LAPS + 1}
-		@assert NUM_LOADED_LAPS > 1
-		previous_lap = agent.current_lap - 1 + NUM_LOADED_LAPS
-		if previous_lap in agent.not_for_dynamics
-			previous_lap = 2  # is always a complete path_following lap
+
+		if lap in agent.not_for_dynamics
+			lap = 2  # is always a complete path_following lap
 		end
 
-		if MODE == "racing" && agent.current_lap == 2
-			previous_lap = NUM_LOADED_LAPS - 1
-		end
+		println("iterations needed: ", agent.iterations_needed[lap])
 
-		# println("previous_lap: ", previous_lap)
-
-		previous_indeces = (1 : agent.iterations_needed[previous_lap]) + num_buffer
-		previous_s = agent.trajectories_s[previous_lap, previous_indeces, 1]
+		previous_indeces = (1 : agent.iterations_needed[lap]) + num_buffer
+		previous_s = agent.trajectories_s[lap, previous_indeces, 1]
 
 		distance_to_s = colwise(Euclidean(), previous_s, [current_s])
 		closest_index = findmin(distance_to_s)[2]
 		selected_indeces = collect((closest_index - num_previous : closest_index + num_after) + num_buffer)
 
-		dynamic_states = squeeze(agent.trajectories_s[previous_lap, :, mapping], 1)
-		previous_acc = squeeze(agent.previous_inputs[previous_lap, :, 1], 1)
+		dynamic_states = squeeze(agent.trajectories_s[lap, :, mapping], 1)
+		previous_acc = squeeze(agent.previous_inputs[lap, :, 1], 1)
 		previous_acc = [zeros(agent.delay_a); previous_acc[1 : end - agent.delay_a]]
-		previous_steering = squeeze(agent.previous_inputs[previous_lap, :, 2], 1)
+		previous_steering = squeeze(agent.previous_inputs[lap, :, 2], 1)
 		previous_steering = [zeros(agent.delay_df); previous_steering[1 : end - agent.delay_df]]
 
 		previous_inputs = [previous_acc previous_steering]
-		
-		#=
-		prev_prev_indeces = (1 : agent.iterations_needed[previous_lap - 1]) + num_buffer
-		prev_prev_acc = squeeze(agent.previous_inputs[previous_lap - 1, prev_prev_indeces, 1], 1)
-		prev_prev_steering = squeeze(agent.previous_inputs[previous_lap - 1, prev_prev_indeces, 2], 1)
-		prev_acc = squeeze(agent.previous_inputs[previous_lap, previous_indeces, 1], 1)
-		prev_steering = squeeze(agent.previous_inputs[previous_lap, previous_indeces, 2], 1)
-
-		shifted_acc = [prev_prev_acc[end + 1 - agent.delay_a : end]; 
-					   prev_acc[1 : end - agent.delay_a]]
-		shifted_steering = [prev_prev_steering[end + 1 - agent.delay_df : end]; 
-							prev_steering[1 : end - agent.delay_df]]
-		prev_inputs = [zeros(num_buffer, 2); shifted_acc shifted_steering]
-		previous_inputs = zeros(size(dynamic_states, 1), 2)
-		previous_inputs[1 : size(prev_inputs, 1), :] = prev_inputs
-		=#
-
 		dynamic_states = [dynamic_states previous_inputs]
 
-		# Or select all data from the previous lap
-		# selected_indeces = previous_indeces[1 : end - 1]
-
-		#=
-		# Delete states with negative velocites. Shouldn't be relevant
-		for i = size(selected_indeces, 1) : - 1 : 1
-			if dynamic_states[selected_indeces[i], 2] < 1e-5 || 
-				dynamic_states[selected_indeces[i], 3] < 1e-5
-				deleteat!(selected_indeces, i)
-			end
+		if size(selected_dynamics, 1) == 0
+			selected_dynamics = dynamic_states[selected_indeces, :]
+			next_dynamics = dynamic_states[selected_indeces + 1, 1 : 3]
+		else
+			selected_dynamics = [selected_dynamics; dynamic_states[selected_indeces, :]]
+			next_dynamics = [next_dynamics; dynamic_states[selected_indeces + 1, 1 : 3]]
 		end
-		=#
-
-		#=
-		tolerance = 0.1
-		# Delete states where dt != 0.1
-		for i in selected_indeces
-			previous_s = agent.trajectories_s[previous_lap, i, 1]
-			next_s = agent.trajectories_s[previous_lap, i + 1, 1]
-			previous_vx = agent.trajectories_s[previous_lap, i, 5]
-			if previous_s + previous_vx * agent.dt + tolerance < next_s
-				println(i)
-				println("previous s: ", previous_s)
-				println("next s: ", next_s)
-				deleteat!(selected_indeces, i)
-			end
-		end
-		=#
-
-		selected_dynamics = dynamic_states[selected_indeces, :]
-		next_dynamics = dynamic_states[selected_indeces + 1, 1 : 3]
-
-		current_lap = agent.current_lap + NUM_LOADED_LAPS
-		previous_iteration = agent.current_iteration - 1
-		if current_lap in agent.not_for_dynamics
-			current_lap = 2  # is always a complete path_following lap
-		end
-
-		# println("current lap: ", current_lap)
-
-		if true
-		# if previous_iteration >= 2
-			indeces = collect((max(1, previous_iteration - SYS_ID_AFTER) : previous_iteration - 1) + num_buffer)
-			# indeces = collect((previous_iteration - SYS_ID_AFTER : previous_iteration) + num_buffer)
-			#=
-			tolerance = 0.1
-			for i in indeces
-				previous_s = agent.trajectories_s[current_lap, i, 1]
-				next_s = agent.trajectories_s[current_lap, i + 1, 1]
-				previous_vx = agent.trajectories_s[current_lap, i, 5]
-				if previous_s + previous_vx * agent.dt + tolerance < next_s
-					println(i)
-					println("previous s: ", previous_s)
-					println("next s: ", next_s)
-					deleteat!(indeces, i - num_buffer)
-				end
-			end
-			=#
-			
-			previous_dynamic_states = squeeze(agent.trajectories_s[current_lap, :, mapping], 1)
-			previous_acc = squeeze(agent.previous_inputs[current_lap, :, 1], 1)
-			previous_acc = [zeros(agent.delay_a); previous_acc[1 : end - agent.delay_a]]
-			previous_steering = squeeze(agent.previous_inputs[current_lap, :, 2], 1)
-			previous_steering = [zeros(agent.delay_df); previous_steering[1 : end - agent.delay_df]]
-
-			previous_inputs = [previous_acc previous_steering]
-
-			#=
-			prev_prev_indeces = num_buffer + 1 : agent.iterations_needed[current_lap - 1] + num_buffer
-			prev_prev_acc = squeeze(agent.previous_inputs[current_lap - 1, prev_prev_indeces, 1], 1)
-			prev_prev_steering = squeeze(agent.previous_inputs[current_lap - 1, prev_prev_indeces, 2], 1)
-			prev_acc = squeeze(agent.previous_inputs[current_lap, indeces, 1], 1)
-			prev_steering = squeeze(agent.previous_inputs[current_lap, indeces, 2], 1)
-
-			shifted_acc = [prev_prev_acc[end + 1 - agent.delay_a : end]; 
-						   prev_acc[1 : end - agent.delay_a]]
-			shifted_steering = [prev_prev_steering[end + 1 - agent.delay_df : end]; 
-								prev_steering[1 : end - agent.delay_df]]
-			prev_inputs = [zeros(num_buffer, 2); shifted_acc shifted_steering]
-			previous_inputs = zeros(size(previous_dynamic_states, 1), 2)
-			previous_inputs[1 : size(prev_inputs, 1), :] = prev_inputs
-			=#
-
-			previous_dynamic_states = [previous_dynamic_states previous_inputs]
-
-			selected_dynamics = [selected_dynamics; previous_dynamic_states[indeces, :]]
-			next_dynamics = [next_dynamics; previous_dynamic_states[indeces + 1, 1 : 3]]
-
-			# println("SELECTED DYNAMICS: ", selected_dynamics)
-			# println("NEXT DYNAMICS: ", next_dynamics)
-		end		
-		#######################################################################
 	end
+
+	current_lap = agent.current_lap + NUM_LOADED_LAPS
+	previous_iteration = agent.current_iteration - 1
+
+	if current_lap in agent.not_for_dynamics
+		current_lap = 2  # is always a complete path_following lap
+	end
+
+	if false  # using current lap for system identification or not
+		indeces = collect((max(1, previous_iteration - SYS_ID_AFTER) : previous_iteration - 1) + num_buffer)
+		
+		previous_dynamic_states = squeeze(agent.trajectories_s[current_lap, :, mapping], 1)
+		previous_acc = squeeze(agent.previous_inputs[current_lap, :, 1], 1)
+		previous_acc = [zeros(agent.delay_a); previous_acc[1 : end - agent.delay_a]]
+		previous_steering = squeeze(agent.previous_inputs[current_lap, :, 2], 1)
+		previous_steering = [zeros(agent.delay_df); previous_steering[1 : end - agent.delay_df]]
+
+		previous_inputs = [previous_acc previous_steering]
+		previous_dynamic_states = [previous_dynamic_states previous_inputs]
+
+		selected_dynamics = [selected_dynamics; previous_dynamic_states[indeces, :]]
+		next_dynamics = [next_dynamics; previous_dynamic_states[indeces + 1, 1 : 3]]
+	end		
 
 	history_vx = selected_dynamics[:, 1]
 	history_vy = selected_dynamics[:, 2]
@@ -1226,10 +989,6 @@ function identify_system!(agent::Agent)
 		println("Singular X_psi_dot: ", X_psi_dot' * X_psi_dot)
 		exit()
 	end
-
-	# agent.theta_vx = [0.05; 0.0; 0.1]
-	# agent.theta_vy = [0.0; 0.0; 0.0; 1.0]
-	# agent.theta_psi_dot = [0.0; 0.0; 1.0]
 
 	if any(isnan(dummy_vy)) || any(isnan(dummy_psi_dot))
 		println("Not updating thetas.")
