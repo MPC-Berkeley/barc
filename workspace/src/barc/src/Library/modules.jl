@@ -1,6 +1,5 @@
-__precompile__()
 #=
-    File name: funtions.jl
+    File name: modules.jl
     Author: Shuqi Xu
     Email: shuqixu@kth.se
     Julia Version: 0.4.7
@@ -436,9 +435,9 @@ export SafeSet,SysID,MpcSol,MpcParams,ModelParams,GPData
             # Feature data for SYS ID
             sysID.feature_Np = get_param("controller/feature_Np")
             sysID.feature_Nl = get_param("controller/feature_Nl")
-            sysID.feature_z = zeros(2*sysID.feature_Np,6) # The size of this array will be overwritten
-            sysID.feature_u = zeros(2*sysID.feature_Np,2) # The size of this array will be overwritten
-            sysID.feature   = zeros(2*sysID.feature_Np,8) # The size of this array will be overwritten
+            sysID.feature_z = rand(2*sysID.feature_Np,6) # The size of this array will be overwritten
+            sysID.feature_u = rand(2*sysID.feature_Np,2) # The size of this array will be overwritten
+            sysID.feature   = rand(2*sysID.feature_Np,8) # The size of this array will be overwritten
             sysID.select_z  = zeros(sysID.feature_Np,6,2)
             sysID.select_u  = zeros(sysID.feature_Np,2)
             # SYS ID result 
@@ -663,15 +662,13 @@ end # end of module Types
 module ControllerHelper
 using TrackHelper
 using Types, barc.msg
-export curvature_prediction, lapSwitch, SE_callback, visualUpdate
+export find_idx, curvature_prediction, lapSwitch, SE_callback, visualUpdate
 
     function find_idx(s::Float64,track::Track)
         idx = Int(ceil(s/track.ds)+1)
-        # println(idx)
         if idx > track.n_node
             idx -= track.n_node
         end
-        # prtinln(idx)
         return idx
     end
 
@@ -936,242 +933,106 @@ end # end of SafeSetFunc module
 module CarSim
 using TrackHelper, Types
 using ControllerHelper
-    function car_sim_kin(agent::Agent)
-        dt  = agent.mpcParams.dt
-        L_a = agent.modelParams.L_a
-        L_b = agent.modelParams.L_b
-        z = agent.mpcSol.z[end,:]
-        u = agent.mpcSol.u[end,:]
-
-        idx = find_idx(z[1],agent.track)
-        c=track.curvature[idx]
-
-        bta = atan(L_a/(L_a+L_b)*tan(u[2]))
-        dsdt = z[4]*cos(z[3]+bta)/(1-z[2]*c)
-
-        zNext = copy(z)
-        zNext[1] = z[1] + dt*dsdt                               # s
-        zNext[2] = z[2] + dt*z[4] * sin(z[3] + bta)             # eY
-        zNext[3] = z[3] + dt*(z[4]/L_b*sin(bta)-dsdt*c)         # ePsi
-        zNext[4] = z[4] + dt*(u[1] - modelParams.c_f*z[4])      # v
-
-        return zNext
+import SysIDFuncs: findFeature, coeffId
+    function carPreDyn(z_curr::Array{Float64},u::Array{Float64,2},track::Track,modelParams::ModelParams)
+            z_out = zeros(size(u,1)+1,6)
+            z_out[1,:] = z_curr
+            for i=2:size(u,1)+1
+                z_out[i,:] = carSimDynExact(z_out[i-1,:],u[i-1,:],track,modelParams)
+            end
+        return z_out
     end
 
-    function car_pre_dyn(z_curr::Array{Float64},u_sol::Array{Float64},track::Track,modelParams::ModelParams,outputDims::Int64)
-        if size(u_sol,1)==1
-            (z_dummy, Fy_dummy, a_slip_dummy)=car_sim_dyn_exact(z_curr,u_sol,track,modelParams)
-            if outputDims==4
-                z_dummy=s6_to_s4(z_dummy)
-            end
-        elseif size(u_sol,2)==2
-            z_dummy=zeros(size(u_sol,1)+1,6)
-            Fy_dummy=zeros(size(u_sol,1)+1,2)
-            a_slip_dummy=zeros(size(u_sol,1)+1,2)
-
-            z_dummy[1,:]=z_curr
-            for i=2:size(u_sol,1)+1
-                (z_dummy[i,:], Fy_dummy[i,:], a_slip_dummy[i,:])=car_sim_dyn_exact(z_dummy[i-1,:],u_sol[i-1,:],track,modelParams)
-            end
-            if outputDims==4
-                z_dummy=s6_to_s4(z_dummy)
-            end
-        else
-            error("Please check the u_sol dimension of function \"car_pre_dyn\" ")
-        end
-
-        return z_dummy, Fy_dummy, a_slip_dummy
-    end
-
-    function car_pre_dyn_true(z_curr::Array{Float64},u_sol::Array{Float64},track::Track,modelParams::ModelParams,outputDims::Int64)
-        if size(u_sol,1)==1
-            (z_dummy, Fy_dummy, a_slip_dummy)=car_sim_dyn_exact(z_curr,u_sol,track,modelParams)
-            if outputDims==4
-                z_dummy=s6_to_s4(z_dummy)
-            end
-        elseif size(u_sol,2)==2
-            z_dummy=zeros(size(u_sol,1)+1,6)
-            Fy_dummy=zeros(size(u_sol,1)+1,2)
-            a_slip_dummy=zeros(size(u_sol,1)+1,2)
-
-            z_dummy[1,:]=z_curr
-            for i=2:size(u_sol,1)+1
-                (z_dummy[i,:], Fy_dummy[i,:], a_slip_dummy[i,:])=car_sim_dyn_exact_true(z_dummy[i-1,:],u_sol[i-1,:],track,modelParams)
-            end
-            if outputDims==4
-                z_dummy=s6_to_s4(z_dummy)
-            end
-        else
-            error("Please check the u_sol dimension of function \"car_pre_dyn\" ")
-        end
-
-        return z_dummy, Fy_dummy, a_slip_dummy
-    end
-
-    function car_sim_dyn_exact_true(z::Array{Float64,2},u::Array{Float64,2},track::Track,modelParams::ModelParams)
-        # This function uses smaller steps to achieve higher fidelity than we would achieve using longer timesteps
-        z_final = copy(z)
-        Fy=zeros(2); a_slip=zeros(2);
-        u[1] = min(u[1],2)
-        u[1] = max(u[1],-1)
-        u[2] = min(u[2],0.1*pi)
-        u[2] = max(u[2],-0.1*pi)
-        dt=modelParams.dt; dtn=dt/10
+    function carSimDynExact(z_curr::Array{Float64},u::Array{Float64},track::Track,modelParams::ModelParams)
+        z_next = copy(z_curr)
+        dtn = modelParams.dt/10
         for i=1:10
-            (z_final, Fy, a_slip)= car_sim_dyn(z_final,u,dtn,track,modelParams)
+            z_next = carSimDyn(z_next,u,dtn,track,modelParams)
         end
-        return z_final, Fy, a_slip
+        return z_next
     end
 
-    function car_sim_dyn_exact(z::Array{Float64,2},u::Array{Float64,2},track::Track,modelParams::ModelParams)
-        # This function uses smaller steps to achieve higher fidelity than we would achieve using longer timesteps
-        z_final = copy(z)
-        Fy=zeros(2); a_slip=zeros(2);
-        u[1] = min(u[1],2)
-        u[1] = max(u[1],-1)
-        u[2] = min(u[2],0.1*pi)
-        u[2] = max(u[2],-0.1*pi)
-        dt=modelParams.dt; dtn=dt/10
-        for i=1:10
-            (z_final, Fy, a_slip)= car_sim_dyn(z_final,u,dtn,track,modelParams)
-        end
-        return z_final, Fy, a_slip
-    end
-
-    function car_sim_dyn_true(z::Array{Float64},u::Array{Float64},dt::Float64,track::Track,modelParams::ModelParams)
-        # s, ey, epsi, vx, vy, Psidot
-        L_f = modelParams.l_A
-        L_r = modelParams.l_B
-        m   = modelParams.m
-        I_z = modelParams.I_z
-        c_f = modelParams.c_f   # motor drag coefficient
-
-        a_F = 0 # front tire slip angle
-        a_R = 0 # rear tire slip angle
-        if abs(z[4]) >= 0.1
-            a_F     = atan((z[5] + L_f*z[6])/abs(z[4])) - u[2]
-            a_R     = atan((z[5] - L_r*z[6])/abs(z[4]))
-        else
-            warn("too low speed, not able to simulate the dynamic model")
-        end
-        if max(abs(a_F),abs(a_R))>30/180*pi
-            # warn("Large tire angles: a_F = $a_F, a_R = $a_R, xDot = $(z[4]), d_F = $(u[2])")
-        end
-
-        FyF = -pacejka_true(a_F)
-        FyR = -pacejka_true(a_R)
-
-        idx=Int(ceil(z[1]/track.ds))+1 # correct the starting original point idx problem
-        # println(z[1])
-        # println(idx)
-        idx>track.n_node ? idx=idx%track.n_node : nothing
-        idx<=0 ? idx += track.n_node : nothing
-        # println(idx)
-        
-        # println(track.n_node)
-        c=track.curvature[idx]
-        
-
-        dsdt = (z[4]*cos(z[3]) - z[5]*sin(z[3]))/(1-z[2]*c)
-
-        zNext = copy(z)
-        zNext[1] = z[1] + dt * dsdt                                             # s
-        zNext[2] = z[2] + dt * (z[4]*sin(z[3]) + z[5]*cos(z[3]))                # eY
-        zNext[3] = z[3] + dt * (z[6]-dsdt*c)                                    # ePsi
-        zNext[4] = z[4] + dt * (u[1] + z[5]*z[6] - c_f*z[4])                    # vx
-        zNext[5] = z[5] + dt * ((FyF*cos(u[2])+FyR)/m - z[4]*z[6])              # vy
-        zNext[6] = z[6] + dt * ((L_f*FyF*cos(u[2]) - L_r*FyR)/I_z)              # psiDot
-
-        return zNext, [FyF,FyR], [a_F,a_R]
-    end
-
-    function car_sim_dyn(z::Array{Float64},u::Array{Float64},dt::Float64,track::Track,modelParams::ModelParams)
+    function carSimDyn(z::Array{Float64},u::Array{Float64},dt::Float64,track::Track,modelParams::ModelParams)
         # s, ey, epsi, vx, vy, Psidot
         L_f = modelParams.L_a
         L_r = modelParams.L_a
         m   = modelParams.m
         I_z = modelParams.I_z
-        c_f = modelParams.c_f   # motor drag coefficient
+        c_f = modelParams.c_f
 
-        a_F = 0 # front tire slip angle
-        a_R = 0 # rear tire slip angle
-        if abs(z[4]) >= 0.1
-            a_F     = atan((z[5] + L_f*z[6])/abs(z[4])) - u[2]
-            a_R     = atan((z[5] - L_r*z[6])/abs(z[4]))
-        else
-            # warn("too low speed, not able to simulate the dynamic model")
-        end
-        if max(abs(a_F),abs(a_R))>30/180*pi
-            # warn("Large tire angles: a_F = $a_F, a_R = $a_R, xDot = $(z[4]), d_F = $(u[2])")
+        a_F = 0
+        a_R = 0
+        if abs(z[4]) >= 0.2
+            a_F = atan((z[5] + L_f*z[6])/abs(z[4])) - u[2]
+            a_R = atan((z[5] - L_r*z[6])/abs(z[4]))
         end
 
         FyF = -pacejka(a_F)
         FyR = -pacejka(a_R)
 
-        idx=Int(ceil(z[1]/track.ds))+1 # correct the starting original point idx problem
-        # println(z[1])
-        # println(idx)
-        idx>track.n_node ? idx=idx%track.n_node : nothing
-        idx<=0 ? idx += track.n_node : nothing
-        # println(idx)
+        idx = find_idx(z[1],track)
+        c   = track.curvature[idx]
         
-        # println(track.n_node)
-        c=track.curvature[idx]
-        
-
         dsdt = (z[4]*cos(z[3]) - z[5]*sin(z[3]))/(1-z[2]*c)
 
         zNext = copy(z)
-        zNext[1] = z[1] + dt * dsdt                                             # s
-        zNext[2] = z[2] + dt * (z[4]*sin(z[3]) + z[5]*cos(z[3]))                # eY
-        zNext[3] = z[3] + dt * (z[6]-dsdt*c)                                    # ePsi
-        zNext[4] = z[4] + dt * (u[1] + z[5]*z[6] - c_f*z[4])                    # vx
-        zNext[5] = z[5] + dt * ((FyF*cos(u[2])+FyR)/m - z[4]*z[6])              # vy
-        zNext[6] = z[6] + dt * ((L_f*FyF*cos(u[2]) - L_r*FyR)/I_z)              # psiDot
-
-        return zNext, [FyF,FyR], [a_F,a_R]
+        zNext[1] = z[1] + dt * dsdt                                # s
+        zNext[2] = z[2] + dt * (z[4]*sin(z[3]) + z[5]*cos(z[3]))   # eY
+        zNext[3] = z[3] + dt * (z[6]-dsdt*c)                       # ePsi
+        zNext[4] = z[4] + dt * (u[1] + z[5]*z[6] - c_f*z[4])       # vx
+        zNext[5] = z[5] + dt * ((FyF*cos(u[2])+FyR)/m - z[4]*z[6]) # vy
+        zNext[6] = z[6] + dt * ((L_f*FyF*cos(u[2]) - L_r*FyR)/I_z) # psiDot
+        return zNext
     end
 
     function pacejka(a)
-        # B = 1.0             # This value determines the steepness of the curve
-        # C = 1.25
-        B = 6.0             # This value determines the steepness of the curve
+        B = 6.0
         C = 1.6
-        mu = 0.8            # Friction coefficient (responsible for maximum lateral tire force)
+        mu = 0.8
         m = 1.98
         g = 9.81
         D = mu * m * g/2
-        # C_alpha_f = D*sin.(C*atan.(B*a))
         C_alpha_f = D*sin(C*atan(B*a))
         return C_alpha_f
     end
 
-    function car_sim_iden_tv(z::Array{Float64},u::Array{Float64},dt::Float64,agent::Agent)
-        L_f = modelParams.l_A
-        L_r = modelParams.l_B
-        m   = modelParams.m
-        I_z = modelParams.I_z
-        c_f = modelParams.c_f
+    function carPreId(z_curr::Array{Float64},u::Array{Float64},agent::Agent)
+        z_out = zeros(agent.mpcParams.N+1,6)
+        z_out[1,:] = z_curr
+        for i in 1:agent.mpcParams.N
+            findFeature(agent,hcat(z_out[i,4:6],u[i,:]))
+            coeffId(agent,i)
+            z_out[i+1,:] = carSimId(z_out[i,:],u[i,:],agent,i)
+        end
+        return z_out[:,1:4]
+    end
 
-        c_Vx=mpcCoeff.c_Vx
-        c_Vy=mpcCoeff.c_Vy
-        c_Psi=mpcCoeff.c_Psi
+    function carSimId(z::Array{Float64},u::Array{Float64},agent::Agent,i::Int64)
+        if z[4] == 0
+            z[4] = 0.1
+        end # PREVENT NaN WHEN COMPILING FUNCTION
+        L_f = agent.modelParams.L_a
+        L_r = agent.modelParams.L_b
+        m   = agent.modelParams.m
+        I_z = agent.modelParams.I_z
+        c_f = agent.modelParams.c_f
+        dt  = agent.mpcParams.dt
 
-        idx=Int(ceil(z[1]/track.ds))+1 # correct the starting original point idx problem
-        idx>track.n_node ? idx=idx%track.n_node : nothing
-        idx<=0 ? idx+=track.n_node : nothing
+        c_Vx =agent.sysID.c_Vx
+        c_Vy =agent.sysID.c_Vy
+        c_Psi=agent.sysID.c_Psi
 
-        c=track.curvature[idx]
+        idx = find_idx(z[1],agent.track)
+        c = agent.track.curvature[idx]
         dsdt = (z[4]*cos(z[3]) - z[5]*sin(z[3]))/(1-z[2]*c)
 
         z_next=copy(z)
-
-        z_next[1]  = z_next[1] + dt * dsdt                                # s
-        z_next[2]  = z_next[2] + dt * (z[4]*sin(z[3]) + z[5]*cos(z[3]))   # eY
-        z_next[3]  = z_next[3] + dt * (z[6]-dsdt*c)                       # ePsi
-        z_next[4]  = z_next[4] + c_Vx[1]*z[5]*z[6] + c_Vx[2]*z[4] + c_Vx[3]*u[1]                           # vx
-        z_next[5]  = z_next[5] + c_Vy[1]*z[5]/z[4] + c_Vy[2]*z[4]*z[6] + c_Vy[3]*z[6]/z[4] + c_Vy[4]*u[2]  # vy
-        z_next[6]  = z_next[6] + c_Psi[1]*z[6]/z[4] + c_Psi[2]*z[5]/z[4] + c_Psi[3]*u[2]                   # psiDot
+        z_next[1]  = z[1] + dt * dsdt                                # s
+        z_next[2]  = z[2] + dt * (z[4]*sin(z[3]) + z[5]*cos(z[3]))   # eY
+        z_next[3]  = z[3] + dt * (z[6]-dsdt*c)                       # ePsi
+        z_next[4]  = z[4] + c_Vx[i,1]*z[5]*z[6]  + c_Vx[i,2]*z[4]       + c_Vx[i,3]*u[1]                       # vx
+        z_next[5]  = z[5] + c_Vy[i,1]*z[5]/z[4]  + c_Vy[i,2]*z[4]*z[6]  + c_Vy[i,3]*z[6]/z[4] + c_Vy[i,4]*u[2] # vy
+        z_next[6]  = z[6] + c_Psi[i,1]*z[6]/z[4] + c_Psi[i,2]*z[5]/z[4] + c_Psi[i,3]*u[2]                      # psiDot
         return z_next
     end
 end # end of CarSim module
@@ -1223,8 +1084,8 @@ export historyCollect, gpDataCollect
         end
 
         # previvous solution update
-        agent.mpcSol.z_prev = agent.mpcSol.z
-        agent.mpcSol.u_prev = agent.mpcSol.u
+        agent.mpcSol.z_prev[:] = agent.mpcSol.z
+        agent.mpcSol.u_prev[:] = agent.mpcSol.u
     end
 
     function saveGPData(agent::Agent)

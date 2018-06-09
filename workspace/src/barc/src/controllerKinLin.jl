@@ -17,8 +17,8 @@ using JLD
 
 include("Library/modules.jl")
 include("Library/models.jl")
-import mpcModels: MdlPf, MdlId
-import solveMpcProblem: solvePf, solveId
+import mpcModels: MdlPf, MdlKinLin
+import solveMpcProblem: solvePf, solveKinLin
 using Types
 using ControllerHelper, TrackHelper
 using SysIDFuncs, GPRFuncs, SafeSetFuncs, DataSavingFuncs
@@ -28,9 +28,9 @@ function main()
     BUFFERSIZE  = get_param("BUFFERSIZE")
 
     if get_param("controller/TV_FLAG")
-        raceSet = RaceSet("SYS_ID_TV")
+        raceSet = RaceSet("KinLin_TV")
     else
-        raceSet = RaceSet("SYS_ID_TI")
+        raceSet = RaceSet("KinLin_TI")
     end
 
     # OBJECTS INITIALIZATION
@@ -45,9 +45,9 @@ function main()
     mpcParams   = MpcParams()
 
     if get_param("controller/TV_FLAG")
-        gpData = GPData("SYS_ID_TV")
+        gpData = GPData("KinLin_TV")
     else
-        gpData = GPData("SYS_ID_TI")
+        gpData = GPData("KinLin_TI")
     end
 
     mpc_vis     = mpc_visual()  # published msg
@@ -59,12 +59,10 @@ function main()
     mdlPf   = MdlPf(agent)
     solvePf(mdlPf,agent)
     if !raceSet.PF_FLAG
-        mdlLMPC = MdlId(agent)
-        sysIdTi(agent)
-        sysIdTv(agent)
+        mdlLMPC = MdlKinLin(agent)
         GPR(agent)
         findSS(agent)
-        solveId(mdlLMPC,agent)
+        solveKinLin(mdlLMPC,agent)
     end
     historyCollect(agent)
     gpDataCollect(agent)
@@ -90,7 +88,6 @@ function main()
                 setvalue(mdlPf.z_Ol[:,1],   mpcSol.z_prev[:,1]-track.s)
             else
                 buildFeatureSet(agent)
-                setvalue(mdlLMPC.z_Ol[:,1], mpcSol.z_prev[:,1]-track.s)
             end
 
             # DATA SAVING AFTER FINISHING ALL LAPS
@@ -113,13 +110,6 @@ function main()
                 break
             end
 
-            # SYS ID
-            if raceSet.TV_FLAG
-                sysIdTv(agent)
-            else
-                sysIdTi(agent)
-            end
-
             # GAUSSIAN PROCESS
             GPR(agent)
 
@@ -127,7 +117,7 @@ function main()
             findSS(agent)
 
             # SOLVE LMPC
-        	solveId(mdlLMPC,agent)
+        	solveKinLin(mdlLMPC,agent)
 
             # COLLECT GAUSSIAN PROCESS FEATURE DATA
             if !raceSet.GP_LOCAL_FLAG && !raceSet.GP_FULL_FLAG && lapStatus.it>1

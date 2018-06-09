@@ -25,6 +25,8 @@ using GPRFuncs, SafeSetFuncs, DataSavingFuncs
 
 function main()
     println("Starting LMPC node.")
+
+    # OBJECTS INITIALIZATION
     BUFFERSIZE  = get_param("BUFFERSIZE")
     raceSet     = RaceSet("KIN")
     track       = Track(createTrack("basic"))
@@ -34,12 +36,15 @@ function main()
     history     = History(BUFFERSIZE,raceSet.num_lap)
     lapStatus   = LapStatus()
     mpcSol      = MpcSol()
+    modelParams = ModelParams()
     mpcParams   = MpcParams()
     gpData      = GPData("KIN")
+
     mpc_vis     = mpc_visual()  # published msg
     cmd         = ECU()         # published msg
+
     agent       = Agent(track,posInfo,sysID,SS,lapStatus,mpcSol,
-                        history,mpcParams,gpData,raceSet,cmd)
+                        history,mpcParams,modelParams,gpData,raceSet,cmd)
     
     # OBJECT INITILIZATION AND FUNCTION COMPILING
     mdlPf   = MdlPf(agent)
@@ -64,14 +69,19 @@ function main()
         # CONTROL SIGNAL PUBLISHING
         publish(ecu_pub, cmd)
 
-        # LAP SWITCHING
+        # THINGS TO DO WHEN LAP SWITCHING
         if lapStatus.nextLap
+            # SWITCH LAPS
             lapSwitch(agent)
+
+            # WARM START WHEN SWITCHING LAPS
             if raceSet.PF_FLAG
                 setvalue(mdlPf.z_Ol[:,1],   mpcSol.z_prev[:,1]-track.s)
             else
                 setvalue(mdlLMPC.z_Ol[:,1], mpcSol.z_prev[:,1]-track.s)
             end
+
+            # SAVE HISTORY DATA WHEN AFTER FINISHING SIMULATIONS/EXPERIMENTS
             if lapStatus.lap > raceSet.num_lap
                 saveHistory(agent)
                 if !raceSet.GP_LOCAL_FLAG && !raceSet.GP_FULL_FLAG
@@ -84,14 +94,23 @@ function main()
         if lapStatus.lap<=1+raceSet.PF_LAP
             solvePf(mdlPf,agent)
         else                 
+            # PATH FOLLOWING DATA SAVING AFTER FINISHING PF LAPS
             if raceSet.PF_FLAG
                 savePF(agent)
                 println("Finish path following.")
                 break
             end
+
+            # GAUSSIAN PROCESS
             GPR(agent)
+
+            # SAFESET CONSTRUCTION
             findSS(agent)
+
+            # SOLVE LMPC
         	solveKin(mdlLMPC,agent)
+
+            # COLLECT GAUSSIAN PROCESS FEATURE DATA
             if !raceSet.GP_LOCAL_FLAG && !raceSet.GP_FULL_FLAG && lapStatus.it>1
                 gpDataCollect(agent)
             end
@@ -107,7 +126,7 @@ function main()
         rossleep(loop_rate)
     end
 
-    # DATA SAVING AFTER FINISHING SIMULATION/EXPERIMENT
+    # DATA SAVING IF SIMULATION/EXPERIMENT IS KILLED
     if !raceSet.PF_FLAG
         saveHistory(agent)
         if !raceSet.GP_LOCAL_FLAG && !raceSet.GP_FULL_FLAG
