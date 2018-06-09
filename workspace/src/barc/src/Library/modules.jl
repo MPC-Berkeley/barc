@@ -26,6 +26,7 @@ Modules:
         1. saveHistory(): save history data for post data analysis
         2. saveGPData(): save one-step prediction error data for Gaussian Process Regression(GPR)
 =#
+__precompile__()
 module TrackHelper
 using RobotOS
 export createTrack, Track
@@ -362,11 +363,27 @@ export SafeSet,SysID,MpcSol,MpcParams,ModelParams,GPData
         end
     end
 
+    type FeatureData
+        feature_z::Array{Float64,4}
+        feature_u::Array{Float64,3}
+        cost::Array{Float64,1}
+        v_avg::Array{Float64,1}
+        function FeatureData(BUFFERSIZE::Int64,num_lap::Int64)
+            featureData = new()
+            featureData.feature_z = zeros(BUFFERSIZE,num_lap,6,2)
+            featureData.feature_u = zeros(BUFFERSIZE,num_lap,2)
+            featureData.cost = ones(num_lap)
+            featureData.v_avg= zeros(num_lap)
+            return featureData
+        end
+    end
+
     type SafeSet
         #=
         Save data for contructing the safe set
             Safe set data:
                 1. oldSS: history states of previous laps
+                1. oldSS_u: history inputs of previous laps: to avoid doing PF again for different controller
                 2. oldCost: lap cost vector of previous laps
                 3. Np: number of points selected from each lap into safe set
                 4. Nl: number of previous laps to select safe set points
@@ -375,6 +392,7 @@ export SafeSet,SysID,MpcSol,MpcParams,ModelParams,GPData
                 2. stateCost: cost assigned for points in safe set
         =#
         oldSS::Array{Float64}
+        oldSS_u::Array{Float64}
         oldCost::Array{Int64}
         Np::Int64
         Nl::Int64
@@ -388,7 +406,8 @@ export SafeSet,SysID,MpcSol,MpcParams,ModelParams,GPData
             SS.selStates = zeros(SS.Nl*SS.Np,n_state)
             SS.stateCost = zeros(SS.Nl*SS.Np)
             if get_param("PF_flag")
-                SS.oldSS    = NaN*ones(BUFFERSIZE,n_state,lapNum)
+                SS.oldSS    = NaN*ones(BUFFERSIZE,lapNum,n_state)
+                SS.oldSS_u  = NaN*ones(BUFFERSIZE,lapNum,2)
                 SS.oldCost  = ones(lapNum)
             else
                 if get_param("sim_flag")
@@ -397,7 +416,8 @@ export SafeSet,SysID,MpcSol,MpcParams,ModelParams,GPData
                     data  = load("$(homedir())/experiments/PF.jld")
                 end
                 SS_PF = data["SS"]
-                SS.oldSS = SS_PF.oldSS
+                SS.oldSS   = SS_PF.oldSS
+                SS.oldSS_u = SS_PF.oldSS_u
                 SS.oldCost = SS_PF.oldCost
             end
             return SS
@@ -533,6 +553,7 @@ export SafeSet,SysID,MpcSol,MpcParams,ModelParams,GPData
         PF_LAP::Int64
         num_lap::Int64
         sim_flag::Bool
+        feature_flag::Bool
         PF_FLAG::Bool
         TV_FLAG::Bool # dummy attribute for controller without SYSID
         GP_LOCAL_FLAG::Bool
@@ -546,6 +567,7 @@ export SafeSet,SysID,MpcSol,MpcParams,ModelParams,GPData
             raceSet.PF_FLAG         = get_param("PF_flag")
             raceSet.num_lap         = 1+raceSet.LMPC_LAP+raceSet.PF_LAP # 1 is for warm up
             raceSet.sim_flag        = get_param("sim_flag")
+            raceSet.feature_flag    = get_param("feature_flag")
             raceSet.TV_FLAG         = get_param("controller/TV_FLAG")
             raceSet.GP_LOCAL_FLAG   = get_param("controller/GP_LOCAL_FLAG")
             raceSet.GP_FULL_FLAG    = get_param("controller/GP_FULL_FLAG")
@@ -656,12 +678,28 @@ export SafeSet,SysID,MpcSol,MpcParams,ModelParams,GPData
             agent.cmd       = cmd
             return agent
         end
+
+        # Agent light constructor for FeatureData collecting
+        function Agent(track::Track,posInfo::PosInfo,lapStatus::LapStatus,mpcSol::MpcSol,
+                       mpcParams::MpcParams,modelParams::ModelParams,raceSet::RaceSet,cmd::ECU)
+            agent = new()
+            agent.track     = track
+            agent.posInfo   = posInfo
+            agent.lapStatus = lapStatus
+            agent.mpcSol    = mpcSol
+            agent.mpcParams = mpcParams
+            agent.modelParams= modelParams
+            agent.raceSet   = raceSet
+            agent.cmd       = cmd
+            return agent
+        end
     end
 end # end of module Types
 
 module ControllerHelper
 using TrackHelper
 using Types, barc.msg
+import Types: FeatureData
 export find_idx, curvature_prediction, lapSwitch, SE_callback, visualUpdate
 
     function find_idx(s::Float64,track::Track)
@@ -717,6 +755,17 @@ export find_idx, curvature_prediction, lapSwitch, SE_callback, visualUpdate
         agent.lapStatus.it = 1
     end
 
+    function lapSwitch(agent::Agent,featureData::FeatureData)
+        # FEATURE DATA COST AND AVERAGE SPEED RECORDING
+        cost = agent.lapStatus.it-1
+        featureData.cost[agent.lapStatus.lap]   = cost
+        featureData.v_avg[agent.lapStatus.lap]  = mean(featureData.feature_z[1:cost,agent.lapStatus.lap,4,1])
+        # AGENT LAPSATUS UPDATE
+        agent.lapStatus.nextLap = false
+        agent.lapStatus.lap += 1
+        agent.lapStatus.it = 1
+    end
+
     function SE_callback(msg::pos_info,agent::Agent)
         #=
         Inputs: 
@@ -751,16 +800,14 @@ export find_idx, curvature_prediction, lapSwitch, SE_callback, visualUpdate
         (z_x,z_y)   = trackFrame_to_xyFrame(agent.mpcSol.z,agent.track)
         mpc_vis.z_x = z_x
         mpc_vis.z_y = z_y
-        (SS_x,SS_y) = trackFrame_to_xyFrame(agent.SS.selStates,agent.track)
-        mpc_vis.SS_x  = SS_x
-        mpc_vis.SS_y  = SS_y
-        mpc_vis.z_vx  = agent.mpcSol.z[:,4]
-        mpc_vis.SS_vx = agent.SS.selStates[:,4]
-        mpc_vis.z_s   = agent.mpcSol.z[:,1]
-        mpc_vis.SS_s  = agent.SS.selStates[:,1]
-        (z_iden_x, z_iden_y) = trackFrame_to_xyFrame(agent.sysID.select_z[:,:,1],agent.track)
-        mpc_vis.z_iden_x  = z_iden_x
-        mpc_vis.z_iden_y  = z_iden_y
+        if !agent.raceSet.feature_flag
+            (SS_x,SS_y) = trackFrame_to_xyFrame(agent.SS.selStates,agent.track)
+            mpc_vis.SS_x  = SS_x
+            mpc_vis.SS_y  = SS_y
+            (z_iden_x, z_iden_y) = trackFrame_to_xyFrame(agent.sysID.select_z[:,:,1],agent.track)
+            mpc_vis.z_iden_x  = z_iden_x
+            mpc_vis.z_iden_y  = z_iden_y
+        end
     end
 end # end of module ControllerHelper
 
@@ -774,8 +821,8 @@ export buildFeatureSet, sysIdTi, sysIdTv
         u = Array{Float64,2}(0,2)
         for i in (agent.lapStatus.lap-Nl) : (agent.lapStatus.lap-1)
             cost = Int(agent.history.cost[i])
-            z = vcat(z,reshape(agent.history.z[1:cost,i,1,:],cost,6))
-            u = vcat(u,reshape(agent.history.u[1:cost,i,1,:],cost,2))
+            z = vcat(z,reshape(agent.SS.z[1:cost,i,1,:],cost,6))
+            u = vcat(u,reshape(agent.SS.u[1:cost,i,1,:],cost,2))
         end
         agent.sysID.feature_z = z
         agent.sysID.feature_u = u
@@ -934,6 +981,27 @@ module CarSim
 using TrackHelper, Types
 using ControllerHelper
 import SysIDFuncs: findFeature, coeffId
+    function carSimKin(z::Array{Float64},u::Array{Float64},track::Track,modelParams::ModelParams)
+        # THIS FUNCTION IS FOR FEATURE DATA COLLECTING CONTROLLER
+        dt  = modelParams.dt
+        L_a = modelParams.L_a
+        L_b = modelParams.L_b
+        c_f = modelParams.c_f
+
+        idx = find_idx(z[1],track)
+        c   = track.curvature[idx]
+
+        bta = atan(L_a/(L_a+L_b)*tan(u[2]))
+        dsdt = z[4]*cos(z[3]+bta)/(1-z[2]*c)
+
+        zNext = copy(z)
+        zNext[1] = z[1] + dt*dsdt                       # s
+        zNext[2] = z[2] + dt*z[4] * sin(z[3] + bta)     # eY
+        zNext[3] = z[3] + dt*(z[4]/L_b*sin(bta)-dsdt*c) # ePsi
+        zNext[4] = z[4] + dt*(u[1] - c_f*z[4])          # v
+        return zNext
+    end
+
     function carPreDyn(z_curr::Array{Float64},u::Array{Float64,2},track::Track,modelParams::ModelParams)
             z_out = zeros(size(u,1)+1,6)
             z_out[1,:] = z_curr
@@ -1041,19 +1109,44 @@ end # end of CarSim module
 module DataSavingFuncs
 using JLD
 using Types
+import Types: FeatureData
 export saveHistory, saveGPData, savePF
 export historyCollect, gpDataCollect
     function saveHistory(agent::Agent)
         # DATA SAVING
         run_time = Dates.format(now(),"yyyy-mm-dd-H:M")
         log_path = "$(homedir())/$(agent.raceSet.folder_name)/LMPC-$(agent.raceSet.file_name)-$(run_time).jld"
-        save(log_path,  "log_cvx",          agent.history.c_Vx,
-                        "log_cvy",          agent.history.c_Vy,
-                        "log_cpsi",         agent.history.c_Psi,
-                        "GP_vy",            agent.history.GP_vy,
-                        "GP_psiDot",        agent.history.GP_psiDot,
-                        "history",          agent.history,
-                        "track",            agent.track)
+        if agent.lapStatus.lap > agent.raceSet.num_lap
+            # FINISH ALL RACING LAPS
+            save(log_path,  "z",         agent.history.z,
+                            "u",         agent.history.u,
+                            "SS_z",      agent.history.SS,
+                            "sysID_z",   agent.history.feature_z,
+                            "sysID_u",   agent.history.feature_u,
+                            "log_cvx",   agent.history.c_Vx,
+                            "log_cvy",   agent.history.c_Vy,
+                            "log_cpsi",  agent.history.c_Psi,
+                            "GP_vy",     agent.history.GP_vy,
+                            "GP_psiDot", agent.history.GP_psiDot,
+                            "track",     agent.track,
+                            "cost",      agent.history.cost)
+        else
+            # CALCULATE FINISHED ITERATION OF CURRENT LAP
+            agent.history.cost[agent.lapStatus.lap] = agent.lapStatus.it
+            # RACE IS KILLED
+            save(log_path,  "z",         agent.history.z[:,1:agent.lapStatus.lap,:,:],
+                            "u",         agent.history.u[:,1:agent.lapStatus.lap,:,:],
+                            "SS_z",      agent.history.SS[:,1:agent.lapStatus.lap,:,:],
+                            "sysID_z",   agent.history.feature_z[:,1:agent.lapStatus.lap,:,:],
+                            "sysID_u",   agent.history.feature_u[:,1:agent.lapStatus.lap,:,:],
+                            "log_cvx",   agent.history.c_Vx[:,1:agent.lapStatus.lap,:],
+                            "log_cvy",   agent.history.c_Vy[:,1:agent.lapStatus.lap,:],
+                            "log_cpsi",  agent.history.c_Psi[:,1:agent.lapStatus.lap,:],
+                            "GP_vy",     agent.history.GP_vy[:,1:agent.lapStatus.lap],
+                            "GP_psiDot", agent.history.GP_psiDot[:,1:agent.lapStatus.lap],
+                            "track",     agent.track,
+                            "cost",      agent.history.cost[1:agent.lapStatus.lap])
+        end
         println("Finish saving history to $log_path in controller node.")
     end
 
@@ -1062,10 +1155,9 @@ export historyCollect, gpDataCollect
             z_curr = [agent.posInfo.s, agent.posInfo.ey, agent.posInfo.epsi, agent.posInfo.vx, agent.posInfo.vy, agent.posInfo.psiDot]
 
             agent.history.z[agent.lapStatus.it,agent.lapStatus.lap,:,1:agent.mpcParams.n_state]=agent.mpcSol.z
-            agent.history.z[agent.lapStatus.it,agent.lapStatus.lap,1,4:6]=z_curr[4:6]
-            agent.history.u[agent.lapStatus.it,agent.lapStatus.lap,:,:]=agent.mpcSol.u
-            agent.SS.oldSS[agent.lapStatus.it,:,agent.lapStatus.lap]=z_curr
-            agent.lapStatus.it += 1
+            agent.history.z[agent.lapStatus.it,agent.lapStatus.lap,1,4:6]= z_curr[4:6]
+            agent.history.u[agent.lapStatus.it,agent.lapStatus.lap,:,:]  = agent.mpcSol.u
+            agent.SS.oldSS[agent.lapStatus.it,:,agent.lapStatus.lap]     = z_curr
         end
         
         # SafeSet history
@@ -1079,9 +1171,12 @@ export historyCollect, gpDataCollect
 
         # GP history
         if !agent.raceSet.GP_LOCAL_FLAG || !agent.raceSet.GP_FULL_FLAG
-            agent.history.GP_vy[agent.lapStatus.it,agent.lapStatus.lap,:]       = agent.gpData.GP_vy_e
-            agent.history.GP_psiDot[agent.lapStatus.it,agent.lapStatus.lap,:]   = agent.gpData.GP_psiDot_e
+            agent.history.GP_vy[agent.lapStatus.it,agent.lapStatus.lap,:]     = agent.gpData.GP_vy_e
+            agent.history.GP_psiDot[agent.lapStatus.it,agent.lapStatus.lap,:] = agent.gpData.GP_psiDot_e
         end
+
+        # ITERATION COUNTER UPDATE
+        agent.lapStatus.it += 1
 
         # previvous solution update
         agent.mpcSol.z_prev[:] = agent.mpcSol.z
@@ -1091,10 +1186,17 @@ export historyCollect, gpDataCollect
     function saveGPData(agent::Agent)
         run_time = Dates.format(now(),"yyyy-mm-dd-H:M")
         log_path = "$(homedir())/$(agent.raceSet.folder_name)/GP-$(agent.raceSet.file_name)-$(run_time).jld"
-        save(log_path,  "feature_GP_z",         agent.gpData.feature_GP_z,  
-                        "feature_GP_u",         agent.gpData.feature_GP_u,  
-                        "feature_GP_vy_e",      agent.gpData.feature_GP_vy_e, 
-                        "feature_GP_psidot_e",  agent.gpData.feature_GP_psiDot_e)
+        if agent.lapStatus.lap > agent.raceSet.num_lap
+            save(log_path,  "feature_GP_z",         agent.gpData.feature_GP_z,  
+                            "feature_GP_u",         agent.gpData.feature_GP_u,  
+                            "feature_GP_vy_e",      agent.gpData.feature_GP_vy_e, 
+                            "feature_GP_psidot_e",  agent.gpData.feature_GP_psiDot_e)
+        else
+            save(log_path,  "feature_GP_z",         agent.gpData.feature_GP_z,  
+                            "feature_GP_u",         agent.gpData.feature_GP_u,  
+                            "feature_GP_vy_e",      agent.gpData.feature_GP_vy_e, 
+                            "feature_GP_psidot_e",  agent.gpData.feature_GP_psiDot_e)
+        end
         println("Finish saving GP data to $log_path in controller node.")
     end
 
@@ -1110,8 +1212,30 @@ export historyCollect, gpDataCollect
 
     function savePF(agent::Agent)
         log_path = "$(homedir())/$(agent.raceSet.folder_name)/PF.jld"
-        save(log_path,"SS",agent.SS,"history",agent.history)
+        save(log_path,"SS",agent.SS)
         println("Finsh saving path following data to $log_path for LMPC.")
+    end
+
+    function saveFeatureData(agent::Agent,featureData::FeatureData)
+        log_path = "$(homedir())/$(agent.raceSet.folder_name)/FD.jld"
+        save(log_path,"featureData",featureData)
+        println("Finsh saving feature data to $log_path.")
+    end
+
+    function featureDataCollect(agent::Agent,featureData::FeatureData)
+        if agent.lapStatus.it > 1
+            z_curr = [agent.posInfo.s, agent.posInfo.ey, agent.posInfo.epsi, agent.posInfo.vx, agent.posInfo.vy, agent.posInfo.psiDot]
+            featureData.feature_z[agent.lapStatus.it,agent.lapStatus.lap,:,1]   = z_curr
+            featureData.feature_z[agent.lapStatus.it-1,agent.lapStatus.lap,:,2] = z_curr
+            featureData.feature_u[agent.lapStatus.it,agent.lapStatus.lap,:]     = agent.mpcSol.u[1,:]
+        end
+
+        # ITERATION COUNTER UPDATE
+        agent.lapStatus.it += 1
+
+        # previvous solution update
+        agent.mpcSol.z_prev[:] = agent.mpcSol.z
+        agent.mpcSol.u_prev[:] = agent.mpcSol.u
     end
 end # end of DataSaving module
 

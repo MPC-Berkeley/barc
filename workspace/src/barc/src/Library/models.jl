@@ -3,7 +3,7 @@ using RobotOS
 using JuMP
 using Ipopt
 using Types
-export MdlPf,MdlKin,MdlId,MdlKinLin,MdlDynLin
+export MdlPf,MdlKin,MdlId,MdlDynLin,MdlKinLin
     type MdlPf
         # Fields here provides a channel for JuMP model to communicate with data outside of it
         mdl::JuMP.Model
@@ -478,37 +478,30 @@ export MdlPf,MdlKin,MdlId,MdlKinLin,MdlDynLin
                 @NLconstraint(mdl, [i=1:N], u_Ol[i,j] + u_linear[i,j] <= u_ub[j])
             end
             
-            # System dynamics
             for i=1:N-1
                 for j=1:4
-                    @NLconstraint(mdl, z_Ol[i+1,j] == A[j,1,i+1]*z_Ol[i,1]+A[j,2,i+1]*z_Ol[i,2]+A[j,3,i+1]*z_Ol[i,3]+A[j,4,i+1]*z_Ol[i,4]+B[j,1,i+1]*u_Ol[i+1,1]+B[j,2,i+1]*u_Ol[i+1,2] )
+                    @NLconstraint(mdl, z_Ol[i+1,j] == sum{A[j,k,i+1]*z_Ol[i,k],   k=1:4} + 
+                                                      sum{B[j,k,i+1]*u_Ol[i+1,k], k=1:2})
                 end
             end
             for j=1:4
-                @NLconstraint(mdl, z_Ol[1,j] == B[j,1,1]*u_Ol[1,1]+B[j,2,1]*u_Ol[1,2] )
+                @NLconstraint(mdl, z_Ol[1,j] == sum{B[j,k,1]*u_Ol[1,k], k=1:2} )
             end
 
+            # HARD CONSTRAINT
             # for i=1:n_state
             #     @constraint(mdl, z_Ol[N,i] + z_linear[N+1,i] == sum(alpha[j]*selStates[j,i] for j=1:Nl*Np))
             # end
 
             # Cost functions
             @NLexpression(mdl, derivCost, sum{QderivZ[j]*(sum{(z_Ol[i,j]+z_linear[i+1,j]-z_Ol[i+1,j]-z_linear[i+2,j])^2 , i=1:N-1}), j=1:4} +
-                                        sum{QderivU[j]*(sum{(u_Ol[i,j]+u_linear[i  ,j]-u_Ol[i+1,j]-u_linear[i+1,j])^2 , i=1:N-1}+(uPrev[1,j]-u_Ol[1,j]-u_linear[1,j])^2) , j=1:2})
-            # Lane cost (soft)
-            @NLexpression(mdl, laneCost, Q_lane*sum{10.0*eps_lane[i]+50.0*eps_lane[i]^2 , i=1:N})
-            # Terminal Cost
-            @NLexpression(mdl, terminalCost , Q_term_cost*sum{alpha[i]*stateCost[i] , i=1:Nl*Np})
-            
-            @NLexpression(mdl, slackS, (z_Ol[N,1] + z_linear[N+1,1] - sum{alpha[j]*selStates[j,1] , j=1:Nl*Np})^2)
-            # Slack cost on ey
-            @NLexpression(mdl, slackEy, (z_Ol[N,2] + z_linear[N+1,2] - sum{alpha[j]*selStates[j,2] , j=1:Nl*Np})^2)
-            # Slack cost on ePsi
-            @NLexpression(mdl, slackEpsi, (z_Ol[N,3] + z_linear[N+1,3] - sum{alpha[j]*selStates[j,3] , j=1:Nl*Np})^2)
-            # Slack cost on v
-            @NLexpression(mdl, slackV, (z_Ol[N,4] + z_linear[N+1,4] - sum{alpha[j]*selStates[j,4] , j=1:Nl*Np})^2)
+                                          sum{QderivU[j]*(sum{(u_Ol[i,j]+u_linear[i  ,j]-u_Ol[i+1,j]-u_linear[i+1,j])^2 , i=1:N-1} + 
+                                                              (uPrev[1,j]-u_Ol[1,j]-u_linear[1,j])^2 ) , j=1:2})
 
-            @NLobjective(mdl, Min, derivCost + laneCost + terminalCost + Q_slack[1]*slackS + Q_slack[2]*slackEy + Q_slack[3]*slackEpsi + Q_slack[4]*slackV) #+ Q_slack[5]*slackEy + Q_slack[6]*slackS) #+ controlCost
+            @NLexpression(mdl, laneCost,    Q_lane*sum{10.0*eps_lane[i]+50.0*eps_lane[i]^2, i=1:N})
+            @NLexpression(mdl, terminalCost,Q_term_cost*sum{alpha[i]*stateCost[i] , i=1:Nl*Np})
+            @NLexpression(mdl, slackCost,   sum{Q_slack[i]*(z_Ol[N,i]+z_linear[N+1,i]-sum{alpha[j]*selStates[j,i],j=1:Nl*Np})^2, i=1:4}) 
+            @NLobjective(mdl, Min, derivCost + laneCost +  terminalCost + slackCost)
 
             m.mdl   = mdl
             m.z_Ol  = z_Ol
@@ -712,25 +705,36 @@ import CarSim:carPreDyn, carPreId
     end
 
     function solveFd(mdl::MdlPf,agent::Agent,v_ref::Float64)
+        z_curr = [agent.posInfo.s,agent.posInfo.ey,agent.posInfo.epsi,agent.posInfo.v]
 
-        z_final=car_sim_kin(z_prev[end,:],u_prev[end,:],track,modelParams)
-        z_curvature=vcat(z_curr',z_prev[3:end,:],z_final)
+        s = vcat(z_curr[1],agent.mpcSol.z_prev[3:end,1])
+        curvature = curvature_prediction(s,agent.track)
+        z_ref = hcat(zeros(agent.mpcParams.N+1,3),v_ref*ones(agent.mpcParams.N+1,1))
 
-        curvature=curvature_prediction(z_curvature,track)
-        z_ref = hcat(zeros(mpcParams_pF.N+1,3),v_ref*ones(mpcParams_pF.N+1,1))
+        if agent.mpcParams.delay_df > 0
+            setvalue(mdl.df_his,agent.mpcSol.df_his)
+        end
+        if agent.mpcParams.delay_a > 0
+            setvalue(mdl.a_his, agent.mpcSol.a_his)
+        end
 
-        # Update current initial condition, curvature and previous input
         setvalue(mdl.z0,z_curr)
         setvalue(mdl.c,curvature)
-        setvalue(mdl.df_his,mpcSol.df_his)
-        setvalue(mdl.uPrev,u_prev)
+        setvalue(mdl.uPrev, agent.mpcSol.u_prev)
         setvalue(mdl.z_Ref,z_ref)
 
-        # Solve Problem and return solution
-        sol_status  = solve(mdl.mdl)
-        sol_u       = getvalue(mdl.u_Ol)
-        sol_z       = getvalue(mdl.z_Ol)
-        return sol_z,sol_u,sol_status
+        agent.mpcSol.sol_status = solve(mdl.mdl)
+        agent.mpcSol.u          = getvalue(mdl.u_Ol)
+        agent.mpcSol.z[:,1:4]   = getvalue(mdl.z_Ol)
+        agent.mpcSol.a_x = agent.mpcSol.u[1+agent.mpcParams.delay_a,1]
+        agent.mpcSol.d_f = agent.mpcSol.u[1+agent.mpcParams.delay_df,2]
+        agent.cmd.motor  = agent.mpcSol.a_x
+        agent.cmd.servo  = agent.mpcSol.d_f
+
+        push!(agent.mpcSol.a_his,agent.mpcSol.a_x)
+        shift!(agent.mpcSol.a_his)
+        push!(agent.mpcSol.df_his,agent.mpcSol.d_f)
+        shift!(agent.mpcSol.df_his)
     end
 
     function solveKin(mdl::MdlKin,agent::Agent) 
@@ -830,7 +834,6 @@ import CarSim:carPreDyn, carPreId
         for k=1:agent.mpcParams.N
             bta_val=atan((L_a*tan(u_linear[k,2]))/(L_a + L_b))
 
-            # A[1,1,k]= dt*z_linear[k,2]*z_linear[k,4]*cos(z_linear[k,3] + bta_val)*curvature_deri/(z_linear[k,2]*(curvature) - 1)^2 + 1
             A[1,1,k]= 1
             A[1,2,k]= dt*z_linear[k,4]*cos(z_linear[k,3] + bta_val)*curvature[k]/(z_linear[k,2]*(curvature[k]) - 1)^2
             A[1,3,k]= dt*z_linear[k,4]*sin(z_linear[k,3] + bta_val)/(z_linear[k,2]*(curvature[k]) - 1)
@@ -839,8 +842,6 @@ import CarSim:carPreDyn, carPreId
             A[2,2,k]= 1
             A[2,3,k]= dt*z_linear[k,4]*cos(z_linear[k,3] + bta_val)
             A[2,4,k]= dt*sin(z_linear[k,3] + bta_val)
-            # A[3,1,k]= dt*( (z_linear[k,4]*cos(z_linear[k,3] + bta_val)*curvature_deri)/(z_linear[k,2]*curvature - 1)-
-                           # (z_linear[k,2]*z_linear[k,4]*cos(z_linear[k,3] + bta_val)*curvature_deri*curvature)/(z_linear[k,2]*curvature - 1)^2 )
             A[3,1,k]= 0
             A[3,2,k]=-(dt*z_linear[k,4]*cos(z_linear[k,3] + bta_val)*(curvature[k])^2)/(z_linear[k,2]*(curvature[k]) - 1)^2
             A[3,3,k]=-(dt*z_linear[k,4]*sin(z_linear[k,3] + bta_val)*(curvature[k]))/(z_linear[k,2]*(curvature[k]) - 1) + 1

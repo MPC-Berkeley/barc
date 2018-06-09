@@ -19,6 +19,10 @@
 # ---------------------------------------------------------------------------
 
 import rospy
+import os
+import sys
+homedir = os.path.expanduser("~")
+sys.path.append(os.path.join(homedir,"barc/workspace/src/barc/src/Library"))
 from Localization_helpers import Track
 from barc.msg import ECU, pos_info, Vel_est
 from sensor_msgs.msg import Imu
@@ -30,7 +34,6 @@ from scipy.linalg import inv, cholesky
 from tf import transformations
 import math
 import numpy as np
-import os
 
 def main():
     # node initialization

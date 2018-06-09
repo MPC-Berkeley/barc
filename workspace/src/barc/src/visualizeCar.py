@@ -15,6 +15,10 @@
 # ---------------------------------------------------------------------------
 
 import rospy
+import os
+import sys
+homedir = os.path.expanduser("~")
+sys.path.append(os.path.join(homedir,"barc/workspace/src/barc/src/Library"))
 from Localization_helpers import Track
 from barc.msg import ECU, pos_info, Vel_est, mpc_visual
 from sensor_msgs.msg import Imu
@@ -25,7 +29,6 @@ from tf import transformations
 import math
 import matplotlib.pyplot as plt
 import numpy as np
-# import pylab
 
 global gps_x_vals, gps_y_vals, gps_x_prev, gps_y_prev, real_x_vals, real_y_vals
 global pos_info_x_vals, pos_info_y_vals, pos_info_s

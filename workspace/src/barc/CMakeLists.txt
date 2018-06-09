@@ -50,7 +50,6 @@ add_message_files(
    pos_info.msg
    ECU.msg
    Vel_est.msg
-   mpc_solution.msg
    mpc_visual.msg
 )
 

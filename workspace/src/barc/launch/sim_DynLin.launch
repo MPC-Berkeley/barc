@@ -40,10 +40,10 @@
     </node>
 
     <!-- VISUALIZATION -->
-    <node pkg="barc" type="view_car_trajectory.py" name="visualization" output="screen"/>
+    <node pkg="barc" type="visualizeCar.py" name="visualization" output="screen"/>
 
     <!-- SIMULATOR -->
-    <node pkg="barc" type="barc_simulator_dyn.py" name="simulator" output="screen">
+    <node pkg="barc" type="simulatorDyn.py" name="simulator" output="screen">
         <!-- delay in the simulator -->
         <param name="delay_df"  type="double" value="0.0" />
         <param name="delay_a"   type="double" value="0.0" />
@@ -66,7 +66,7 @@
     </node>
 
     <!--DYNAMIC OBSERVER-->
-    <node pkg="barc" type="state_estimator.py" name="state_estimator" output="screen">
+    <node pkg="barc" type="stateEstimator.py" name="state_estimator" output="screen">
         <!-- delay in state estuiamtor -->
         <param name="dt"  type="double" value="0.0" />
         <param name="delay_df"  type="double" value="0.0" />

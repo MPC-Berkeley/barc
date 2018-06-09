@@ -5,8 +5,8 @@
     <param name="LMPC_LAP" type="int" value="30" />
     <!-- flags -->
     <param name="sim_flag"      type="bool" value="true" />
-    <param name="PF_flag"       type="bool" value="false" />
-    <param name="feature_flag"  type="bool" value="false" />
+    <param name="PF_flag"       type="bool" value="true" />
+    <param name="feature_flag"  type="bool" value="true" />
     <!-- vehicle parameters -->
     <param name="L_a"   type="double" value="0.125" />
     <param name="L_b"   type="double" value="0.125" />
@@ -18,7 +18,7 @@
     <param name="ey_tighten"    type="double" value="1.0" />
 
     <!-- CONTROL -->
-    <node pkg="barc" type="controllerKin.jl" name="controller" output="screen">
+    <node pkg="barc" type="controllerFd.jl" name="controller" output="screen">
         <!-- Controller flags -->
         <param name="TV_FLAG"       type="bool" value="false" />
         <param name="num_spare"     type="int"  value="30"    />

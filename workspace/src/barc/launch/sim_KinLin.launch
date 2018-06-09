@@ -21,6 +21,7 @@
     <node pkg="barc" type="controllerKinLin.jl" name="controller" output="screen">
         <!-- Controller flags -->
         <param name="TV_FLAG"       type="bool" value="false" />
+        <param name="num_spare"     type="int"  value="30"    />
         <param name="GP_LOCAL_FLAG" type="bool" value="false" />
         <param name="GP_FULL_FLAG"  type="bool" value="false" />
         <!-- Controller parameters -->
@@ -39,10 +40,10 @@
     </node>
 
     <!-- VISUALIZATION -->
-    <node pkg="barc" type="view_car_trajectory.py" name="visualization" output="screen"/>
+    <node pkg="barc" type="visualizeCar.py" name="visualization" output="screen"/>
 
     <!-- SIMULATOR -->
-    <node pkg="barc" type="barc_simulator_dyn.py" name="simulator" output="screen">
+    <node pkg="barc" type="simulatorDyn.py" name="simulator" output="screen">
         <!-- GP related data -->
         <param name="num_spare"         type="int"  value="30" />
         <param name="GP_LOCAL_FLAG"     type="bool" value="false" />
@@ -69,7 +70,7 @@
     </node>
 
     <!--DYNAMIC OBSERVER-->
-    <node pkg="barc" type="state_estimator.py" name="state_estimator" output="screen">
+    <node pkg="barc" type="stateEstimator.py" name="state_estimator" output="screen">
         <!-- delay in state estuiamtor -->
         <param name="dt"  type="double" value="0.0" />
         <param name="delay_df"  type="double" value="0.0" />
