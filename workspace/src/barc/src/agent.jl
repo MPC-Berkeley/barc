@@ -75,6 +75,8 @@ type Agent
 	selected_states_s::Array{Float64}
 	selected_states_xy::Array{Float64}
 	selected_states_cost::Array{Float64}
+	selected_laps::Array{Int64}
+	closest_indeces::Array{Int64}
 
 	all_selected_states::Dict{Int64,Array{Tuple{Int64,UnitRange{Int64}},1}}
 	all_predictions::Array{Float64}
@@ -124,6 +126,8 @@ type Agent
 	not_for_selection::Array{Int64}
     not_for_dynamics::Array{Int64}
 
+    leading::Bool
+
 	Agent() = new()
 end
 
@@ -171,6 +175,8 @@ function init!(agent::Agent, index::Int64, track::Track,
 	agent.selected_states_s = zeros(num_considered_states, 6)
 	agent.selected_states_xy = zeros(num_considered_states, 6)
 	agent.selected_states_cost = zeros(num_considered_states)
+	agent.selected_laps = zeros(NUM_CONSIDERED_LAPS)
+	agent.closest_indeces = zeros(NUM_CONSIDERED_LAPS)
 
 	# agent.all_selected_states = Dict([i => (0, 1 : 10) for i = 1 : 6000]) 
 	agent.all_selected_states = Dict([i => [(j, 1 : 10) for j = 1 : NUM_CONSIDERED_LAPS] for i = 1 : 6000])
@@ -192,6 +198,13 @@ function init!(agent::Agent, index::Int64, track::Track,
 		println("LOADING: ", filename)
 		load_trajectories!(agent, filename)
 	elseif MODE == "racing"
+		#=
+		filename = ascii(get_most_recent(node_name[2 : end], "path_following", 
+								   INITIALIZATION_TYPE))
+		println("LOADING: ", filename)
+		load_trajectories!(agent, filename)
+		=#
+
 		filename = ascii(get_most_recent(node_name[2 : end], "path_following", 
 								   INITIALIZATION_TYPE))
 		filename_center = ascii(get_most_recent(node_name[2 : end], "lmpc", 
@@ -280,6 +293,7 @@ function init!(agent::Agent, index::Int64, track::Track,
 	# agent.counter = [1]
 
 	agent.acc = 0.0
+	agent.leading = false
 end
 
 function get_state_xy(agent::Agent, iteration::Int64)
@@ -481,6 +495,13 @@ function select_states(agent::Agent, track::Track)
 		# determine reachability from current state
 		current_vel = sqrt(agent.states_s[iteration, 5]^2 + agent.states_s[iteration, 6]^2)
 		max_diff_vel = horizon * agent.dt * agent.input_upper_bound[1] 
+
+		#=
+		if MODE == "racing" && agent.current_lap == 2
+			max_diff_vel = 0.3
+		end
+		=#
+
 		recorded_vel_ahead = sqrt(agent.trajectories_s[i, index_closest_state + horizon, 5]^2 +
 								  agent.trajectories_s[i, index_closest_state + horizon, 6]^2)
 		
@@ -554,6 +575,7 @@ function select_states(agent::Agent, track::Track)
 			end
 		end
 	end
+
 	println("selected_laps: ", selected_laps)
 
 	min_iteration = round(Int64, findmin(agent.iterations_needed[selected_laps])[1])
@@ -561,6 +583,7 @@ function select_states(agent::Agent, track::Track)
 	counter = 1
 	iteration_number = 1
 	for i in selected_laps
+		agent.selected_laps[iteration_number] = i
 		agent.selected_states_s[counter : counter + round(Int64, NUM_HORIZONS * horizon) - 1, :] = 
 			squeeze(agent.trajectories_s[i, 
 					closest_index[i] : closest_index[i] + round(Int64, NUM_HORIZONS * horizon) - 1, :], 
@@ -570,18 +593,49 @@ function select_states(agent::Agent, track::Track)
 					closest_index[i] : closest_index[i] + round(Int64, NUM_HORIZONS * horizon) - 1, :], 
 					1)		
 
+		#=
+		# Lukas' cost
 		agent.selected_states_cost[counter : counter + round(Int64, NUM_HORIZONS * horizon) - 1, :] = 
 			collect((round(Int64, NUM_HORIZONS * horizon) : - 1 : 1) + agent.iterations_needed[i] - min_iteration) 
+		=#
+		
+		# 1. new cost
+		cost = collect(0 : - 1 : - (round(Int64, NUM_HORIZONS * horizon) - 1)) + agent.iterations_needed[i] - closest_index[i]
+		if any(agent.predicted_s[:, 1] .> track.total_length)
+			if i < NUM_LOADED_LAPS + agent.current_lap - 1
+				cost += agent.iterations_needed[i + 1]
+			else 
+				# find state where finish line is crossed
+				finish_line_crossed_idx = findmax(agent.predicted_s .> track.total_length)[2]
+				cost += agent.current_iteration + finish_line_crossed_idx - 1
+			end
+		end
+		agent.selected_states_cost[counter : counter + round(Int64, NUM_HORIZONS * horizon) - 1, :] = cost
 
+		#=
+		# 2. new cost
+		cost = collect(0 : - 1 : - (round(Int64, NUM_HORIZONS * horizon) - 1)) + agent.iterations_needed[i] - closest_index[i]
+		safe_set = squeeze(agent.trajectories_s[i, 
+					closest_index[i] : closest_index[i] + round(Int64, NUM_HORIZONS * horizon) - 1, :], 
+					1)
+		beyond_finish_line = safe_set[:, 1] .> track.total_length
+		cost[beyond_finish_line] = 0
+		agent.selected_states_cost[counter : counter + round(Int64, NUM_HORIZONS * horizon) - 1, :] = cost
+		=#
+		
+		# Ugo's cost
 		#=
 		agent.selected_states_cost[counter : counter + round(Int64, NUM_HORIZONS * horizon) - 1, :] = 
 			collect(0 : - 1 : - (round(Int64, NUM_HORIZONS * horizon) - 1)) + agent.iterations_needed[i] - closest_index[i]
 		=#
+
 		agent.all_selected_states[agent.counter[end]][iteration_number] = (i, closest_index[i] : closest_index[i] + round(Int64, NUM_HORIZONS * horizon) - 1)
 
 		counter += round(Int64, NUM_HORIZONS * horizon)
 		iteration_number += 1		
 	end
+
+	agent.closest_indeces = closest_index[agent.selected_laps]
 
 	for i = 1 : num_considered_states
 		if abs(agent.selected_states_s[i, 2]) > TRACK_WIDTH / 2
@@ -596,15 +650,20 @@ end
 
 function select_states_smartly(agent::Agent, adv_e_y::Float64, adv_s::Array{Float64}, track::Track)
 	num_recorded_laps = NUM_LOADED_LAPS + agent.current_lap - 1
+	println("AGENT $(agent.index) CURRENT LAP: ", agent.current_lap)
+	println("AGENT $(agent.index) NUM RECORDED LAPS: ", num_recorded_laps)
+	println("AGENT $(agent.index) NUM LOADED LAPS: ", NUM_LOADED_LAPS)
 
 	iteration = agent.current_iteration
 	prev_s = agent.predicted_s[1, 1]
 	current_s = agent.states_s[iteration, 1]
 
 	# Check if we're already in the next lap
+	#=
 	if abs(prev_s - current_s) >= 0.5 * track.total_length && iteration > 1
 		num_recorded_laps += 1
 	end
+	=#
 
 	horizon = size(agent.optimal_inputs)[1]
 	num_considered_states = size(agent.selected_states_s)[1]
@@ -733,6 +792,7 @@ function select_states_smartly(agent::Agent, adv_e_y::Float64, adv_s::Array{Floa
 		laps_per_init = round(Int64,round(Int64, NUM_LOADED_LAPS - 5) / 3)
 		distance_to_pf = abs([EY_INNER, EY_CENTER, EY_OUTER] - adv_e_y)
 		selected_init = findmax(distance_to_pf)[2]
+
 		if selected_init == 1
 			selected_laps = 5 + 1 * laps_per_init + collect(1 : NUM_CONSIDERED_LAPS)
 		elseif selected_init == 2
@@ -740,6 +800,8 @@ function select_states_smartly(agent::Agent, adv_e_y::Float64, adv_s::Array{Floa
 		elseif selected_init == 3
 			selected_laps = 5 + 2 * laps_per_init + collect(1 : NUM_CONSIDERED_LAPS)
 		end
+
+		# selected_laps = [2, 3, 4, 2]
 		println("CONSERVATIVE SELECTION")
 	else
 		println("SMART SELECTION")
@@ -788,6 +850,8 @@ function select_states_smartly(agent::Agent, adv_e_y::Float64, adv_s::Array{Floa
 	counter = 1
 	iteration_number = 1
 	for i in selected_laps
+		agent.selected_laps[iteration_number] = i
+		println("Closest index: ", closest_index)
 		agent.selected_states_s[counter : counter + round(Int64, NUM_HORIZONS * horizon) - 1, :] = 
 			squeeze(agent.trajectories_s[i, 
 					closest_index[i] : closest_index[i] + round(Int64, NUM_HORIZONS * horizon) - 1, :], 
@@ -796,14 +860,21 @@ function select_states_smartly(agent::Agent, adv_e_y::Float64, adv_s::Array{Floa
 			squeeze(agent.trajectories_xy[i, 
 					closest_index[i] : closest_index[i] + round(Int64, NUM_HORIZONS * horizon) - 1, :], 
 					1)		
+		#=
 		agent.selected_states_cost[counter : counter + round(Int64, NUM_HORIZONS * horizon) - 1, :] = 
 			collect((round(Int64, NUM_HORIZONS * horizon) : - 1 : 1) + agent.iterations_needed[i] - min_iteration) 
+		=#
+
+		agent.selected_states_cost[counter : counter + round(Int64, NUM_HORIZONS * horizon) - 1, :] = 
+			collect(0 : - 1 : - (round(Int64, NUM_HORIZONS * horizon) - 1)) + agent.iterations_needed[i] - closest_index[i]
 					
 		agent.all_selected_states[agent.counter[end]][iteration_number] = (i, closest_index[i] : closest_index[i] + round(Int64, NUM_HORIZONS * horizon) - 1)
 
 		counter += round(Int64, NUM_HORIZONS * horizon)
 		iteration_number += 1		
 	end
+
+	agent.closest_indeces = closest_index[agent.selected_laps]
 
 	for i = 1 : num_considered_states
 		if abs(agent.selected_states_s[i, 2]) > TRACK_WIDTH / 2

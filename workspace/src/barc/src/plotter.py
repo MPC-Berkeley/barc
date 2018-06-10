@@ -9,6 +9,7 @@
 
 import rospy
 from barc.msg import xy_prediction, pos_info, theta, selected_states
+from marvelmind_nav.msg import hedge_imu_fusion
 import numpy as np
 from numpy import linalg as LA
 import matplotlib.pyplot as plt
@@ -42,13 +43,15 @@ def set_transformation(axis, angle, translate):
 
 
 class PlottedAgent:
-    """docstring for PlottedAgent"""
     wheel_length = 0.04
     wheel_width = 0.02
     bumper = 0.01
     l_front = 0.125
     l_rear = 0.125
     width = 0.1
+
+    x_gps = 0.0
+    y_gps = 0.0
 
     center_of_mass = np.array([0.0, 0.0])
     psi = np.array(0.0)
@@ -63,7 +66,11 @@ class PlottedAgent:
     center_rear_wheel_right = np.array([0.0, 0.0])
 
     trajectory_xy = np.zeros((500, 2))
+    trajectory_gps_xy = np.zeros((500, 2))
     traj_counter = 0
+    gps_counter = 0
+    traj_gps_counter = 0
+    prediction_available = False
 
     num_points = 500
     theta_vx = np.zeros((num_points, 3))
@@ -85,16 +92,15 @@ class PlottedAgent:
 
     def __init__(self, color_string, ax, track):
         node_name = color_string.split("/")[0]
-	sim_string = rospy.get_param(rospy.get_name() + "/" + node_name)
-	if sim_string == "simulation":
-	   xy_sub = rospy.Subscriber(node_name + "/real_val", pos_info, self.xy_callback)
-	else:
+        sim_string = rospy.get_param(rospy.get_name() + "/" + node_name)
+        if sim_string == "simulation":
+            xy_sub = rospy.Subscriber(node_name + "/real_val", pos_info, self.xy_callback)
+        else:
             xy_sub = rospy.Subscriber(node_name + "/pos_info", pos_info, self.xy_callback)
 
-        prediction_sub = rospy.Subscriber(node_name + "/xy_prediction", xy_prediction, 
-                                          self.prediction_callback)
-        selection_sub = rospy.Subscriber(node_name + "/selected_states", selected_states, 
-                                         self.selection_callback)
+        xy_gps_sub = rospy.Subscriber(node_name + "/hedge_imu_fusion", hedge_imu_fusion, self.xy_gps_callback)
+        prediction_sub = rospy.Subscriber(node_name + "/xy_prediction", xy_prediction, self.prediction_callback)
+        selection_sub = rospy.Subscriber(node_name + "/selected_states", selected_states, self.selection_callback)
 
         # theta_sub = rospy.Subscriber("theta", theta, self.theta_callback)
 
@@ -130,9 +136,9 @@ class PlottedAgent:
                              [self.center_of_mass[1], self.rear[1]], "k-", lw=3.0)
 
         self.plt_front_axis, = ax.plot(self.center_front_wheel[:, 0],
-								   self.center_front_wheel[:, 1], "k-", lw=3.0)
+                                       self.center_front_wheel[:, 1], "k-", lw=3.0)
         self.plt_rear_axis, = ax.plot(self.center_rear_wheel[:, 0],
-								  self.center_rear_wheel[:, 1], "k-", lw=3.0)
+                                      self.center_rear_wheel[:, 1], "k-", lw=3.0)
 
         # TODO: Add this part
         self.prediction_xy, = ax.plot(self.center_of_mass[0] * np.ones(HORIZON + 1),
@@ -152,21 +158,24 @@ class PlottedAgent:
                                      self.width + self.wheel_width,
                                      color=self.color, alpha=0.5, ec="black")
         self.front_wheel_left = patch.Rectangle([- self.wheel_length / 2,
-							                    - self.wheel_width / 2],
-							                    self.wheel_length, self.wheel_width,
-							                    color="gray", alpha=1.0, ec="black")
+                        - self.wheel_width / 2],
+                        self.wheel_length, self.wheel_width,
+                        color="gray", alpha=1.0, ec="black")
         self.front_wheel_right = patch.Rectangle([- self.wheel_length / 2,
-							                    - self.wheel_width / 2],
-							                    self.wheel_length, self.wheel_width,
-							                    color="gray", alpha=1.0, ec="black")
+                        - self.wheel_width / 2],
+                        self.wheel_length, self.wheel_width,
+                        color="gray", alpha=1.0, ec="black")
         self.rear_wheel_left = patch.Rectangle([- self.wheel_length / 2,
-							                    - self.wheel_width / 2],
-							                    self.wheel_length, self.wheel_width,
-							                    color="gray", alpha=1.0, ec="black")
+                        - self.wheel_width / 2],
+                        self.wheel_length, self.wheel_width,
+                        color="gray", alpha=1.0, ec="black")
         self.rear_wheel_right = patch.Rectangle([- self.wheel_length / 2,
-							                    - self.wheel_width / 2],
-							                    self.wheel_length, self.wheel_width,
-							                    color="gray", alpha=1.0, ec="black")
+                        - self.wheel_width / 2],
+                        self.wheel_length, self.wheel_width,
+                        color="gray", alpha=1.0, ec="black")
+
+        self.gps_pos, = ax.plot(self.x_gps, self.y_gps, self.star)
+        self.trajectory_gps, = ax.plot(self.trajectory_gps_xy[:, 0], self.trajectory_gps_xy[:, 1], self.line_extra)
 
         # self.transform(ax)
 
@@ -203,6 +212,21 @@ class PlottedAgent:
         self.center_rear_wheel_left = self.center_rear_wheel[0, :]
         self.center_rear_wheel_right = self.center_rear_wheel[1, :]
 
+    def xy_gps_callback(self, msg):
+        self.x_gps = msg.x_m
+        self.y_gps = msg.y_m
+
+        # print "gps counter: " self.gps_counter
+
+        if self.prediction_available:
+	        if self.gps_counter % 10 == 0:
+	            self.trajectory_gps_xy[self.traj_gps_counter, :] = np.array([msg.x_m, msg.y_m])
+	            self.trajectory_gps_xy[self.traj_gps_counter:, :] = np.array([msg.x_m, msg.y_m])
+	            self.traj_gps_counter += 1
+
+	        self.gps_counter += 1
+
+        
     def transform(self, ax):
         self.rect.set_transform((set_transformation(ax, self.psi,
                                                     self.center_of_mass)))
@@ -233,6 +257,8 @@ class PlottedAgent:
         # self.s[self.counter] = s_state[0]
         # self.counter += 1
 
+        self.prediction_available = True
+
         try:
             self.prediction_xy.set_data(np.array(msg.x), np.array(msg.y))
             self.prediction_xy_line.set_data(np.array(msg.x), np.array(msg.y))
@@ -242,27 +268,30 @@ class PlottedAgent:
 
         if msg.current_lap > self.current_lap:
             self.trajectory_xy = np.zeros_like(self.trajectory_xy)
+            self.trajectory_gps_xy = np.zeros_like(self.trajectory_gps_xy)
             self.traj_counter = 0
+            self.gps_counter = 0
+            self.traj_gps_counter = 0
 
         self.trajectory_xy[self.traj_counter, :] = np.array([np.array(msg.x)[0], np.array(msg.y)[0]])
         self.trajectory_xy[self.traj_counter:, :] = np.array([np.array(msg.x)[0], np.array(msg.y)[0]])
         self.traj_counter += 1
-
+        
         self.current_lap = msg.current_lap
 
         if self.time_start is None:
             self.time_start = rospy.get_time()
 
-    # def theta_callback(self, msg):
-    #    self.theta_vx[self.theta_counter, :] = msg.theta_vx
-    #    self.theta_vy[self.theta_counter, :] = msg.theta_vy
-    #    self.theta_psi_dot[self.theta_counter, :] = msg.theta_psi_dot
-    #
-    #    self.vx_plot_1.set_data(np.arange(self.num_points), self.theta_vx[:, 0])
-    #    self.vx_plot_2.set_data(np.arange(self.num_points), self.theta_vx[:, 1])
-    #    self.vx_plot_3.set_data(np.arange(self.num_points), self.theta_vx[:, 2])
+        # def theta_callback(self, msg):
+        #    self.theta_vx[self.theta_counter, :] = msg.theta_vx
+        #    self.theta_vy[self.theta_counter, :] = msg.theta_vy
+        #    self.theta_psi_dot[self.theta_counter, :] = msg.theta_psi_dot
+        #
+        #    self.vx_plot_1.set_data(np.arange(self.num_points), self.theta_vx[:, 0])
+        #    self.vx_plot_2.set_data(np.arange(self.num_points), self.theta_vx[:, 1])
+        #    self.vx_plot_3.set_data(np.arange(self.num_points), self.theta_vx[:, 2])
 
-    #    self.theta_counter += 1
+        #    self.theta_counter += 1
 
 
     def selection_callback(self, msg):
@@ -284,6 +313,9 @@ class PlottedAgent:
 
 
         self.trajectory.set_data(self.trajectory_xy[:, 0], self.trajectory_xy[:, 1])
+
+        self.gps_pos.set_data(self.x_gps, self.y_gps)
+        self.trajectory_gps.set_data(self.trajectory_gps_xy[:, 0], self.trajectory_gps_xy[:, 1])
 
         self.transform(ax)
 
@@ -347,10 +379,10 @@ class Plotter:
         self.time_string = "Time : %.2f s" % (round(elapsed_time, 2))
 
         # plotter.ax[:annotate](time_string, xy=[0.5, 0.9], 
-        self.time_s = self.ax.annotate("", xy=[0.2, 0.5], xycoords= "axes fraction", 
+        self.time_s = self.ax.annotate("", xy=[0.6, 0.85], xycoords= "axes fraction", 
                                   fontsize=20, verticalalignment="top")
         # plotter.ax[:annotate](race_string, xy=[0.8, 0.9], xycoords="axes fraction", 
-        self.race_s = self.ax.annotate("", xy=[0.5, 0.5], xycoords="axes fraction", 
+        self.race_s = self.ax.annotate("", xy=[0.6, 0.75], xycoords="axes fraction", 
                                   fontsize=20, verticalalignment="top")
 
         plt.axis("equal")
@@ -438,7 +470,7 @@ class Plotter:
                     if self.plotted_agents[0].time_start is not None:
                         self.time_start = self.plotted_agents[0].time_start
 
-            self.create_race_info_strings(NUM_LAPS)
+            self.create_race_info_strings(30)
             self.update_time_string()
             self.time_s.set_text(self.time_string)
             self.race_s.set_text(self.race_string)
@@ -475,7 +507,7 @@ if __name__ == "__main__":
         colors = ["blue"]
         # track = Track(ds=0.1, shape="test", width=1.0)
         # track = Track(ds=0.1, shape="oval", width=1.0)
-        track = Track(ds=0.1, shape="l_shape", width=1.0)
+        track = Track(ds=0.1, shape="l_shape", width=1.2)
         plotter = Plotter(track, colors)
 
         loop_rate = 20

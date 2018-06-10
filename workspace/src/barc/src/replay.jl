@@ -679,6 +679,8 @@ function plot_trajectories(track::Track, laps::Array{Int64},
 		trajectory = trajectories_xy[lap, :, 1 : 4]	
 		needed_iters = findmin(sumabs(trajectories_s[lap, :, :], 
 									  (1, 3)))[2] - 1 - NUM_STATES_BUFFER
+
+        println("LAP: $(lap), needed_iters: $(needed_iters)")
 		if needed_iters < 1
 			needed_iters = findmin(sumabs(trajectories_s[lap, NUM_STATES_BUFFER + 1 : end, :], 
 									  		(1, 3)))[2] - 1 - NUM_STATES_BUFFER
@@ -758,6 +760,9 @@ function replay_recording(file)
 	start_lap = 96
 	num_laps = 125
 	=#
+
+    start_lap = 30
+    num_laps = 35
 
 	laps = collect(start_lap : num_laps)
 	plot_trajectories(track, laps, trajectories_s, trajectories_xy, file)

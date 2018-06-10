@@ -208,7 +208,7 @@ function publish_inputs(optimizer::Optimizer, input_pub, agent::Agent)
 	current_time = to_sec(get_rostime())
 	optimizer.first_input.motor = optimizer.solution_inputs[1, 1]
 	optimizer.first_input.servo = optimizer.solution_inputs[1, 2]
-	println(optimizer.solution_inputs)
+	# println(optimizer.solution_inputs)
     publish(input_pub, optimizer.first_input)
     agent.time_inputs = current_time
 end
@@ -446,6 +446,7 @@ function race_iteration!(agent::Agent, optimizer::Optimizer,
 			# if get_total_distance(simulator.optimizers[i], simulator.track.total_length) >= 0
 			# println("direct distance on track: ", get_leading_agent_on_track(simulator, i))
 			leading = get_leading_agent_on_track(track, agent, optimizer)
+			agent.leading = leading
 			println("Leading " * string(agent.index) * ": ", leading)
 		end
 
@@ -485,7 +486,7 @@ function race_iteration!(agent::Agent, optimizer::Optimizer,
 			if NUM_AGENTS == 2
 				solveMpcProblem_obstacle(mpc_model, optimizer, agent, track, leading)
 			elseif NUM_AGENTS == 1
-				println("Current s: ", agent.states_s[agent.current_iteration, :])
+				# println("Current s: ", agent.states_s[agent.current_iteration, :])
 				solveMpcProblem_convhull(mpc_model, optimizer, agent, track)
 			end
 		end
@@ -499,7 +500,7 @@ function race_iteration!(agent::Agent, optimizer::Optimizer,
 	# Determines the optimal inputs and also states in s
 	agent.optimal_inputs = optimizer.solution_inputs
 	agent.predicted_s = optimizer.solution_states_s
-	println("predicted s: ", agent.predicted_s)
+	# println("predicted s: ", agent.predicted_s)
 
 	# Convert the prediction from s-coordinates to xy-coordinates for plotting
 	for j = 1 : HORIZON + 1
@@ -512,7 +513,7 @@ function race_iteration!(agent::Agent, optimizer::Optimizer,
 	# Apply the first input
 	agent.inputs[current_iteration, :] = agent.optimal_inputs[1, :]
 	agent.current_input = agent.optimal_inputs[1, :]
-	println("optimal inputs:", agent.optimal_inputs[:, :])
+	# println("optimal inputs:", agent.optimal_inputs[:, :])
 end
 
 function publish_xy(pub_xy, agent)
@@ -583,6 +584,7 @@ function get_leading_agent_on_track(track::Track, agent::Agent, optimizer::Optim
 	adv_s = optimizer.adv_predictions_s[1, 1]
 	track_length = track.total_length
 
+	#=
 	if current_s <= track_length / 2
 		if current_s > adv_s
 			return true
@@ -600,7 +602,25 @@ function get_leading_agent_on_track(track::Track, agent::Agent, optimizer::Optim
 			return false
 		end
 	end
-end
+	=#
+
+	distance = current_s - adv_s
+
+	if distance > 0
+		if distance < track.total_length / 2.0
+			return true
+		else 
+			return false
+		end
+	else
+		if - distance < track.total_length / 2.0
+			return false
+		else 
+			return true
+		end
+	end
+
+end	
 
 
 # Start race() function

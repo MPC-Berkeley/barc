@@ -119,6 +119,11 @@ function create_track!(track::Track)
 		  					   sin(theta - pi / 2)]
 	end
 
+	if track.shape == "l_shape"
+		track.xy_coords[140 : 160, 2] -= cumsum(0.0505319492481863 / 21 * ones(21))
+		track.xy_coords[161 : end, 2] -= 0.0505319492481863
+	end
+
 	# track.xy_coords = cumsum(track.xy_coords)
 	track.xy_outer += track.xy_coords
 	track.xy_inner += track.xy_coords

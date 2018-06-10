@@ -66,11 +66,14 @@ type Optimizer
 	adv_predictions_s::Array{Float64}
 	adv_current_lap::Int64
 	predictions_s::prediction
+	prediction_for_opp::prediction
 	first_input::ECU
 	adversarial::Bool
 	prediction_sub::RobotOS.Subscriber{barc.msg.prediction}
 	prediction_pub::RobotOS.Publisher{barc.msg.prediction}
+	prediction_opponent_pub::RobotOS.Publisher{barc.msg.prediction}
 	input_pub::RobotOS.Publisher{barc.msg.ECU}
+
 
 	Optimizer() = new()
 end
@@ -93,6 +96,7 @@ function init!(optimizer::Optimizer, agent::Agent, horizon::Int64)
 	optimizer.weights_progress = 0.5 * (- 1.0 * ones(horizon + 1))
 
 	optimizer.predictions_s = prediction()
+	optimizer.prediction_for_opp = prediction()
 	optimizer.first_input = ECU()
 	optimizer.adv_predictions_s = zeros(horizon + 1, 6)
 	optimizer.adv_predictions_s[:, 1] = 0.1 * rand(horizon + 1) + 10 * agent.index
@@ -104,6 +108,8 @@ function init!(optimizer::Optimizer, agent::Agent, horizon::Int64)
 										  (optimizer, dummy), 
 										  queue_size=1)::RobotOS.Subscriber{barc.msg.prediction}
 	optimizer.prediction_pub = Publisher("prediction", prediction, 
+										 queue_size=1)::RobotOS.Publisher{barc.msg.prediction}
+	optimizer.prediction_opponent_pub = Publisher("prediction_for_adv", prediction, 
 										 queue_size=1)::RobotOS.Publisher{barc.msg.prediction}
 	# optimizer.input_pub = Publisher("ecu", ECU, 
 	#								queue_size=1)::RobotOS.Publisher{barc.msg.ECU}

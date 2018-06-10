@@ -198,11 +198,19 @@ function xy_to_s(track::Track, xy_coord::Array{Float64})
 			argument = (dist_to_s1^2 + track.ds^2 - dist_to_s2^2) /
 					   (2 * dist_to_s1 * track.ds)
 
-			if argument < - 1.0 && argument >= - 1.0 - 1e-5
+            #=
+			if argument < - 1.0 && argument >= - 1.0 - 1e-2
 				argument = - 1.0
-			elseif argument > 1.0 && argument <= 1.0 + 1e-5
+			elseif argument > 1.0 && argument <= 1.0 + 1e-2
 				argument = 1.0
 			end
+            =#
+
+            if argument < - 1.0
+                argument = - 1.0
+            elseif argument > 1.0
+                argument = 1.0
+            end
 
 			abs_phi = acos(argument)
 

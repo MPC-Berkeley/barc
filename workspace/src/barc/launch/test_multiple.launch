@@ -10,9 +10,9 @@
     <param name="num_agents" type="int" value="2" />
 
     <!-- MACHINES -->
-    <machine name="yoga" address="127.0.0.1" user="lukas" timeout="20.0" env-loader="/home/lukas/barc/env_loader_yoga.sh" />
+    <machine name="yoga" address="192.168.10.74" user="lukas" timeout="20.0" env-loader="/home/lukas/barc/env_loader_yoga.sh" />
     <!-- <machine name="yoga" address="192.168.10.74" user="lukas" timeout="20.0" env-loader="/home/lukas/barc/env_loader_yoga.sh" /> -->
-    <machine name="ubuntu-pc" address="192.168.10.147" user="mpcubuntu" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc_vis.sh"/>
+    <machine name="ubuntu-pc" address="127.0.0.1" user="mpcubuntu" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc_vis.sh"/>
 
     <!-- AGENT 1 NODES-->
     <!-- AGENT-NODE 1-->
@@ -31,7 +31,8 @@
         <remap from="xy_prediction" to="agent_1/xy_prediction" />
         <remap from="selected_states" to="agent_1/selected_states" />
         <remap from="prediction" to="agent_1/prediction" />
-        <remap from="adv_prediction" to="agent_2/prediction" />
+        <remap from="adv_prediction" to="agent_2/prediction_for_adv" />
+        <remap from="prediction_for_adv" to="agent_1/prediction_for_adv" />
         <remap from="ecu_pwm" to="agent_1/ecu_pwm" />
     </node>
 
@@ -62,7 +63,8 @@
         <remap from="xy_prediction" to="agent_2/xy_prediction" />
         <remap from="selected_states" to="agent_2/selected_states" />
         <remap from="prediction" to="agent_2/prediction" />
-        <remap from="adv_prediction" to="agent_1/prediction" />
+        <remap from="adv_prediction" to="agent_1/prediction_for_adv" />
+        <remap from="prediction_for_adv" to="agent_2/prediction_for_adv" />
         <remap from="ecu_pwm" to="agent_2/ecu_pwm" />
     </node>
 
