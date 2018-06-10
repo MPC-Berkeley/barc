@@ -3,7 +3,7 @@ using RobotOS
 using JuMP
 using Ipopt
 using Types
-export MdlPf,MdlKin,MdlId,MdlDynLin,MdlKinLin
+export MdlPf,MdlKin,MdlId,MdlIdLin,MdlDynLin,MdlKinLin
     type MdlPf
         # Fields here provides a channel for JuMP model to communicate with data outside of it
         mdl::JuMP.Model
@@ -131,7 +131,7 @@ export MdlPf,MdlKin,MdlId,MdlDynLin,MdlKinLin
             dt   = get_param("controller/dt")
             L_a  = get_param("L_a")
             L_b  = get_param("L_b")
-            u_lb = [-2    -18/180*pi]
+            u_lb = [-1    -18/180*pi]
             u_ub = [ 2     18/180*pi]
             z_lb = [-Inf -Inf -Inf -0.5] # 1.s 2.ey 3.epsi 4.v
             z_ub = [ Inf  Inf  Inf  6.0] # 1.s 2.ey 3.epsi 4.v
@@ -358,6 +358,163 @@ export MdlPf,MdlKin,MdlId,MdlDynLin,MdlKinLin
                 @NLconstraint(mdl, z_Ol[i+1,6]  == z_Ol[i,6] + c_Psi[i,1]*z_Ol[i,6]/z_Ol[i,4] + 
                                                                c_Psi[i,2]*z_Ol[i,5]/z_Ol[i,4] + 
                                                                c_Psi[i,3]*u_Ol[i,2] + 
+                                                               GP_psiDot_e[i])                  # psiDot
+            end
+
+            @NLexpression(mdl, derivCost, sum{QderivZ[j]*sum{(z_Ol[i,j]-z_Ol[i+1,j])^2,i=1:N},j=1:6} +
+                                              QderivU[1]*sum{(u_Ol[i,1]-u_Ol[i+1,1])^2,i=delay_a+1:N-1} + 
+                                              QderivU[2]*sum{(u_Ol[i,2]-u_Ol[i+1,2])^2,i=delay_df+1:N-1} + 
+                                              QderivU[1]*(uPrev[delay_a+1,1] -u_Ol[delay_a+1, 1])^2 + 
+                                              QderivU[2]*(uPrev[delay_df+1,2]-u_Ol[delay_df+1,2])^2 )
+            @NLexpression(mdl, laneCost,    Q_lane*sum{1.0*eps_lane[i]+20.0*eps_lane[i]^2 , i=1:N})
+            @NLexpression(mdl, terminalCost,Q_term_cost*sum{alpha[i]*stateCost[i] , i=1:Nl*Np})
+            @NLexpression(mdl, slackCost,   sum{Q_slack[i]*(z_Ol[N+1,i]-sum{alpha[j]*selStates[j,i],j=1:Nl*Np})^2, i=1:6})
+
+            @NLobjective(mdl, Min, derivCost + laneCost +  terminalCost + slackCost)
+
+            m.mdl = mdl
+            m.z0 = z0
+            m.c = c
+            m.z_Ol = z_Ol
+            m.u_Ol = u_Ol
+            m.c_Vx = c_Vx
+            m.c_Vy = c_Vy
+            m.c_Psi = c_Psi
+            m.uPrev = uPrev
+
+            m.derivCost = derivCost
+            m.laneCost = laneCost
+            m.terminalCost= terminalCost 
+            m.selStates   = selStates    
+            m.stateCost   = stateCost   
+            m.GP_vy_e     = GP_vy_e
+            m.GP_psiDot_e = GP_psiDot_e
+            m.alpha       = alpha
+            return m
+        end
+    end
+
+    type MdlIdLin
+
+        mdl::JuMP.Model
+
+        z0::Array{JuMP.NonlinearParameter,1}
+        selStates::Array{JuMP.NonlinearParameter,2}
+        stateCost::Array{JuMP.NonlinearParameter,1}
+        c_Vx::Array{JuMP.NonlinearParameter,2}
+        c_Vy::Array{JuMP.NonlinearParameter,2}
+        c_Psi::Array{JuMP.NonlinearParameter,2}
+        uPrev::Array{JuMP.NonlinearParameter,2}
+        df_his::Array{JuMP.NonlinearParameter,1}
+        a_his::Array{JuMP.NonlinearParameter,1}
+        GP_vy_e::Array{JuMP.NonlinearParameter,1}
+        GP_psiDot_e::Array{JuMP.NonlinearParameter,1}
+
+        eps_lane::Array{JuMP.Variable,1}
+        alpha::Array{JuMP.Variable,1}
+        z_Ol::Array{JuMP.Variable,2}
+        u_Ol::Array{JuMP.Variable,2}
+
+        dsdt::Array{JuMP.NonlinearExpression,1}
+        c::Array{JuMP.NonlinearParameter,1}
+
+        derivCost::JuMP.NonlinearExpression
+        laneCost::JuMP.NonlinearExpression
+        terminalCost::JuMP.NonlinearExpression
+
+        function MdlIdLin(agent::Agent)
+            m = new()
+            dt      = get_param("controller/dt")
+            L_a     = get_param("L_a")
+            L_b     = get_param("L_b")
+            ey_max  = get_param("ey")*get_param("ey_tighten")/2
+            u_lb    = [ -2.0    -18/180*pi]
+            u_ub    = [  2.0     18/180*pi]
+            z_lb    = [-Inf -Inf -Inf    0 -Inf -Inf] # 1.s 2.ey 3.epsi 4.vx 5.vy 6.psi_dot
+            z_ub    = [ Inf  Inf  Inf  6.0  Inf  Inf] # 1.s 2.ey 3.epsi 4.vx 5.vy 6.psi_dot
+
+            N          = agent.mpcParams.N
+            QderivZ    = agent.mpcParams.QderivZ
+            QderivU    = agent.mpcParams.QderivU
+            Q_term_cost= agent.mpcParams.Q_term_cost
+            R          = agent.mpcParams.R
+            Q          = agent.mpcParams.Q
+            Q_lane     = agent.mpcParams.Q_lane
+            Q_slack    = agent.mpcParams.Q_slack
+
+            Np         = agent.SS.Np
+            Nl         = agent.SS.Nl
+
+            mdl = Model(solver = IpoptSolver(print_level=0,max_cpu_time=0.09)) #,linear_solver="ma27"))#,check_derivatives_for_naninf="yes"))#,linear_solver="ma57",print_user_options="yes"))
+            # 
+            @variable( mdl, z_Ol[1:(N+1),1:6], start=0.1)
+            @variable( mdl, u_Ol[1:N,1:2])
+            @variable( mdl, eps_lane[1:N] >= 0)   # eps for soft lane constraints
+            @variable( mdl, alpha[1:Nl*Np] >= 0)    # coefficients of the convex hull
+
+            for j=1:N
+                for i=1:2
+                    setlowerbound(u_Ol[j,i], u_lb[i])
+                    setupperbound(u_Ol[j,i], u_ub[i])
+                end
+                setlowerbound(z_Ol[j+1,4], z_lb[4])
+                setupperbound(z_Ol[j+1,4], z_ub[4])
+            end
+
+            @NLparameter(mdl, z0[i=1:6] == 0)
+            @NLparameter(mdl, GP_vy_e[i=1:N] == 0)
+            @NLparameter(mdl, GP_psiDot_e[i=1:N] == 0)
+            @NLparameter(mdl, c[1:N] == 0)
+            @NLparameter(mdl, c_Vx[1:N,1:5]  == 0)
+            @NLparameter(mdl, c_Vy[1:N,1:4]  == 0)
+            @NLparameter(mdl, c_Psi[1:N,1:4] == 0)
+            @NLparameter(mdl, uPrev[1:N,1:2] == 0)
+            delay_a = agent.mpcParams.delay_a
+            if delay_a > 0
+                @NLparameter(mdl, a_his[1:agent.mpcParams.delay_a] == 0)
+                @NLconstraint(mdl, [i=1:agent.mpcParams.delay_a], u_Ol[i,1] == a_his[i])
+                m.a_his  = a_his
+            end
+            delay_df = agent.mpcParams.delay_df
+            if delay_df > 0
+                @NLparameter(mdl, df_his[1:agent.mpcParams.delay_df] == 0)
+                @NLconstraint(mdl, [i=1:agent.mpcParams.delay_df], u_Ol[i,2] == df_his[i])
+                m.df_his = df_his
+            end
+
+            @NLparameter(mdl, selStates[1:Nl*Np,1:6] == 0)
+            @NLparameter(mdl, stateCost[1:Nl*Np] == 0)   
+
+            @NLconstraint(mdl, [i=1:6], z_Ol[1,i] == z0[i])
+            @NLconstraint(mdl, [i=2:N+1], z_Ol[i,2] <= ey_max + eps_lane[i-1])
+            @NLconstraint(mdl, [i=2:N+1], z_Ol[i,2] >= -ey_max - eps_lane[i-1])
+            @NLconstraint(mdl, sum{alpha[i],i=1:Nl*Np} == 1)
+
+            @NLexpression(mdl, dsdt[i = 1:N], (z_Ol[i,4]*cos(z_Ol[i,3]) - z_Ol[i,5]*sin(z_Ol[i,3]))/(1-z_Ol[i,2]*c[i]))
+
+            # for i=1:n_state
+            #     @NLconstraint(mdl, z_Ol[N+1,i] == sum(alpha[j]*selStates[j,i] for j=1:Nl*Np))
+            # end
+
+            # System dynamics
+            for i=1:N
+                @NLconstraint(mdl, z_Ol[i+1,1]  == z_Ol[i,1] + dt * dsdt[i])                    # s
+                @NLconstraint(mdl, z_Ol[i+1,2]  == z_Ol[i,2] + dt * (z_Ol[i,4]*sin(z_Ol[i,3]) + z_Ol[i,5]*cos(z_Ol[i,3])))  # eY
+                @NLconstraint(mdl, z_Ol[i+1,3]  == z_Ol[i,3] + dt * (z_Ol[i,6]-dsdt[i]*c[i]))   # ePsi
+                @NLconstraint(mdl, z_Ol[i+1,4]  == z_Ol[i,4] + c_Vx[i,1]*z_Ol[i,4] + 
+                                                               c_Vx[i,2]*z_Ol[i,5] +
+                                                               c_Vx[i,3]*z_Ol[i,6] +
+                                                               c_Vx[i,4]*u_Ol[i,1] +
+                                                               c_Vx[i,5]*u_Ol[i,2])
+                @NLconstraint(mdl, z_Ol[i+1,5]  == z_Ol[i,5] + c_Vy[i,1]*z_Ol[i,4] + 
+                                                               c_Vy[i,2]*z_Ol[i,5] + 
+                                                               c_Vy[i,3]*z_Ol[i,6] + 
+                                                               c_Vy[i,4]*u_Ol[i,2] + 
+                                                               GP_vy_e[i])                      # vy
+                @NLconstraint(mdl, z_Ol[i+1,6]  == z_Ol[i,6] + c_Psi[i,1]*z_Ol[i,4] + 
+                                                               c_Psi[i,2]*z_Ol[i,5] +
+                                                               c_Psi[i,3]*z_Ol[i,6] + 
+                                                               c_Psi[i,4]*u_Ol[i,2] + 
                                                                GP_psiDot_e[i])                  # psiDot
             end
 
@@ -774,6 +931,46 @@ import CarSim:carPreDyn, carPreId
     end
 
     function solveId(mdl::MdlId,agent::Agent)
+
+        s=vcat(agent.posInfo.s,agent.mpcSol.z_prev[3:end,1])
+        curvature=curvature_prediction(s,agent.track)
+        z_curr = [agent.posInfo.s,agent.posInfo.ey,agent.posInfo.epsi,agent.posInfo.vx,agent.posInfo.vy,agent.posInfo.psiDot]
+
+        if agent.mpcParams.delay_df > 0
+            setvalue(mdl.df_his,agent.mpcSol.df_his)
+        end
+        if agent.mpcParams.delay_a > 0
+            setvalue(mdl.a_his, agent.mpcSol.a_his)
+        end
+
+        setvalue(mdl.z0,            z_curr)
+        setvalue(mdl.uPrev,         agent.mpcSol.u_prev)
+        setvalue(mdl.c,             curvature)
+        setvalue(mdl.selStates,     agent.SS.selStates)
+        setvalue(mdl.stateCost,     agent.SS.stateCost)
+        setvalue(mdl.GP_vy_e,       agent.gpData.GP_vy_e)
+        setvalue(mdl.GP_psiDot_e,   agent.gpData.GP_psiDot_e)
+
+        setvalue(mdl.c_Vx, agent.sysID.c_Vx)
+        setvalue(mdl.c_Vy, agent.sysID.c_Vy)
+        setvalue(mdl.c_Psi,agent.sysID.c_Psi)
+
+        agent.mpcSol.sol_status  = solve(mdl.mdl)
+        agent.mpcSol.u = getvalue(mdl.u_Ol)
+        agent.mpcSol.z = getvalue(mdl.z_Ol)
+
+        agent.mpcSol.a_x = agent.mpcSol.u[1+agent.mpcParams.delay_a,1] 
+        agent.mpcSol.d_f = agent.mpcSol.u[1+agent.mpcParams.delay_df,2]
+        agent.cmd.motor = agent.mpcSol.a_x 
+        agent.cmd.servo = agent.mpcSol.d_f 
+
+        push!(agent.mpcSol.a_his,agent.mpcSol.a_x)
+        shift!(agent.mpcSol.a_his)
+        push!(agent.mpcSol.df_his,agent.mpcSol.d_f)
+        shift!(agent.mpcSol.df_his)
+    end
+
+    function solveIdLin(mdl::MdlIdLin,agent::Agent)
 
         s=vcat(agent.posInfo.s,agent.mpcSol.z_prev[3:end,1])
         curvature=curvature_prediction(s,agent.track)

@@ -10,3 +10,7 @@ float64[] SS_vx
 float64[] SS_s
 float64[] z_iden_x
 float64[] z_iden_y
+float64[] lapTime
+int64[]   lapNum
+int64[]   cost
+float64[] v_avg

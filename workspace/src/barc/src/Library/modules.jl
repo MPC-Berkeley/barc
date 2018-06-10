@@ -242,7 +242,7 @@ export SafeSet,SysID,MpcSol,MpcParams,ModelParams,GPData
                 mpcParams.Q             = [0.0,50.0,5.0,20.0]
                 mpcParams.R             = 0*[10.0,10.0]
                 mpcParams.QderivU       = 1.0*[1.0,5.0]
-                mpcParams.Q_term_cost   = 0.05
+                mpcParams.Q_term_cost   = 0.5
                 mpcParams.Q_lane        = 10.0
                 if mpcParams.n_state == 6
                     mpcParams.QderivZ = 1.0*[0,0.1,0.1,2,0.1,0.0]
@@ -332,33 +332,25 @@ export SafeSet,SysID,MpcSol,MpcParams,ModelParams,GPData
             history=new()
             N = get_param("controller/N")
             n_state = get_param("controller/n_state")
-            history.c_Vx    = zeros(BUFFERSIZE,lapNum,3)
-            history.c_Vy    = zeros(BUFFERSIZE,lapNum,4)
-            history.c_Psi   = zeros(BUFFERSIZE,lapNum,3)
+            if get_param("controller/SYS_ID_LIN_FLAG")
+                history.c_Vx    = zeros(BUFFERSIZE,lapNum,5)
+                history.c_Vy    = zeros(BUFFERSIZE,lapNum,4)
+                history.c_Psi   = zeros(BUFFERSIZE,lapNum,4)
+            else
+                history.c_Vx    = zeros(BUFFERSIZE,lapNum,3)
+                history.c_Vy    = zeros(BUFFERSIZE,lapNum,4)
+                history.c_Psi   = zeros(BUFFERSIZE,lapNum,3)
+            end
             history.SS          = zeros(BUFFERSIZE,lapNum,get_param("controller/Nl")*get_param("controller/Np"),n_state)
             history.feature_z   = zeros(BUFFERSIZE,lapNum,get_param("controller/feature_Np"),6)
             history.feature_u   = zeros(BUFFERSIZE,lapNum,get_param("controller/feature_Np"),2)
             history.GP_vy       = zeros(BUFFERSIZE,lapNum,N)
             history.GP_psiDot   = zeros(BUFFERSIZE,lapNum,N)
-            if get_param("PF_flag")
-                history.u       = zeros(BUFFERSIZE,lapNum,N,2)
-                history.z       = zeros(BUFFERSIZE,lapNum,N+1,6)
-                history.cost    = 2*ones(lapNum)
-                history.ax      = zeros(BUFFERSIZE,lapNum)
-                history.ay      = zeros(BUFFERSIZE,lapNum)
-            else
-                if get_param("sim_flag")
-                    data  = load("$(homedir())/simulations/PF.jld")
-                else
-                    data  = load("$(homedir())/experiments/PF.jld")
-                end
-                history_PF = data["history"]
-                history.z = history_PF.z
-                history.u = history_PF.u
-                history.cost = history_PF.cost
-                history.ax = history_PF.ax
-                history.ay = history_PF.ay
-            end
+            history.u       = zeros(BUFFERSIZE,lapNum,N,2)
+            history.z       = zeros(BUFFERSIZE,lapNum,N+1,6)
+            history.cost    = 2*ones(lapNum)
+            history.ax      = zeros(BUFFERSIZE,lapNum)
+            history.ay      = zeros(BUFFERSIZE,lapNum)
             return history
         end
     end
@@ -400,13 +392,13 @@ export SafeSet,SysID,MpcSol,MpcParams,ModelParams,GPData
         stateCost::Array{Float64,1}
         function SafeSet(BUFFERSIZE::Int64,lapNum::Int64)
             SS = new()
-            n_state     = get_param("controller/n_state")
+            n_state = get_param("controller/n_state")
             SS.Np   = get_param("controller/Np")
             SS.Nl   = get_param("controller/Nl")
             SS.selStates = zeros(SS.Nl*SS.Np,n_state)
             SS.stateCost = zeros(SS.Nl*SS.Np)
             if get_param("PF_flag")
-                SS.oldSS    = NaN*ones(BUFFERSIZE,lapNum,n_state)
+                SS.oldSS    = NaN*ones(BUFFERSIZE,lapNum,6)
                 SS.oldSS_u  = NaN*ones(BUFFERSIZE,lapNum,2)
                 SS.oldCost  = ones(lapNum)
             else
@@ -461,9 +453,15 @@ export SafeSet,SysID,MpcSol,MpcParams,ModelParams,GPData
             sysID.select_z  = zeros(sysID.feature_Np,6,2)
             sysID.select_u  = zeros(sysID.feature_Np,2)
             # SYS ID result 
-            sysID.c_Vx  = zeros(N,3)
-            sysID.c_Vy  = zeros(N,4)
-            sysID.c_Psi = zeros(N,3)
+            if get_param("controller/SYS_ID_LIN_FLAG")
+                sysID.c_Vx  = zeros(N,5)    
+                sysID.c_Vy  = zeros(N,4)    
+                sysID.c_Psi = zeros(N,4)
+            else    
+                sysID.c_Vx  = zeros(N,3)
+                sysID.c_Vy  = zeros(N,4)
+                sysID.c_Psi = zeros(N,3)
+            end
             return sysID
         end
     end
@@ -555,7 +553,8 @@ export SafeSet,SysID,MpcSol,MpcParams,ModelParams,GPData
         sim_flag::Bool
         feature_flag::Bool
         PF_FLAG::Bool
-        TV_FLAG::Bool # dummy attribute for controller without SYSID
+        TV_FLAG::Bool           # dummy attribute for controller without SYSID
+        SYS_ID_LIN_FLAG::Bool   # dummy attribute for controller without SYSID
         GP_LOCAL_FLAG::Bool
         GP_FULL_FLAG::Bool
         folder_name::ASCIIString
@@ -569,6 +568,7 @@ export SafeSet,SysID,MpcSol,MpcParams,ModelParams,GPData
             raceSet.sim_flag        = get_param("sim_flag")
             raceSet.feature_flag    = get_param("feature_flag")
             raceSet.TV_FLAG         = get_param("controller/TV_FLAG")
+            raceSet.SYS_ID_LIN_FLAG = get_param("controller/SYS_ID_LIN_FLAG")
             raceSet.GP_LOCAL_FLAG   = get_param("controller/GP_LOCAL_FLAG")
             raceSet.GP_FULL_FLAG    = get_param("controller/GP_FULL_FLAG")
             if get_param("sim_flag")
@@ -807,6 +807,16 @@ export find_idx, curvature_prediction, lapSwitch, SE_callback, visualUpdate
             (z_iden_x, z_iden_y) = trackFrame_to_xyFrame(agent.sysID.select_z[:,:,1],agent.track)
             mpc_vis.z_iden_x  = z_iden_x
             mpc_vis.z_iden_y  = z_iden_y
+
+            if !agent.raceSet.PF_FLAG
+                # LapTime RELATED DATA UPDATE
+                v_avg = [mean(agent.SS.oldSS[1:Int(agent.SS.oldCost[i]),i,4]) for i in 1:agent.lapStatus.lap-1]
+                mpc_vis.v_avg = round(v_avg,2) 
+                lapTime = [agent.track.s/v for v in v_avg]
+                mpc_vis.lapTime = round(lapTime,2) 
+                mpc_vis.cost = [Int(agent.SS.oldCost[i]) for i in 1:agent.lapStatus.lap-1]
+                mpc_vis.lapNum = [Int(i) for i in 1:agent.lapStatus.lap-1]
+            end
         end
     end
 end # end of module ControllerHelper
@@ -820,9 +830,9 @@ export buildFeatureSet, sysIdTi, sysIdTv
         z = Array{Float64,2}(0,6)
         u = Array{Float64,2}(0,2)
         for i in (agent.lapStatus.lap-Nl) : (agent.lapStatus.lap-1)
-            cost = Int(agent.history.cost[i])
-            z = vcat(z,reshape(agent.SS.z[1:cost,i,1,:],cost,6))
-            u = vcat(u,reshape(agent.SS.u[1:cost,i,1,:],cost,2))
+            cost = Int(agent.SS.oldCost[i])
+            z = vcat(z,reshape(agent.SS.oldSS[1:cost,i,:],cost,6))
+            u = vcat(u,reshape(agent.SS.oldSS_u[1:cost,i,:],cost,2))
         end
         agent.sysID.feature_z = z
         agent.sysID.feature_u = u
@@ -845,7 +855,6 @@ export buildFeatureSet, sysIdTi, sysIdTv
     end
 
     function coeffId(agent::Agent,ID_idx::Int64)
-
         A_vx = zeros(agent.sysID.feature_Np,3)
         A_vy = zeros(agent.sysID.feature_Np,4)
         A_psi= zeros(agent.sysID.feature_Np,3)
@@ -871,11 +880,6 @@ export buildFeatureSet, sysIdTi, sysIdTv
         # c_Vy = A_vy\y_vy
         # c_Psi = A_psi\y_psi
 
-        # BY IVS()
-        # c_Vx = inv(A_vx'*A_vx)*A_vx'*y_vx
-        # c_Vy = inv(A_vy'*A_vy)*A_vy'*y_vy
-        # c_Psi = inv(A_psi'*A_psi)*A_psi'*y_psi
-
         # BACKSLASH WITH REGULARIZATION
         mu_Vx = zeros(3,3); mu_Vx[1,1] = 1e-5
         mu_Vy = zeros(4,4); mu_Vy[1,1] = 1e-5
@@ -883,20 +887,54 @@ export buildFeatureSet, sysIdTi, sysIdTv
         agent.sysID.c_Vx[ID_idx,:]  = (A_vx'*A_vx+mu_Vx)\(A_vx'*y_vx)
         agent.sysID.c_Vy[ID_idx,:]  = (A_vy'*A_vy+mu_Vy)\(A_vy'*y_vy)
         agent.sysID.c_Psi[ID_idx,:] = (A_psi'*A_psi+mu_Psi)\(A_psi'*y_psi)
+    end
 
+    function coeffIdLin(agent::Agent,ID_idx::Int64)
+        A_vx = zeros(agent.sysID.feature_Np,5)
+        A_vy = zeros(agent.sysID.feature_Np,4)
+        A_psi= zeros(agent.sysID.feature_Np,4)
 
-        # println("c_Vx is $c_Vx")
-        # println("c_Vx is $c_Vy")
-        # println("c_Vx is $c_Psi")
-        # c_Vx[1] = max(-0.3,min(0.3,c_Vx[1]))
-        # c_Vy[2] = max(-1,min(1,c_Vy[2]))
-        # c_Vy[3] = max(-1,min(1,c_Vy[3]))
+        y_vx  = agent.sysID.select_z[:,4,2] - agent.sysID.select_z[:,4,1]
+        y_vy  = agent.sysID.select_z[:,5,2] - agent.sysID.select_z[:,5,1]
+        y_psi = agent.sysID.select_z[:,6,2] - agent.sysID.select_z[:,6,1]
+
+        for i=1:agent.sysID.feature_Np
+            A_vx[i,1]   = agent.sysID.select_z[i,4,1]
+            A_vx[i,2]   = agent.sysID.select_z[i,5,1]
+            A_vx[i,3]   = agent.sysID.select_z[i,6,1]
+            A_vx[i,4]   = agent.sysID.select_u[i,1]
+            A_vx[i,5]   = agent.sysID.select_u[i,2]
+            A_vy[i,1]   = agent.sysID.select_z[i,4,1]
+            A_vy[i,2]   = agent.sysID.select_z[i,5,1]
+            A_vy[i,3]   = agent.sysID.select_z[i,6,1]
+            A_vy[i,4]   = agent.sysID.select_u[i,2]
+            A_psi[i,1]  = agent.sysID.select_z[i,4,1]
+            A_psi[i,2]  = agent.sysID.select_z[i,5,1]
+            A_psi[i,3]  = agent.sysID.select_z[i,6,1]
+            A_psi[i,4]  = agent.sysID.select_u[i,2]
+        end
+        # BACKSLASH OPERATOR WITHOUT REGULIZATION
+        agent.sysID.c_Vx[ID_idx,:]  = A_vx\y_vx
+        agent.sysID.c_Vy[ID_idx,:]  = A_vy\y_vy
+        agent.sysID.c_Psi[ID_idx,:] = A_psi\y_psi
+
+        # BACKSLASH WITH REGULARIZATION
+        # mu_Vx = zeros(5,5); mu_Vx[1,1] = 1e-5
+        # mu_Vy = zeros(4,4); mu_Vy[1,1] = 1e-5
+        # mu_Psi = zeros(4,4); mu_Psi[2,2] = 1e-5
+        # agent.sysID.c_Vx[ID_idx,:]  = (A_vx'*A_vx+mu_Vx)\(A_vx'*y_vx)
+        # agent.sysID.c_Vy[ID_idx,:]  = (A_vy'*A_vy+mu_Vy)\(A_vy'*y_vy)
+        # agent.sysID.c_Psi[ID_idx,:] = (A_psi'*A_psi+mu_Psi)\(A_psi'*y_psi)
     end
 
     function sysIdTi(agent::Agent)
         curr_state = [agent.posInfo.vx agent.posInfo.vy agent.posInfo.psiDot agent.mpcSol.u[1,1] agent.mpcSol.u[1,2]]
         findFeature(agent,curr_state)
-        coeffId(agent,1)
+        if agent.raceSet.SYS_ID_LIN_FLAG
+            coeffIdLin(agent,1)
+        else
+            coeffId(agent,1)
+        end
         for i in 2:agent.mpcParams.N
             agent.sysID.c_Vx[i,:]   = agent.sysID.c_Vx[1,:] 
             agent.sysID.c_Vy[i,:]   = agent.sysID.c_Vy[1,:]
@@ -909,7 +947,11 @@ export buildFeatureSet, sysIdTi, sysIdTv
         state = vcat(curr_state,hcat(agent.mpcSol.z_prev[3:end,4:6],agent.mpcSol.u_prev[2:end,:]))
         for i in 1:agent.mpcParams.N
             findFeature(agent,state[i,:])
-            coeffId(agent,i)
+            if agent.raceSet.SYS_ID_LIN_FLAG
+                coeffIdLin(agent,1)
+            else
+                coeffId(agent,1)
+            end
         end
     end
 end # end of SysIDFunc module
@@ -929,9 +971,9 @@ export findSS
 
         cost_correction = findmin(agent.SS.oldCost[agent.lapStatus.lap-Nl-1:agent.lapStatus.lap-1])[1]
         for i=1:Nl
-            SS_befo=agent.SS.oldSS[:,1:agent.mpcParams.n_state,agent.lapStatus.lap-i-1] # inculde those unfilled zeros spots
-            SS_curr=agent.SS.oldSS[:,1:agent.mpcParams.n_state,agent.lapStatus.lap-i]   # inculde those unfilled zeros spots
-            SS_next=agent.SS.oldSS[:,1:agent.mpcParams.n_state,agent.lapStatus.lap-i+1] # inculde those unfilled zeros spots
+            SS_befo=agent.SS.oldSS[:,agent.lapStatus.lap-i-1,1:agent.mpcParams.n_state] # inculde those unfilled zeros spots
+            SS_curr=agent.SS.oldSS[:,agent.lapStatus.lap-i,  1:agent.mpcParams.n_state] # inculde those unfilled zeros spots
+            SS_next=agent.SS.oldSS[:,agent.lapStatus.lap-i+1,1:agent.mpcParams.n_state] # inculde those unfilled zeros spots
             all_s=SS_curr[1:Int(agent.SS.oldCost[agent.lapStatus.lap-i]),1]
             if target_s>agent.track.s
                 target_s-=agent.track.s
@@ -1157,7 +1199,8 @@ export historyCollect, gpDataCollect
             agent.history.z[agent.lapStatus.it,agent.lapStatus.lap,:,1:agent.mpcParams.n_state]=agent.mpcSol.z
             agent.history.z[agent.lapStatus.it,agent.lapStatus.lap,1,4:6]= z_curr[4:6]
             agent.history.u[agent.lapStatus.it,agent.lapStatus.lap,:,:]  = agent.mpcSol.u
-            agent.SS.oldSS[agent.lapStatus.it,:,agent.lapStatus.lap]     = z_curr
+            agent.SS.oldSS[agent.lapStatus.it,agent.lapStatus.lap,:]     = z_curr
+            agent.SS.oldSS_u[agent.lapStatus.it,agent.lapStatus.lap,:]   = agent.mpcSol.u[1,:]
         end
         
         # SafeSet history

@@ -64,13 +64,21 @@ class Plotter(object):
         self.traj_h, = self.ax.plot(self.traj_x,self.traj_y,"b")
         self.pre_x = zeros(rospy.get_param("controller/N"))
         self.pre_y = zeros(rospy.get_param("controller/N"))
-        self.pre_h, = self.ax.plot(self.pre_x,self.pre_y,"b*-")
+        self.pre_h, = self.ax.plot(self.pre_x,self.pre_y,"b.-")
         self.SS_x = zeros(rospy.get_param("controller/Nl")*rospy.get_param("controller/Np"))
         self.SS_y = zeros(rospy.get_param("controller/Nl")*rospy.get_param("controller/Np"))
         self.SS_h, = self.ax.plot(self.SS_x,self.SS_y,"ro",alpha=0.3)
         self.sysID_x = zeros(rospy.get_param("controller/feature_Nl")*rospy.get_param("controller/feature_Np"))
         self.sysID_y = zeros(rospy.get_param("controller/feature_Nl")*rospy.get_param("controller/feature_Np"))
         self.sysID_h, = self.ax.plot(self.sysID_x,self.sysID_y,"go",alpha=0.3)
+
+        # ATTRIBUTE FOR LAP TIME PLOT
+        self.lapTime = zeros(5)  
+        self.lapNum = [1]*5  
+        self.cost = [0]*5
+        self.v_avg = zeros(5)
+        self.lapTime_s = [self.ax.annotate("Time: 0.00s, It: 0, v: 0.00 m/s", xy=[0.5,(0.6*i+5)/(len(self.lapTime)+10)], xycoords= "axes fraction", 
+                                               fontsize=10, verticalalignment="top", horizontalalignment="center") for i in range(5)]
 
     def updatePlot(self):
         self.car_h.set_data(self.car_update[0],self.car_update[1])
@@ -81,6 +89,14 @@ class Plotter(object):
         self.pre_h.set_data(self.pre_x,self.pre_y)
         self.SS_h.set_data(self.SS_x,self.SS_y)
         self.sysID_h.set_data(self.sysID_x,self.sysID_y)
+
+    def updateLapTime(self):
+        if len(self.lapTime)<len(self.lapTime_s):
+            for i in range(len(self.lapTime)):
+                self.lapTime_s[i].set_text("Lap: {}, Time: {}s, It: {}, v: {} m/s".format(self.lapNum[-i-1], self.lapTime[-i-1],self.cost[-i-1],self.v_avg[-i-1]))
+        else:
+            for i in range(len(self.lapTime_s)):
+                self.lapTime_s[i].set_text("Lap: {}, Time: {}s, It: {}, v: {} m/s".format(self.lapNum[-i-1], self.lapTime[-i-1],self.cost[-i-1],self.v_avg[-i-1]))
 
     def plotTrack(self,track):
         self.ax.plot(track.nodes[0,:],       track.nodes[1,:],       "k--", alpha=0.4)
@@ -113,6 +129,12 @@ class Plotter(object):
         self.sysID_x = mpc_vis.z_iden_x
         self.sysID_y = mpc_vis.z_iden_y
 
+        # LapTime related data update
+        self.lapTime = mpc_vis.lapTime
+        self.lapNum  = mpc_vis.lapNum
+        self.cost    = mpc_vis.cost
+        self.v_avg   = mpc_vis.v_avg
+
 def main():
     plotter = Plotter()
     loop_rate = 50.0
@@ -128,8 +150,14 @@ def main():
     
     while not rospy.is_shutdown():
         plotter.updatePlot()
+        plotter.updateLapTime()
         plotter.fig.canvas.draw()
         rate.sleep()
+    
+    # SAVING THE LAST FRAME OF FIGURE
+    homedir = os.path.expanduser("~")
+    pathSave = os.path.join(homedir,"BARC_visual.png")
+    plotter.fig.savefig(pathSave,dpi=300)
 
 if __name__ == '__main__':
     try:
