@@ -189,7 +189,7 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode):
         A, B, Error = Regression(ClosedLoopDataPID.x, ClosedLoopDataPID.u, lamb)
         print "A matrix: \n", A
         print "B matrix: \n", B      
-        Q = 1*np.diag([1.0, 1.0, 1, 10.0, 0.0, 10.0]) # vx, vy, wz, epsi, s, ey
+        Q = 1*np.diag([100.0, 1.0, 1, 10.0, 0.0, 10.0]) # vx, vy, wz, epsi, s, ey
         R = np.diag([1.0, 1.0]) # delta, a
         N = 12
         ControllerLap0 = PathFollowingLTI_MPC(A, B, Q, R, N, vt)
@@ -204,7 +204,7 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode):
         A, B, Error = Regression(ClosedLoopDataPID.x, ClosedLoopDataPID.u, lamb)
         print "A matrix: \n", A
         print "B matrix: \n", B      
-        Q = 1*np.diag([1.0, 1.0, 1, 10.0, 0.0, 10.0]) # vx, vy, wz, epsi, s, ey
+        Q = 1*np.diag([100.0, 1.0, 1, 10.0, 0.0, 10.0]) # vx, vy, wz, epsi, s, ey
         R = np.diag([1.0, 1.0]) # delta, a
         N = 12
         Controller = PathFollowingLTI_MPC(A, B, Q, R, N, vt)
@@ -234,7 +234,7 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode):
         # Tuning Parameters
         Qslack  = 10 * np.diag([10, 1, 1, 1, 10, 1])          # Cost on the slack variable for the terminal constraint
         Q_LMPC  =  0 * np.diag([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])  # State cost x = [vx, vy, wz, epsi, s, ey]
-        R_LMPC  =  1 * np.diag([1.0, 1.0])                      # Input cost u = [delta, a]
+        R_LMPC  =  0 * np.diag([1.0, 1.0])                      # Input cost u = [delta, a]
         dR_LMPC =  5 * np.array([1.0, 1.0])                     # Input rate cost u
         Controller = ControllerLMPC(numSS_Points, numSS_it, N, Qslack, Q_LMPC, R_LMPC, dR_LMPC, 6, 2, shift, 
                                         dt, map, Laps, TimeLMPC, LMPC_Solver, SysID_Solver, flag_LTV)

@@ -15,7 +15,7 @@ from trackInitialization import Map
 
 
 def main():
-    file_data = open(sys.path[0]+'/data/simulations/ClosedLoopDataLMPC.obj', 'rb')
+    file_data = open(sys.path[0]+'/data/experiments/ClosedLoopDataLMPC.obj', 'rb')
     ClosedLoopData = pickle.load(file_data)
     LMPController = pickle.load(file_data)
     LMPCOpenLoopData = pickle.load(file_data)    
