@@ -16,7 +16,7 @@
 import sys
 sys.path.append(sys.path[0]+'/ControllersObject')
 sys.path.append(sys.path[0]+'/Utilities')
-
+from sensor_msgs.msg import Imu
 import rospy
 from marvelmind_nav.msg import hedge_pos, hedge_imu_fusion
 import numpy as np
@@ -27,7 +27,10 @@ import pdb
 import matplotlib.patches as patches
 
 def main():
-    rospy.init_node("realTimePlotting")
+    rospy.init_node("imuPlotting")
+
+    imu = ImuClass(t0)
+
     StateView = False
 
     data = EstimationAndMesuredData()
@@ -122,144 +125,112 @@ def main():
 
         rate.sleep()
 
-class EstimationAndMesuredData():
-    """Object collecting closed loop data points
+class ImuClass(object):
+    """ Object collecting GPS measurement data
     Attributes:
-        updateInitialConditions: function which updates initial conditions and clear the memory
+        Measurement:
+            1.yaw 2.psiDot 3.ax 4.ay 5.roll 6.pitch
+        Measurement history:
+            1.yaw_his 2.psiDot_his 3.ax_his 4.ay_his 5.roll_his 6.pitch_his
+        Time stamp
+            1.t0 2.time_his
     """
-    def __init__(self):
-        """Initialization
+    def __init__(self,t0):
+        """ Initialization
         Arguments:
-            
+            t0: starting measurement time
         """
-        rospy.Subscriber("hedge_imu_fusion", hedge_imu_fusion, self.gps_callback)
-        rospy.Subscriber("pos_info", pos_info, self.pos_info_callback)
-        rospy.Subscriber("OL_predictions", prediction, self.prediction_callback)
-        rospy.Subscriber('SS', SafeSetGlob, self.SS_callback)
 
-        self.s    = []
-        self.ey   = []
-        self.epsi = []
+        rospy.Subscriber('imu/data', Imu, self.imu_callback, queue_size=1)
 
-        self.SSx  = []
-        self.SSy  = []
+        # Imu measurement
+        self.yaw     = 0.0
+        self.yawInt  = 0.0
+        self.psiDot  = 0.0
+        self.ax      = 0.0
+        self.ay      = 0.0
+        self.roll    = 0.0
+        self.pitch   = 0.0
+        
+        # Imu measurement history
+        self.yaw_his     = []
+        self.psiDot_his  = []
+        self.ax_his      = []
+        self.ay_his      = []
+        self.roll_his    = []
+        self.pitch_his   = []
+        
+        # time stamp
+        self.t0          = t0
+        self.time_his    = []
 
-        self.MeasuredData = [0.0, 0.0]
+        # Time for yawDot integration
+        self.curr_time = rospy.get_rostime().to_sec()
+        self.prev_time = self.curr_time
 
-    def gps_callback(self, msg):
-        self.MeasuredData = [msg.x_m, msg.y_m]
+    def imu_callback(self,data):
+        """Unpack message from sensor, IMU"""
+        
+        self.curr_time = rospy.get_rostime().to_sec()
 
-    def pos_info_callback(self, msg):
-        self.EstimatedData = [msg.v_x, msg.v_y, msg.psiDot, msg.psi, msg.x, msg.y]
+        if self.prev_time > 0:
+            self.yawInt += self.psiDot * (self.curr_time-self.prev_time)
+   
+        ori = data.orientation
+        quaternion = (ori.x, ori.y, ori.z, ori.w)
+        (roll_raw, pitch_raw, dummy) = transformations.euler_from_quaternion(quaternion)
+        self.roll   = roll_raw
+        self.pitch  = pitch_raw
 
-    def prediction_callback(self, msg):
-        self.s    = msg.s
-        self.ey   = msg.ey
-        self.epsi = msg.epsi
+        w_z = data.angular_velocity.z
+        a_x = data.linear_acceleration.x
+        a_y = data.linear_acceleration.y
+        a_z = data.linear_acceleration.z
 
-    def SS_callback(self, msg):
-        self.SSx  = msg.SSx
-        self.SSy  = msg.SSy
+        self.psiDot = w_z
+        # Transformation from imu frame to vehicle frame (negative roll/pitch and reversed matrix multiplication to go back)
+        self.ax = cos(-pitch_raw)*a_x + sin(-pitch_raw)*sin(-roll_raw)*a_y - sin(-pitch_raw)*cos(-roll_raw)*a_z
+        self.ay = cos(-roll_raw)*a_y + sin(-roll_raw)*a_z
 
-    def readEstimatedData(self):
-        return self.EstimatedData
+        self.prev_time = self.curr_time
+
+    def saveHistory(self):
+        """ Save measurement data into history array"""
+
+        self.time_his.append(self.curr_time)
+        
+        self.yaw_his.append(self.yaw)
+        self.psiDot_his.append(self.psiDot)
+        self.ax_his.append(self.ax)
+        self.ay_his.append(self.ay)
+        self.roll_his.append(self.roll)
+        self.pitch_his.append(self.pitch)
 
 
     
 # ===================================================================================================================================== #
 # ============================================================= Internal Functions ==================================================== #
 # ===================================================================================================================================== #
-def _initializeFigure_xy(map):
-    xdata = []; ydata = []
-    fig = plt.figure()
-    plt.ion()
-    axtr = plt.axes()
-
-    Points = np.floor(10 * (map.PointAndTangent[-1, 3] + map.PointAndTangent[-1, 4]))
-    Points1 = np.zeros((Points, 2))
-    Points2 = np.zeros((Points, 2))
-    Points0 = np.zeros((Points, 2))
-    for i in range(0, int(Points)):
-        Points1[i, :] = map.getGlobalPosition(i * 0.1, map.halfWidth)
-        Points2[i, :] = map.getGlobalPosition(i * 0.1, -map.halfWidth)
-        Points0[i, :] = map.getGlobalPosition(i * 0.1, 0)
-
-    plt.plot(map.PointAndTangent[:, 0], map.PointAndTangent[:, 1], 'o')
-    plt.plot(Points0[:, 0], Points0[:, 1], '--')
-    plt.plot(Points1[:, 0], Points1[:, 1], '-b')
-    plt.plot(Points2[:, 0], Points2[:, 1], '-b')
-    line_cl, = axtr.plot(xdata, ydata, '-k')
-    line_gps_cl, = axtr.plot(xdata, ydata, '--og')
-    line_tr, = axtr.plot(xdata, ydata, '-or')
-    line_SS, = axtr.plot(xdata, ydata, 'og')
-    line_pred, = axtr.plot(xdata, ydata, '-or')
-    
-    v = np.array([[ 1.,  1.],
-                  [ 1., -1.],
-                  [-1., -1.],
-                  [-1.,  1.]])
-
-    rec = patches.Polygon(v, alpha=0.7,closed=True, fc='r', ec='k',zorder=10)
-    axtr.add_patch(rec)
-
-    plt.show()
-
-    return fig, axtr, line_tr, line_pred, line_SS, line_cl, line_gps_cl, rec
-
 
 def _initializeFigure(map):
     xdata = []; ydata = []
     fig = plt.figure()
     plt.ion()
 
-    axvx = fig.add_subplot(3, 2, 1)
-    linevx, = axvx.plot(xdata, ydata, 'or-')
+    ax1 = fig.add_subplot(2, 1, 1)
+    yawRate, = ax1.plot(xdata, ydata, 'or-')
     axvx.set_ylim([0, 1.5])
-    plt.ylabel("vx")
+    plt.ylabel("yaw rate")
     plt.xlabel("t")
 
-    axvy = fig.add_subplot(3, 2, 2)
-    linevy, = axvy.plot(xdata, ydata, 'or-')
-    plt.ylabel("vy")
+    ax2 = fig.add_subplot(2, 1, 2)
+    yaw, = ax2.plot(xdata, ydata, 'or-')
+    plt.ylabel("yaw")
     plt.xlabel("s")
-
-    axwz = fig.add_subplot(3, 2, 3)
-    linewz, = axwz.plot(xdata, ydata, 'or-')
-    plt.ylabel("wz")
-    plt.xlabel("s")
-
-    axepsi = fig.add_subplot(3, 2, 4)
-    lineepsi, = axepsi.plot(xdata, ydata, 'or-')
-    axepsi.set_ylim([-np.pi/2,np.pi/2])
-    plt.ylabel("epsi")
-    plt.xlabel("s")
-
-    axey = fig.add_subplot(3, 2, 5)
-    lineey, = axey.plot(xdata, ydata, 'or-')
-    axey.set_ylim([-map.width,map.width])
-    plt.ylabel("ey")
-    plt.xlabel("s")
-
-    Points = np.floor(10 * (map.PointAndTangent[-1, 3] + map.PointAndTangent[-1, 4]))
-    Points1 = np.zeros((Points, 2))
-    Points2 = np.zeros((Points, 2))
-    Points0 = np.zeros((Points, 2))
-    for i in range(0, int(Points)):
-        Points1[i, :] = map.getGlobalPosition(i * 0.1, map.width)
-        Points2[i, :] = map.getGlobalPosition(i * 0.1, -map.width)
-        Points0[i, :] = map.getGlobalPosition(i * 0.1, 0)
-
-    axtr = fig.add_subplot(3, 2, 6)
-    plt.plot(map.PointAndTangent[:, 0], map.PointAndTangent[:, 1], 'o')
-    plt.plot(Points0[:, 0], Points0[:, 1], '--')
-    plt.plot(Points1[:, 0], Points1[:, 1], '-b')
-    plt.plot(Points2[:, 0], Points2[:, 1], '-b')
-    line_tr, = axtr.plot(xdata, ydata, '-or')
-    line_pred, = axtr.plot(xdata, ydata, '-or')
     
     plt.show()
 
-    return fig, linevx, linevy, linewz, lineepsi, lineey, line_tr, line_pred
+    return fig, yawRate, yaw
 
 # ===================================================================================================================================== #
 # ========================================================= End of Internal Functions ================================================= #

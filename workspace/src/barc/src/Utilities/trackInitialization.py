@@ -12,7 +12,6 @@ class Map():
     """
     def __init__(self, flagTrackShape = 0):
         """Initialization
-        width: track width
         Modify the vector spec to change the geometry of the track
         """
         if flagTrackShape == 0:
@@ -21,7 +20,7 @@ class Map():
             selectedTrack = "oval"
 
         if selectedTrack == "3110":
-            self.width = 1.0
+            self.halfWidth = 1.0
             spec = np.array([[60 * 0.03, 0],
                              [80 * 0.03, -80 * 0.03 * 2 / np.pi],
                              # Note s = 1 * np.pi / 2 and r = -1 ---> Angle spanned = np.pi / 2
@@ -35,12 +34,12 @@ class Map():
                              [80 * 0.03, -80 * 0.03 * 2 / np.pi]])
 
         elif selectedTrack == "oval":
-            self.width = 0.5 
+            self.halfWidth = 1.5 
             spec = np.array([[1.0, 0],
-                             [4.5, -4.5 / np.pi],
+                             [4.5, 4.5 / np.pi],
                              # Note s = 1 * np.pi / 2 and r = -1 ---> Angle spanned = np.pi / 2
                              [2.0, 0],
-                             [4.5, -4.5 / np.pi],
+                             [4.5, 4.5 / np.pi],
                              [1.0, 0]])
 
         # Now given the above segments we compute the (x, y) points of the track and the angle of the tangent vector (psi) at
@@ -258,7 +257,7 @@ class Map():
                         s       = s_local + PointAndTangent[i, 3]
                         ey      = la.norm(v1) * np.sin(angle)
 
-                        if np.abs(ey)<= self.width:
+                        if np.abs(ey)<= self.halfWidth:
                             CompletedFlag = 1
 
             else:
@@ -303,7 +302,7 @@ class Map():
                         psi_unwrap = np.unwrap([ang + arc2, psi])[1]
                         epsi = psi_unwrap - (ang + arc2)
 
-                        if np.abs(ey) <= self.width:
+                        if np.abs(ey) <= self.halfWidth:
                             CompletedFlag = 1
 
         if epsi>1.0:
