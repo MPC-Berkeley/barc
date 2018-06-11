@@ -32,13 +32,13 @@ global pos_info_x_vals, pos_info_y_vals, pos_info_s
 global v_vals, t_vals, psi_curr, psi_raw
 global z_x, z_y, SS_x, SS_y, z_vx, SS_vx, z_s, SS_s, z_fore_x, z_fore_y, z_iden_x, z_iden_y # x and y for mpcSol prediction
 
-gps_x_vals = []
-gps_y_vals = []
+gps_x_vals = [0.0]
+gps_y_vals = [0.0]
 gps_x_prev = 0.0
 gps_y_prev = 0.0
 
-pos_info_x_vals = [0]
-pos_info_y_vals = [0]
+pos_info_x_vals = [0.0]
+pos_info_y_vals = [0.0]
 pos_info_s      = 0
 
 real_x_vals = [0]
@@ -77,6 +77,8 @@ def gps_callback(data):
     else:
         gps_x_vals.append(gps_x_prev)
         gps_y_vals.append(gps_y_prev)
+        gps_x_prev = data.x_m
+        gps_y_prev = data.y_m
     
 
 def pos_info_callback(data):
@@ -128,7 +130,7 @@ def view_trajectory():
     rospy.init_node("car_view_trajectory_node", anonymous=True)
     # rospy.on_shutdown(show)
 
-    # rospy.Subscriber("hedge_imu_fusion", hedge_imu_fusion, gps_callback, queue_size=1)
+    rospy.Subscriber("hedge_imu_fusion", hedge_imu_fusion, gps_callback, queue_size=1)
     rospy.Subscriber("pos_info", pos_info, pos_info_callback, queue_size=1)
     rospy.Subscriber("real_val", pos_info, real_val_callback, queue_size=1)
     rospy.Subscriber("mpc_solution", mpc_solution, mpcSol_callback, queue_size=1)
@@ -138,7 +140,7 @@ def view_trajectory():
     SS_FLAG  = True
     FORE_FLAG= False
     IDEN_FLAG= True
-    GPS_FLAG = False
+    GPS_FLAG = True
     YAW_FLAG = True
     ETS_TRUE_FLAG = False
     
@@ -214,8 +216,8 @@ def view_trajectory():
         # if counter < counter_buffer:
         if (pos_info_s>0 and pos_info_s<0.5):
             # lap switching trajectory cleaning
-            # gps_x_vals = [0,gps_x_vals[-1]]
-            # gps_y_vals = [0,gps_y_vals[-1]]
+            gps_x_vals = [0,gps_x_vals[-1]]
+            gps_y_vals = [0,gps_y_vals[-1]]
             pos_info_x_vals = [0,pos_info_x_vals[-1]]
             pos_info_y_vals = [0,pos_info_y_vals[-1]]
             real_x_vals = [0,real_x_vals[-1]]
@@ -226,6 +228,8 @@ def view_trajectory():
             # pos_info_x_vals = [0,0]
             # pos_info_y_vals = [0,0]
         
+        print("GPS off: ",np.sqrt((gps_x_vals[-1]-pos_info_x_vals[-1])**2+(gps_y_vals[-1]-pos_info_y_vals[-1])**2))
+
         if ETS_TRUE_FLAG:
             x = real_x_vals[len(real_x_vals)-1]
             y = real_y_vals[len(real_y_vals)-1]

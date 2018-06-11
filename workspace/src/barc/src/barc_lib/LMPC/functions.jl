@@ -652,7 +652,7 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_4s::MpcParams,mpcPa
         mpcParams_pF.R              = 2*[1.0,0.1]               # put weights on a and d_f
         mpcParams_pF.QderivZ        = 1.0*[0.0,1.0,1.0,1.0]           # cost matrix for derivative cost of states
         mpcParams_pF.QderivU        = 0.1*[1,50]                # cost matrix for derivative cost of inputs
-        mpcParams_pF.vPathFollowing = 1.2                       # reference speed for first lap of path following
+        mpcParams_pF.vPathFollowing = 1.0                      # reference speed for first lap of path following
         mpcParams_pF.delay_df       = delay_df                         # steering delay (number of steps)
         mpcParams_pF.delay_a        = delay_a                         # acceleration delay
 
@@ -661,7 +661,7 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_4s::MpcParams,mpcPa
     end
 
     selectedStates.Np           = 10        # please select an even number
-    selectedStates.Nl           = 2        # Number of previous laps to include in the convex hull
+    selectedStates.Nl           = 10        # Number of previous laps to include in the convex hull
     selectedStates.feature_Np   = 60        # Number of points from previous laps to do SYS_ID
     selectedStates.feature_Nl   = 2         # Number of previous laps to do SYS_ID 
     selectedStates.selStates    = zeros(selectedStates.Nl*selectedStates.Np,6)

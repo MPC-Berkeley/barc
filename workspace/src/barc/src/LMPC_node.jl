@@ -45,7 +45,7 @@ function main()
     const BUFFERSIZE       = 5000
     const LMPC_LAP         = 30
 
-    const PF_FLAG          = false  # true:only pF,     false:1 warm-up lap and LMPC
+    const PF_FLAG          = true  # true:only pF,     false:1 warm-up lap and LMPC
 
     const LMPC_FLAG        = false   # true:IDEN_MODEL,  false:IDEN_KIN_LIN_MODEL(if all flags are false)
     const LMPC_DYN_FLAG    = false   # true:DYN_LIN_MODEL, false:IDEN_KIN_LIN_MODEL(if all flags are false)
@@ -61,8 +61,8 @@ function main()
     
     const GP_HISTORY_FLAG  = false  # true: GPR data is from last laps, false: GP data is from data base.
 
-    const N                = 5
-    const delay_df         = 1
+    const N                = 10
+    const delay_df         = 3
     const delay_a          = 1
     
     if PF_FLAG
@@ -106,7 +106,7 @@ function main()
     TI_TV_FLAG ? println("Time invariant SYS_ID") : println("Time variant SYS_ID")
     println("N=$N, delay_df=$delay_df, delay_a=$delay_a")
     
-    track_data       = createTrack("basic")
+    track_data       = createTrack("MSC_lab")
     track            = Track(track_data)
     track_fe         = createTrack("feature")
     track_f          = Track(track_fe)
@@ -140,8 +140,8 @@ function main()
 
     # NODE INITIALIZATION
     init_node("mpc_traj")
-    # loop_rate   = Rate(1/modelParams.dt)
-    loop_rate   = Rate(100.0)
+    loop_rate   = Rate(1/modelParams.dt)
+    # loop_rate   = Rate(10.0)
     pub         = Publisher("ecu", ECU, queue_size=1)::RobotOS.Publisher{barc.msg.ECU}
     mpcSol_pub  = Publisher("mpc_solution", mpc_solution, queue_size=1)::RobotOS.Publisher{barc.msg.mpc_solution}; acc_f = [0.0]
     s1          = Subscriber("pos_info", pos_info, SE_callback, (acc_f,lapStatus,posInfo,mpcSol,oldTraj,z_est,x_est),queue_size=1)::RobotOS.Subscriber{barc.msg.pos_info}

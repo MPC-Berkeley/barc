@@ -66,7 +66,7 @@ class PlottedAgent:
     center_rear_wheel_right = np.array([0.0, 0.0])
 
     trajectory_xy = np.zeros((500, 2))
-    trajectory_gps_xy = np.zeros((500, 2))
+    trajectory_gps_xy = np.zeros((5000, 2))
     traj_counter = 0
     gps_counter = 0
     traj_gps_counter = 0
@@ -219,12 +219,12 @@ class PlottedAgent:
         # print "gps counter: " self.gps_counter
 
         if self.prediction_available:
-	        if self.gps_counter % 10 == 0:
-	            self.trajectory_gps_xy[self.traj_gps_counter, :] = np.array([msg.x_m, msg.y_m])
-	            self.trajectory_gps_xy[self.traj_gps_counter:, :] = np.array([msg.x_m, msg.y_m])
-	            self.traj_gps_counter += 1
+            # if self.gps_counter % 10 == 0:
+            self.trajectory_gps_xy[self.traj_gps_counter, :] = np.array([msg.x_m, msg.y_m])
+            self.trajectory_gps_xy[self.traj_gps_counter:, :] = np.array([msg.x_m, msg.y_m])
+            self.traj_gps_counter += 1
 
-	        self.gps_counter += 1
+            self.gps_counter += 1
 
         
     def transform(self, ax):
@@ -506,8 +506,8 @@ if __name__ == "__main__":
         rospy.init_node("plotting_stuff")
         colors = ["blue"]
         # track = Track(ds=0.1, shape="test", width=1.0)
-        # track = Track(ds=0.1, shape="oval", width=1.0)
-        track = Track(ds=0.1, shape="l_shape", width=1.2)
+        track = Track(ds=0.1, shape="oval", width=1.2)
+        # track = Track(ds=0.1, shape="l_shape", width=1.2)
         plotter = Plotter(track, colors)
 
         loop_rate = 20

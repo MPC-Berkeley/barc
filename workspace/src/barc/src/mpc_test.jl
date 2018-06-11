@@ -288,6 +288,7 @@ type MpcModel_convhull
         Q_term_cost = 1.0  # scaling of Q-function
         Q_lane = 0.5 * 16.0
         Q_slack = 1.1 * 1.0 * [100.0, 1.0, 1.0, 1.0, 4.0 * 5.0, 10.0]
+        # Q_slack = 1.1 * 1.0 * [100.0, 1.0, 1.0, 0.1 * 1.0, 0.1 * 4.0 * 5.0, 10.0]
 
         println("prediction horizon = ", N)
 
