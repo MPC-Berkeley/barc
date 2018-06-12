@@ -34,14 +34,14 @@ def main():
     Q[6,6] = 0.1 # psi
     Q[7,7] = 1.0 # psidot
     # Q[8,8] = 0.0 # psiDot in the model
-    R = eye(7)
-    R[0,0] = 10.0   # x
-    R[1,1] = 10.0   # y
+    R = eye(6)
+    R[0,0] = 1.0   # x
+    R[1,1] = 1.0   # y
     R[2,2] = 0.1    # vx
     R[3,3] = 10.0   # ax
     R[4,4] = 10.0   # ay
     R[5,5] = 0.1    # psiDot
-    R[6,6] = 0.01   # vy
+    # R[6,6] = 0.01   # vy
 
     imu = ImuClass(0.0)
     gps = GpsClass(0.0)
@@ -199,6 +199,7 @@ class Estimator(object):
         
         bta = 0.5 * u[1]
         y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot, sin(bta)*enc.v_meas])
+        y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot])
 
         KF(y,u)
 
@@ -213,7 +214,11 @@ class Estimator(object):
         P12     = dot(P_kp1, H.T)                           # cross covariance
         K       = dot(P12, inv( dot(H,P12) + self.R))       # Kalman filter gain
         
+
         self.z  = mx_kp1 + dot(K,(y - my_kp1))
+        # if np.abs(y[5]) < 0.1:
+        #     self.z[5] = 0
+
         self.P  = dot(dot(K,self.R),K.T) + dot( dot( (eye(xDim) - dot(K,H)) , P_kp1)  ,  (eye(xDim) - dot(K,H)).T )
 
         (self.x_est, self.y_est, self.vx_est, self.vy_est, self.ax_est, self.ay_est, self.yaw_est, self.psiDot_est) = self.z
@@ -280,7 +285,7 @@ class Estimator(object):
 
     def h(self, x, u):
         """ This is the measurement model to the kinematic<->sensor model above """
-        y = [0]*7
+        y = [0]*6
         y[0] = x[0]      # x
         y[1] = x[1]      # y
         y[2] = x[2]      # vx
@@ -288,7 +293,7 @@ class Estimator(object):
         y[4] = x[5]      # a_y
         # y[5] = x[7]+x[8] # psiDot
         y[5] = x[7] # psiDot
-        y[6] = x[3]      # vy
+        # y[6] = x[3]      # vy
         return np.array(y)
 
     def saveHistory(self):
