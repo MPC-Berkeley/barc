@@ -34,7 +34,7 @@ class Map():
                              [80 * 0.03, -80 * 0.03 * 2 / np.pi]])
 
         elif selectedTrack == "oval":
-            self.halfWidth = 1.5 
+            self.halfWidth = 1.0 
             spec = np.array([[1.0, 0],
                              [4.5, 4.5 / np.pi],
                              # Note s = 1 * np.pi / 2 and r = -1 ---> Angle spanned = np.pi / 2
