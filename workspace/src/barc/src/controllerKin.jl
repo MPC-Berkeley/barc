@@ -15,8 +15,8 @@ using JuMP
 using Ipopt
 using JLD
 
-include("Library/modules.jl")
-include("Library/models.jl")
+include("library/modules.jl")
+include("library/models.jl")
 import mpcModels: MdlPf, MdlKin
 import solveMpcProblem: solvePf, solveKin
 using Types

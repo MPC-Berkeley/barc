@@ -191,7 +191,7 @@ using TrackHelper, JLD
 using barc.msg
 using RobotOS
 export LapStatus,History,PosInfo,RaceSet,Agent
-export SafeSet,SysID,MpcSol,MpcParams,ModelParams,GPData
+export SafeSet,SysID,FeatureData,MpcSol,MpcParams,ModelParams,GPData
     type LapStatus
         #=
         Updated lap status information
@@ -432,7 +432,7 @@ export SafeSet,SysID,MpcSol,MpcParams,ModelParams,GPData
         # Feature data for SYS ID
         feature_Np::Int64
         feature_Nl::Int64
-        feature_z::Array{Float64,2}
+        feature_z::Array{Float64,3}
         feature_u::Array{Float64,2}
         feature::Array{Float64,2}
         select_z::Array{Float64,3}
@@ -447,9 +447,9 @@ export SafeSet,SysID,MpcSol,MpcParams,ModelParams,GPData
             # Feature data for SYS ID
             sysID.feature_Np = get_param("controller/feature_Np")
             sysID.feature_Nl = get_param("controller/feature_Nl")
-            sysID.feature_z = rand(2*sysID.feature_Np,6) # The size of this array will be overwritten
-            sysID.feature_u = rand(2*sysID.feature_Np,2) # The size of this array will be overwritten
-            sysID.feature   = rand(2*sysID.feature_Np,8) # The size of this array will be overwritten
+            sysID.feature_z = rand(2*sysID.feature_Np,6,2)  # The size of this array will be overwritten
+            sysID.feature_u = rand(2*sysID.feature_Np,2)    # The size of this array will be overwritten
+            sysID.feature   = rand(2*sysID.feature_Np,8)    # The size of this array will be overwritten
             sysID.select_z  = zeros(sysID.feature_Np,6,2)
             sysID.select_u  = zeros(sysID.feature_Np,2)
             # SYS ID result 
@@ -824,33 +824,62 @@ end # end of module ControllerHelper
 module SysIDFuncs
 using Types
 export buildFeatureSet, sysIdTi, sysIdTv
-    function buildFeatureSet(agent::Agent)
+    function buildFeatureSetFromHistory(agent::Agent)
         # THIS FUNCTION IS ONLY NEEDS TO BE CALLED ONCE EACH LAP
         Nl = agent.sysID.feature_Nl
-        z = Array{Float64,2}(0,6)
+        z1 = Array{Float64,2}(0,6)
+        z2 = Array{Float64,2}(0,6)
         u = Array{Float64,2}(0,2)
         for i in (agent.lapStatus.lap-Nl) : (agent.lapStatus.lap-1)
             cost = Int(agent.SS.oldCost[i])
-            z = vcat(z,reshape(agent.SS.oldSS[1:cost,i,:],cost,6))
-            u = vcat(u,reshape(agent.SS.oldSS_u[1:cost,i,:],cost,2))
+            z1 = vcat(z1,reshape(agent.SS.oldSS[1:cost-1,i,:],cost-1,6))
+            z2 = vcat(z2,reshape(agent.SS.oldSS[2:cost,  i,:],cost-1,6))
+            u = vcat(u,reshape(agent.SS.oldSS_u[1:cost-1,i,:],cost-1,2))
         end
-        agent.sysID.feature_z = z
+        agent.sysID.feature_z = zeros(size(z1,1),6,2)
+        agent.sysID.feature_z[:,:,1] = z1
+        agent.sysID.feature_z[:,:,2] = z2
         agent.sysID.feature_u = u
-        agent.sysID.feature = hcat(z,u)
+        agent.sysID.feature   = hcat(z1,u)
+    end
+
+    function buildFeatureSetFromDataSet(agent::Agent,featureData::FeatureData)
+        # by default, we select the 5 laps of closest v_avg speed to do SYS ID
+        Nl = 5
+        idx = hcat()
+        z1 = Array{Float64,2}(0,6)
+        z2 = Array{Float64,2}(0,6)
+        u = Array{Float64,2}(0,2)
+        for i in (agent.lapStatus.lap-Nl) : (agent.lapStatus.lap-1)
+            cost = Int(agent.SS.oldCost[i])
+            z1 = vcat(z1,reshape(agent.SS.oldSS[1:cost-1,i,:],cost-1,6))
+            z2 = vcat(z2,reshape(agent.SS.oldSS[2:cost,  i,:],cost-1,6))
+            u = vcat(u,reshape(agent.SS.oldSS_u[1:cost-1,i,:],cost-1,2))
+        end
+        agent.sysID.feature_z = zeros(size(z1,1),6,2)
+        agent.sysID.feature_z[:,:,1] = z1
+        agent.sysID.feature_z[:,:,2] = z2
+        agent.sysID.feature_u = u
+        agent.sysID.feature   = hcat(z1,u) 
+    end
+
+    function buildFeatureSetFromBoth(agent::Agent,featureData::FeatureData,ratio::Float64)
+        # ratio::Float64 decide how much percent of feature data is selected from DataSet
+
     end
 
     function findFeature(agent::Agent,curr_state::Array{Float64})
         norm_state = [1 0.1 1 1 0.2]
-        norm_idx   = zeros(size(agent.sysID.feature,1)-1,2)
+        norm_idx   = zeros(size(agent.sysID.feature_z,1),2)
 
-        norm_dist  = (curr_state.-agent.sysID.feature[1:end-1,4:8])./norm_state
+        norm_dist  = (curr_state.-agent.sysID.feature[1:end,4:8])./norm_state
         norm_idx[:,1] = sum(norm_dist.^2,2)
         norm_idx[:,2] = 1:size(norm_idx,1)
         norm_idx = sortrows(norm_idx)
         for i=1:agent.sysID.feature_Np
-            agent.sysID.select_z[i,:,1] = agent.sysID.feature[Int(norm_idx[i,2]),1:6]
-            agent.sysID.select_z[i,:,2] = agent.sysID.feature[Int(norm_idx[i,2])+1,1:6]
-            agent.sysID.select_u[i,:]   = agent.sysID.feature[Int(norm_idx[i,2]),7:8]
+            agent.sysID.select_z[i,:,1] = agent.sysID.feature_z[Int(norm_idx[i,2]),:,1]
+            agent.sysID.select_z[i,:,2] = agent.sysID.feature_z[Int(norm_idx[i,2]),:,2]
+            agent.sysID.select_u[i,:]   = agent.sysID.feature_u[Int(norm_idx[i,2]),:]
         end
     end
 
@@ -1229,17 +1258,10 @@ export historyCollect, gpDataCollect
     function saveGPData(agent::Agent)
         run_time = Dates.format(now(),"yyyy-mm-dd-H:M")
         log_path = "$(homedir())/$(agent.raceSet.folder_name)/GP-$(agent.raceSet.file_name)-$(run_time).jld"
-        if agent.lapStatus.lap > agent.raceSet.num_lap
-            save(log_path,  "feature_GP_z",         agent.gpData.feature_GP_z,  
-                            "feature_GP_u",         agent.gpData.feature_GP_u,  
-                            "feature_GP_vy_e",      agent.gpData.feature_GP_vy_e, 
-                            "feature_GP_psidot_e",  agent.gpData.feature_GP_psiDot_e)
-        else
-            save(log_path,  "feature_GP_z",         agent.gpData.feature_GP_z,  
-                            "feature_GP_u",         agent.gpData.feature_GP_u,  
-                            "feature_GP_vy_e",      agent.gpData.feature_GP_vy_e, 
-                            "feature_GP_psidot_e",  agent.gpData.feature_GP_psiDot_e)
-        end
+        save(log_path,  "feature_GP_z",         agent.gpData.feature_GP_z[1:agent.gpData.counter,:],  
+                        "feature_GP_u",         agent.gpData.feature_GP_u[1:agent.gpData.counter,:],  
+                        "feature_GP_vy_e",      agent.gpData.feature_GP_vy_e[1:agent.gpData.counter], 
+                        "feature_GP_psidot_e",  agent.gpData.feature_GP_psiDot_e[1:agent.gpData.counter])
         println("Finish saving GP data to $log_path in controller node.")
     end
 

@@ -22,7 +22,7 @@ import rospy
 import os
 import sys
 homedir = os.path.expanduser("~")
-sys.path.append(os.path.join(homedir,"barc/workspace/src/barc/src/Library"))
+sys.path.append(os.path.join(homedir,"barc/workspace/src/barc/src/library"))
 from Localization_helpers import Track
 from barc.msg import ECU, pos_info, Vel_est, mpc_visual
 from sensor_msgs.msg import Imu
@@ -39,6 +39,7 @@ class Plotter(object):
     """
     def __init__(self):
         # NODE INITIALIZATION
+        self.s_prev = 0.0
         rospy.init_node("visualizeCar")
         rospy.Subscriber("pos_info",         pos_info,         self.posInfo_callback, queue_size=1)
         rospy.Subscriber("hedge_imu_fusion", hedge_imu_fusion, self.gps_callback,     queue_size=1)
@@ -52,7 +53,6 @@ class Plotter(object):
         # PLOT DATA INITIALIZATION
         self.x = 0.0
         self.y = 0.0
-        self.s_prev = 0.0
         car_dx = 2*rospy.get_param("L_a")
         car_dy = 0.125
         car_x = [car_dx, car_dx, -car_dx, -car_dx, car_dx]

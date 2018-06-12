@@ -22,7 +22,7 @@ import rospy
 import os
 import sys
 homedir = os.path.expanduser("~")
-sys.path.append(os.path.join(homedir,"barc/workspace/src/barc/src/Library"))
+sys.path.append(os.path.join(homedir,"barc/workspace/src/barc/src/library"))
 from Localization_helpers import Track
 from barc.msg import ECU, pos_info, Vel_est
 from sensor_msgs.msg import Imu
@@ -76,8 +76,8 @@ def main():
     estMsg = pos_info()
     
     while not rospy.is_shutdown():
-
-        est.estimateState(imu,gps,enc,ecu,est.ekf)
+        if ecu.a != 0:
+            est.estimateState(imu,gps,enc,ecu,est.ekfMultiRate)
 
         estMsg.s, estMsg.ey, estMsg.epsi = track.Localize(est.x_est, est.y_est, est.yaw_est)
         
@@ -228,14 +228,14 @@ class Estimator(object):
         self.time_his           = []
 
         # SAVE THE measurement/input SEQUENCE USED BY KF
-        self.x_his      = []
-        self.y_his      = []
-        self.v_meas_his = []
-        self.ax_his     = []
-        self.ay_his     = []
-        self.psiDot_his = []
-        self.a_his      = []
-        self.df_his     = []
+        self.x_his      = [0.0]
+        self.y_his      = [0.0]
+        self.v_meas_his = [0.0]
+        self.ax_his     = [0.0]
+        self.ay_his     = [0.0]
+        self.psiDot_his = [0.0]
+        self.a_his      = [0.0]
+        self.df_his     = [0.0]
 
     # ecu command update
     def estimateState(self,imu,gps,enc,ecu,KF):
@@ -246,8 +246,9 @@ class Estimator(object):
         self.df_his.append(ecu.df)
         u = [self.a_his.pop(0), self.df_his.pop(0)]
         
-        # y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot])
-        y = np.array([gps.x_ply, gps.y_ply, enc.v_meas, imu.ax, imu.ay, imu.psiDot])
+        y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot])
+        # y = np.array([gps.x_ply, gps.y_ply, enc.v_meas, imu.ax, imu.ay, imu.psiDot])
+        KF(y,u)
 
         # SAVE THE measurement/input SEQUENCE USED BY KF
         self.x_his.append(y[0])
@@ -258,7 +259,6 @@ class Estimator(object):
         self.psiDot_his.append(y[5])
         self.a_his.append(u[0])
         self.df_his.append(u[1])
-        KF(y,u)
 
     def ekf(self, y, u):
         """
@@ -297,6 +297,63 @@ class Estimator(object):
 
         (self.x_est, self.y_est, self.vx_est, self.vy_est, self.ax_est, self.ay_est, self.yaw_est, self.psiDot_est) = self.z
 
+    def ekfMultiRate(self, y, u):
+        """
+        EKF   Extended Kalman Filter for nonlinear dynamic systems
+        ekf(f,mx,P,h,z,Q,R) returns state estimate, x and state covariance, P 
+        for nonlinear dynamic system:
+                  x_k+1 = f(x_k) + w_k
+                  y_k   = h(x_k) + v_k
+        where w ~ N(0,Q) meaning w is gaussian noise with covariance Q
+              v ~ N(0,R) meaning v is gaussian noise with covariance R
+        Inputs:    f: function handle for f(x)
+                   z_EKF: "a priori" state estimate
+                   P: "a priori" estimated state covariance
+                   h: fanction handle for h(x)
+                   y: current measurement
+                   Q: process noise covariance 
+                   R: measurement noise covariance
+                   args: additional arguments to f(x, *args)
+        Output:    mx_kp1: "a posteriori" state estimate
+                   P_kp1: "a posteriori" state covariance
+                   
+        Notation: mx_k = E[x_k] and my_k = E[y_k], where m stands for "mean of"
+        """
+        xDim    = self.z.size                               # dimension of the state
+        mx_kp1  = self.f(self.z, u)                         # predict next state
+        A       = self.numerical_jac(self.f, self.z, u)     # linearize process model about current state
+        P_kp1   = dot(dot(A,self.P),A.T) + self.Q           # proprogate variance
+        my_kp1  = self.h(mx_kp1, u)                         # predict future output
+        H       = self.numerical_jac(self.h, mx_kp1, u)     # linearize measurement model about predicted next state
+
+        idx = []
+        if self.x_his[-1] == y[0]:
+            idx.append(0)
+        if self.y_his[-1] == y[1]:
+            idx.append(1)
+        if self.v_meas_his[-1] == y[2]:
+            idx.append(2)
+        if self.ax_his[-1] == y[3]:
+            idx.append(3)
+        if self.ay_his[-1] == y[4]:
+            idx.append(4)
+        if self.psiDot_his[-1] == y[5]:
+            idx.append(5)
+
+        if len(idx) == 6:
+            print "No measurement data received!"
+            (self.x_est, self.y_est, self.vx_est, self.vy_est, self.ax_est, self.ay_est, self.yaw_est, self.psiDot_est) = mx_kp1
+        else:
+            H      = np.delete(H,(idx),axis=0)
+            R      = np.delete(self.R,(idx),axis=0)
+            R      = np.delete(R,(idx),axis=1)
+            y      = np.delete(y,(idx),axis=0)
+            my_kp1 = np.delete(my_kp1,(idx),axis=0)
+            P12    = dot(P_kp1, H.T)                      # cross covariance
+            K      = dot(P12, inv( dot(H,P12) + R))       # Kalman filter gain
+            self.z = mx_kp1 + dot(K,(y - my_kp1))
+            self.P = dot(dot(K,R),K.T) + dot( dot( (eye(xDim) - dot(K,H)) , P_kp1)  ,  (eye(xDim) - dot(K,H)).T )
+            (self.x_est, self.y_est, self.vx_est, self.vy_est, self.ax_est, self.ay_est, self.yaw_est, self.psiDot_est) = self.z
 
     def ukf(self, y, u):
         """
@@ -514,12 +571,13 @@ class GpsClass(object):
         # GPS measurement history
         self.x_his      = np.array([])
         self.y_his      = np.array([])
-        self.x_ply_his  = np.array([])
-        self.y_ply_his  = np.array([])
+        self.x_ply_his  = np.array([0.0])
+        self.y_ply_his  = np.array([0.0])
         
         # time stamp
         self.t0         = t0
         self.time_his   = np.array([])
+        self.time_ply_his = np.array([])
         self.curr_time  = rospy.get_rostime().to_sec() - self.t0
 
     def gps_callback(self,data):
@@ -532,26 +590,28 @@ class GpsClass(object):
         # 1) x(t) ~ c0x + c1x * t + c2x * t^2
         # 2) y(t) ~ c0y + c1y * t + c2y * t^2
         # c_X = [c0x c1x c2x] and c_Y = [c0y c1y c2y] 
-        n_intplt = 20 # 20*0.01=0.2s data
-        if size(self.x_his,0) > n_intplt:
-            x_intplt = self.x_his[-n_intplt:]
-            y_intplt = self.y_his[-n_intplt:]
-            t_intplt = self.time_his[-n_intplt:]-self.time_his[-n_intplt]
+        n_intplt = 50 # 50*0.01=0.5s data
+        if size(self.x_ply_his,0) > n_intplt:
+            x_intplt = self.x_ply_his[-n_intplt:]
+            y_intplt = self.y_ply_his[-n_intplt:]
+            t_intplt = self.time_ply_his[-n_intplt:]-self.time_ply_his[-n_intplt]
             t_matrix = vstack([t_intplt**2, t_intplt, ones(n_intplt)]).T
             c_X = linalg.lstsq(t_matrix, x_intplt)[0]
             c_Y = linalg.lstsq(t_matrix, y_intplt)[0]
-            self.x_ply = polyval(c_X, self.curr_time-self.time_his[-n_intplt])
-            self.y_ply = polyval(c_Y, self.curr_time-self.time_his[-n_intplt])
+            self.x_ply = polyval(c_X, self.curr_time-self.time_ply_his[-n_intplt])
+            self.y_ply = polyval(c_Y, self.curr_time-self.time_ply_his[-n_intplt])
 
         self.saveHistory()
 
     def saveHistory(self):
         self.time_his = np.append(self.time_his,self.curr_time)
-
         self.x_his      = np.append(self.x_his,self.x)
         self.y_his      = np.append(self.y_his,self.y)
-        self.x_ply_his  = np.append(self.x_ply_his,self.x_ply)
-        self.y_ply_his  = np.append(self.y_ply_his,self.y_ply)
+        if self.x_ply_his[-1] != self.x_ply:
+	        self.x_ply_his  = np.append(self.x_ply_his,self.x_ply)
+	        self.y_ply_his  = np.append(self.y_ply_his,self.y_ply)
+	        self.time_ply_his = np.append(self.time_ply_his,self.curr_time)
+
 
 
 class EncClass(object):
