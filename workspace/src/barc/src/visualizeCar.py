@@ -40,8 +40,9 @@ class Plotter(object):
     def __init__(self):
         # NODE INITIALIZATION
         rospy.init_node("visualizeCar")
-        rospy.Subscriber("pos_info",   pos_info,   self.posInfo_callback, queue_size=1)
-        rospy.Subscriber("mpc_visual", mpc_visual, self.mpcVis_callback, queue_size=1)
+        rospy.Subscriber("pos_info",         pos_info,         self.posInfo_callback, queue_size=1)
+        rospy.Subscriber("hedge_imu_fusion", hedge_imu_fusion, self.gps_callback,     queue_size=1)
+        rospy.Subscriber("mpc_visual",       mpc_visual,       self.mpcVis_callback,  queue_size=1)
 
         # FIGURE INITIALIZATION
         plt.ion()
@@ -62,6 +63,9 @@ class Plotter(object):
         self.traj_x = []
         self.traj_y = []
         self.traj_h, = self.ax.plot(self.traj_x,self.traj_y,"b")
+        self.gps_x = []
+        self.gps_y = []
+        self.gps_h, = self.ax.plot(self.gps_x,self.gps_y,"g")
         self.pre_x = zeros(rospy.get_param("controller/N"))
         self.pre_y = zeros(rospy.get_param("controller/N"))
         self.pre_h, = self.ax.plot(self.pre_x,self.pre_y,"b.-")
@@ -85,6 +89,8 @@ class Plotter(object):
 
         num = min(len(self.traj_x),len(self.traj_y))
         self.traj_h.set_data(self.traj_x[:num],self.traj_y[:num])
+        num = min(len(self.gps_x),len(self.gps_y))
+        self.gps_h.set_data(self.gps_x[:num],self.gps_y[:num])
 
         self.pre_h.set_data(self.pre_x,self.pre_y)
         self.SS_h.set_data(self.SS_x,self.SS_y)
@@ -102,7 +108,7 @@ class Plotter(object):
         self.ax.plot(track.nodes[0,:],       track.nodes[1,:],       "k--", alpha=0.4)
         self.ax.plot(track.nodes_bound1[0,:],track.nodes_bound1[1,:],"r-")
         self.ax.plot(track.nodes_bound2[0,:],track.nodes_bound2[1,:],"r-")
-        # self.ax.grid('on')
+        self.ax.grid('on')
         self.ax.axis('equal')
         plt.show()
 
@@ -120,6 +126,14 @@ class Plotter(object):
         car = R * self.car_origin
         self.car_update[0] = car[0] + self.x
         self.car_update[1] = car[1] + self.y
+
+    def gps_callback(self, gps):
+        if self.s_prev<0.3:
+            self.gps_x = []
+            self.gps_y = []
+        else:
+            self.gps_x.append(gps.x_m)
+            self.gps_y.append(gps.y_m)
 
     def mpcVis_callback(self,mpc_vis):
         self.pre_x   = mpc_vis.z_x

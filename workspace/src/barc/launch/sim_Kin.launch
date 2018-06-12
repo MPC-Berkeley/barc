@@ -21,6 +21,7 @@
     <node pkg="barc" type="controllerKin.jl" name="controller" output="screen">
         <!-- Controller flags -->
         <param name="TV_FLAG"       type="bool" value="false" />
+        <param name="SYS_ID_LIN_FLAG" type="bool" value="false" />
         <param name="num_spare"     type="int"  value="30"    />
         <param name="GP_LOCAL_FLAG" type="bool" value="false" />
         <param name="GP_FULL_FLAG"  type="bool" value="false" />
@@ -76,13 +77,13 @@
         <param name="delay_df"  type="double" value="0.0" />
         <param name="delay_a"   type="double" value="0.0" />
         <!-- ekf properties -->
-        <param name="Q_x"       type="double" value="0.0" />
-        <param name="Q_y"       type="double" value="0.0" />
-        <param name="Q_vx"      type="double" value="0.0" />
-        <param name="Q_vy"      type="double" value="0.0" />
+        <param name="Q_x"       type="double" value="0.001" />
+        <param name="Q_y"       type="double" value="0.001" />
+        <param name="Q_vx"      type="double" value="0.01" />
+        <param name="Q_vy"      type="double" value="0.01" />
         <param name="Q_ax"      type="double" value="1.0" />
         <param name="Q_ay"      type="double" value="1.0" />
-        <param name="Q_psi"     type="double" value="0.0" />
+        <param name="Q_psi"     type="double" value="0.1" />
         <param name="Q_psiDot"  type="double" value="1.0" />
         <param name="R_x"       type="double" value="10.0" />
         <param name="R_y"       type="double" value="10.0" />

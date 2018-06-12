@@ -242,7 +242,7 @@ export SafeSet,SysID,MpcSol,MpcParams,ModelParams,GPData
                 mpcParams.Q             = [0.0,50.0,5.0,20.0]
                 mpcParams.R             = 0*[10.0,10.0]
                 mpcParams.QderivU       = 1.0*[1.0,5.0]
-                mpcParams.Q_term_cost   = 0.5
+                mpcParams.Q_term_cost   = 0.2
                 mpcParams.Q_lane        = 10.0
                 if mpcParams.n_state == 6
                     mpcParams.QderivZ = 1.0*[0,0.1,0.1,2,0.1,0.0]
