@@ -21,6 +21,7 @@ class Map():
 
         if selectedTrack == "3110":
             self.halfWidth = 1.0
+            self.slack     = 0.15
             spec = np.array([[60 * 0.03, 0],
                              [80 * 0.03, -80 * 0.03 * 2 / np.pi],
                              # Note s = 1 * np.pi / 2 and r = -1 ---> Angle spanned = np.pi / 2
@@ -34,7 +35,8 @@ class Map():
                              [80 * 0.03, -80 * 0.03 * 2 / np.pi]])
 
         elif selectedTrack == "oval":
-            self.halfWidth = 1.0 
+            self.halfWidth = 0.4 
+            self.slack     = 0.15
             spec = np.array([[1.0, 0],
                              [4.5, 4.5 / np.pi],
                              # Note s = 1 * np.pi / 2 and r = -1 ---> Angle spanned = np.pi / 2
@@ -257,7 +259,7 @@ class Map():
                         s       = s_local + PointAndTangent[i, 3]
                         ey      = la.norm(v1) * np.sin(angle)
 
-                        if np.abs(ey)<= self.halfWidth:
+                        if np.abs(ey)<= self.halfWidth + self.slack:
                             CompletedFlag = 1
 
             else:
@@ -302,7 +304,7 @@ class Map():
                         psi_unwrap = np.unwrap([ang + arc2, psi])[1]
                         epsi = psi_unwrap - (ang + arc2)
 
-                        if np.abs(ey) <= self.halfWidth:
+                        if np.abs(ey) <= self.halfWidth + self.slack:
                             CompletedFlag = 1
 
         if epsi>1.0:

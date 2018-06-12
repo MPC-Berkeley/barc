@@ -179,6 +179,12 @@ def main():
 # ===============================================================================================================================
 def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode):
     OpenLoopData = 0.0
+
+    # TI MPC tuning
+    Q = 1*np.diag([100.0, 1.0, 1, 10.0, 0.0, 50.0]) # vx, vy, wz, epsi, s, ey
+    R = np.diag([1.0, 1.0]) # delta, a
+    N = 12
+
     if PickController == 'PID':
         ControllerLap0 = PID(vt) 
     else:
@@ -189,27 +195,17 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode):
         A, B, Error = Regression(ClosedLoopDataPID.x, ClosedLoopDataPID.u, lamb)
         print "A matrix: \n", A
         print "B matrix: \n", B      
-        Q = 1*np.diag([100.0, 10.0, 10., 10.0, 0.0, 10.0]) # vx, vy, wz, epsi, s, ey
-        R = np.diag([1.0, 1.0]) # delta, a
-        N = 12
         ControllerLap0 = PathFollowingLTI_MPC(A, B, Q, R, N, vt)
-        ControllerLap0 = PID(vt) 
-
 
     if PickController == 'PID':
-        Controller = PID(vt)                                # PID controller
+        Controller = PID(vt)
+                                        # PID controller
     elif PickController == "TI_MPC":
         file_data = open(sys.path[0]+'/data/'+mode+'/ClosedLoopDataPID.obj', 'rb')
         ClosedLoopDataPID = pickle.load(file_data)
-        file_data.close()
-        lamb = 0.0000001
-        A, B, Error = Regression(ClosedLoopDataPID.x, ClosedLoopDataPID.u, lamb)
-        print "A matrix: \n", A
-        print "B matrix: \n", B      
-        Q = 1*np.diag([100.0, 1.0, 1, 10.0, 0.0, 50.0]) # vx, vy, wz, epsi, s, ey
-        R = np.diag([1.0, 1.0]) # delta, a
-        N = 12
+        file_data.close()     
         Controller = PathFollowingLTI_MPC(A, B, Q, R, N, vt)
+
     elif PickController == "TV_MPC":
         file_data = open(sys.path[0]+'/data/'+mode+'/ClosedLoopDataPID.obj', 'rb')
         ClosedLoopDataPID = pickle.load(file_data)
@@ -235,10 +231,11 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode):
         shift = N / 2                     # Given the closed point, x_t^j, to the x(t) select the SS points from x_{t+shift}^j
         # Tuning Parameters
         Qslack  = 10 * np.diag([10, 1, 1, 1, 10, 1])          # Cost on the slack variable for the terminal constraint
+        Qlane   =  1 * np.array([100, 10]) # Quadratic and linear slack lane cost
         Q_LMPC  =  0 * np.diag([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])  # State cost x = [vx, vy, wz, epsi, s, ey]
         R_LMPC  =  0 * np.diag([1.0, 1.0])                      # Input cost u = [delta, a]
         dR_LMPC =  5 * np.array([1.0, 1.0])                     # Input rate cost u
-        Controller = ControllerLMPC(numSS_Points, numSS_it, N, Qslack, Q_LMPC, R_LMPC, dR_LMPC, 6, 2, shift, 
+        Controller = ControllerLMPC(numSS_Points, numSS_it, N, Qslack, Qlane, Q_LMPC, R_LMPC, dR_LMPC, 6, 2, shift, 
                                         dt, map, Laps, TimeLMPC, LMPC_Solver, SysID_Solver, flag_LTV)
         # Controller.addTrajectory(ClosedLoopDataPID)
         Controller.addTrajectory(ClosedLoopDataTI_MPC)
