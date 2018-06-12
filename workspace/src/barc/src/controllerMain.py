@@ -52,7 +52,8 @@ def main():
     NumberOfLaps   = 20
     vt = 1.0
     PathFollowingLaps = 1
-    ControllerLap0, Controller,  OpenLoopData   = ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode)
+    PIDnoise = np.array([0.1, 0.1]) # noise on [Steering, Acceleration] 
+    ControllerLap0, Controller,  OpenLoopData   = ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PIDnoise)
                  
     # Initialize variables for main loop
     GlobalState      = np.zeros(6)
@@ -177,7 +178,7 @@ def main():
 # ===============================================================================================================================
 # ==================================================== END OF MAIN ==============================================================
 # ===============================================================================================================================
-def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode):
+def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PIDnoise):
     OpenLoopData = 0.0
 
     # TI MPC tuning
@@ -188,7 +189,7 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode):
 
 
     if PickController == 'PID':
-        ControllerLap0 = PID(vt) 
+        ControllerLap0 = PID(vt, PIDnoise) 
     else:
         file_data = open(sys.path[0]+'/data/'+mode+'/ClosedLoopDataPID.obj', 'rb')
         ClosedLoopDataPID = pickle.load(file_data)
@@ -198,9 +199,10 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode):
         print "A matrix: \n", A
         print "B matrix: \n", B      
         ControllerLap0 = PathFollowingLTI_MPC(A, B, Q, R, N, vt, TI_Qlane)
+        # ControllerLap0 = PID(vt, PIDnoise)
 
     if PickController == 'PID':
-        Controller = PID(vt)
+        Controller = PID(vt, PIDnoise)
                                         # PID controller
     elif PickController == "TI_MPC":
         file_data = open(sys.path[0]+'/data/'+mode+'/ClosedLoopDataPID.obj', 'rb')
@@ -251,7 +253,7 @@ class PID:
     Attributes:
         solve: given x0 computes the control action
     """
-    def __init__(self, vt):
+    def __init__(self, vt, noise):
         """Initialization
         Arguments:
             vt: target velocity
@@ -264,6 +266,8 @@ class PID:
         self.solverTime = deltaTimer
         self.linearizationTime = deltaTimer
         self.feasible = 1
+        self.integral = 0.0
+        self.noise = noise
 
     def solve(self, x0):
         """Computes control action
@@ -271,10 +275,18 @@ class PID:
             x0: current state position
         """
         vt = self.vt
-        Steering = - 0.5 * 2.0 * x0[5] - 0.5 * x0[3]
+        Steering = - 0.5 * 2.0 * x0[5] - 0.5 * x0[3] - 0.001 * self.integral
         Accelera = 0.5 * 1.5 * (vt - x0[0])
-        self.uPred[0, 0] = np.maximum(-0.6, np.minimum(Steering, 0.6)) + np.maximum(-0.45, np.min(np.random.randn() * 0.25, 0.45))
-        self.uPred[0, 1] = np.maximum(-2.5, np.minimum(Accelera, 2.5)) + np.maximum(-0.2, np.min(np.random.randn() * 0.10, 0.2))
+
+        self.integral += 0.1 * x0[5] + 0.1 * x0[3]
+
+        self.uPred[0, 0] = self.truncate(Steering, 0.3) + self.truncate( np.random.randn() * 0.25 * self.noise[0], 0.3)
+        self.uPred[0, 1] = self.truncate(Accelera, 2.0) + self.truncate( np.random.randn() * 0.1 * self.noise[0], 0.3)
+
+
+    def truncate(self, val, bound):
+        return np.maximum(-bound, np.minimum(val, bound))
+
 
 if __name__ == "__main__":
 

@@ -130,7 +130,7 @@ ax1 = fig.add_subplot(1,1,1,ylabel="track x-y plot")
 # ax1.plot(l.nodes_bound2[0],l.nodes_bound2[1],color="red",alpha=0.3)
 ax1.axis("equal")
 ax1.plot(x_est_his,y_est_his,color="green")
-ax1.plot(x_his,y_his,color="blue")
+ax1.plot(x_his,y_his,"-or")
 ax1.legend()
 """
 # pdb.set_trace()

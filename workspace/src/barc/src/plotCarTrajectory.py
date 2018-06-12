@@ -171,7 +171,7 @@ class EstimationAndMesuredData():
 # ===================================================================================================================================== #
 def _initializeFigure_xy(map):
     xdata = []; ydata = []
-    fig = plt.figure()
+    fig = plt.figure(figsize=(20,60))
     plt.ion()
     axtr = plt.axes()
 
@@ -209,8 +209,8 @@ def _initializeFigure_xy(map):
 
 def _initializeFigure(map):
     xdata = []; ydata = []
-    fig = plt.figure()
     plt.ion()
+    fig = plt.figure(figsize=(40,20))
 
     axvx = fig.add_subplot(3, 2, 1)
     linevx, = axvx.plot(xdata, ydata, 'or-')

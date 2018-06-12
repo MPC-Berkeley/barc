@@ -32,15 +32,15 @@ def main():
     Q[4,4] = 1.0 # ax
     Q[5,5] = 1.0 # ay
     Q[6,6] = 0.0001 # psi
-    Q[7,7] = 1.0 # psidot
+    Q[7,7] = 10.0 # psidot
     # Q[8,8] = 0.0 # psiDot in the model
     R = eye(6)
-    R[0,0] = 1.0   # x
-    R[1,1] = 1.0   # y
-    R[2,2] = 0.1    # vx
+    R[0,0] = 0.5   # x
+    R[1,1] = 0.5   # y
+    R[2,2] = 1.0    # vx
     R[3,3] = 10.0   # ax
     R[4,4] = 10.0   # ay
-    R[5,5] = 0.1    # psiDot
+    R[5,5] = 0.01    # psiDot
     # R[6,6] = 0.01   # vy
 
     imu = ImuClass(0.0)
