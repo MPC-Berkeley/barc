@@ -184,6 +184,8 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode):
     Q = 1*np.diag([100.0, 1.0, 1, 10.0, 0.0, 50.0]) # vx, vy, wz, epsi, s, ey
     R = np.diag([1.0, 1.0]) # delta, a
     N = 12
+    TI_Qlane   =  1 * np.array([100, 10]) # Quadratic and linear slack lane cost
+
 
     if PickController == 'PID':
         ControllerLap0 = PID(vt) 
@@ -195,7 +197,7 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode):
         A, B, Error = Regression(ClosedLoopDataPID.x, ClosedLoopDataPID.u, lamb)
         print "A matrix: \n", A
         print "B matrix: \n", B      
-        ControllerLap0 = PathFollowingLTI_MPC(A, B, Q, R, N, vt)
+        ControllerLap0 = PathFollowingLTI_MPC(A, B, Q, R, N, vt, TI_Qlane)
 
     if PickController == 'PID':
         Controller = PID(vt)
@@ -204,7 +206,7 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode):
         file_data = open(sys.path[0]+'/data/'+mode+'/ClosedLoopDataPID.obj', 'rb')
         ClosedLoopDataPID = pickle.load(file_data)
         file_data.close()     
-        Controller = PathFollowingLTI_MPC(A, B, Q, R, N, vt)
+        Controller = PathFollowingLTI_MPC(A, B, Q, R, N, vt, TI_Qlane)
 
     elif PickController == "TV_MPC":
         file_data = open(sys.path[0]+'/data/'+mode+'/ClosedLoopDataPID.obj', 'rb')

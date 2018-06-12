@@ -15,7 +15,7 @@ class PathFollowingLTI_MPC:
     Attributes:
         solve: given x0 computes the control action
     """
-    def __init__(self, A, B, Q, R, N, vt):
+    def __init__(self, A, B, Q, R, N, vt, Qlane):
         """Initialization
         A, B: Liner Time Invariant (LTI) system dynamics
         Q, R: weights to build the cost function h(x,u) = ||x||_Q + ||u||_R
@@ -30,6 +30,7 @@ class PathFollowingLTI_MPC:
         self.Q = Q
         self.R = R
         self.vt = vt        # target velocity
+        self.Qlane = Qlane
         startTimer = datetime.datetime.now()
         endTimer = datetime.datetime.now(); deltaTimer = endTimer - startTimer
         self.solverTime = deltaTimer
@@ -156,7 +157,9 @@ def _buildMatEqConst(Controller):
         Gx[np.ix_(ind1, ind2x)] = -A
         Gu[np.ix_(ind1, ind2u)] = -B
 
-    G = np.hstack((Gx, Gu))
+    G_hard = np.hstack((Gx, Gu))
+    SlackLane = np.zeros((G_hard.shape[0], 2*N))
+    G = np.hstack((G_hard, SlackLane))
 
     return G, E
 
@@ -164,12 +167,10 @@ def _buildMatIneqConst(Controller):
     N = Controller.N
     n = Controller.n
     # Buil the matrices for the state constraint in each region. In the region i we want Fx[i]x <= bx[b]
-    Fx = np.array([[1., 0., 0., 0., 0., 0.],
-                   [0., 0., 0., 0., 0., 1.],
+    Fx = np.array([[0., 0., 0., 0., 0., 1.],
                    [0., 0., 0., 0., 0., -1.]])
 
-    bx = np.array([[10.],  # vx max
-                   [2.],  # max ey
+    bx = np.array([[2.],  # max ey
                    [2.]])  # max ey
 
     # Buil the matrices for the input constraint in each region. In the region i we want Fx[i]x <= bx[b]
@@ -201,8 +202,18 @@ def _buildMatIneqConst(Controller):
     rFutot, cFutot = np.shape(Futot)
     Dummy1 = np.hstack((Fxtot, np.zeros((rFxtot, cFutot))))
     Dummy2 = np.hstack((np.zeros((rFutot, cFxtot)), Futot))
-    F = np.vstack((Dummy1, Dummy2))
+    F_hard = np.vstack((Dummy1, Dummy2))
     b = np.hstack((bxtot, butot))
+
+    LaneSlack = np.zeros((F_hard.shape[0], 2*N))
+    colIndex = range(2*N)
+    rowIndex = []
+    for i in range(0, N):
+        rowIndex.append(i*Fx.shape[0] +0) # Slack on second element of Fx
+        rowIndex.append(i*Fx.shape[0] +1) # Slack on third element of Fx
+    LaneSlack[rowIndex, colIndex] = 1.0
+
+    F = np.hstack((F_hard, LaneSlack))
 
     return F, b
 
@@ -214,13 +225,21 @@ def _buildMatCost(Controller):
     P = Controller.Q
     b = [Q] * (N)
     Mx = linalg.block_diag(*b)
+    Qlane = Controller.Qlane
 
     c = [R] * (N)
     Mu = linalg.block_diag(*c)
 
-    M0 = linalg.block_diag(Mx, P, Mu)
+    quadLaneSlack = Qlane[0] * np.eye(2*N)
+    M00 = linalg.block_diag(Mx, P, Mu)
+    M0  = linalg.block_diag(M00, quadLaneSlack)
+
     xtrack = np.array([vt, 0, 0, 0, 0, 0])
-    q = - 2 * np.dot(np.append(np.tile(xtrack, N + 1), np.zeros(R.shape[0] * N)), M0)
+    q_hard = - 2 * np.dot(np.append(np.tile(xtrack, N + 1), np.zeros(R.shape[0] * N)), M00)
+    
+    linLaneSlack = Qlane[1] * np.ones(2*N)
+    q = np.append(q_hard, linLaneSlack)
+
     M = 2 * M0  # Need to multiply by two because CVX considers 1/2 in front of quadratic cost
 
     return M, q
