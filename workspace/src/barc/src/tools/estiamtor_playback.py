@@ -45,61 +45,74 @@ def main():
     ecu = EcuClass(0.0)
     est = Estimator(0.0,loop_rate,a_delay,df_delay,Q,R)
     
-    track = Track(0.01,1.0)
-    track.createRaceTrack()
+    # track = Track(0.01,1.0)
+    # track.createRaceTrack()
 
     estMsg = pos_info()
     
-    # LOAD EXPERIMENT DATA
     homedir = os.path.expanduser("~")
+    pathSave = os.path.join(homedir,"barc_debugging/estimator_output.npz")
+    npz_output = np.load(pathSave)
+    KF_x_his            = npz_output["KF_x_his"]
+    KF_y_his            = npz_output["KF_y_his"]
+    KF_v_meas_his       = npz_output["KF_v_meas_his"]
+    KF_ax_his           = npz_output["KF_ax_his"]
+    KF_ay_his           = npz_output["KF_ay_his"]
+    KF_psiDot_his       = npz_output["KF_psiDot_his"]
+    KF_a_his            = npz_output["KF_a_his"]
+    KF_df_his           = npz_output["KF_df_his"]
+    estimator_time      = npz_output["estimator_time"]
+    print "Finish loading data from", pathSave
+
     pathSave = os.path.join(homedir,"barc_debugging/estimator_imu.npz")
     npz_imu = np.load(pathSave)
-    psiDot_his        = npz_imu["psiDot_his"]
-    roll_his          = npz_imu["roll_his"]
-    pitch_his         = npz_imu["pitch_his"]
-    yaw_his          = npz_imu["yaw_his"]
+    psiDot_his      = npz_imu["psiDot_his"]
+    roll_his        = npz_imu["roll_his"]
+    pitch_his       = npz_imu["pitch_his"]
+    yaw_his         = npz_imu["yaw_his"]
     ax_his          = npz_imu["ax_his"]
     ay_his          = npz_imu["ay_his"]
+    imu_time        = npz_imu["imu_time"]
+    print "Finish loading data from", pathSave
 
-    homedir = os.path.expanduser("~")
     pathSave = os.path.join(homedir,"barc_debugging/estimator_gps.npz")
     npz_gps = np.load(pathSave)
-    x_his         = npz_gps["x_his"]
-    y_his         = npz_gps["y_his"]
+    x_his       = npz_gps["x_his"]
+    y_his       = npz_gps["y_his"]
+    x_ply_his   = npz_gps["x_ply_his"]
+    y_ply_his   = npz_gps["y_ply_his"]
+    gps_time    = npz_gps["gps_time"]
+    print "Finish loading data from", pathSave
 
-    homedir = os.path.expanduser("~")
     pathSave = os.path.join(homedir,"barc_debugging/estimator_enc.npz")
     npz_enc = np.load(pathSave)
-    v_fl_his     = npz_enc["v_fl_his"]
-    v_fr_his     = npz_enc["v_fr_his"]
-    v_rl_his     = npz_enc["v_rl_his"]
-    v_rr_his     = npz_enc["v_rr_his"]
+    v_fl_his    = npz_enc["v_fl_his"]
+    v_fr_his    = npz_enc["v_fr_his"]
+    v_rl_his    = npz_enc["v_rl_his"]
+    v_rr_his    = npz_enc["v_rr_his"]
+    v_meas_his  = npz_enc["v_meas_his"]
+    enc_time    = npz_enc["enc_time"]
+    print "Finish loading data from", pathSave
 
-    homedir = os.path.expanduser("~")
     pathSave = os.path.join(homedir,"barc_debugging/estimator_ecu.npz")
     npz_ecu = np.load(pathSave)
-    a_his         = npz_ecu["a_his"]
-    df_his        = npz_ecu["df_his"]
+    a_his       = npz_ecu["a_his"]
+    df_his      = npz_ecu["df_his"]
+    ecu_time    = npz_ecu["ecu_time"]
+    print "Finish loading data from", pathSave
 
-    for i in range(len(a_his)):
+    for i in range(len(KF_a_his)):
         # READ SENSOR DATA
-        gps.x   = x_his[i]
-        gps.y   = y_his[i]
-        imu.ax  = ax_his[i]
-        imu.ay  = ay_his[i]
-        imu.psiDot  = psiDot_his[i]
-        enc.v_rl    = v_rl_his[i]
-        enc.v_rr    = v_rr_his[i]
-        enc.v_meas  = (v_rl_his[i]+v_rr_his[i])/2
-        ecu.a       = a_his[i]
-        ecu.df      = df_his[i]
+        gps.x       = KF_x_his[i]
+        gps.y       = KF_y_his[i]
+        imu.ax      = KF_ax_his[i]
+        imu.ay      = KF_ay_his[i]
+        imu.psiDot  = KF_psiDot_his[i]
+        enc.v_meas  = KF_v_meas_his[i]
+        ecu.a       = KF_a_his[i]
+        ecu.df      = KF_df_his[i]
 
         est.estimateState(imu,gps,enc,ecu,est.ekf)
-
-        imu.saveHistory()
-        gps.saveHistory()
-        enc.saveHistory()
-        ecu.saveHistory()
         est.saveHistory()
 
     homedir = os.path.expanduser("~")
@@ -112,33 +125,44 @@ def main():
                       vy_est_his        = est.vy_est_his,
                       ax_est_his        = est.ax_est_his,
                       ay_est_his        = est.ay_est_his,
-                      estimator_time    = est.time_his)
+                      KF_x_his          = KF_x_his,
+                      KF_y_his          = KF_y_his,
+                      KF_v_meas_his     = KF_v_meas_his,
+                      KF_ax_his         = KF_ax_his,
+                      KF_ay_his         = KF_ay_his,
+                      KF_psiDot_his     = KF_psiDot_his,
+                      KF_a_his          = KF_a_his,
+                      KF_df_his         = KF_df_his,
+                      estimator_time    = estimator_time)
 
     pathSave = os.path.join(homedir,"barc_debugging2/estimator_imu.npz")
-    np.savez(pathSave,psiDot_his    = imu.psiDot_his,
-                      roll_his      = imu.roll_his,
-                      pitch_his     = imu.pitch_his,
-                      yaw_his       = imu.yaw_his,
-                      ax_his        = imu.ax_his,
-                      ay_his        = imu.ay_his,
-                      imu_time      = imu.time_his)
+    np.savez(pathSave,psiDot_his    = psiDot_his,
+                      roll_his      = roll_his,
+                      pitch_his     = pitch_his,
+                      yaw_his       = yaw_his,
+                      ax_his        = ax_his,
+                      ay_his        = ay_his,
+                      imu_time      = imu_time)
 
     pathSave = os.path.join(homedir,"barc_debugging2/estimator_gps.npz")
-    np.savez(pathSave,x_his         = gps.x_his,
-                      y_his         = gps.y_his,
-                      gps_time      = gps.time_his)
+    np.savez(pathSave,x_his         = x_his,
+                      y_his         = y_his,
+                      x_ply_his     = x_ply_his,
+                      y_ply_his     = y_ply_his,
+                      gps_time      = gps_time)
 
     pathSave = os.path.join(homedir,"barc_debugging2/estimator_enc.npz")
-    np.savez(pathSave,v_fl_his          = enc.v_fl_his,
-                      v_fr_his          = enc.v_fr_his,
-                      v_rl_his          = enc.v_rl_his,
-                      v_rr_his          = enc.v_rr_his,
-                      enc_time          = enc.time_his)
+    np.savez(pathSave,v_fl_his          = v_fl_his,
+                      v_fr_his          = v_fr_his,
+                      v_rl_his          = v_rl_his,
+                      v_rr_his          = v_rr_his,
+                      v_meas_his        = v_meas_his,
+                      enc_time          = enc_time)
 
     pathSave = os.path.join(homedir,"barc_debugging2/estimator_ecu.npz")
-    np.savez(pathSave,a_his         = ecu.a_his,
-                      df_his        = ecu.df_his,
-                      ecu_time      = ecu.time_his)
+    np.savez(pathSave,a_his         = a_his,
+                      df_his        = df_his,
+                      ecu_time      = ecu_time)
 
     print "Finishing saveing state estimation data"
 

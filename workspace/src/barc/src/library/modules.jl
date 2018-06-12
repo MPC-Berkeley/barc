@@ -1174,7 +1174,7 @@ export historyCollect, gpDataCollect
                             "cost",      agent.history.cost)
         else
             # CALCULATE FINISHED ITERATION OF CURRENT LAP
-            agent.history.cost[agent.lapStatus.lap] = agent.lapStatus.it
+            agent.history.cost[agent.lapStatus.lap] = agent.lapStatus.it-1
             # RACE IS KILLED
             save(log_path,  "z",         agent.history.z[:,1:agent.lapStatus.lap,:,:],
                             "u",         agent.history.u[:,1:agent.lapStatus.lap,:,:],

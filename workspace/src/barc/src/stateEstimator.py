@@ -51,14 +51,14 @@ def main():
     Q[5,5] = rospy.get_param("state_estimator/Q_ay")
     Q[6,6] = rospy.get_param("state_estimator/Q_psi")
     Q[7,7] = rospy.get_param("state_estimator/Q_psiDot")
-    R = eye(7)
+    R = eye(6)
     R[0,0] = rospy.get_param("state_estimator/R_x")
     R[1,1] = rospy.get_param("state_estimator/R_y")
     R[2,2] = rospy.get_param("state_estimator/R_vx")
     R[3,3] = rospy.get_param("state_estimator/R_ax")
     R[4,4] = rospy.get_param("state_estimator/R_ay")
     R[5,5] = rospy.get_param("state_estimator/R_psiDot")
-    R[6,6] = rospy.get_param("state_estimator/R_vy")
+    # R[6,6] = rospy.get_param("state_estimator/R_vy")
 
     t0 = rospy.get_rostime().to_sec()
     imu = ImuClass(t0)
@@ -76,7 +76,7 @@ def main():
     estMsg = pos_info()
     
     while not rospy.is_shutdown():
-        
+
         est.estimateState(imu,gps,enc,ecu,est.ekf)
 
         estMsg.s, estMsg.ey, estMsg.epsi = track.Localize(est.x_est, est.y_est, est.yaw_est)
@@ -108,6 +108,14 @@ def main():
                       vy_est_his        = est.vy_est_his,
                       ax_est_his        = est.ax_est_his,
                       ay_est_his        = est.ay_est_his,
+                      KF_x_his          = est.x_his,
+                      KF_y_his          = est.y_his,
+                      KF_v_meas_his     = est.v_meas_his,
+                      KF_ax_his         = est.ax_his,
+                      KF_ay_his         = est.ay_his,
+                      KF_psiDot_his     = est.psiDot_his,
+                      KF_a_his          = est.a_his,
+                      KF_df_his         = est.df_his,
                       estimator_time    = est.time_his)
 
     pathSave = os.path.join(homedir,"barc_debugging/estimator_imu.npz")
@@ -122,6 +130,8 @@ def main():
     pathSave = os.path.join(homedir,"barc_debugging/estimator_gps.npz")
     np.savez(pathSave,x_his         = gps.x_his,
                       y_his         = gps.y_his,
+                      x_ply_his     = gps.x_ply_his,
+                      y_ply_his     = gps.y_ply_his,
                       gps_time      = gps.time_his)
 
     pathSave = os.path.join(homedir,"barc_debugging/estimator_enc.npz")
@@ -129,6 +139,7 @@ def main():
                       v_fr_his          = enc.v_fr_his,
                       v_rl_his          = enc.v_rl_his,
                       v_rr_his          = enc.v_rr_his,
+                      v_meas_his        = enc.v_meas_his,
                       enc_time          = enc.time_his)
 
     pathSave = os.path.join(homedir,"barc_debugging/estimator_ecu.npz")
@@ -203,7 +214,7 @@ class Estimator(object):
         self.yaw_est        = 0.0
         self.psiDot_est     = 0.0
         self.psiDot_drift_est = 0.0
-        self.curr_time      = rospy.get_rostime().to_sec()
+        self.curr_time      = rospy.get_rostime().to_sec() - self.t0
 
         self.x_est_his          = []
         self.y_est_his          = []
@@ -216,30 +227,37 @@ class Estimator(object):
         self.psiDot_est_his     = []
         self.time_his           = []
 
+        # SAVE THE measurement/input SEQUENCE USED BY KF
+        self.x_his      = []
+        self.y_his      = []
+        self.v_meas_his = []
+        self.ax_his     = []
+        self.ay_his     = []
+        self.psiDot_his = []
+        self.a_his      = []
+        self.df_his     = []
+
     # ecu command update
     def estimateState(self,imu,gps,enc,ecu,KF):
         """Do extended Kalman filter to estimate states"""
-        self.curr_time = rospy.get_rostime().to_sec()
+        self.curr_time = rospy.get_rostime().to_sec() - self.t0
 
         self.a_his.append(ecu.a)
         self.df_his.append(ecu.df)
         u = [self.a_his.pop(0), self.df_his.pop(0)]
-        # u = [ecu.a, self.df_his.pop(0)]
         
-        bta = 0.5 * u[1]
-        y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot, sin(bta)*enc.v_meas])
-        gps.x_his = np.append(gps.x_his,y[0])
-        gps.y_his = np.append(gps.y_his,y[1])
-        enc.v_fl_his.append(y[2])
-        enc.v_fr_his.append(y[2])
-        enc.v_rl_his.append(y[2])
-        enc.v_rr_his.append(y[2])
-        enc.v_meas_his.append(y[2])
-        imu.ax_his.append(y[3])
-        imu.ay_his.append(y[4])
-        imu.psiDot_his.append(y[5])
-        ecu.a_his.append(u[0])
-        ecu.df_his.append(u[1])
+        # y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot])
+        y = np.array([gps.x_ply, gps.y_ply, enc.v_meas, imu.ax, imu.ay, imu.psiDot])
+
+        # SAVE THE measurement/input SEQUENCE USED BY KF
+        self.x_his.append(y[0])
+        self.y_his.append(y[1])
+        self.v_meas_his.append(y[2])
+        self.ax_his.append(y[3])
+        self.ay_his.append(y[4])
+        self.psiDot_his.append(y[5])
+        self.a_his.append(u[0])
+        self.df_his.append(u[1])
         KF(y,u)
 
     def ekf(self, y, u):
@@ -363,14 +381,14 @@ class Estimator(object):
 
     def h(self, x, u):
         """ This is the measurement model to the kinematic<->sensor model above """
-        y = [0]*7
+        y = [0]*6
         y[0] = x[0]      # x
         y[1] = x[1]      # y
         y[2] = x[2]      # vx
         y[3] = x[4]      # a_x
         y[4] = x[5]      # a_y
         y[5] = x[7]      # psiDot
-        y[6] = x[3]      # vy
+        # y[6] = x[3]      # vy
         return np.array(y)
 
     def saveHistory(self):
@@ -425,16 +443,16 @@ class ImuClass(object):
         self.time_his    = []
 
         # Time for yawDot integration
-        self.curr_time = rospy.get_rostime().to_sec()
+        self.curr_time = rospy.get_rostime().to_sec() - self.t0
         self.prev_time = self.curr_time
 
     def imu_callback(self,data):
         """Unpack message from sensor, IMU"""
         
-        self.curr_time = rospy.get_rostime().to_sec()
-
+        self.curr_time = rospy.get_rostime().to_sec() - self.t0
         if self.prev_time > 0:
             self.yaw += self.psiDot * (self.curr_time-self.prev_time)
+        self.prev_time = self.curr_time
    
         ori = data.orientation
         quaternion = (ori.x, ori.y, ori.z, ori.w)
@@ -452,7 +470,8 @@ class ImuClass(object):
         self.ax = cos(-pitch_raw)*a_x + sin(-pitch_raw)*sin(-roll_raw)*a_y - sin(-pitch_raw)*cos(-roll_raw)*a_z
         self.ay = cos(-roll_raw)*a_y + sin(-roll_raw)*a_z
 
-        self.prev_time = self.curr_time
+        self.saveHistory()
+
 
     def saveHistory(self):
         """ Save measurement data into history array"""
@@ -489,19 +508,23 @@ class GpsClass(object):
         # GPS measurement
         self.x      = 0.0
         self.y      = 0.0
+        self.x_ply  = 0.0
+        self.y_ply  = 0.0
         
         # GPS measurement history
-        self.x_his  = np.array([])
-        self.y_his  = np.array([])
+        self.x_his      = np.array([])
+        self.y_his      = np.array([])
+        self.x_ply_his  = np.array([])
+        self.y_ply_his  = np.array([])
         
         # time stamp
         self.t0         = t0
         self.time_his   = np.array([])
-        self.curr_time  = rospy.get_rostime().to_sec() 
+        self.curr_time  = rospy.get_rostime().to_sec() - self.t0
 
     def gps_callback(self,data):
         """Unpack message from sensor, GPS"""
-        self.curr_time = rospy.get_rostime().to_sec()
+        self.curr_time = rospy.get_rostime().to_sec() - self.t0
 
         self.x = data.x_m
         self.y = data.y_m
@@ -509,22 +532,26 @@ class GpsClass(object):
         # 1) x(t) ~ c0x + c1x * t + c2x * t^2
         # 2) y(t) ~ c0y + c1y * t + c2y * t^2
         # c_X = [c0x c1x c2x] and c_Y = [c0y c1y c2y] 
-        # n_intplt = 20
-        # if size(self.x_his,0) > n_intplt: # do interpolation when there is enough points
-        #     x_intplt = self.x_his[-n_intplt:]
-        #     y_intplt = self.y_his[-n_intplt:]
-        #     t_intplt = self.time_his[-n_intplt:]
-        #     t_matrix = vstack([t_intplt**2, t_intplt, ones(sz)]).T
-        #     self.c_X = linalg.lstsq(t_matrix, x_intplt)[0]
-        #     self.c_Y = linalg.lstsq(t_matrix, y_intplt)[0]
-        #     self.x = polyval(self.c_X, self.curr_time)
-        #     self.y = polyval(self.c_Y, self.curr_time)
+        n_intplt = 20 # 20*0.01=0.2s data
+        if size(self.x_his,0) > n_intplt:
+            x_intplt = self.x_his[-n_intplt:]
+            y_intplt = self.y_his[-n_intplt:]
+            t_intplt = self.time_his[-n_intplt:]-self.time_his[-n_intplt]
+            t_matrix = vstack([t_intplt**2, t_intplt, ones(n_intplt)]).T
+            c_X = linalg.lstsq(t_matrix, x_intplt)[0]
+            c_Y = linalg.lstsq(t_matrix, y_intplt)[0]
+            self.x_ply = polyval(c_X, self.curr_time-self.time_his[-n_intplt])
+            self.y_ply = polyval(c_Y, self.curr_time-self.time_his[-n_intplt])
+
+        self.saveHistory()
 
     def saveHistory(self):
         self.time_his = np.append(self.time_his,self.curr_time)
 
-        self.x_his = np.append(self.x_his,self.x)
-        self.y_his = np.append(self.y_his,self.y)
+        self.x_his      = np.append(self.x_his,self.x)
+        self.y_his      = np.append(self.y_his,self.y)
+        self.x_ply_his  = np.append(self.x_ply_his,self.x_ply)
+        self.y_ply_his  = np.append(self.y_ply_his,self.y_ply)
 
 
 class EncClass(object):
@@ -563,11 +590,11 @@ class EncClass(object):
         self.v_prev     = 0.0
         self.t0         = t0
         self.time_his   = []
-        self.curr_time  = rospy.get_rostime().to_sec()
+        self.curr_time  = rospy.get_rostime().to_sec() - self.t0
 
     def enc_callback(self,data):
         """Unpack message from sensor, ENC"""
-        self.curr_time = rospy.get_rostime().to_sec()
+        self.curr_time = rospy.get_rostime().to_sec() - self.t0
 
         self.v_fl = data.vel_fl
         self.v_fr = data.vel_fr
@@ -582,6 +609,8 @@ class EncClass(object):
             self.v_count += 1
             if self.v_count > 10:     # if 10 times in a row the same measurement
                 self.v_meas = 0       # set velocity measurement to zero
+
+        self.saveHistory()
 
     def saveHistory(self):
         self.time_his.append(self.curr_time)
@@ -621,14 +650,16 @@ class EcuClass(object):
         # time stamp
         self.t0         = t0
         self.time_his   = []
-        self.curr_time  = rospy.get_rostime().to_sec()
+        self.curr_time  = rospy.get_rostime().to_sec() - self.t0
 
     def ecu_callback(self,data):
         """Unpack message from sensor, ECU"""
-        self.curr_time = rospy.get_rostime().to_sec()
+        self.curr_time = rospy.get_rostime().to_sec() - self.t0
 
         self.a  = data.motor
         self.df = data.servo
+
+        self.saveHistory()
 
     def saveHistory(self):
         self.time_his.append(self.curr_time)

@@ -8,7 +8,6 @@
 # plot the newest recorded data and trajectory
 # -> julia simple_debugging.jl both
 
-
 using JLD
 using PyPlot
 using PyCall
@@ -19,68 +18,60 @@ using QuickHull
 @pyimport matplotlib.animation as animation
 @pyimport matplotlib as mpl
 @pyimport matplotlib.collections as collections 
-
-# include("Library/modules.jl")
-# using Types
-
+include("./library.jl")
 # FLAG FOR PLOTTING THE SELECTED POINTS
 const select_flag = false
-
-run_time = Dates.format(now(),"yyyy-mm-dd")
-# if isfile("$(homedir())/experiments/LMPC-$(run_time)-$(ARGS[2]).jld")
-#     data        = load("$(homedir())/experiments/LMPC-$(run_time)-$(ARGS[2]).jld")
-# else
+folder_name = "simulations"
 
 # find the newest experiment time until now
-file_names = readdir("$(homedir())/simulations/")
+file_names_all = readdir("$(homedir())/$(folder_name)/")
+file_names = []
+for i = 1:length(file_names_all)
+	if file_names_all[i][1:4] == "LMPC"
+		push!(file_names,file_names_all[i])
+	end
+end
 file_times = zeros(length(file_names))
 for i = 1:length(file_names)
-    file_times[i] = ctime("$(homedir())/simulations/$(file_names[i])")
+    file_times[i] = ctime("$(homedir())/$(folder_name)/$(file_names[i])")
 end
 (~,idx) = findmax(file_times)
+println("Load data from $(homedir())/$(folder_name)/$(file_names[idx])")
 
-data        = load("$(homedir())/simulations/$(file_names[idx])")
-log_cvx = data["log_cvx"]
-log_cvy = data["log_cvy"]
-log_cpsi = data["log_cpsi"]
-history = data["history"]
-track = data["track"]
-selectedStates          = data["SS"]
-solHistory              = data["history"]
-selectHistory           = data["selectHistory"]
-GP_vy_History           = data["GP_vy"]
-GP_psidot_History       = data["GP_psiDot"]
-selectFeatureHistory    = history.feature_z
+data = load("$(homedir())/$(folder_name)/$(file_names[idx])")
+z			= data["z"]
+u			= data["u"]
+SS_z		= data["SS_z"]
+sysID_z		= data["sysID_z"]
+sysID_u		= data["sysID_u"]
+log_cvx		= data["log_cvx"]
+log_cvy		= data["log_cvy"]
+log_cpsi	= data["log_cpsi"]
+GP_vy		= data["GP_vy"]
+GP_psiDot	= data["GP_psiDot"]
+track		= data["track"]
+cost		= data["cost"]
 
-modelParams = data["modelParams"]
-mpcParams   = data["mpcParams"]
-
-lapStatus   = LapStatus(1,1,false,false,0.3)
-
-
-# end
-# figure("lap")
-# plot(solHistory.cost)
 
 # STATE AND SYS_ID PARAMETERS PLOT FOR LAPS DONE
 if ARGS[1] == "record" || ARGS[1]=="both"
     figure("Record-$(file_names[idx])") # PLOT OF STATE
     i = 1; plot_way = [3,2]
-    while solHistory.cost[i] > 10
-        i == 1 ? current_x = 0 : current_x = sum(solHistory.cost[1:i-1])
-        x_len = Int(solHistory.cost[i])
+    for i in 1:length(cost)
+        i == 1 ? current_x = 0 : current_x = sum(cost[1:i-1])
+        x_len = Int(cost[i])
         subplot(3,2,1)
-        plot(current_x+1:current_x+x_len,solHistory.z[1:x_len,i,1,4],color="blue")
+        plot(current_x+1:current_x+x_len,z[1:x_len,i,1,4],color="blue")
         plot([current_x,current_x],[0,2.5],color="grey",linestyle="--")
         ylabel("vx")
 
         subplot(3,2,3)
-        plot(current_x+1:current_x+x_len,solHistory.z[1:x_len,i,1,5],color="blue")
+        plot(current_x+1:current_x+x_len,z[1:x_len,i,1,5],color="blue")
         plot([current_x,current_x],[-0.3,0.3],color="grey",linestyle="--")
         ylabel("vy")
 
         subplot(3,2,5)
-        plot(current_x+1:current_x+x_len,solHistory.z[1:x_len,i,1,6],color="blue")
+        plot(current_x+1:current_x+x_len,z[1:x_len,i,1,6],color="blue")
         plot([current_x,current_x],[-3,3],color="grey",linestyle="--")
         ylabel("psi_dot")
 
@@ -88,35 +79,29 @@ if ARGS[1] == "record" || ARGS[1]=="both"
         # plot(current_x+1:current_x+x_len,solHistory.u[1:x_len,i,1,1],color="blue",label="a")
         # plot([current_x,current_x],[-3,3],color="grey",linestyle="--")
         # ylabel("psi_dot")
-
-        i += 1
-        if i>length(solHistory.cost)
-            break
-        end
     end
     # PLOT OF SYS_ID PARAMETERS
     # figure(figsize=(15,10))
-    i = 1
-    while solHistory.cost[i] > 10
-        i == 1 ? current_x = 0 : current_x = sum(solHistory.cost[1:i-1])
-        x_len = Int(solHistory.cost[i])
+    for i in 1:length(cost)
+        i == 1 ? current_x = 0 : current_x = sum(cost[1:i-1])
+        x_len = Int(cost[i])
         subplot(3,2,2)
         for j=1:size(log_cvx,3)
             if i == 1
                 if j == 1
-                    plot(current_x+1:current_x+x_len,log_cvx[1:x_len,1,j,i],color="blue",label="cvx_$j")
+                    plot(current_x+1:current_x+x_len,log_cvx[1:x_len,i,j],color="blue",label="cvx_$j")
                 elseif j == 2
-                    plot(current_x+1:current_x+x_len,log_cvx[1:x_len,1,j,i],color="red",label="cvx_$j")
+                    plot(current_x+1:current_x+x_len,log_cvx[1:x_len,i,j],color="red",label="cvx_$j")
                 elseif j == 3
-                    plot(current_x+1:current_x+x_len,log_cvx[1:x_len,1,j,i],color="green",label="cvx_$j")
+                    plot(current_x+1:current_x+x_len,log_cvx[1:x_len,i,j],color="green",label="cvx_$j")
                 end
             else
                 if j == 1
-                    plot(current_x+1:current_x+x_len,log_cvx[1:x_len,1,j,i],color="blue")
+                    plot(current_x+1:current_x+x_len,log_cvx[1:x_len,i,j],color="blue")
                 elseif j == 2
-                    plot(current_x+1:current_x+x_len,log_cvx[1:x_len,1,j,i],color="red")
+                    plot(current_x+1:current_x+x_len,log_cvx[1:x_len,i,j],color="red")
                 elseif j == 3
-                    plot(current_x+1:current_x+x_len,log_cvx[1:x_len,1,j,i],color="green")
+                    plot(current_x+1:current_x+x_len,log_cvx[1:x_len,i,j],color="green")
                 end
             end
             plot([current_x,current_x],[-1,1],color="grey",linestyle="--")
@@ -127,23 +112,23 @@ if ARGS[1] == "record" || ARGS[1]=="both"
         for j=1:size(log_cvy,3)
             if i == 1
                 if j == 1
-                    plot(current_x+1:current_x+x_len,log_cvy[1:x_len,1,j,i],color="blue",label="cvy_$j")
+                    plot(current_x+1:current_x+x_len,log_cvy[1:x_len,i,j],color="blue",label="cvy_$j")
                 elseif j == 2
-                    plot(current_x+1:current_x+x_len,log_cvy[1:x_len,1,j,i],color="red",label="cvy_$j")
+                    plot(current_x+1:current_x+x_len,log_cvy[1:x_len,i,j],color="red",label="cvy_$j")
                 elseif j == 3
-                    plot(current_x+1:current_x+x_len,log_cvy[1:x_len,1,j,i],color="green",label="cvy_$j")
+                    plot(current_x+1:current_x+x_len,log_cvy[1:x_len,i,j],color="green",label="cvy_$j")
                 elseif j == 4
-                    plot(current_x+1:current_x+x_len,log_cvy[1:x_len,1,j,i],color="orange",label="cvy_$j")
+                    plot(current_x+1:current_x+x_len,log_cvy[1:x_len,i,j],color="orange",label="cvy_$j")
                 end
             else
                 if j == 1
-                    plot(current_x+1:current_x+x_len,log_cvy[1:x_len,1,j,i],color="blue")
+                    plot(current_x+1:current_x+x_len,log_cvy[1:x_len,i,j],color="blue")
                 elseif j == 2
-                    plot(current_x+1:current_x+x_len,log_cvy[1:x_len,1,j,i],color="red")
+                    plot(current_x+1:current_x+x_len,log_cvy[1:x_len,i,j],color="red")
                 elseif j == 3
-                    plot(current_x+1:current_x+x_len,log_cvy[1:x_len,1,j,i],color="green")
+                    plot(current_x+1:current_x+x_len,log_cvy[1:x_len,i,j],color="green")
                 elseif j == 4
-                    plot(current_x+1:current_x+x_len,log_cvy[1:x_len,1,j,i],color="orange")
+                    plot(current_x+1:current_x+x_len,log_cvy[1:x_len,i,j],color="orange")
                 end
             end
             plot([current_x,current_x],[-1,1],color="grey",linestyle="--")
@@ -154,28 +139,24 @@ if ARGS[1] == "record" || ARGS[1]=="both"
         for j=1:size(log_cpsi,3)
             if i == 1
                 if j == 1
-                    plot(current_x+1:current_x+x_len,log_cpsi[1:x_len,1,j,i],color="blue",label="cpsi_$j")
+                    plot(current_x+1:current_x+x_len,log_cpsi[1:x_len,i,j],color="blue",label="cpsi_$j")
                 elseif j == 2
-                    plot(current_x+1:current_x+x_len,log_cpsi[1:x_len,1,j,i],color="red",label="cpsi_$j")
+                    plot(current_x+1:current_x+x_len,log_cpsi[1:x_len,i,j],color="red",label="cpsi_$j")
                 elseif j == 3
-                    plot(current_x+1:current_x+x_len,log_cpsi[1:x_len,1,j,i],color="green",label="cpsi_$j")
+                    plot(current_x+1:current_x+x_len,log_cpsi[1:x_len,i,j],color="green",label="cpsi_$j")
                 end
             else
                 if j == 1
-                    plot(current_x+1:current_x+x_len,log_cpsi[1:x_len,1,j,i],color="blue")
+                    plot(current_x+1:current_x+x_len,log_cpsi[1:x_len,i,j],color="blue")
                 elseif j == 2
-                    plot(current_x+1:current_x+x_len,log_cpsi[1:x_len,1,j,i],color="red")
+                    plot(current_x+1:current_x+x_len,log_cpsi[1:x_len,i,j],color="red")
                 elseif j == 3
-                    plot(current_x+1:current_x+x_len,log_cpsi[1:x_len,1,j,i],color="green")
+                    plot(current_x+1:current_x+x_len,log_cpsi[1:x_len,i,j],color="green")
                 end
             end
             plot([current_x,current_x],[-4,4],color="grey",linestyle="--")
         end
         legend(); ylabel("cpsi")
-        i += 1
-        if i>length(solHistory.cost)
-            break
-        end
     end
 end
 
@@ -188,10 +169,11 @@ if ARGS[1] == "trajectory" || ARGS[1]=="both"
     plot(track.bound1xy[:, 1], track.bound1xy[:, 2], color="red")
     plot(track.bound2xy[:, 1], track.bound2xy[:, 2], color="red")
     v_min = 3; v_max = 3;
-    while solHistory.cost[i] > 10
-        x_len = Int(solHistory.cost[i])
-        v = sqrt(solHistory.z[1:x_len,i,1,4].^2 + solHistory.z[1:x_len,i,1,5].^2)
-        state = reshape(solHistory.z[1:x_len,i,1,:],x_len,6)
+    println(cost)
+    for i in 1:length(cost)
+        x_len = Int(cost[i])
+        v = sqrt(z[1:x_len,i,1,4].^2 + z[1:x_len,i,1,5].^2)
+        state = reshape(z[1:x_len,i,1,:],x_len,6)
         (x,y) = trackFrame_to_xyFrame(state,track)
 
         points = reshape([x y], (size(x)[1], 1, 2))
@@ -211,10 +193,6 @@ if ARGS[1] == "trajectory" || ARGS[1]=="both"
         lc[:set_array](v)
         lc[:set_linewidth](2)
         line = axs[:add_collection](lc)
-        i+=1
-        if i>length(solHistory.cost)
-            break
-        end
     end
     axis("equal")
     # grid("on")
@@ -224,6 +202,7 @@ if ARGS[1] == "trajectory" || ARGS[1]=="both"
 end
 show()
 
+#=
 function set_limits(ax, solHistory::SolHistory,index::Int64)
     i = 1; min_val = 0; max_val = 0
     while solHistory.cost[i]>10
@@ -444,7 +423,7 @@ if ARGS[1] == "prediction"
                 update_prediction(curvature_plt,solHistory.z[j,lap,:,1],curvature,track)
                 ax_s_c[:set_xlim]([findmin(solHistory.z[j,lap,:,1])[1]-0.1, findmax(solHistory.z[j,lap,:,1])[1] + 0.1])
 
-                fig[:savefig]("$(homedir())/simulations/animations/lap$(lap)_iteration$(j).png", dpi=100)
+                fig[:savefig]("$(homedir())/$(folder_name)/animations/lap$(lap)_iteration$(j).png", dpi=100)
                 println("lap$(lap)_iteration$(j)")
             end
         else
@@ -486,9 +465,9 @@ if ARGS[1] == "prediction"
                 ax_s_c[:set_xlim]([findmin(solHistory.z[j,lap,:,1])[1]-0.1, findmax(solHistory.z[j,lap,:,1])[1] + 0.1])
                 ax_s_c[:set_title](statusHistory[j,lap])
 
-                fig[:savefig]("$(homedir())/simulations/animations/lap$(lap)_iteration$(j).png", dpi=100)
+                fig[:savefig]("$(homedir())/$(folder_name)/animations/lap$(lap)_iteration$(j).png", dpi=100)
                 if select_flag
-                    fig_select[:savefig]("$(homedir())/simulations/animations/lap$(lap)_iteration$(j)_select.png", dpi=100)
+                    fig_select[:savefig]("$(homedir())/$(folder_name)/animations/lap$(lap)_iteration$(j)_select.png", dpi=100)
                 end
                 println("lap$(lap)_iteration$(j)")
             end
@@ -501,7 +480,7 @@ if ARGS[1] == "prediction"
 end
 
 if ARGS[1] == "GP"
-    data = load("$(homedir())/simulations/Feature_Data/FeatureData_GP-$(ARGS[2]).jld")
+    data = load("$(homedir())/$(folder_name)/Feature_Data/FeatureData_GP-$(ARGS[2]).jld")
     feature_GP_z        = data["feature_GP_z"]
     feature_GP_vy_e     = data["feature_GP_vy_e"]
     feature_GP_psidot_e = data["feature_GP_psidot_e"]
@@ -532,3 +511,4 @@ if ARGS[1] == "GP"
     ylabel("e_Psi_dot [rad/s]")
 end
 show()
+=#
