@@ -92,10 +92,6 @@ def main():
 
         est.state_pub_pos.publish(estMsg)
 
-        imu.saveHistory()
-        gps.saveHistory()
-        enc.saveHistory()
-        ecu.saveHistory()
         est.saveHistory()
         est.rate.sleep()
 
@@ -229,6 +225,18 @@ class Estimator(object):
         
         bta = 0.5 * u[1]
         y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot, sin(bta)*enc.v_meas])
+        gps.x_his = np.append(gps.x_his,y[0])
+        gps.y_his = np.append(gps.y_his,y[1])
+        enc.v_fl_his.append(y[2])
+        enc.v_fr_his.append(y[2])
+        enc.v_rl_his.append(y[2])
+        enc.v_rr_his.append(y[2])
+        enc.v_meas_his.append(y[2])
+        imu.ax_his.append(y[3])
+        imu.ay_his.append(y[4])
+        imu.psiDot_his.append(y[5])
+        ecu.a_his.append(u[0])
+        ecu.df_his.append(u[1])
 
         KF(y,u)
 
