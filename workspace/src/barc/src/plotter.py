@@ -9,7 +9,7 @@
 
 import rospy
 from barc.msg import xy_prediction, pos_info, theta, selected_states
-from marvelmind_nav.msg import hedge_imu_fusion
+from marvelmind_nav.msg import hedge_imu_fusion, hedge_pos_ang
 import numpy as np
 from numpy import linalg as LA
 import matplotlib.pyplot as plt
@@ -98,7 +98,8 @@ class PlottedAgent:
         else:
             xy_sub = rospy.Subscriber(node_name + "/pos_info", pos_info, self.xy_callback)
 
-        xy_gps_sub = rospy.Subscriber(node_name + "/hedge_imu_fusion", hedge_imu_fusion, self.xy_gps_callback)
+        # xy_gps_sub = rospy.Subscriber(node_name + "/hedge_imu_fusion", hedge_imu_fusion, self.xy_gps_callback)
+        xy_gps_sub = rospy.Subscriber(node_name + "/hedge_pos_ang", hedge_pos_ang, self.xy_gps_callback)
         prediction_sub = rospy.Subscriber(node_name + "/xy_prediction", xy_prediction, self.prediction_callback)
         selection_sub = rospy.Subscriber(node_name + "/selected_states", selected_states, self.selection_callback)
 

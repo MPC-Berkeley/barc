@@ -7,8 +7,8 @@
     Julia Version: 0.4.7
 =#
 
-# const MODE = "path_following"
-const MODE = "learning"
+const MODE = "path_following"
+# const MODE = "learning"
 # const MODE = "racing"
 
 if MODE == "racing"
@@ -40,7 +40,7 @@ elseif MODE == "racing"
 	# const NUM_LOADED_LAPS = 5
 end
 
-const HORIZON = 12
+const HORIZON = 10
 const NUM_CONSIDERED_LAPS = 4
 const NUM_HORIZONS = 2.0
 # const SELECTION_SHIFT = 0

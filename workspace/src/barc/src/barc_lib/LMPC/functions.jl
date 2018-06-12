@@ -661,7 +661,7 @@ function InitializeParameters(mpcParams::MpcParams,mpcParams_4s::MpcParams,mpcPa
     end
 
     selectedStates.Np           = 10        # please select an even number
-    selectedStates.Nl           = 10        # Number of previous laps to include in the convex hull
+    selectedStates.Nl           = 2        # Number of previous laps to include in the convex hull
     selectedStates.feature_Np   = 60        # Number of points from previous laps to do SYS_ID
     selectedStates.feature_Nl   = 2         # Number of previous laps to do SYS_ID 
     selectedStates.selStates    = zeros(selectedStates.Nl*selectedStates.Np,6)
