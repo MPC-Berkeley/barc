@@ -31,7 +31,7 @@ def main():
     Q[3,3] = 0.01 # vy
     Q[4,4] = 1.0 # ax
     Q[5,5] = 1.0 # ay
-    Q[6,6] = 0.1 # psi
+    Q[6,6] = 0.0001 # psi
     Q[7,7] = 1.0 # psidot
     # Q[8,8] = 0.0 # psiDot in the model
     R = eye(6)
@@ -216,8 +216,8 @@ class Estimator(object):
         
 
         self.z  = mx_kp1 + dot(K,(y - my_kp1))
-        # if np.abs(y[5]) < 0.1:
-        #     self.z[5] = 0
+        if np.abs(y[5]) < 0.1:
+            self.z[5] = 0
 
         self.P  = dot(dot(K,self.R),K.T) + dot( dot( (eye(xDim) - dot(K,H)) , P_kp1)  ,  (eye(xDim) - dot(K,H)).T )
 
