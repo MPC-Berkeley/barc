@@ -1,0 +1,23 @@
+# state vector  [x  y  psi  v]
+# (x,y) := coordinates in the global frame
+# psi   := heading angle with respect to the x-axis
+# v     := velocity
+
+# vehicle parameters
+vehicle_length: 2.7
+vehicle_width: 1.5
+
+# simulation parameter
+simulation_time_step: 1
+initial_state:  [-6.0, 9.5, 0.0, 0.0]
+final_state:    [0.0, 1.3, 1.57, 0.0]
+
+# mpc parameters
+horizon_preview: 5
+state_penalty_matrix:   [1.0,  0.0,  0.0,  0.0,
+                         0.0,  1.0,  0.0,  0.0,
+                         0.0,  0.0,  1.0,  0.0,
+                         0.0,  0.0,  0.0,  1.0]
+
+input_penalty_matrix:   [1.0,  0.0,
+                         0.0,  1.0]
