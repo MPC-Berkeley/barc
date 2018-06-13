@@ -13,7 +13,7 @@
     <machine name="yoga" address="127.0.0.1" user="lukas" timeout="20.0" env-loader="/home/lukas/barc/env_loader_yoga.sh" />
     <!-- <machine name="yoga" address="192.168.10.74" user="lukas" timeout="20.0" env-loader="/home/lukas/barc/env_loader_yoga.sh" /> -->
     <machine name="ubuntu-pc" address="192.168.10.147" user="mpcubuntu" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc_vis.sh"/>
-    <machine name="odroid_2" address="192.168.10.213" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid.sh"/>
+    <machine name="odroid_2" address="192.168.10.101" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid.sh"/>
 
     <!-- AGENT 2 NODES-->
     <!-- AGENT-NODE 2-->
@@ -23,7 +23,7 @@
         <param name="mass" type="double" value="1.98" />
         <param name="time_offset" type="double" value="0.0" />
         <param name="delay_a" type="int" value="1" />
-        <param name="delay_df" type="int" value="1" />
+        <param name="delay_df" type="int" value="3" />
         <param name="sim" type="str" value="estimation" />
 
         <remap from="pos_info" to="agent_2/pos_info" />
@@ -38,21 +38,21 @@
     </node>
 
     <!-- Estimator -->
-    <node machine="ubuntu-pc" pkg="barc" type="state_estimator_multiple_beacons.py" name="state_estimator_2" output="screen">
+    <node machine="ubuntu-pc" pkg="barc" type="state_estimator_multiple_beacons.py" name="state_estimator" output="screen">
         <!-- delay in state estuiamtor -->
         <param name="delay_df" type="double" value="0.2" />
         <param name="delay_a" type="double" value="0.0" />
         <!-- ekf properties -->
-        <param name="Q_x" type="double" value="0.01" />
-        <param name="Q_y" type="double" value="0.01" />
-        <param name="Q_vx" type="double" value="0.01" />
-        <param name="Q_vy" type="double" value="0.01" />
+        <param name="Q_x" type="double" value="0.0" />
+        <param name="Q_y" type="double" value="0.0" />
+        <param name="Q_vx" type="double" value="0.0" />
+        <param name="Q_vy" type="double" value="0.0" />
         <param name="Q_ax" type="double" value="1.0" />
         <param name="Q_ay" type="double" value="1.0" />
-        <param name="Q_psi" type="double" value="0.0001" />
+        <param name="Q_psi" type="double" value="0.000" />
         <param name="Q_psiDot" type="double" value="1.0" />
-        <param name="R_x" type="double" value="1.0" />
-        <param name="R_y" type="double" value="1.0" />
+        <param name="R_x" type="double" value="10.0" />
+        <param name="R_y" type="double" value="10.0" />
         <param name="R_vx" type="double" value="0.1" />
         <param name="R_vy" type="double" value="0.01" />
         <param name="R_ax" type="double" value="10.0" />

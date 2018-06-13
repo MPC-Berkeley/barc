@@ -118,6 +118,7 @@ def main():
     x_ply_his   = npz_gps["x_ply_his"]
     y_ply_his   = npz_gps["y_ply_his"]
     gps_time    = npz_gps["gps_time"]
+    gps_angle   = npz_gps["angle_his"]
     gps_ply_time= npz_gps["gps_ply_time"]
     print "Finish loading data from", pathSave
 
@@ -149,7 +150,7 @@ def main():
         ecu.a       = KF_a_his[i]
         ecu.df      = KF_df_his[i]
 
-        est.estimateState(imu,gps,enc,ecu,est.ekfMultiRate)
+        est.estimateState(imu,gps,enc,ecu,est.ekf)
         est.saveHistory()
 
     gps_t, indices = np.unique(gps_time, return_index=True)
@@ -159,8 +160,9 @@ def main():
         if gps_t[i] > enc_time[np.argmax(v_meas_his>0.1)] :
             gps_yaw[i-1] = approximate_yaw(x_his[indices], y_his[indices], gps_t, gps_t[i])
     gps_yaw = np.unwrap(gps_yaw)
-    pdb.set_trace()
-    
+
+    gps_angle = gps_angle * np.pi / 180.0 - np.pi / 2.0
+
     homedir = os.path.expanduser("~")
     pathSave = os.path.join(homedir,"barc_debugging2/estimator_output.npz")
     np.savez(pathSave,yaw_est_his       = est.yaw_est_his,
@@ -196,6 +198,7 @@ def main():
                       x_ply_his     = x_ply_his,
                       y_ply_his     = y_ply_his,
                       gps_t         = gps_t,
+                      gps_angle     = gps_angle,
                       gps_yaw       = gps_yaw,
                       gps_time      = gps_time,
                       gps_ply_time  = gps_ply_time)

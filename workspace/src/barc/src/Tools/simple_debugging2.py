@@ -50,6 +50,7 @@ x_ply_his   = npz_gps["x_ply_his"]
 y_ply_his   = npz_gps["y_ply_his"]
 gps_t       = npz_gps["gps_t"]
 gps_yaw     = npz_gps["gps_yaw"]
+gps_angle   = npz_gps["gps_angle"]
 gps_time    = npz_gps["gps_time"]
 gps_ply_time= npz_gps["gps_ply_time"]
 print "Finish loading data from", pathSave
@@ -174,7 +175,9 @@ ax4.plot(imu_time, psiDot_his, ".", label="psidot_meas")
 ax4.plot(estimator_time,psiDot_est_his,label="psidot_est")
 ax4.plot(imu_time, yaw_his, ".", label="yaw_meas")
 ax4.plot(estimator_time,yaw_est_his,label="yaw_est")
-ax4.plot(gps_t[:-1],gps_yaw,label="yaw_gps")
+ax4.plot(gps_t[:-1], gps_yaw,label="yaw_gps")
+ax4.plot(gps_time, gps_angle,label="angle_gps")
+
 
 # ax4.plot(estimator_time, df_his, "--",    label="cmd.df")
 ax4.legend()
