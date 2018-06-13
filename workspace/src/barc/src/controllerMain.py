@@ -22,6 +22,7 @@ from dataStructures import LMPCprediction, EstimatorData, ClosedLoopDataObj
 from PathFollowingLTI_MPC import PathFollowingLTI_MPC
 from PathFollowingLTVMPC import PathFollowingLTV_MPC
 from dataStructures import LMPCprediction, EstimatorData, ClosedLoopDataObj
+from LMPC import ControllerLMPC
 
 def main():
     # Initializa ROS node
@@ -243,7 +244,7 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
         Qlane   =  1 * np.array([100, 10]) # Quadratic and linear slack lane cost
         Q_LMPC  =  0 * np.diag([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])  # State cost x = [vx, vy, wz, epsi, s, ey]
         R_LMPC  =  0 * np.diag([1.0, 1.0])                      # Input cost u = [delta, a]
-        dR_LMPC =  1 * np.array([1.0, 1.0])                     # Input rate cost u
+        dR_LMPC =  1 * np.array([1.0, 10.0])                     # Input rate cost u
         Controller = ControllerLMPC(numSS_Points, numSS_it, N, Qslack, Qlane, Q_LMPC, R_LMPC, dR_LMPC, 6, 2, shift, 
                                         dt, map, Laps, TimeLMPC, LMPC_Solver, SysID_Solver, flag_LTV)
         # Controller.addTrajectory(ClosedLoopDataPID)

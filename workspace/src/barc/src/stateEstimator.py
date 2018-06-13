@@ -257,7 +257,7 @@ class Estimator(object):
 
         KF(y,u, modeGPS)
 
-        if np.abs(imu.psiDot) < 1.0:
+        if np.abs(imu.psiDot) < 0.4:
             self.z[3] = 0
 
     def ekf(self, y, u, modeGPS):

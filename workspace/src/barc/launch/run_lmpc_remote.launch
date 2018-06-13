@@ -29,8 +29,8 @@
         <!-- ekf properties -->
          <param name="Q_x" type="double" value="0.1" />
          <param name="Q_y" type="double" value="0.1" />
-         <param name="Q_vx" type="double" value="0.1" />
-         <param name="Q_vy" type="double" value="0.1" />
+         <param name="Q_vx" type="double" value="0.5" />
+         <param name="Q_vy" type="double" value="0.5" />
          <param name="Q_ax" type="double" value="1.0" />
          <param name="Q_ay" type="double" value="1.0" />
          <param name="Q_psi" type="double" value="0.01" />
