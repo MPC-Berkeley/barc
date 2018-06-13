@@ -1,7 +1,7 @@
 #=
     File name: modules.jl
     Author: Shuqi Xu
-    Email: shuqixu@kth.se
+    Email: shuqixu@berkeley.edu (xushuqi8787@gmail.com)
     Julia Version: 0.4.7
 =#
 #=
@@ -75,16 +75,16 @@ export createTrack, Track
                           Int(ceil(3*20)) 0;
                           Int(ceil(3*80)) pi/2;
                           Int(ceil(3*75)) 0]
-
-            # track_data = [Int(ceil(2.8*40)) 0;
-            #               Int(ceil(2.8*120)) -pi/2;
-            #               Int(ceil(2.8*5)) 0;
-            #               Int(ceil(2.8*120)) -pi/2;
-            #               Int(ceil(2.8*80)) 0;
-            #               Int(ceil(2.8*120)) -pi/2;
-            #               Int(ceil(2.8*5)) 0;
-            #               Int(ceil(2.8*120)) -pi/2;
-            #               Int(ceil(2.8*40)) 0]
+        elseif name == "rectangle"
+            track_data = [Int(ceil(2.8*40)) 0;
+                          Int(ceil(2.8*120)) -pi/2;
+                          Int(ceil(2.8*5)) 0;
+                          Int(ceil(2.8*120)) -pi/2;
+                          Int(ceil(2.8*80)) 0;
+                          Int(ceil(2.8*120)) -pi/2;
+                          Int(ceil(2.8*5)) 0;
+                          Int(ceil(2.8*120)) -pi/2;
+                          Int(ceil(2.8*40)) 0]
         elseif name == "MSC_lab"    
             # TRACK TO USE IN THE SMALL EXPERIMENT ROOM
             track_data = [Int(ceil(1.5*3*10)) 0;
@@ -92,6 +92,7 @@ export createTrack, Track
                           Int(ceil(1.5*3*20)) 0;
                           Int(ceil(1.5*3*120)) pi;
                           Int(ceil(1.5*3*10)) 0]
+
         elseif name == "feature"
             # FEATURE TRACK DATA
             ds = 0.01
@@ -242,7 +243,7 @@ export SafeSet,SysID,FeatureData,MpcSol,MpcParams,ModelParams,GPData
                 mpcParams.Q             = [0.0,50.0,5.0,20.0]
                 mpcParams.R             = 0*[10.0,10.0]
                 mpcParams.QderivU       = 1.0*[1.0,1.0]
-                mpcParams.Q_term_cost   = 0.2
+                mpcParams.Q_term_cost   = 0.8
                 mpcParams.Q_lane        = 10.0
                 if mpcParams.n_state == 6
                     mpcParams.QderivZ = 1.0*[0,0.1,0.1,2,0.1,0.0]
@@ -825,7 +826,8 @@ end # end of module ControllerHelper
 
 module SysIDFuncs
 using Types
-export sysIdTi, sysIdTv, buildFeatureSetFromHistory
+export sysIdTi, sysIdTv
+export buildFeatureSetFromHistory, buildFeatureSetFromDataSet, buildFeatureSetFromBoth
     function buildFeatureSetFromHistory(agent::Agent)
         # THIS FUNCTION IS ONLY NEEDS TO BE CALLED ONCE EACH LAP
         Nl = agent.sysID.feature_Nl
@@ -846,17 +848,15 @@ export sysIdTi, sysIdTv, buildFeatureSetFromHistory
     end
 
     function buildFeatureSetFromDataSet(agent::Agent,featureData::FeatureData)
-        # by default, we select the 5 laps of closest v_avg speed to do SYS ID
-        Nl = 5
         idx = hcat()
         z1 = Array{Float64,2}(0,6)
         z2 = Array{Float64,2}(0,6)
         u = Array{Float64,2}(0,2)
-        for i in (agent.lapStatus.lap-Nl) : (agent.lapStatus.lap-1)
-            cost = Int(agent.SS.oldCost[i])
-            z1 = vcat(z1,reshape(agent.SS.oldSS[1:cost-1,i,:],cost-1,6))
-            z2 = vcat(z2,reshape(agent.SS.oldSS[2:cost,  i,:],cost-1,6))
-            u = vcat(u,reshape(agent.SS.oldSS_u[1:cost-1,i,:],cost-1,2))
+        for i = 1:length(featureData.cost)
+            cost = Int(featureData.cost[i])
+            z1 = vcat(z1,reshape(featureData.feature_z[1:cost,i,:,1],cost,6))
+            z2 = vcat(z2,reshape(featureData.feature_z[1:cost,i,:,2],cost,6))
+            u = vcat(u,reshape(featureData.feature_u[1:cost,i,:],cost,2))
         end
         agent.sysID.feature_z = zeros(size(z1,1),6,2)
         agent.sysID.feature_z[:,:,1] = z1
@@ -1285,6 +1285,16 @@ export historyCollect, gpDataCollect
 
     function saveFeatureData(agent::Agent,featureData::FeatureData)
         log_path = "$(homedir())/$(agent.raceSet.folder_name)/FD.jld"
+        if agent.lapStatus.lap <= agent.raceSet.num_lap
+            # CALCULATE FINISHED ITERATION OF CURRENT LAP
+            featureData.cost[agent.lapStatus.lap] = agent.lapStatus.it-1
+            featureData.v_avg[agent.lapStatus.lap]= mean(featureData.feature_z[1:agent.lapStatus.it-1,agent.lapStatus.lap,4,1])
+            # FEATURE DATA COLLECTING IS KILLED
+            featureData.feature_z = featureData.feature_z[:,1:agent.lapStatus.lap,:,:]
+            featureData.feature_u = featureData.feature_u[:,1:agent.lapStatus.lap,:]
+            featureData.cost      = featureData.cost[1:agent.lapStatus.lap]
+            featureData.v_avg     = featureData.v_avg[1:agent.lapStatus.lap]
+        end
         save(log_path,"featureData",featureData)
         println("Finsh saving feature data to $log_path.")
     end

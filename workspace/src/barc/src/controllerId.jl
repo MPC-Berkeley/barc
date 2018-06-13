@@ -65,6 +65,13 @@ function main()
         GPR(agent)
         findSS(agent)
         solveId(mdlLMPC,agent)
+
+        # DIFFERENT OPTIONS FOR SELECTING FEATURE DATA FOR SYS ID
+        # buildFeatureSetFromHistory(agent)
+        data = load("$(homedir())/$(raceSet.folder_name)/FD.jld")
+        featureData = data["featureData"]
+        buildFeatureSetFromDataSet(agent,featureData)
+        # buildFeatureSetFromBoth(agent)
     end
     historyCollect(agent)
     gpDataCollect(agent)
@@ -87,9 +94,12 @@ function main()
 
             # WARM START WHEN SWITCHING THE LAPS
             if raceSet.PF_FLAG
-                setvalue(mdlPf.z_Ol[:,1],   mpcSol.z_prev[:,1]-track.s)
+                setvalue(mdlPf.z_Ol[:,1],mpcSol.z_prev[:,1]-track.s)
             else
-                buildFeatureSetFromHistory(agent)
+                # DIFFERENT OPTIONS FOR SELECTING FEATURE DATA FOR SYS ID
+                # buildFeatureSetFromHistory(agent)
+                buildFeatureSetFromDataSet(agent,featureData)
+                # buildFeatureSetFromBoth(agent)
                 setvalue(mdlLMPC.z_Ol[:,1], mpcSol.z_prev[:,1]-track.s)
             end
 

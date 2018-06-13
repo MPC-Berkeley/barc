@@ -20,16 +20,17 @@
     <!-- CONTROL -->
     <node pkg="barc" type="controllerFd.jl" name="controller" output="screen">
         <!-- Controller flags -->
-        <param name="TV_FLAG"       type="bool" value="false" />
-        <param name="num_spare"     type="int"  value="30"    />
-        <param name="GP_LOCAL_FLAG" type="bool" value="false" />
-        <param name="GP_FULL_FLAG"  type="bool" value="false" />
+        <param name="TV_FLAG"           type="bool" value="false" />
+        <param name="SYS_ID_LIN_FLAG"   type="bool" value="false" />
+        <param name="num_spare"         type="int"  value="30"    />
+        <param name="GP_LOCAL_FLAG"     type="bool" value="false" />
+        <param name="GP_FULL_FLAG"      type="bool" value="false" />
         <!-- Controller parameters -->
         <param name="dt"        type="double" value="0.1" />
         <param name="c_f"       type="double" value="0.5" />
-        <param name="delay_df"  type="int" value="0" />
-        <param name="delay_a"   type="int" value="0" />
-        <param name="N"         type="int" value="5" />
+        <param name="delay_df"  type="int" value="1" />
+        <param name="delay_a"   type="int" value="1" />
+        <param name="N"         type="int" value="10" />
         <param name="n_state"   type="int" value="4" />
         <!-- Safe set parameters -->
         <param name="Nl"        type="int" value="2" />

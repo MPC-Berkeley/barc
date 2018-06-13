@@ -2,7 +2,7 @@
 """
     File name: stateEstimator.py
     Author: Shuqi Xu
-    Email: shuqixu@kth.se
+    Email: shuqixu@berkeley.edu (xushuqi8787@gmail.com)
     Python Version: 2.7.12
 """
 # ---------------------------------------------------------------------------
@@ -41,25 +41,24 @@ def main():
     a_delay     = rospy.get_param("state_estimator/delay_a")
     df_delay    = rospy.get_param("state_estimator/delay_df")
     loop_rate   = 50.0
-   
+   	
     Q = eye(8)
-    Q[0,0] = rospy.get_param("state_estimator/Q_x")
-    Q[1,1] = rospy.get_param("state_estimator/Q_y")
-    Q[2,2] = rospy.get_param("state_estimator/Q_vx")
-    Q[3,3] = rospy.get_param("state_estimator/Q_vy")
-    Q[4,4] = rospy.get_param("state_estimator/Q_ax")
-    Q[5,5] = rospy.get_param("state_estimator/Q_ay")
-    Q[6,6] = rospy.get_param("state_estimator/Q_psi")
-    Q[7,7] = rospy.get_param("state_estimator/Q_psiDot")
-    R = eye(8)
-    R[0,0] = rospy.get_param("state_estimator/R_x")
-    R[1,1] = rospy.get_param("state_estimator/R_y")
-    R[2,2] = rospy.get_param("state_estimator/R_vx")
-    R[3,3] = rospy.get_param("state_estimator/R_ax")
-    R[4,4] = rospy.get_param("state_estimator/R_ay")
-    R[5,5] = rospy.get_param("state_estimator/R_psiDot")
-    R[6,6] = rospy.get_param("state_estimator/R_vy")
-    R[7,7] = 0.0001
+    Q[0,0] = 0.01 	# Q_x
+    Q[1,1] = 0.01 	# Q_y
+    Q[2,2] = 0.01 	# Q_vx
+    Q[3,3] = 0.01 	# Q_vy
+    Q[4,4] = 1.0 	# Q_ax
+    Q[5,5] = 1.0 	# Q_ay
+    Q[6,6] = 0.01 	# Q_psi
+    Q[7,7] = 1.0 	# Q_psiDot
+    R = eye(7)
+    R[0,0] = 10.0 	# R_x
+    R[1,1] = 10.0 	# R_y
+    R[2,2] = 0.1 	  # R_vx
+    R[3,3] = 0.01 	# R_ax
+    R[4,4] = 10.0 	# R_ay
+    R[5,5] = 10.0 	# R_psiDot
+    R[6,6] = 0.1 	  # R_vy
 
     t0 = rospy.get_rostime().to_sec()
     imu = ImuClass(t0)
@@ -72,32 +71,36 @@ def main():
     if rospy.get_param("feature_flag"):
         track.createFeatureTrack()
     else:
-        track.createRaceTrack()
+        track.createRaceTrack(rospy.get_param("race_track"))
 
     estMsg = pos_info()
     
     while not rospy.is_shutdown():
-        # if ecu.a != 0:
+        if ecu.a != 0:
           est.estimateState(imu,gps,enc,ecu,est.ekf)
-
-          estMsg.s, estMsg.ey, estMsg.epsi = track.Localize(est.x_est, est.y_est, est.yaw_est)
-          
-          estMsg.header.stamp = rospy.get_rostime()
-          estMsg.v        = np.sqrt(est.vx_est**2 + est.vy_est**2)
-          estMsg.x        = est.x_est 
-          estMsg.y        = est.y_est
-          estMsg.v_x      = est.vx_est 
-          estMsg.v_y      = est.vy_est
-          estMsg.psi      = est.yaw_est
-          estMsg.psiDot   = est.psiDot_est
-          estMsg.a_x      = est.ax_est
-          estMsg.a_y      = est.ay_est
-          estMsg.u_a      = ecu.a
-          estMsg.u_df     = ecu.df
-
-          est.state_pub_pos.publish(estMsg)
           est.saveHistory()
-          est.rate.sleep()
+
+        estMsg.s, estMsg.ey, estMsg.epsi = track.Localize(est.x_est, est.y_est, est.yaw_est)
+        estMsg.header.stamp = rospy.get_rostime()
+        estMsg.v        = np.sqrt(est.vx_est**2 + est.vy_est**2)
+        estMsg.x        = est.x_est 
+        estMsg.y        = est.y_est
+        estMsg.v_x      = est.vx_est 
+        estMsg.v_y      = est.vy_est
+        estMsg.psi      = est.yaw_est
+        estMsg.psiDot   = est.psiDot_est
+        estMsg.a_x      = est.ax_est
+        estMsg.a_y      = est.ay_est
+        estMsg.u_a      = ecu.a
+        estMsg.u_df     = ecu.df
+        est.state_pub_pos.publish(estMsg)
+        est.rate.sleep()
+    print "gps x      package lost:", float(est.x_count)/float(est.pkg_count)
+    print "gps y      package lost:", float(est.y_count)/float(est.pkg_count)
+    print "enc v      package lost:", float(est.v_meas_count)/float(est.pkg_count)
+    print "imu ax     package lost:", float(est.ax_count)/float(est.pkg_count)
+    print "imu ay     package lost:", float(est.ay_count)/float(est.pkg_count)
+    print "imu psiDot package lost:", float(est.psiDot_count)/float(est.pkg_count)
 
     homedir = os.path.expanduser("~")
     pathSave = os.path.join(homedir,"barc_debugging/estimator_output.npz")
@@ -196,7 +199,6 @@ class Estimator(object):
         self.R      = R
         self.P      = np.eye(np.size(Q,0)) # initializationtial covariance matrix
         self.z      = np.zeros(np.size(Q,0)) # initial state mean
-        if rospy.get_param("feature_flag"): self.z[6]   = pi/4
         self.dt     = dt
         self.a_delay        = a_delay
         self.df_delay       = df_delay
@@ -217,6 +219,10 @@ class Estimator(object):
         self.psiDot_est     = 0.0
         self.psiDot_drift_est = 0.0
         self.curr_time      = rospy.get_rostime().to_sec() - self.t0
+        
+        if rospy.get_param("feature_flag"):
+          self.z[6]     = pi/4
+          self.yaw_est  = pi/4
 
         self.x_est_his          = [0.0]
         self.y_est_his          = [0.0]
@@ -238,6 +244,14 @@ class Estimator(object):
         self.psiDot_his = [0.0]
         self.a_his      = [0.0]
         self.df_his     = [0.0]
+        # COUNTERS FOR PACKAGE LOST
+        self.pkg_count    = 0
+        self.x_count      = 0
+        self.y_count      = 0
+        self.v_meas_count = 0
+        self.ax_count     = 0
+        self.ay_count     = 0
+        self.psiDot_count = 0
 
     # ecu command update
     def estimateState(self,imu,gps,enc,ecu,KF):
@@ -249,11 +263,11 @@ class Estimator(object):
         u = [self.a_his.pop(0), self.df_his.pop(0)]
         
         # y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot])
-        print gps.angle
-        y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot, 0.5*u[1]*enc.v_meas, gps.angle])
+        y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot, 0.5*u[1]*enc.v_meas])
         # y = np.array([gps.x_ply, gps.y_ply, enc.v_meas, imu.ax, imu.ay, imu.psiDot])
         KF(y,u)
 
+        # HARD RESET FOR VY FOR SMALL psiDot
         # if abs(y[5])<0.3:
         #   self.z[3] = 0.0
 
@@ -289,7 +303,21 @@ class Estimator(object):
                    
         Notation: mx_k = E[x_k] and my_k = E[y_k], where m stands for "mean of"
         """
-        
+        # pkg lost counting
+        if self.x_his[-1] == y[0]:
+            self.x_count += 1
+        if self.y_his[-1] == y[1]:
+            self.y_count += 1
+        if self.v_meas_his[-1] == y[2]:
+            self.v_meas_count += 1
+        if self.ax_his[-1] == y[3]:
+            self.ax_count += 1
+        if self.ay_his[-1] == y[4]:
+            self.ay_count += 1
+        if self.psiDot_his[-1] == y[5]:
+            self.psiDot_count += 1
+        self.pkg_count += 1
+
         xDim    = self.z.size                           # dimension of the state
         mx_kp1  = self.f(self.z, u)                     # predict next state
         A       = self.numerical_jac(self.f, self.z, u) # linearize process model about current state
@@ -335,16 +363,22 @@ class Estimator(object):
 
         idx = []
         if self.x_his[-1] == y[0]:
+            self.x_count += 1
             idx.append(0)
         if self.y_his[-1] == y[1]:
+            self.y_count += 1
             idx.append(1)
         if self.v_meas_his[-1] == y[2]:
+            self.v_meas_count += 1
             idx.append(2)
         if self.ax_his[-1] == y[3]:
+            self.ax_count += 1
             idx.append(3)
         if self.ay_his[-1] == y[4]:
+            self.ay_count += 1
             idx.append(4)
         if self.psiDot_his[-1] == y[5]:
+            self.psiDot_count += 1
             idx.append(5)
 
         if len(idx) == 6:
@@ -445,7 +479,7 @@ class Estimator(object):
 
     def h(self, x, u):
         """ This is the measurement model to the kinematic<->sensor model above """
-        y = [0]*8
+        y = [0]*7
         y[0] = x[0]      # x
         y[1] = x[1]      # y
         y[2] = x[2]      # vx
@@ -453,7 +487,6 @@ class Estimator(object):
         y[4] = x[5]      # a_y
         y[5] = x[7]      # psiDot
         y[6] = x[3]      # vy
-        y[7] = x[6]      # vy
         return np.array(y)
 
     def saveHistory(self):
@@ -568,8 +601,8 @@ class GpsClass(object):
             t0: starting measurement time
         """
 
-        # rospy.Subscriber('hedge_imu_fusion', hedge_imu_fusion, self.gps_callback, queue_size=1)
-        rospy.Subscriber('hedge_pos', hedge_pos, self.gps_callback, queue_size=1)
+        rospy.Subscriber('hedge_imu_fusion', hedge_imu_fusion, self.gps_callback, queue_size=1)
+        # rospy.Subscriber('hedge_pos', hedge_pos, self.gps_callback, queue_size=1)
 
         # GPS measurement
         self.angle  = 0.0
@@ -596,9 +629,9 @@ class GpsClass(object):
         self.curr_time = rospy.get_rostime().to_sec() - self.t0
         dist = np.sqrt((data.x_m-self.x_his[-1])**2+(data.y_m-self.y_his[-1])**2)
         # if dist < 0.5:
-        if self.x_his[-1] != data.x_m:
-          self.x = data.x_m
-          self.y = data.y_m            
+        # if self.x_his[-1] != data.x_m:
+        self.x = data.x_m
+        self.y = data.y_m            
 
         # 1) x(t) ~ c0x + c1x * t + c2x * t^2
         # 2) y(t) ~ c0y + c1y * t + c2y * t^2
@@ -614,28 +647,28 @@ class GpsClass(object):
             self.x_ply = polyval(c_X, self.curr_time-self.time_ply_his[-n_intplt])
             self.y_ply = polyval(c_Y, self.curr_time-self.time_ply_his[-n_intplt])
 
-        # Estimate yaw angle from previous 2 time steps
-        x_0 = self.x_his[-1]
-        y_0 = self.y_his[-1]
-        x_1 = self.x
-        y_1 = self.y
-        argument_y = y_1 - y_0
-        argument_x = x_1 - x_0
-        print "args", argument_x, argument_y
-        angle = 0.0
-        if argument_x > 0.0:
-            angle = np.arctan(argument_y / argument_x)
-        if argument_y >= 0.0 and argument_x < 0.0:
-            angle = np.pi + np.arctan(argument_y / argument_x)
-        if argument_y < 0.0 and argument_x < 0.0:
-            angle = - np.pi + np.arctan(argument_y / argument_x)
-        if argument_y > 0.0 and argument_x == 0.0:
-            angle = np.pi / 2.0
-        if argument_y < 0.0 and argument_x == 0.0:
-            angle = - np.pi / 2.0
-        if angle < 0.0:
-            angle += 2.0 * np.pi
-        self.angle = np.unwrap([self.angle_his[-1],angle])[1]
+        # # Estimate yaw angle from previous 2 time steps
+        # x_0 = self.x_his[-1]
+        # y_0 = self.y_his[-1]
+        # x_1 = self.x
+        # y_1 = self.y
+        # argument_y = y_1 - y_0
+        # argument_x = x_1 - x_0
+        # print "args", argument_x, argument_y
+        # angle = 0.0
+        # if argument_x > 0.0:
+        #     angle = np.arctan(argument_y / argument_x)
+        # if argument_y >= 0.0 and argument_x < 0.0:
+        #     angle = np.pi + np.arctan(argument_y / argument_x)
+        # if argument_y < 0.0 and argument_x < 0.0:
+        #     angle = - np.pi + np.arctan(argument_y / argument_x)
+        # if argument_y > 0.0 and argument_x == 0.0:
+        #     angle = np.pi / 2.0
+        # if argument_y < 0.0 and argument_x == 0.0:
+        #     angle = - np.pi / 2.0
+        # if angle < 0.0:
+        #     angle += 2.0 * np.pi
+        # self.angle = np.unwrap([self.angle_his[-1],angle])[1]
 
         self.saveHistory()
 

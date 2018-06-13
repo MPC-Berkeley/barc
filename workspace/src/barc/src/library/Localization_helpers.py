@@ -130,7 +130,7 @@ class Track(object):
 
         print "Python: %f m"%((self.n-1)*ds), ", %i"%self.n
 
-    def createRaceTrack(self):
+    def createRaceTrack(self, name):
         """Track construction for feature data collecting"""
 
         # TRACK PARAMETERS INITIALIZATION
@@ -150,66 +150,70 @@ class Track(object):
         bound2_x = x - width/2*cos(self.theta[0]+pi/2)
         bound1_y = y + width/2*sin(self.theta[0]+pi/2)
         bound2_y = y - width/2*sin(self.theta[0]+pi/2)
-
-        # TRACK DATA CALCULATION
-        # track_data=[[80,0],
-        #             [120,-pi/2],
-        #             [80,0],
-        #             [220,-pi*0.85],
-        #             [105,pi/15],
-        #             [300,pi*1.15],
-        #             [240,-pi*0.865],
-        #             [100,0],
-        #             [120,-pi/2],
-        #             [153,0],
-        #             [120,-pi/2],
-        #             [211,0]]
+        if name == "race":
+            # TRACK DATA CALCULATION
+            track_data=[[80,0],
+                        [120,-pi/2],
+                        [80,0],
+                        [220,-pi*0.85],
+                        [105,pi/15],
+                        [300,pi*1.15],
+                        [240,-pi*0.865],
+                        [100,0],
+                        [120,-pi/2],
+                        [153,0],
+                        [120,-pi/2],
+                        [211,0]]
         
-        # track for room 3110
-        # num = 100 # 60
-        # track_data=[[int(ceil(2*80)) ,0],
-        #             [int(ceil(2*num)), pi/2],
-        #             [int(ceil(2*(80+47))) ,0],
-        #             [int(ceil(2*num)), pi/2],
-        #             [int(ceil(2*50)) ,0],
-        #             [int(ceil(2*num)), pi/2],
-        #             [int(ceil(2*4))  , 0],
-        #             [int(ceil(2*num)), -pi/2],
-        #             [int(ceil(2*30)) ,0],
-        #             [int(ceil(2*num)), pi/2],
-        #             [int(ceil(2*4)) ,0],
-        #             [int(ceil(2*num)), pi/2],
-        #             [int(ceil(2*(71+48))) ,0]]  
+        elif name == "3110":
+            # track for room 3110
+            num = 100 # 60
+            track_data=[[int(ceil(2*80)) ,0],
+                        [int(ceil(2*num)), pi/2],
+                        [int(ceil(2*(80+47))) ,0],
+                        [int(ceil(2*num)), pi/2],
+                        [int(ceil(2*50)) ,0],
+                        [int(ceil(2*num)), pi/2],
+                        [int(ceil(2*4))  , 0],
+                        [int(ceil(2*num)), -pi/2],
+                        [int(ceil(2*30)) ,0],
+                        [int(ceil(2*num)), pi/2],
+                        [int(ceil(2*4)) ,0],
+                        [int(ceil(2*num)), pi/2],
+                        [int(ceil(2*(71+48))) ,0]]  
 
-        # Basic track for experiment          
-        # track_data = [[int(ceil(3*60)), 0],
-        #               [int(ceil(3*80)), pi/2],
-        #               [int(ceil(3*20)), 0],
-        #               [int(ceil(3*80)), pi/2],
-        #               [int(ceil(3*40)), -pi/10],
-        #               [int(ceil(3*60)), pi/5],
-        #               [int(ceil(3*40)), -pi/10],
-        #               [int(ceil(3*80)), pi/2],
-        #               [int(ceil(3*20)), 0],
-        #               [int(ceil(3*80)), pi/2],
-        #               [int(ceil(3*75)), 0]]
+        elif name == "basic":
+            # Basic track for experiment          
+            track_data = [[int(ceil(3*60)), 0],
+                          [int(ceil(3*80)), pi/2],
+                          [int(ceil(3*20)), 0],
+                          [int(ceil(3*80)), pi/2],
+                          [int(ceil(3*40)), -pi/10],
+                          [int(ceil(3*60)), pi/5],
+                          [int(ceil(3*40)), -pi/10],
+                          [int(ceil(3*80)), pi/2],
+                          [int(ceil(3*20)), 0],
+                          [int(ceil(3*80)), pi/2],
+                          [int(ceil(3*75)), 0]]
 
-        # track_data = [[int(ceil(2.8*40)), 0],
-        #               [int(ceil(2.8*120)), -pi/2],
-        #               [int(ceil(2.8*5)), 0],
-        #               [int(ceil(2.8*120)), -pi/2],
-        #               [int(ceil(2.8*80)), 0],
-        #               [int(ceil(2.8*120)), -pi/2],
-        #               [int(ceil(2.8*5)), 0],
-        #               [int(ceil(2.8*120)), -pi/2],
-        #               [int(ceil(2.8*40)), 0]]
-        
-        # TRACK FOR MSC EXPERIMENT ROOM
-        track_data = [[int(ceil(1.5*3*10)), 0],
-                      [int(ceil(1.5*3*120)), pi],
-                      [int(ceil(1.5*3*20)), 0],
-                      [int(ceil(1.5*3*120)), pi],
-                      [int(ceil(1.5*3*10)), 0]]
+        elif name == "rectangle":
+            track_data = [[int(ceil(2.8*40)), 0],
+                          [int(ceil(2.8*120)), -pi/2],
+                          [int(ceil(2.8*5)), 0],
+                          [int(ceil(2.8*120)), -pi/2],
+                          [int(ceil(2.8*80)), 0],
+                          [int(ceil(2.8*120)), -pi/2],
+                          [int(ceil(2.8*5)), 0],
+                          [int(ceil(2.8*120)), -pi/2],
+                          [int(ceil(2.8*40)), 0]]
+
+        elif name == "MSC_lab":
+            # TRACK FOR MSC EXPERIMENT ROOM
+            track_data = [[int(ceil(1.5*3*10)), 0],
+                          [int(ceil(1.5*3*120)), pi],
+                          [int(ceil(1.5*3*20)), 0],
+                          [int(ceil(1.5*3*120)), pi],
+                          [int(ceil(1.5*3*10)), 0]]
                       
         #   TRACK CONSTRUCTION
         for i in range(len(track_data)):

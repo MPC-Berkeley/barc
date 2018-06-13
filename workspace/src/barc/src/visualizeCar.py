@@ -173,7 +173,7 @@ def main():
     if rospy.get_param("feature_flag"):
         track.createFeatureTrack()
     else:
-        track.createRaceTrack()
+        track.createRaceTrack(rospy.get_param("race_track"))
 
     plotter.plotTrack(track)
     
