@@ -601,11 +601,19 @@ export SafeSet,SysID,FeatureData,MpcSol,MpcParams,ModelParams,GPData
         feature_GP_z::Array{Float64}
         feature_GP_u::Array{Float64}
         feature_GP::Array{Float64}
+        feature_GP_s_e::Array{Float64}
+        feature_GP_ey_e::Array{Float64}
+        feature_GP_epsi_e::Array{Float64}
+        feature_GP_vx_e::Array{Float64}
         feature_GP_vy_e::Array{Float64}
         feature_GP_psiDot_e::Array{Float64}
         GP_e_vy_prepare::Array{Float64}
         GP_e_psiDot_prepare::Array{Float64}
         # GP result
+        GP_s_e::Array{Float64,1}
+        GP_ey_e::Array{Float64,1}
+        GP_epsi_e::Array{Float64,1}
+        GP_vx_e::Array{Float64,1}
         GP_vy_e::Array{Float64,1}
         GP_psiDot_e::Array{Float64,1}
         counter::Int64
@@ -627,7 +635,7 @@ export SafeSet,SysID,FeatureData,MpcSol,MpcParams,ModelParams,GPData
                 gpData.GP_feature     = hcat(feature_GP_z,feature_GP_u)
 
                 feature_GP_vy_e         = data["feature_GP_vy_e"]
-                feature_GP_psiDot_e     = data["feature_GP_psidot_e"]
+                feature_GP_psiDot_e     = data["feature_GP_psiDot_e"]
                 gpData.feature_GP_vy_e      = feature_GP_vy_e[1:num_spare:end]
                 gpData.feature_GP_psiDot_e  = feature_GP_psiDot_e[1:num_spare:end]
 
@@ -637,6 +645,10 @@ export SafeSet,SysID,FeatureData,MpcSol,MpcParams,ModelParams,GPData
                 n_state = get_param("controller/n_state")
                 gpData.feature_GP_z         = zeros(10000,n_state)
                 gpData.feature_GP_u         = zeros(10000,2)
+                gpData.feature_GP_s_e       = zeros(10000)
+                gpData.feature_GP_ey_e      = zeros(10000)
+                gpData.feature_GP_epsi_e    = zeros(10000)
+                gpData.feature_GP_vx_e      = zeros(10000)
                 gpData.feature_GP_vy_e      = zeros(10000)
                 gpData.feature_GP_psiDot_e  = zeros(10000)
             end
@@ -1043,7 +1055,7 @@ export findSS
         Nl      = agent.SS.Nl
         Np      = agent.SS.Np
         Np_here = agent.SS.Np/2
-        target_s= s+agent.posInfo.v*dt*agent.mpcParams.N
+        target_s= s+agent.posInfo.v*0.1*agent.mpcParams.N
         t_s     = copy(target_s)
 
         cost_correction = findmin(agent.SS.oldCost[agent.lapStatus.lap-Nl-1:agent.lapStatus.lap-1])[1]
@@ -1308,14 +1320,24 @@ export historyCollect, gpDataCollect
         log_path = "$(homedir())/$(agent.raceSet.folder_name)/GP-$(agent.raceSet.file_name)-$(run_time).jld"
         save(log_path,  "feature_GP_z",         agent.gpData.feature_GP_z[1:agent.gpData.counter,:],  
                         "feature_GP_u",         agent.gpData.feature_GP_u[1:agent.gpData.counter,:],  
+                        "feature_GP_s_e",      	agent.gpData.feature_GP_s_e[1:agent.gpData.counter], 
+                        "feature_GP_ey_e",      agent.gpData.feature_GP_ey_e[1:agent.gpData.counter], 
+                        "feature_GP_epsi_e",    agent.gpData.feature_GP_epsi_e[1:agent.gpData.counter], 
+                        "feature_GP_vx_e",      agent.gpData.feature_GP_vx_e[1:agent.gpData.counter], 
                         "feature_GP_vy_e",      agent.gpData.feature_GP_vy_e[1:agent.gpData.counter], 
-                        "feature_GP_psidot_e",  agent.gpData.feature_GP_psiDot_e[1:agent.gpData.counter])
+                        "feature_GP_psiDot_e",  agent.gpData.feature_GP_psiDot_e[1:agent.gpData.counter])
         println("Finish saving GP data to $log_path in controller node.")
     end
 
     function gpDataCollect(agent::Agent)
+    	# ATTENTION: THIS WILLL COLLECT GP DATA FOR THE NEW SAMPLING TIME
         agent.gpData.feature_GP_z[agent.gpData.counter,:] = agent.mpcSol.z_prev[1,:]
         agent.gpData.feature_GP_u[agent.gpData.counter,:] = agent.mpcSol.u_prev[1,:]
+        
+        agent.gpData.feature_GP_s_e[agent.gpData.counter]      	= agent.mpcSol.z[1,1]-agent.mpcSol.z_prev[2,1]
+        agent.gpData.feature_GP_ey_e[agent.gpData.counter]     	= agent.mpcSol.z[1,2]-agent.mpcSol.z_prev[2,2]
+        agent.gpData.feature_GP_epsi_e[agent.gpData.counter]    = agent.mpcSol.z[1,3]-agent.mpcSol.z_prev[2,3]
+        agent.gpData.feature_GP_vx_e[agent.gpData.counter]      = agent.mpcSol.z[1,4]-agent.mpcSol.z_prev[2,4]
         if agent.mpcParams.n_state == 6
             agent.gpData.feature_GP_vy_e[agent.gpData.counter]      = agent.mpcSol.z[1,5]-agent.mpcSol.z_prev[2,5]
             agent.gpData.feature_GP_psiDot_e[agent.gpData.counter]  = agent.mpcSol.z[1,6]-agent.mpcSol.z_prev[2,6]

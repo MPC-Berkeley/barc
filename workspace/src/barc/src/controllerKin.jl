@@ -29,7 +29,7 @@ function main()
     # OBJECTS INITIALIZATION
     BUFFERSIZE  = get_param("BUFFERSIZE")
     raceSet     = RaceSet("KIN")
-    track       = Track(createTrack("MSC_lab"))
+    track       = Track(createTrack(get_param("race_track")))
     posInfo     = PosInfo()
     sysID       = SysID()
     SS          = SafeSet(BUFFERSIZE,raceSet.num_lap)

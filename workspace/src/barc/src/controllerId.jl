@@ -34,7 +34,7 @@ function main()
     end
 
     # OBJECTS INITIALIZATION
-    track       = Track(createTrack("MSC_lab"))
+    track       = Track(createTrack(get_param("race_track")))
     track_Fd    = Track(createTrack("feature"))
     posInfo     = PosInfo()
     sysID       = SysID()
@@ -118,7 +118,7 @@ function main()
         if lapStatus.lap<=1+raceSet.PF_LAP
             solvePf(mdlPf,agent)
         else
-        	tic()
+        	# tic()
             # PATH FOLLOWING DATA SAVING AFTER FINISHING PF LAPS
             if raceSet.PF_FLAG
                 savePF(agent)
@@ -138,11 +138,11 @@ function main()
 
             # SAFESET CONSTRUCTION
             findSS(agent)
-            toc()
-            tic()
+            # toc()
+            # tic()
             # SOLVE LMPC
         	solveId(mdlLMPC,agent)
-        	toc()
+        	# toc()
             # COLLECT GAUSSIAN PROCESS FEATURE DATA
             if !raceSet.GP_LOCAL_FLAG && !raceSet.GP_FULL_FLAG && lapStatus.it>1
                 gpDataCollect(agent)
@@ -156,12 +156,12 @@ function main()
         println("$(agent.mpcSol.sol_status): Lap:",lapStatus.lap,", It:",lapStatus.it," v:$(round(posInfo.v,2))")
         
         # ITERATION UPDATE
-        if counter == 1
-            historyCollect(agent)
-            counter = 0
-        else
-            counter += 1
-        end
+        # if counter == 1
+        historyCollect(agent)
+        #     counter = 0
+        # else
+        #     counter += 1
+        # end
 
         rossleep(loop_rate)
     end

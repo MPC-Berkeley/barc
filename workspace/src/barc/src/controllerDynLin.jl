@@ -15,8 +15,8 @@ using JuMP
 using Ipopt
 using JLD
 
-include("Library/modules.jl")
-include("Library/models.jl")
+include("library/modules.jl")
+include("library/models.jl")
 import mpcModels: MdlPf, MdlDynLin
 import solveMpcProblem: solvePf, solveDynLin
 using Types
@@ -27,7 +27,7 @@ function main()
     println("Starting LMPC node.")
     BUFFERSIZE  = get_param("BUFFERSIZE")
     raceSet     = RaceSet("DynLin")
-    track       = Track(createTrack("basic"))
+    track       = Track(createTrack(get_param("race_track")))
     posInfo     = PosInfo()
     sysID       = SysID()
     SS          = SafeSet(BUFFERSIZE,raceSet.num_lap)
