@@ -35,6 +35,7 @@ function main()
 
     # OBJECTS INITIALIZATION
     track       = Track(createTrack("MSC_lab"))
+    track_Fd    = Track(createTrack("feature"))
     posInfo     = PosInfo()
     sysID       = SysID()
     SS          = SafeSet(BUFFERSIZE,raceSet.num_lap)
@@ -70,8 +71,8 @@ function main()
         # buildFeatureSetFromHistory(agent)
         data = load("$(homedir())/$(raceSet.folder_name)/FD.jld")
         featureData = data["featureData"]
-        buildFeatureSetFromDataSet(agent,featureData)
-        # buildFeatureSetFromBoth(agent)
+        # buildFeatureSetFromDataSet(agent,featureData)
+        buildFeatureSetFromBoth(agent,featureData)
     end
     historyCollect(agent)
     gpDataCollect(agent)
@@ -98,8 +99,8 @@ function main()
             else
                 # DIFFERENT OPTIONS FOR SELECTING FEATURE DATA FOR SYS ID
                 # buildFeatureSetFromHistory(agent)
-                buildFeatureSetFromDataSet(agent,featureData)
-                # buildFeatureSetFromBoth(agent)
+                # buildFeatureSetFromDataSet(agent,featureData)
+                buildFeatureSetFromBoth(agent,featureData)
                 setvalue(mdlLMPC.z_Ol[:,1], mpcSol.z_prev[:,1]-track.s)
             end
 
@@ -146,7 +147,7 @@ function main()
         end
 
         # VISUALIZATION UPDATE
-        visualUpdate(mpc_vis,agent)
+        visualUpdate(mpc_vis,agent,track_Fd)
         publish(vis_pub, mpc_vis)
         println("$(agent.mpcSol.sol_status): Lap:",lapStatus.lap,", It:",lapStatus.it," v:$(round(posInfo.v,2))")
         

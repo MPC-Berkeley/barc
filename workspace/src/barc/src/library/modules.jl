@@ -450,9 +450,9 @@ export SafeSet,SysID,FeatureData,MpcSol,MpcParams,ModelParams,GPData
             # Feature data for SYS ID
             sysID.feature_Np = get_param("controller/feature_Np")
             sysID.feature_Nl = get_param("controller/feature_Nl")
-            sysID.feature_z = rand(2*sysID.feature_Np,6,2)  # The size of this array will be overwritten
-            sysID.feature_u = rand(2*sysID.feature_Np,2)    # The size of this array will be overwritten
-            sysID.feature   = rand(2*sysID.feature_Np,8)    # The size of this array will be overwritten
+            sysID.feature_z = 0.01*rand(2*sysID.feature_Np,6,2)  # The size of this array will be overwritten
+            sysID.feature_u = 0.01*rand(2*sysID.feature_Np,2)    # The size of this array will be overwritten
+            sysID.feature   = 0.01*rand(2*sysID.feature_Np,8)    # The size of this array will be overwritten
             sysID.select_z  = zeros(sysID.feature_Np,6,2)
             sysID.select_u  = zeros(sysID.feature_Np,2)
             # SYS ID result 
@@ -710,6 +710,9 @@ export find_idx, curvature_prediction, lapSwitch, SE_callback, visualUpdate
         if idx > track.n_node
             idx -= track.n_node
         end
+        if idx < 1
+            idx += track.n_node
+        end
         return idx
     end
 
@@ -799,6 +802,30 @@ export find_idx, curvature_prediction, lapSwitch, SE_callback, visualUpdate
         end
     end
 
+    function visualUpdate(mpc_vis::mpc_visual,agent::Agent,track_Fd::Track)
+        (z_x,z_y)   = trackFrame_to_xyFrame(agent.mpcSol.z,agent.track)
+        mpc_vis.z_x = z_x
+        mpc_vis.z_y = z_y
+        if !agent.raceSet.feature_flag
+            (SS_x,SS_y) = trackFrame_to_xyFrame(agent.SS.selStates,agent.track)
+            mpc_vis.SS_x  = SS_x
+            mpc_vis.SS_y  = SS_y
+            (z_iden_x, z_iden_y) = trackFrame_to_xyFrame(agent.sysID.select_z[:,:,1],track_Fd)
+            mpc_vis.z_iden_x  = z_iden_x
+            mpc_vis.z_iden_y  = z_iden_y
+
+            if !agent.raceSet.PF_FLAG
+                # LapTime RELATED DATA UPDATE
+                v_avg = [mean(agent.SS.oldSS[1:Int(agent.SS.oldCost[i]),i,4]) for i in 1:agent.lapStatus.lap-1]
+                mpc_vis.v_avg = round(v_avg,2) 
+                lapTime = [agent.track.s/v for v in v_avg]
+                mpc_vis.lapTime = round(lapTime,2) 
+                mpc_vis.cost = [Int(agent.SS.oldCost[i]) for i in 1:agent.lapStatus.lap-1]
+                mpc_vis.lapNum = [Int(i) for i in 1:agent.lapStatus.lap-1]
+            end
+        end
+    end
+
     function visualUpdate(mpc_vis::mpc_visual,agent::Agent)
         (z_x,z_y)   = trackFrame_to_xyFrame(agent.mpcSol.z,agent.track)
         mpc_vis.z_x = z_x
@@ -848,7 +875,6 @@ export buildFeatureSetFromHistory, buildFeatureSetFromDataSet, buildFeatureSetFr
     end
 
     function buildFeatureSetFromDataSet(agent::Agent,featureData::FeatureData)
-        idx = hcat()
         z1 = Array{Float64,2}(0,6)
         z2 = Array{Float64,2}(0,6)
         u = Array{Float64,2}(0,2)
@@ -865,9 +891,29 @@ export buildFeatureSetFromHistory, buildFeatureSetFromDataSet, buildFeatureSetFr
         agent.sysID.feature   = hcat(z1,u) 
     end
 
-    function buildFeatureSetFromBoth(agent::Agent,featureData::FeatureData,ratio::Float64)
-        # ratio::Float64 decide how much percent of feature data is selected from DataSet
-
+    function buildFeatureSetFromBoth(agent::Agent,featureData::FeatureData)
+        # THIS FUNCTION IS ONLY NEEDS TO BE CALLED ONCE EACH LAP
+        Nl = agent.sysID.feature_Nl
+        z1 = Array{Float64,2}(0,6)
+        z2 = Array{Float64,2}(0,6)
+        u = Array{Float64,2}(0,2)
+        for i in (agent.lapStatus.lap-Nl) : (agent.lapStatus.lap-1)
+            cost = Int(agent.SS.oldCost[i])
+            z1 = vcat(z1,reshape(agent.SS.oldSS[1:cost-1,i,:],cost-1,6))
+            z2 = vcat(z2,reshape(agent.SS.oldSS[2:cost,  i,:],cost-1,6))
+            u = vcat(u,reshape(agent.SS.oldSS_u[1:cost-1,i,:],cost-1,2))
+        end
+        for i = 1:length(featureData.cost)
+            cost = Int(featureData.cost[i])
+            z1 = vcat(z1,reshape(featureData.feature_z[1:cost,i,:,1],cost,6))
+            z2 = vcat(z2,reshape(featureData.feature_z[1:cost,i,:,2],cost,6))
+            u = vcat(u,reshape(featureData.feature_u[1:cost,i,:],cost,2))
+        end
+        agent.sysID.feature_z = zeros(size(z1,1),6,2)
+        agent.sysID.feature_z[:,:,1] = z1
+        agent.sysID.feature_z[:,:,2] = z2
+        agent.sysID.feature_u = u
+        agent.sysID.feature   = hcat(z1,u)
     end
 
     function findFeature(agent::Agent,curr_state::Array{Float64})
