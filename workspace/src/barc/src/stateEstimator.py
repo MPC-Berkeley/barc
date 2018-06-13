@@ -33,6 +33,7 @@ from trackInitialization import Map
 import math
 import numpy as np
 import os
+import pdb
 
 def main():
     # node initialization
@@ -213,6 +214,9 @@ class Estimator(object):
         self.psiDot_est_his     = []
         self.time_his           = []
 
+        self.oldGPS_x = 0.0
+        self.oldGPS_y = 0.0
+
     # ecu command update
     def estimateState(self,imu,gps,enc,ecu,KF):
         """Do extended Kalman filter to estimate states"""
@@ -224,25 +228,36 @@ class Estimator(object):
         # u = [ecu.a, self.df_his.pop(0)]
         
         bta = 0.5 * u[1]
-        # y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot, sin(bta)*enc.v_meas])
-        y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot])
+
+        dist   = np.sqrt(( self.x_est - gps.x )**2 + ( self.y_est - gps.y )**2)
+
+        # if ( dist >= 1 ) or ( (gps.x == self.oldGPS_x) and (gps.x == self.oldGPS_y) ):
+        if ( (gps.x == self.oldGPS_x) and (gps.x == self.oldGPS_y) ):
+            modeGPS = False
+            y = np.array([enc.v_meas, imu.ax, imu.ay, imu.psiDot])
+        else:
+            modeGPS = True
+            y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot])
+
+        self.oldGPS_x = gps.x
+        self.oldGPS_y = gps.y
 
         gps.x_his = np.append(gps.x_his,y[0])
         gps.y_his = np.append(gps.y_his,y[1])
-        enc.v_fl_his.append(y[2])
-        enc.v_fr_his.append(y[2])
-        enc.v_rl_his.append(y[2])
-        enc.v_rr_his.append(y[2])
-        enc.v_meas_his.append(y[2])
-        imu.ax_his.append(y[3])
-        imu.ay_his.append(y[4])
-        imu.psiDot_his.append(y[5])
+        enc.v_fl_his.append(enc.v_meas)
+        enc.v_fr_his.append(enc.v_meas)
+        enc.v_rl_his.append(enc.v_meas)
+        enc.v_rr_his.append(enc.v_meas)
+        enc.v_meas_his.append(enc.v_meas)
+        imu.ax_his.append(imu.ax)
+        imu.ay_his.append(imu.ay)
+        imu.psiDot_his.append(imu.psiDot)
         ecu.a_his.append(u[0])
         ecu.df_his.append(u[1])
 
-        KF(y,u)
+        KF(y,u, modeGPS)
 
-    def ekf(self, y, u):
+    def ekf(self, y, u, modeGPS):
         """
         EKF   Extended Kalman Filter for nonlinear dynamic systems
         ekf(f,mx,P,h,z,Q,R) returns state estimate, x and state covariance, P 
@@ -267,15 +282,29 @@ class Estimator(object):
         
         xDim    = self.z.size                           # dimension of the state
         mx_kp1  = self.f(self.z, u)                     # predict next state
-        A       = self.numerical_jac(self.f, self.z, u) # linearize process model about current state
+        A       = self.numerical_jac(self.f, self.z, u, modeGPS) # linearize process model about current state
         P_kp1   = dot(dot(A,self.P),A.T) + self.Q           # proprogate variance
-        my_kp1  = self.h(mx_kp1, u)                              # predict future output
-        H       = self.numerical_jac(self.h, mx_kp1, u)     # linearize measurement model about predicted next state
+        my_kp1  = self.h(mx_kp1, u, modeGPS)                              # predict future output
+        H       = self.numerical_jac(self.h, mx_kp1, u, modeGPS)     # linearize measurement model about predicted next state
         P12     = dot(P_kp1, H.T)                           # cross covariance
-        K       = dot(P12, inv( dot(H,P12) + self.R))       # Kalman filter gain
-        
+
+        if modeGPS == True:
+            K       = dot(P12, inv( dot(H,P12) + self.R))       # Kalman filter gain
+        else:
+            K       = dot(P12, inv( dot(H,P12) + self.R[2:,2:]))       # Kalman filter gain
+            
         self.z  = mx_kp1 + dot(K,(y - my_kp1))
-        self.P  = dot(dot(K,self.R),K.T) + dot( dot( (eye(xDim) - dot(K,H)) , P_kp1)  ,  (eye(xDim) - dot(K,H)).T )
+
+        if modeGPS == True:
+            self.P  = dot(dot(K,self.R),K.T) + dot( dot( (eye(xDim) - dot(K,H)) , P_kp1)  ,  (eye(xDim) - dot(K,H)).T )
+            if np.abs(y[5]) < 0.05:
+                self.z[5] = 0
+        else:
+            if np.abs(y[3]) < 0.05:
+                self.z[5] = 0
+            self.P  = dot(dot(K,self.R[2:,2:]),K.T) + dot( dot( (eye(xDim) - dot(K,H)) , P_kp1)  ,  (eye(xDim) - dot(K,H)).T )
+
+
 
         (self.x_est, self.y_est, self.vx_est, self.vy_est, self.ax_est, self.ay_est, self.yaw_est, self.psiDot_est) = self.z
 
@@ -326,13 +355,13 @@ class Estimator(object):
         
         (self.x_est, self.y_est, self.vx_est, self.vy_est, self.ax_est, self.ay_est, self.yaw_est, self.psiDot_est) = self.z
 
-    def numerical_jac(self,func,x,u):
+    def numerical_jac(self,func,x,u, modeGPS):
         """
         Function to compute the numerical jacobian of a vector valued function 
         using final differences
         """
         # numerical gradient and diagonal hessian
-        y = func(x,u)
+        y = func(x,u, modeGPS)
         
         jac = zeros( (y.size,x.size) )
         eps = 1e-5
@@ -340,14 +369,14 @@ class Estimator(object):
         
         for i in range(x.size):
             xp[i] = x[i] + eps/2.0
-            yhi = func(xp, u)
+            yhi = func(xp, u, modeGPS)
             xp[i] = x[i] - eps/2.0
-            ylo = func(xp, u)
+            ylo = func(xp, u, modeGPS)
             xp[i] = x[i]
             jac[:,i] = (yhi - ylo) / eps
         return jac
 
-    def f(self, z, u):
+    def f(self, z, u, modeGPS=True):
         """ This Sensor model contains a pure Sensor-Model and a Kinematic model. They're independent from each other."""
         dt = self.dt
         zNext = [0]*8
@@ -361,16 +390,23 @@ class Estimator(object):
         zNext[7] = z[7]                                         # psidot
         return np.array(zNext)
 
-    def h(self, x, u):
+    def h(self, x, u, modeGPS):
         """ This is the measurement model to the kinematic<->sensor model above """
-        y = [0]*6
-        y[0] = x[0]   # x
-        y[1] = x[1]   # y
-        y[2] = x[2]   # vx
-        y[3] = x[4]   # a_x
-        y[4] = x[5]   # a_y
-        y[5] = x[7]   # psiDot
-        # y[6] = x[3]   # vy
+        if modeGPS:
+            y = [0]*6
+            y[0] = x[0]   # x
+            y[1] = x[1]   # y
+            y[2] = x[2]   # vx
+            y[3] = x[4]   # a_x
+            y[4] = x[5]   # a_y
+            y[5] = x[7]   # psiDot
+        else:
+            y = [0]*4
+            y[0] = x[2]   # vx
+            y[1] = x[4]   # a_x
+            y[2] = x[5]   # a_y
+            y[3] = x[7]   # psiDot
+
         return np.array(y)
 
     def saveHistory(self):

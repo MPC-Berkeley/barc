@@ -80,6 +80,17 @@ class ControllerLMPC():
         # Build matrices for inequality constraints
         self.F, self.b = _LMPC_BuildMatIneqConst(self)
 
+        self.LapTime = 0.0
+
+        self.xPred = []
+        self.uPred = []
+
+    def setTime(self, time):
+        self.LapTime = time
+
+    def resetTime(self):
+        self.LapTime = 0.0
+
     def solve(self, x0, uOld = np.zeros([0, 0])):
         """Computes control action
         Arguments:
@@ -106,7 +117,7 @@ class ControllerLMPC():
         SS_glob_PointSelectedTot = np.empty((n, 0))
         Qfun_SelectedTot         = np.empty((0))
         for jj in range(0, self.numSS_it):
-            SS_PointSelected, SS_glob_PointSelected, Qfun_Selected = _SelectPoints(SS, SS_glob, Qfun, it - jj - 1, x0, numSS_Points / self.numSS_it, shift)
+            SS_PointSelected, SS_glob_PointSelected, Qfun_Selected = _SelectPoints(self, it - jj - 1, x0, numSS_Points / self.numSS_it, shift)
             SS_PointSelectedTot      =  np.append(SS_PointSelectedTot, SS_PointSelected, axis=1)
             SS_glob_PointSelectedTot =  np.append(SS_glob_PointSelectedTot, SS_glob_PointSelected, axis=1)
             Qfun_SelectedTot         =  np.append(Qfun_SelectedTot, Qfun_Selected, axis=0)
@@ -429,7 +440,15 @@ def _LMPC_BuildMatIneqConst(LMPC):
     return F_return, b
 
 
-def _SelectPoints(SS, SS_glob, Qfun, it, x0, numSS_Points, shift):
+def _SelectPoints(LMPC, it, x0, numSS_Points, shift):
+    SS          = LMPC.SS
+    SS_glob     = LMPC.SS_glob
+    Qfun        = LMPC.Qfun
+    xPred       = LMPC.xPred
+    map         = LMPC.map
+    TrackLength = map.TrackLength
+    currIt      = LMPC.it
+    
     x = SS[:, :, it]
     x_glob = SS_glob[:, :, it]
     oneVec = np.ones((x.shape[0], 1))
@@ -439,13 +458,44 @@ def _SelectPoints(SS, SS_glob, Qfun, it, x0, numSS_Points, shift):
     MinNorm = np.argmin(norm)
 
     if (MinNorm + shift >= 0):
-        SS_Points = x[shift + MinNorm:shift + MinNorm + numSS_Points, :].T
-        SS_glob_Points = x_glob[shift + MinNorm:shift + MinNorm + numSS_Points, :].T
-        Sel_Qfun = Qfun[shift + MinNorm:shift + MinNorm + numSS_Points, it]
+        indexSSandQfun = range(shift + MinNorm, shift + MinNorm + numSS_Points)
+        # SS_Points = x[shift + MinNorm:shift + MinNorm + numSS_Points, :].T
+        # SS_glob_Points = x_glob[shift + MinNorm:shift + MinNorm + numSS_Points, :].T
+        # Sel_Qfun = Qfun[shift + MinNorm:shift + MinNorm + numSS_Points, it]
     else:
-        SS_Points = x[MinNorm:MinNorm + numSS_Points, :].T
-        SS_glob_Points = x_glob[MinNorm:MinNorm + numSS_Points, :].T
-        Sel_Qfun = Qfun[MinNorm:MinNorm + numSS_Points, it]
+        indexSSandQfun = range(MinNorm,MinNorm + numSS_Points)
+        # SS_Points = x[MinNorm:MinNorm + numSS_Points, :].T
+        # SS_glob_Points = x_glob[MinNorm:MinNorm + numSS_Points, :].T
+        # Sel_Qfun = Qfun[MinNorm:MinNorm + numSS_Points, it]
+
+    SS_Points = x[indexSSandQfun, :].T
+    SS_glob_Points = x_glob[indexSSandQfun, :].T
+    Sel_Qfun = Qfun[indexSSandQfun, it]
+
+    # if xPred == []:
+    #     print "Here "
+    #     Sel_Qfun = Qfun[indexSSandQfun, it]
+    # elif (xPred[:, 4] > TrackLength == False):
+    #     print "Here 1"
+    #     Sel_Qfun = Qfun[indexSSandQfun, it]
+    # elif currIt < it - 1:
+    #     print "Here 2"
+    #     print Sel_Qfun
+    #     Sel_Qfun = Qfun[indexSSandQfun, it] + Qfun[0, it + 1]
+    #     print Sel_Qfun
+    # else:
+    #     print "Here 3"
+    #     sPred = xPred[:, 4]
+    #     predCurrLap = LMPC.N - sum(sPred > TrackLength)
+    #     currLapTime = LMPC.LapTime
+
+    #     Sel_Qfun = Qfun[indexSSandQfun, it] + currLapTime + predCurrLap
+
+    # if xPred != []:
+    #     sPred = xPred[:, 4]
+    #     # print sPred
+        # print sPred > TrackLength
+        # print LMPC.N - sum(sPred > TrackLength)
 
     return SS_Points, SS_glob_Points, Sel_Qfun
 

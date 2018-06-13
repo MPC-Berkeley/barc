@@ -17,6 +17,11 @@ from scipy.linalg import inv, cholesky
 from tf import transformations
 import math
 import numpy as np
+import matplotlib.pyplot as plt    
+import pdb
+import matplotlib.patches as patches
+from trackInitialization import Map
+
 
 def main():
     # node initialization
@@ -83,6 +88,23 @@ def main():
     a_his         = npz_ecu["a_his"]
     df_his        = npz_ecu["df_his"]
 
+    map = Map("oval")
+
+    flagHalfLap = False
+    plotDebug = True
+
+    if plotDebug == True:
+        fig, axtr, line_tr, line_pred, line_SS, line_cl, line_gps_cl, rec = _initializeFigure_xy(map)
+
+    ClosedLoopTraj_gps_x = [] 
+    ClosedLoopTraj_gps_y = []
+
+    ClosedLoopTraj_x = []
+    ClosedLoopTraj_y = []
+
+    maxVx = 0
+
+
     for i in range(len(a_his)):
         # READ SENSOR DATA
         gps.x   = x_his[i]
@@ -97,6 +119,54 @@ def main():
         ecu.df      = df_his[i]
 
         est.estimateState(imu,gps,enc,ecu,est.ekf)
+        if plotDebug == True:
+            estimatedStates = np.array([est.vx_est, est.vy_est, est.psiDot_est, est.yaw_est, est.x_est, est.y_est])
+
+            s, ey, epsi, insideMap = map.getLocalPosition(estimatedStates[4], estimatedStates[5], estimatedStates[3])
+
+            if s > map.TrackLength / 2:
+                flagHalfLap = True
+
+            if (s < map.TrackLength / 4) and (flagHalfLap == True): # New lap
+                ClosedLoopTraj_gps_x = []
+                ClosedLoopTraj_gps_y = []
+                ClosedLoopTraj_x = []
+                ClosedLoopTraj_y = []
+                flagHalfLap = False
+
+            x = estimatedStates[4]
+            y = estimatedStates[5]
+
+            ClosedLoopTraj_gps_x.append(gps.x) 
+            ClosedLoopTraj_gps_y.append(gps.y)
+
+            ClosedLoopTraj_x.append(est.x_est) 
+            ClosedLoopTraj_y.append(est.y_est)
+
+            psi = estimatedStates[3]
+            l = 0.4; w = 0.2
+            car_x = [ x + l * np.cos(psi) - w * np.sin(psi), x + l*np.cos(psi) + w * np.sin(psi),
+                      x - l * np.cos(psi) + w * np.sin(psi), x - l * np.cos(psi) - w * np.sin(psi)]
+            car_y = [ y + l * np.sin(psi) + w * np.cos(psi), y + l * np.sin(psi) - w * np.cos(psi),
+                      y - l * np.sin(psi) - w * np.cos(psi), y - l * np.sin(psi) + w * np.cos(psi)]
+
+            line_cl.set_data(ClosedLoopTraj_x, ClosedLoopTraj_y)
+            line_gps_cl.set_data(ClosedLoopTraj_gps_x, ClosedLoopTraj_gps_y)
+
+            
+            line_tr.set_data(estimatedStates[4], estimatedStates[5])
+            
+            rec.set_xy(np.array([car_x, car_y]).T)
+
+            maxVx = np.maximum(maxVx, estimatedStates[0])
+
+            StringValue = "vx: "+str(estimatedStates[0])+" max vx: "+str(maxVx)
+            axtr.set_title(StringValue)
+            
+            if insideMap == 1:
+                fig.canvas.draw()
+
+
 
         imu.saveHistory()
         gps.saveHistory()
@@ -144,6 +214,42 @@ def main():
 
     print "Finishing saveing state estimation data"
 
+def _initializeFigure_xy(map):
+    xdata = []; ydata = []
+    fig = plt.figure(figsize=(12,8))
+    plt.ion()
+    axtr = plt.axes()
+
+    Points = np.floor(10 * (map.PointAndTangent[-1, 3] + map.PointAndTangent[-1, 4]))
+    Points1 = np.zeros((Points, 2))
+    Points2 = np.zeros((Points, 2))
+    Points0 = np.zeros((Points, 2))
+    for i in range(0, int(Points)):
+        Points1[i, :] = map.getGlobalPosition(i * 0.1, map.halfWidth)
+        Points2[i, :] = map.getGlobalPosition(i * 0.1, -map.halfWidth)
+        Points0[i, :] = map.getGlobalPosition(i * 0.1, 0)
+
+    plt.plot(map.PointAndTangent[:, 0], map.PointAndTangent[:, 1], 'o')
+    plt.plot(Points0[:, 0], Points0[:, 1], '--')
+    plt.plot(Points1[:, 0], Points1[:, 1], '-b')
+    plt.plot(Points2[:, 0], Points2[:, 1], '-b')
+    line_cl, = axtr.plot(xdata, ydata, '-k')
+    line_gps_cl, = axtr.plot(xdata, ydata, '--og')
+    line_tr, = axtr.plot(xdata, ydata, '-or')
+    line_SS, = axtr.plot(xdata, ydata, 'og')
+    line_pred, = axtr.plot(xdata, ydata, '-or')
+    
+    v = np.array([[ 1.,  1.],
+                  [ 1., -1.],
+                  [-1., -1.],
+                  [-1.,  1.]])
+
+    rec = patches.Polygon(v, alpha=0.7,closed=True, fc='r', ec='k',zorder=10)
+    axtr.add_patch(rec)
+
+    plt.show()
+
+    return fig, axtr, line_tr, line_pred, line_SS, line_cl, line_gps_cl, rec
 
 class Estimator(object):
     def __init__(self,t0,loop_rate,a_delay,df_delay,Q,R):

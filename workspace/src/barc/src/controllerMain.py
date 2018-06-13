@@ -52,7 +52,7 @@ def main():
     NumberOfLaps   = 20
     vt = 1.0
     PathFollowingLaps = 1
-    PIDnoise = np.array([0.1, 0.1]) # noise on [Steering, Acceleration] 
+    PIDnoise = np.array([0.5, 0.5]) # noise on [Steering, Acceleration] 
     ControllerLap0, Controller,  OpenLoopData   = ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PIDnoise)
                  
     # Initialize variables for main loop
@@ -80,6 +80,8 @@ def main():
             print "Lap completed starting lap:", LapNumber, ". Lap time: ", float(TimeCounter)/loop_rate
             TimeCounter = 0
             if PickController == "LMPC":
+                print "Lap completed starting lap:", LapNumber, ". Lap time: ", float(Controller.LapTime)/loop_rate
+                Controller.resetTime()
                 Controller.addTrajectory(ClosedLoopData)
                 ClosedLoopData.updateInitialConditions(LocalState, GlobalState)
 
@@ -138,6 +140,7 @@ def main():
 
             # Add data to SS and Record Prediction
             if (PickController == "LMPC") and (LapNumber >= PathFollowingLaps):
+
                 OL_predictions.s    = Controller.xPred[:, 4]
                 OL_predictions.ey   = Controller.xPred[:, 5]
                 OL_predictions.epsi = Controller.xPred[:, 3]
@@ -165,6 +168,8 @@ def main():
 
         # Increase time counter and ROS sleep()
         TimeCounter = TimeCounter + 1
+        if PickController == "LMPC":
+            Controller.setTime(TimeCounter)
         rate.sleep()
 
     # Save Data
@@ -266,7 +271,7 @@ class PID:
         self.solverTime = deltaTimer
         self.linearizationTime = deltaTimer
         self.feasible = 1
-        self.integral = 0.0
+        self.integral = np.array([0.0, 0.0])
         self.noise = noise
 
     def solve(self, x0):
@@ -275,10 +280,11 @@ class PID:
             x0: current state position
         """
         vt = self.vt
-        Steering = - 0.5 * 2.0 * x0[5] - 0.5 * x0[3] - 0.001 * self.integral
-        Accelera = 0.5 * 1.5 * (vt - x0[0])
+        Steering = - 0.5 * 2.0 * x0[5] - 0.5 * x0[3] - 0.001 * self.integral[0]
+        Accelera = 0.5 * 1.5 * (vt - x0[0]) + 0.001 * self.integral[1]
 
-        self.integral += 0.1 * x0[5] + 0.1 * x0[3]
+        self.integral[0] = self.integral[0] +  0.1 * x0[5] + 0.1 * x0[3]
+        self.integral[1] = self.integral[1] +  (vt - x0[0])
 
         self.uPred[0, 0] = self.truncate(Steering, 0.3) + self.truncate( np.random.randn() * 0.25 * self.noise[0], 0.3)
         self.uPred[0, 1] = self.truncate(Accelera, 2.0) + self.truncate( np.random.randn() * 0.1 * self.noise[0], 0.3)
