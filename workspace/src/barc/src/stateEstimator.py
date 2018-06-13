@@ -51,15 +51,14 @@ def main():
     Q[5,5] = rospy.get_param("state_estimator/Q_ay")
     Q[6,6] = rospy.get_param("state_estimator/Q_psi")
     Q[7,7] = rospy.get_param("state_estimator/Q_psiDot")
-    R = eye(8)
+    R = eye(7)
     R[0,0] = rospy.get_param("state_estimator/R_x")
     R[1,1] = rospy.get_param("state_estimator/R_y")
     R[2,2] = rospy.get_param("state_estimator/R_vx")
     R[3,3] = rospy.get_param("state_estimator/R_ax")
     R[4,4] = rospy.get_param("state_estimator/R_ay")
     R[5,5] = rospy.get_param("state_estimator/R_psiDot")
-    R[6,6] = rospy.get_param("state_estimator/R_vy")
-    R[7,7] = 0.0001
+    R[6,6] = 0.1
 
     t0 = rospy.get_rostime().to_sec()
     imu = ImuClass(t0)
@@ -250,7 +249,7 @@ class Estimator(object):
         
         # y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot])
         print gps.angle
-        y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot, 0.5*u[1]*enc.v_meas, gps.angle])
+        y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot, gps.angle])
         # y = np.array([gps.x_ply, gps.y_ply, enc.v_meas, imu.ax, imu.ay, imu.psiDot])
         KF(y,u)
 
@@ -445,15 +444,15 @@ class Estimator(object):
 
     def h(self, x, u):
         """ This is the measurement model to the kinematic<->sensor model above """
-        y = [0]*8
+        y = [0]*7
         y[0] = x[0]      # x
         y[1] = x[1]      # y
         y[2] = x[2]      # vx
         y[3] = x[4]      # a_x
         y[4] = x[5]      # a_y
         y[5] = x[7]      # psiDot
-        y[6] = x[3]      # vy
-        y[7] = x[6]      # vy
+        # y[6] = x[3]      # vy
+        y[6] = x[6]      # psi
         return np.array(y)
 
     def saveHistory(self):
@@ -621,7 +620,6 @@ class GpsClass(object):
         y_1 = self.y
         argument_y = y_1 - y_0
         argument_x = x_1 - x_0
-        print "args", argument_x, argument_y
         angle = 0.0
         if argument_x > 0.0:
             angle = np.arctan(argument_y / argument_x)
