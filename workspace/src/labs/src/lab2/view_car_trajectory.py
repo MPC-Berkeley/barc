@@ -30,7 +30,7 @@ import matplotlib.patches as patches
 global pos_info_x_vals, pos_info_y_vals
 global v_vals, t_vals, psi_vals
 
-from simulator.msg import Z_DynBkMdl 
+from labs.msg import Z_DynBkMdl 
 
 pos_info_x_vals = []
 pos_info_y_vals = []

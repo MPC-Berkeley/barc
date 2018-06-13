@@ -1,8 +1,6 @@
 # Flashing the odroid
 
-We provide an image file of the odroid which you can flash onto your odroid using the steps described below. By downloading and flashing this image file onto the odroid's eMMC chip, you will have an exact copy of the entire operating system, including installed software, packages, and tools (e.g. ROS, openCV, Julia, etc)  necessary to run experiments. The original compressed 16GB image file is available [here](http://dator.forge9.com/static/odroid_3_18.img), and a more recent compressed 64GB image is available [here](https://drive.google.com/file/d/0B8Wt7Lp7AsTYWnJJSUE5c0ZHMWs/view?usp=sharing). The image file is large, so it is recommended to download it overnight with a stable connection. To verify a successful download, check the MD5 hash value (for Windows refer to [here](https://support.microsoft.com/en-us/kb/889768), for Mac/Linux use the md5 / md5sum command). You should see the exact MD5 value below for the 16GB image; if not, something probably got corrupted during the download, try re-downloading
-
- 014a8d3030e348660493b17575b43759
+We provide an image file of the odroid which you can flash onto your odroid using the steps described below. By downloading and flashing this image file onto the odroid's eMMC chip, you will have an exact copy of the entire operating system, including installed software, packages, and tools (e.g. ROS, openCV, Julia, etc)  necessary to run experiments. A compressed 16GB image file is available [here](https://drive.google.com/a/berkeley.edu/file/d/1lZKGgRujMVKwhIR_gWwntpjj5qGZN3HW/view?usp=drive_web). The image file is large, so it is recommended to download it with a stable connection. 
 
 Before flashing the eMMC, you will need to a labtop, a microSD-to-eMMC adaptor and a microSD card reader (if your laptop doesn't have an SD port). The main steps for flashing are as follows 
 

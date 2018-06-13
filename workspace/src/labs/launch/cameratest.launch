@@ -1,0 +1,8 @@
+<launch>
+    <node 
+		pkg="labs" 
+		type="camera.py" 
+		name="camera">
+    </node>
+
+</launch>

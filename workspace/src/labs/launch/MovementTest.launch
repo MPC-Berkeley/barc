@@ -27,6 +27,6 @@
         <param name="camera_on" value="true" />
     </node>
 
-    <node pkg="labs" type="SteeringMapping.py" name="model_id" />
-
+    <node pkg="labs" type="MovementTest.py" name="MovementTest" output="screen"/>
+ 
 </launch>
