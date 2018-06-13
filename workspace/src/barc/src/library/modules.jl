@@ -1025,9 +1025,9 @@ export buildFeatureSetFromHistory, buildFeatureSetFromDataSet, buildFeatureSetFr
         for i in 1:agent.mpcParams.N
             findFeature(agent,state[i,:])
             if agent.raceSet.SYS_ID_LIN_FLAG
-                coeffIdLin(agent,1)
+                coeffIdLin(agent,i)
             else
-                coeffId(agent,1)
+                coeffId(agent,i)
             end
         end
     end

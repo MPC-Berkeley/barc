@@ -68,11 +68,11 @@ function main()
         solveId(mdlLMPC,agent)
 
         # DIFFERENT OPTIONS FOR SELECTING FEATURE DATA FOR SYS ID
-        # buildFeatureSetFromHistory(agent)
-        data = load("$(homedir())/$(raceSet.folder_name)/FD.jld")
-        featureData = data["featureData"]
+        buildFeatureSetFromHistory(agent)
+        # data = load("$(homedir())/$(raceSet.folder_name)/FD.jld")
+        # featureData = data["featureData"]
         # buildFeatureSetFromDataSet(agent,featureData)
-        buildFeatureSetFromBoth(agent,featureData)
+        # buildFeatureSetFromBoth(agent,featureData)
     end
     historyCollect(agent)
     gpDataCollect(agent)
@@ -84,6 +84,7 @@ function main()
     vis_pub     = Publisher("mpc_visual",   mpc_visual,                      queue_size=1)
     pos_sub     = Subscriber("pos_info",    pos_info, SE_callback, (agent,), queue_size=1)
 
+    counter = 1
     while ! is_shutdown()
         # CONTROL SIGNAL PUBLISHING
         publish(ecu_pub, cmd)
@@ -98,9 +99,9 @@ function main()
                 setvalue(mdlPf.z_Ol[:,1],mpcSol.z_prev[:,1]-track.s)
             else
                 # DIFFERENT OPTIONS FOR SELECTING FEATURE DATA FOR SYS ID
-                # buildFeatureSetFromHistory(agent)
+                buildFeatureSetFromHistory(agent)
                 # buildFeatureSetFromDataSet(agent,featureData)
-                buildFeatureSetFromBoth(agent,featureData)
+                # buildFeatureSetFromBoth(agent,featureData)
                 setvalue(mdlLMPC.z_Ol[:,1], mpcSol.z_prev[:,1]-track.s)
             end
 
@@ -112,11 +113,12 @@ function main()
                 end
             end
         end
-
+        
         # CONTROLLER
         if lapStatus.lap<=1+raceSet.PF_LAP
             solvePf(mdlPf,agent)
         else
+        	tic()
             # PATH FOLLOWING DATA SAVING AFTER FINISHING PF LAPS
             if raceSet.PF_FLAG
                 savePF(agent)
@@ -136,10 +138,11 @@ function main()
 
             # SAFESET CONSTRUCTION
             findSS(agent)
-
+            toc()
+            tic()
             # SOLVE LMPC
         	solveId(mdlLMPC,agent)
-
+        	toc()
             # COLLECT GAUSSIAN PROCESS FEATURE DATA
             if !raceSet.GP_LOCAL_FLAG && !raceSet.GP_FULL_FLAG && lapStatus.it>1
                 gpDataCollect(agent)
@@ -147,12 +150,19 @@ function main()
         end
 
         # VISUALIZATION UPDATE
-        visualUpdate(mpc_vis,agent,track_Fd)
+        # visualUpdate(mpc_vis,agent,track_Fd)
+        visualUpdate(mpc_vis,agent)
         publish(vis_pub, mpc_vis)
         println("$(agent.mpcSol.sol_status): Lap:",lapStatus.lap,", It:",lapStatus.it," v:$(round(posInfo.v,2))")
         
         # ITERATION UPDATE
-        historyCollect(agent)
+        if counter == 1
+            historyCollect(agent)
+            counter = 0
+        else
+            counter += 1
+        end
+
         rossleep(loop_rate)
     end
 
