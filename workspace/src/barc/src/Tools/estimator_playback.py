@@ -52,6 +52,33 @@ def approximate_yaw(x, y, time, time_now):
 
     return angle
 
+def interpolate_yaw(yaw, gps_time, time_now):
+    seconds_used = 1.0
+
+    start = np.argmax(gps_time >= time_now - seconds_used)
+    end = max(np.argmax(gps_time >= time_now) - 1, 0)
+
+    print start
+    print end
+
+    if start == end:
+        return yaw[start]
+
+    t_gps = gps_time[start : end] - gps_time[start]
+    yaw_hist = yaw[start : end]
+
+    print yaw.shape
+
+    t_matrix = np.vstack([t_gps**2, t_gps, np.ones(end - start)]).T
+    
+    print t_matrix.shape
+    print yaw_hist.shape
+    c_yaw = np.linalg.lstsq(t_matrix, yaw_hist)[0]
+
+    yaw_interpolated = np.polyval(c_yaw, time_now - gps_time[start])
+
+    return yaw_interpolated
+
 def main():
     # node initialization
     a_delay     = 0.2
@@ -67,13 +94,14 @@ def main():
     Q[5,5] = 1.0 # ay
     Q[6,6] = 0.0001 # psi
     Q[7,7] = 1.0 # psidot
-    R = eye(6)
+    R = eye(7)
     R[0,0] = 1.0    # x
     R[1,1] = 1.0    # y
     R[2,2] = 0.1    # vx
     R[3,3] = 10.0   # ax
     R[4,4] = 10.0   # ay
-    R[5,5] = 0.001  # psiDot
+    R[5,5] = 1.0  # psiDot
+    R[6,6] = 0.1  # yaw
 
     imu = ImuClass(0.0)
     gps = GpsClass(0.0)
@@ -139,29 +167,33 @@ def main():
     ecu_time    = npz_ecu["ecu_time"]
     print "Finish loading data from", pathSave
 
-    for i in range(len(KF_a_his)):
-        # READ SENSOR DATA
-        gps.x       = KF_x_his[i]
-        gps.y       = KF_y_his[i]
-        imu.ax      = KF_ax_his[i]
-        imu.ay      = KF_ay_his[i]
-        imu.psiDot  = KF_psiDot_his[i]
-        enc.v_meas  = KF_v_meas_his[i]
-        ecu.a       = KF_a_his[i]
-        ecu.df      = KF_df_his[i]
-
-        est.estimateState(imu,gps,enc,ecu,est.ekf)
-        est.saveHistory()
-
     gps_t, indices = np.unique(gps_time, return_index=True)
     gps_yaw = zeros(len(x_his[indices])-1)
-    pdb.set_trace()
     for i in range(1,len(x_his[indices])):
         if gps_t[i] > enc_time[np.argmax(v_meas_his>0.1)] :
             gps_yaw[i-1] = approximate_yaw(x_his[indices], y_his[indices], gps_t, gps_t[i])
     gps_yaw = np.unwrap(gps_yaw)
 
     gps_angle = gps_angle * np.pi / 180.0 - np.pi / 2.0
+    print gps_time
+    for i in range(len(KF_a_his)):
+        # READ SENSOR DATA
+        time_now    = estimator_time[i]
+        gps.x       = KF_x_his[i]
+        gps.y       = KF_y_his[i]
+        gps.angle   = gps_yaw[max(np.argmin(gps_t <= time_now) - 1, 0)]
+        imu.ax      = KF_ax_his[i]
+        imu.ay      = KF_ay_his[i]
+        imu.psiDot  = KF_psiDot_his[i]
+        enc.v_meas  = KF_v_meas_his[i]
+        ecu.a       = KF_a_his[i]
+        ecu.df      = KF_df_his[i]
+        
+        # est.angle  = interpolate_yaw(gps_yaw, gps_time, time_now)
+
+
+        est.estimateState(imu,gps,enc,ecu,est.ekf)
+        est.saveHistory()
 
     homedir = os.path.expanduser("~")
     pathSave = os.path.join(homedir,"barc_debugging2/estimator_output.npz")
@@ -173,6 +205,7 @@ def main():
                       vy_est_his        = est.vy_est_his,
                       ax_est_his        = est.ax_est_his,
                       ay_est_his        = est.ay_est_his,
+                      angle_est_his     = est.angle_est_his,
                       KF_x_his          = KF_x_his,
                       KF_y_his          = KF_y_his,
                       KF_v_meas_his     = KF_v_meas_his,
@@ -280,6 +313,7 @@ class Estimator(object):
         self.yaw_est        = 0.0
         self.psiDot_est     = 0.0
         self.psiDot_drift_est = 0.0
+        self.angle          = 0.0
 
         self.x_est_his          = []
         self.y_est_his          = []
@@ -291,6 +325,7 @@ class Estimator(object):
         self.yaw_est_his        = []
         self.psiDot_est_his     = []
         self.time_his           = []
+        self.angle_est_his      = []
 
         # SAVE THE measurement/input SEQUENCE USED BY KF
         self.x_his      = [0.0]
@@ -301,6 +336,7 @@ class Estimator(object):
         self.psiDot_his = [0.0]
         self.a_his      = [0.0]
         self.df_his     = [0.0]
+        self.angle_his     = [0.0]
 
     # ecu command update
     def estimateState(self,imu,gps,enc,ecu,KF):
@@ -310,7 +346,7 @@ class Estimator(object):
         self.df_his.append(ecu.df)
         u = [self.a_his.pop(0), self.df_his.pop(0)]
         
-        y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot])
+        y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot, gps.angle])
         # y = np.array([gps.x_ply, gps.y_ply, enc.v_meas, imu.ax, imu.ay, imu.psiDot])
         KF(y,u)
 
@@ -323,6 +359,8 @@ class Estimator(object):
         self.psiDot_his.append(y[5])
         self.a_his.append(u[0])
         self.df_his.append(u[1])
+
+        self.angle_his.append(y[6])
 
     def ekf(self, y, u):
         """
@@ -502,7 +540,7 @@ class Estimator(object):
 
     def h(self, x, u):
         """ This is the measurement model to the kinematic<->sensor model above """
-        y = [0]*6
+        y = [0]*7
         y[0] = x[0]      # x
         y[1] = x[1]      # y
         y[2] = x[2]      # vx
@@ -510,6 +548,7 @@ class Estimator(object):
         y[4] = x[5]      # a_y
         y[5] = x[7]      # psiDot
         # y[6] = x[3]      # vy
+        y[6] = x[6]      # psi
         return np.array(y)
 
     def saveHistory(self):
@@ -524,6 +563,7 @@ class Estimator(object):
         self.ay_est_his.append(self.ay_est)
         self.yaw_est_his.append(self.yaw_est)
         self.psiDot_est_his.append(self.psiDot_est)
+        self.angle_est_his.append(self.angle)
 
 class ImuClass(object):
     """ Object collecting GPS measurement data
@@ -581,12 +621,14 @@ class GpsClass(object):
         self.y      = 0.0
         self.x_ply  = 0.0
         self.y_ply  = 0.0
+        self.angle  = 0.0
         
         # GPS measurement history
         self.x_his      = np.array([])
         self.y_his      = np.array([])
         self.x_ply_his  = np.array([0.0])
         self.y_ply_his  = np.array([0.0])
+        self.angle_his  = np.array([0.0])
 
 
 class EncClass(object):

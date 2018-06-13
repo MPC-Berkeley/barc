@@ -23,10 +23,10 @@ import os
 import sys
 homedir = os.path.expanduser("~")
 sys.path.append(os.path.join(homedir,"barc/workspace/src/barc/src/library"))
-# from Localization_helpers import Track
+from Localization_helpers import Track
 from barc.msg import ECU, pos_info, Vel_est
 from sensor_msgs.msg import Imu
-from marvelmind_nav.msg import hedge_imu_fusion, hedge_pos_ang
+from marvelmind_nav.msg import hedge_imu_fusion
 from std_msgs.msg import Header
 from numpy import eye, zeros, diag, tan, cos, sin, vstack, linalg, pi
 from numpy import ones, polyval, size, dot, add
@@ -51,15 +51,14 @@ def main():
     Q[5,5] = rospy.get_param("state_estimator/Q_ay")
     Q[6,6] = rospy.get_param("state_estimator/Q_psi")
     Q[7,7] = rospy.get_param("state_estimator/Q_psiDot")
-    R = eye(8)
+    R = eye(7)
     R[0,0] = rospy.get_param("state_estimator/R_x")
     R[1,1] = rospy.get_param("state_estimator/R_y")
     R[2,2] = rospy.get_param("state_estimator/R_vx")
     R[3,3] = rospy.get_param("state_estimator/R_ax")
     R[4,4] = rospy.get_param("state_estimator/R_ay")
     R[5,5] = rospy.get_param("state_estimator/R_psiDot")
-    R[6,6] = rospy.get_param("state_estimator/R_vy")
-    R[7,7] = 1.0
+    R[6,6] = 0.1
 
     t0 = rospy.get_rostime().to_sec()
     imu = ImuClass(t0)
@@ -79,8 +78,8 @@ def main():
     estMsg = pos_info()
     
     while not rospy.is_shutdown():
-
-        est.estimateState(imu,gps,enc,ecu,est.ukf)
+        # if ecu.a != 0:
+        est.estimateState(imu,gps,enc,ecu,est.ekf)
 
         # estMsg.s, estMsg.ey, estMsg.epsi = track.Localize(est.x_est, est.y_est, est.yaw_est)
         
@@ -135,7 +134,6 @@ def main():
                       y_his         = gps.y_his,
                       x_ply_his     = gps.x_ply_his,
                       y_ply_his     = gps.y_ply_his,
-                      angle_his     = gps.angle_his,
                       gps_time      = gps.time_his,
                       gps_ply_time  = gps.time_ply_his)
 
@@ -199,6 +197,7 @@ class Estimator(object):
         self.R      = R
         self.P      = np.eye(np.size(Q,0)) # initializationtial covariance matrix
         self.z      = np.zeros(np.size(Q,0)) # initial state mean
+        if rospy.get_param("feature_flag"): self.z[6]   = pi/4
         self.dt     = dt
         self.a_delay        = a_delay
         self.df_delay       = df_delay
@@ -250,8 +249,7 @@ class Estimator(object):
         self.df_his.append(ecu.df)
         u = [self.a_his.pop(0), self.df_his.pop(0)]
         
-        # y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot])
-        y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot, 0.5*u[1]*enc.v_meas, gps.angle])
+        y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot, 0.5*u[1]*enc.v_meas])
         # y = np.array([gps.x_ply, gps.y_ply, enc.v_meas, imu.ax, imu.ay, imu.psiDot])
         KF(y,u)
 
@@ -443,7 +441,7 @@ class Estimator(object):
 
     def h(self, x, u):
         """ This is the measurement model to the kinematic<->sensor model above """
-        y = [0]*8
+        y = [0]*7
         y[0] = x[0]      # x
         y[1] = x[1]      # y
         y[2] = x[2]      # vx
@@ -451,7 +449,6 @@ class Estimator(object):
         y[4] = x[5]      # a_y
         y[5] = x[7]      # psiDot
         y[6] = x[3]      # vy
-        y[7] = x[6]
         return np.array(y)
 
     def saveHistory(self):
@@ -566,27 +563,20 @@ class GpsClass(object):
             t0: starting measurement time
         """
 
-        rospy.Subscriber('hedge_pos_ang', hedge_pos_ang, self.gps_callback, queue_size=1)
+        rospy.Subscriber('hedge_imu_fusion', hedge_imu_fusion, self.gps_callback, queue_size=1)
 
         # GPS measurement
-        self.x_1      = 0.0
-        self.y_1      = 0.0
-        self.x_2      = 0.0
-        self.y_2      = 0.0
-
-        self.x = 0.0
-        self.y = 0.0
-        self.angle = 0.0
+        self.x      = 0.0
+        self.y      = 0.0
         self.x_ply  = 0.0
         self.y_ply  = 0.0
-
-        self.time_his   = np.array([0.0])
+        
+        # GPS measurement history
         self.x_his      = np.array([0.0])
         self.y_his      = np.array([0.0])
-        self.angle_his  = np.array([0.0])
         self.x_ply_his  = np.array([0.0])
         self.y_ply_his  = np.array([0.0])
-
+        
         # time stamp
         self.t0         = t0
         self.time_his   = np.array([0.0])
@@ -597,42 +587,23 @@ class GpsClass(object):
         """Unpack message from sensor, GPS"""
         self.curr_time = rospy.get_rostime().to_sec() - self.t0
         dist = np.sqrt((data.x_m-self.x_his[-1])**2+(data.y_m-self.y_his[-1])**2)
-        if dist < 0.5:
+        # if dist < 0.5:
+        self.x = data.x_m
+        self.y = data.y_m            
 
-            if data.address == 16:
-                self.curr_time_1 = rospy.get_rostime().to_sec() - self.t0
-
-                self.x_1 = data.x_m
-                self.y_1 = data.y_m
-
-                self.angle = data.angle
-
-            if data.address == 26:
-                self.curr_time_2 = rospy.get_rostime().to_sec() - self.t0
-
-                self.x_2 = data.x_m
-                self.y_2 = data.y_m
-
-                self.angle = data.angle
-
-            self.curr_time = rospy.get_rostime().to_sec() - self.t0
-
-            self.x = 0.5 * (self.x_1 + self.x_2)
-            self.y = 0.5 * (self.y_1 + self.y_2)       
-
-            # 1) x(t) ~ c0x + c1x * t + c2x * t^2
-            # 2) y(t) ~ c0y + c1y * t + c2y * t^2
-            # c_X = [c0x c1x c2x] and c_Y = [c0y c1y c2y] 
-            n_intplt = 50 # 50*0.01=0.5s data
-            if size(self.x_ply_his,0) > n_intplt:
-                x_intplt = self.x_ply_his[-n_intplt:]
-                y_intplt = self.y_ply_his[-n_intplt:]
-                t_intplt = self.time_ply_his[-n_intplt:]-self.time_ply_his[-n_intplt]
-                t_matrix = vstack([t_intplt**2, t_intplt, ones(n_intplt)]).T
-                c_X = linalg.lstsq(t_matrix, x_intplt)[0]
-                c_Y = linalg.lstsq(t_matrix, y_intplt)[0]
-                self.x_ply = polyval(c_X, self.curr_time-self.time_ply_his[-n_intplt])
-                self.y_ply = polyval(c_Y, self.curr_time-self.time_ply_his[-n_intplt])
+        # 1) x(t) ~ c0x + c1x * t + c2x * t^2
+        # 2) y(t) ~ c0y + c1y * t + c2y * t^2
+        # c_X = [c0x c1x c2x] and c_Y = [c0y c1y c2y] 
+        n_intplt = 50 # 50*0.01=0.5s data
+        if size(self.x_ply_his,0) > n_intplt:
+            x_intplt = self.x_ply_his[-n_intplt:]
+            y_intplt = self.y_ply_his[-n_intplt:]
+            t_intplt = self.time_ply_his[-n_intplt:]-self.time_ply_his[-n_intplt]
+            t_matrix = vstack([t_intplt**2, t_intplt, ones(n_intplt)]).T
+            c_X = linalg.lstsq(t_matrix, x_intplt)[0]
+            c_Y = linalg.lstsq(t_matrix, y_intplt)[0]
+            self.x_ply = polyval(c_X, self.curr_time-self.time_ply_his[-n_intplt])
+            self.y_ply = polyval(c_Y, self.curr_time-self.time_ply_his[-n_intplt])
 
         self.saveHistory()
 
@@ -640,7 +611,6 @@ class GpsClass(object):
         self.time_his = np.append(self.time_his,self.curr_time)
         self.x_his    = np.append(self.x_his,self.x)
         self.y_his    = np.append(self.y_his,self.y)
-        self.angle_his = np.append(self.angle_his, self.angle)
         # if self.x_ply_his[-1] != self.x_ply:
         self.x_ply_his  = np.append(self.x_ply_his,self.x_ply)
         self.y_ply_his  = np.append(self.y_ply_his,self.y_ply)
@@ -664,12 +634,6 @@ class EncClass(object):
             t0: starting measurement time
         """
         rospy.Subscriber('vel_est', Vel_est, self.enc_callback, queue_size=1)
-
-        node_name = rospy.get_name()
-        if node_name[-1] == "2":
-            self.use_both_encoders = False
-        else:
-            self.use_both_encoders = True
 
         # ENC measurement
         self.v_fl      = 0.0
@@ -700,12 +664,7 @@ class EncClass(object):
         self.v_fr = data.vel_fr
         self.v_rl = data.vel_bl
         self.v_rr = data.vel_br
-
-        if self.use_both_encoders:
-            v_est = (self.v_rl + self.v_rr)/2
-        else:
-            v_est = self.v_rr        
-
+        v_est = (self.v_rl + self.v_rr)/2
         if v_est != self.v_prev:
             self.v_meas = v_est
             self.v_prev = v_est

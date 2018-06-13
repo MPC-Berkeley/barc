@@ -20,6 +20,7 @@ ax_est_his          =npz_output["ax_est_his"]
 ay_est_his          =npz_output["ay_est_his"] 
 psiDot_est_his      =npz_output["psiDot_est_his"]  
 yaw_est_his         =npz_output["yaw_est_his"]  
+angle_est_his       = npz_output["angle_est_his"]
 KF_x_his            = npz_output["KF_x_his"]
 KF_y_his            = npz_output["KF_y_his"]
 KF_v_meas_his       = npz_output["KF_v_meas_his"]
@@ -54,7 +55,7 @@ gps_angle   = npz_gps["gps_angle"]
 gps_time    = npz_gps["gps_time"]
 gps_ply_time= npz_gps["gps_ply_time"]
 print "Finish loading data from", pathSave
-pdb.set_trace()
+
 pathSave = os.path.join(homedir,"barc_debugging2/estimator_enc.npz")
 npz_enc = np.load(pathSave)
 v_fl_his    = npz_enc["v_fl_his"]
@@ -170,6 +171,8 @@ ax3.plot(estimator_time, ay_est_his,    label="ay_est")
 # ax3.plot(ecu_time, df_his, "--",  label="cmd.df")
 ax3.legend()
 ax3.grid()
+
+gps_angle = np.unwrap(gps_angle)
 ax4 = fig.add_subplot(num_plot,1,3,ylabel="psidot")
 ax4.plot(imu_time, psiDot_his, ".", label="psidot_meas")
 ax4.plot(estimator_time,psiDot_est_his,label="psidot_est")
@@ -177,6 +180,9 @@ ax4.plot(imu_time, yaw_his, ".", label="yaw_meas")
 ax4.plot(estimator_time,yaw_est_his,label="yaw_est")
 ax4.plot(gps_t[:-1], gps_yaw,label="yaw_gps")
 ax4.plot(gps_time, gps_angle,label="angle_gps")
+ax4.plot(estimator_time, angle_est_his,label="interpolated yaw")
+
+
 
 
 # ax4.plot(estimator_time, df_his, "--",    label="cmd.df")
