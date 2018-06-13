@@ -79,24 +79,24 @@ def main():
         if ecu.a != 0:
             est.estimateState(imu,gps,enc,ecu,est.ekfMultiRate)
 
-        estMsg.s, estMsg.ey, estMsg.epsi = track.Localize(est.x_est, est.y_est, est.yaw_est)
-        
-        estMsg.header.stamp = rospy.get_rostime()
-        estMsg.v        = np.sqrt(est.vx_est**2 + est.vy_est**2)
-        estMsg.x        = est.x_est 
-        estMsg.y        = est.y_est
-        estMsg.v_x      = est.vx_est 
-        estMsg.v_y      = est.vy_est
-        estMsg.psi      = est.yaw_est
-        estMsg.psiDot   = est.psiDot_est
-        estMsg.a_x      = est.ax_est
-        estMsg.a_y      = est.ay_est
-        estMsg.u_a      = ecu.a
-        estMsg.u_df     = ecu.df
+            estMsg.s, estMsg.ey, estMsg.epsi = track.Localize(est.x_est, est.y_est, est.yaw_est)
+            
+            estMsg.header.stamp = rospy.get_rostime()
+            estMsg.v        = np.sqrt(est.vx_est**2 + est.vy_est**2)
+            estMsg.x        = est.x_est 
+            estMsg.y        = est.y_est
+            estMsg.v_x      = est.vx_est 
+            estMsg.v_y      = est.vy_est
+            estMsg.psi      = est.yaw_est
+            estMsg.psiDot   = est.psiDot_est
+            estMsg.a_x      = est.ax_est
+            estMsg.a_y      = est.ay_est
+            estMsg.u_a      = ecu.a
+            estMsg.u_df     = ecu.df
 
-        est.state_pub_pos.publish(estMsg)
-        est.saveHistory()
-        est.rate.sleep()
+            est.state_pub_pos.publish(estMsg)
+            est.saveHistory()
+            est.rate.sleep()
 
     homedir = os.path.expanduser("~")
     pathSave = os.path.join(homedir,"barc_debugging/estimator_output.npz")
@@ -132,7 +132,8 @@ def main():
                       y_his         = gps.y_his,
                       x_ply_his     = gps.x_ply_his,
                       y_ply_his     = gps.y_ply_his,
-                      gps_time      = gps.time_his)
+                      gps_time      = gps.time_his,
+                      gps_ply_time  = gps.time_ply_his)
 
     pathSave = os.path.join(homedir,"barc_debugging/estimator_enc.npz")
     np.savez(pathSave,v_fl_his          = enc.v_fl_his,
@@ -216,16 +217,16 @@ class Estimator(object):
         self.psiDot_drift_est = 0.0
         self.curr_time      = rospy.get_rostime().to_sec() - self.t0
 
-        self.x_est_his          = []
-        self.y_est_his          = []
-        self.vx_est_his         = []
-        self.vy_est_his         = []
-        self.v_est_his          = []
-        self.ax_est_his         = []
-        self.ay_est_his         = []
-        self.yaw_est_his        = []
-        self.psiDot_est_his     = []
-        self.time_his           = []
+        self.x_est_his          = [0.0]
+        self.y_est_his          = [0.0]
+        self.vx_est_his         = [0.0]
+        self.vy_est_his         = [0.0]
+        self.v_est_his          = [0.0]
+        self.ax_est_his         = [0.0]
+        self.ay_est_his         = [0.0]
+        self.yaw_est_his        = [0.0]
+        self.psiDot_est_his     = [0.0]
+        self.time_his           = [0.0]
 
         # SAVE THE measurement/input SEQUENCE USED BY KF
         self.x_his      = [0.0]
@@ -569,48 +570,49 @@ class GpsClass(object):
         self.y_ply  = 0.0
         
         # GPS measurement history
-        self.x_his      = np.array([])
-        self.y_his      = np.array([])
+        self.x_his      = np.array([0.0])
+        self.y_his      = np.array([0.0])
         self.x_ply_his  = np.array([0.0])
         self.y_ply_his  = np.array([0.0])
         
         # time stamp
         self.t0         = t0
-        self.time_his   = np.array([])
-        self.time_ply_his = np.array([])
+        self.time_his   = np.array([0.0])
+        self.time_ply_his = np.array([0.0])
         self.curr_time  = rospy.get_rostime().to_sec() - self.t0
 
     def gps_callback(self,data):
         """Unpack message from sensor, GPS"""
         self.curr_time = rospy.get_rostime().to_sec() - self.t0
+        dist = np.sqrt((data.x_m-self.x_his[-1])**2+(data.y_m-self.y_his[-1])**2)
+        if dist < 0.5:
+            self.x = data.x_m
+            self.y = data.y_m            
 
-        self.x = data.x_m
-        self.y = data.y_m
+            # 1) x(t) ~ c0x + c1x * t + c2x * t^2
+            # 2) y(t) ~ c0y + c1y * t + c2y * t^2
+            # c_X = [c0x c1x c2x] and c_Y = [c0y c1y c2y] 
+            n_intplt = 50 # 50*0.01=0.5s data
+            if size(self.x_ply_his,0) > n_intplt:
+                x_intplt = self.x_ply_his[-n_intplt:]
+                y_intplt = self.y_ply_his[-n_intplt:]
+                t_intplt = self.time_ply_his[-n_intplt:]-self.time_ply_his[-n_intplt]
+                t_matrix = vstack([t_intplt**2, t_intplt, ones(n_intplt)]).T
+                c_X = linalg.lstsq(t_matrix, x_intplt)[0]
+                c_Y = linalg.lstsq(t_matrix, y_intplt)[0]
+                self.x_ply = polyval(c_X, self.curr_time-self.time_ply_his[-n_intplt])
+                self.y_ply = polyval(c_Y, self.curr_time-self.time_ply_his[-n_intplt])
 
-        # 1) x(t) ~ c0x + c1x * t + c2x * t^2
-        # 2) y(t) ~ c0y + c1y * t + c2y * t^2
-        # c_X = [c0x c1x c2x] and c_Y = [c0y c1y c2y] 
-        n_intplt = 50 # 50*0.01=0.5s data
-        if size(self.x_ply_his,0) > n_intplt:
-            x_intplt = self.x_ply_his[-n_intplt:]
-            y_intplt = self.y_ply_his[-n_intplt:]
-            t_intplt = self.time_ply_his[-n_intplt:]-self.time_ply_his[-n_intplt]
-            t_matrix = vstack([t_intplt**2, t_intplt, ones(n_intplt)]).T
-            c_X = linalg.lstsq(t_matrix, x_intplt)[0]
-            c_Y = linalg.lstsq(t_matrix, y_intplt)[0]
-            self.x_ply = polyval(c_X, self.curr_time-self.time_ply_his[-n_intplt])
-            self.y_ply = polyval(c_Y, self.curr_time-self.time_ply_his[-n_intplt])
-
-        self.saveHistory()
+            self.saveHistory()
 
     def saveHistory(self):
         self.time_his = np.append(self.time_his,self.curr_time)
-        self.x_his      = np.append(self.x_his,self.x)
-        self.y_his      = np.append(self.y_his,self.y)
-        if self.x_ply_his[-1] != self.x_ply:
-	        self.x_ply_his  = np.append(self.x_ply_his,self.x_ply)
-	        self.y_ply_his  = np.append(self.y_ply_his,self.y_ply)
-	        self.time_ply_his = np.append(self.time_ply_his,self.curr_time)
+        self.x_his    = np.append(self.x_his,self.x)
+        self.y_his    = np.append(self.y_his,self.y)
+        # if self.x_ply_his[-1] != self.x_ply:
+        self.x_ply_his  = np.append(self.x_ply_his,self.x_ply)
+        self.y_ply_his  = np.append(self.y_ply_his,self.y_ply)
+        self.time_ply_his = np.append(self.time_ply_his,self.curr_time)
 
 
 

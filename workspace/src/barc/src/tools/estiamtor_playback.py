@@ -1,7 +1,7 @@
 import os
 import sys
 homedir = os.path.expanduser("~")
-sys.path.append(os.path.join(homedir,"barc/workspace/src/barc/src/Library"))
+sys.path.append(os.path.join(homedir,"barc/workspace/src/barc/src/library"))
 from Localization_helpers import Track
 from barc.msg import ECU, pos_info, Vel_est
 from sensor_msgs.msg import Imu
@@ -13,6 +13,44 @@ from scipy.linalg import inv, cholesky
 from tf import transformations
 import math
 import numpy as np
+import pdb
+
+def approximate_yaw(x, y, time, time_now):
+    index = np.argmin(abs(time - time_now))
+
+    x_0 = x[index - 1]
+    y_0 = y[index - 1]
+
+    x_1 = x[index]
+    y_1 = y[index]
+
+    argument_y = y_1 - y_0
+    argument_x = x_1 - x_0
+    # angle = np.arctan(argument_y / argument_x)
+
+    angle = 0.0
+
+    if argument_x > 0.0:
+        angle = np.arctan(argument_y / argument_x)
+
+    if argument_y >= 0.0 and argument_x < 0.0:
+        angle = np.pi + np.arctan(argument_y / argument_x)
+
+    if argument_y < 0.0 and argument_x < 0.0:
+        angle = - np.pi + np.arctan(argument_y / argument_x)
+
+    if argument_y > 0.0 and argument_x == 0.0:
+        angle = np.pi / 2.0
+
+    if argument_y < 0.0 and argument_x == 0.0:
+        angle = - np.pi / 2.0
+
+    if angle < 0.0:
+        angle += 2.0 * np.pi
+
+    # angle = np.arctan2(argument_y, argument_x)
+
+    return angle
 
 def main():
     # node initialization
@@ -27,17 +65,15 @@ def main():
     Q[3,3] = 0.01 # vy
     Q[4,4] = 1.0 # ax
     Q[5,5] = 1.0 # ay
-    Q[6,6] = 0.1 # psi
+    Q[6,6] = 0.0001 # psi
     Q[7,7] = 1.0 # psidot
-    # Q[8,8] = 0.0 # psiDot in the model
-    R = eye(7)
-    R[0,0] = 10.0   # x
-    R[1,1] = 10.0   # y
+    R = eye(6)
+    R[0,0] = 1.0    # x
+    R[1,1] = 1.0    # y
     R[2,2] = 0.1    # vx
     R[3,3] = 10.0   # ax
     R[4,4] = 10.0   # ay
-    R[5,5] = 0.1    # psiDot
-    R[6,6] = 0.01   # vy
+    R[5,5] = 0.001  # psiDot
 
     imu = ImuClass(0.0)
     gps = GpsClass(0.0)
@@ -82,6 +118,7 @@ def main():
     x_ply_his   = npz_gps["x_ply_his"]
     y_ply_his   = npz_gps["y_ply_his"]
     gps_time    = npz_gps["gps_time"]
+    gps_ply_time= npz_gps["gps_ply_time"]
     print "Finish loading data from", pathSave
 
     pathSave = os.path.join(homedir,"barc_debugging/estimator_enc.npz")
@@ -112,9 +149,16 @@ def main():
         ecu.a       = KF_a_his[i]
         ecu.df      = KF_df_his[i]
 
-        est.estimateState(imu,gps,enc,ecu,est.ekf)
+        est.estimateState(imu,gps,enc,ecu,est.ekfMultiRate)
         est.saveHistory()
 
+    gps_t, indices = np.unique(gps_time, return_index=True)
+    gps_yaw = zeros(len(x_his[indices])-1)
+    pdb.set_trace()
+    for i in range(1,len(x_his[indices])):
+        gps_yaw[i-1] = approximate_yaw(x_his[indices], y_his[indices], gps_t, gps_t[i])
+    gps_yaw = np.unwrap(gps_yaw)
+    
     homedir = os.path.expanduser("~")
     pathSave = os.path.join(homedir,"barc_debugging2/estimator_output.npz")
     np.savez(pathSave,yaw_est_his       = est.yaw_est_his,
@@ -149,7 +193,10 @@ def main():
                       y_his         = y_his,
                       x_ply_his     = x_ply_his,
                       y_ply_his     = y_ply_his,
-                      gps_time      = gps_time)
+                      gps_t         = gps_t,
+                      gps_yaw       = gps_yaw,
+                      gps_time      = gps_time,
+                      gps_ply_time  = gps_ply_time)
 
     pathSave = os.path.join(homedir,"barc_debugging2/estimator_enc.npz")
     np.savez(pathSave,v_fl_his          = v_fl_his,
@@ -166,16 +213,45 @@ def main():
 
     print "Finishing saveing state estimation data"
 
-
 class Estimator(object):
+    """ Object collecting  estimated state data
+    Attributes:
+        Estimated states:
+            1.x_est     2.y_est
+            3.vx_est    4.vy_est        5.v_est
+            6.ax_est    7.ay_est
+            8.yaw_est   9.psiDot_est    10.psiDrift_est
+        Estimated states history:
+            1.x_est_his     2.y_est_his
+            3.vx_est_his    4.vy_est_his        5.v_est_his
+            6.ax_est_his    7.ay_est_his
+            8.yaw_est_his   9.psiDot_est_his    10.psiDrift_est_his
+        Time stamp
+            1.t0 2.time_his 3.curr_time
+    Methods:
+        stateEstimate(imu,gps,enc,ecu):
+            Estimate current state from sensor data
+        ekf(y,u):
+            Extended Kalman filter
+        ukf(y,u):
+            Unscented Kalman filter
+        numerical_jac(func,x,u):
+            Calculate jacobian numerically
+        f(x,u):
+            System prediction model
+        h(x,u):
+            System measurement model
+    """
+
     def __init__(self,t0,loop_rate,a_delay,df_delay,Q,R):
         """ Initialization
         Arguments:
             t0: starting measurement time
         """
         dt          = 1.0 / loop_rate
-        L_f         = 0.125       # distance from CoG to front axel
-        L_r         = 0.125       # distance from CoG to rear axel
+        self.rate   = 50.0
+        L_f         = 0.125
+        L_r         = 0.125
         self.vhMdl  = (L_f, L_r)
         self.Q      = Q
         self.R      = R
@@ -211,20 +287,60 @@ class Estimator(object):
         self.psiDot_est_his     = []
         self.time_his           = []
 
+        # SAVE THE measurement/input SEQUENCE USED BY KF
+        self.x_his      = [0.0]
+        self.y_his      = [0.0]
+        self.v_meas_his = [0.0]
+        self.ax_his     = [0.0]
+        self.ay_his     = [0.0]
+        self.psiDot_his = [0.0]
+        self.a_his      = [0.0]
+        self.df_his     = [0.0]
+
     # ecu command update
     def estimateState(self,imu,gps,enc,ecu,KF):
+        """Do extended Kalman filter to estimate states"""
 
         self.a_his.append(ecu.a)
         self.df_his.append(ecu.df)
         u = [self.a_his.pop(0), self.df_his.pop(0)]
-        # u = [ecu.a, self.df_his.pop(0)]
         
-        bta = 0.5 * u[1]
-        y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot, sin(bta)*enc.v_meas])
-
+        y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot])
+        # y = np.array([gps.x_ply, gps.y_ply, enc.v_meas, imu.ax, imu.ay, imu.psiDot])
         KF(y,u)
 
+        # SAVE THE measurement/input SEQUENCE USED BY KF
+        self.x_his.append(y[0])
+        self.y_his.append(y[1])
+        self.v_meas_his.append(y[2])
+        self.ax_his.append(y[3])
+        self.ay_his.append(y[4])
+        self.psiDot_his.append(y[5])
+        self.a_his.append(u[0])
+        self.df_his.append(u[1])
+
     def ekf(self, y, u):
+        """
+        EKF   Extended Kalman Filter for nonlinear dynamic systems
+        ekf(f,mx,P,h,z,Q,R) returns state estimate, x and state covariance, P 
+        for nonlinear dynamic system:
+                  x_k+1 = f(x_k) + w_k
+                  y_k   = h(x_k) + v_k
+        where w ~ N(0,Q) meaning w is gaussian noise with covariance Q
+              v ~ N(0,R) meaning v is gaussian noise with covariance R
+        Inputs:    f: function handle for f(x)
+                   z_EKF: "a priori" state estimate
+                   P: "a priori" estimated state covariance
+                   h: fanction handle for h(x)
+                   y: current measurement
+                   Q: process noise covariance 
+                   R: measurement noise covariance
+                   args: additional arguments to f(x, *args)
+        Output:    mx_kp1: "a posteriori" state estimate
+                   P_kp1: "a posteriori" state covariance
+                   
+        Notation: mx_k = E[x_k] and my_k = E[y_k], where m stands for "mean of"
+        """
         
         xDim    = self.z.size                           # dimension of the state
         mx_kp1  = self.f(self.z, u)                     # predict next state
@@ -240,9 +356,85 @@ class Estimator(object):
 
         (self.x_est, self.y_est, self.vx_est, self.vy_est, self.ax_est, self.ay_est, self.yaw_est, self.psiDot_est) = self.z
 
+    def ekfMultiRate(self, y, u):
+        """
+        EKF   Extended Kalman Filter for nonlinear dynamic systems
+        ekf(f,mx,P,h,z,Q,R) returns state estimate, x and state covariance, P 
+        for nonlinear dynamic system:
+                  x_k+1 = f(x_k) + w_k
+                  y_k   = h(x_k) + v_k
+        where w ~ N(0,Q) meaning w is gaussian noise with covariance Q
+              v ~ N(0,R) meaning v is gaussian noise with covariance R
+        Inputs:    f: function handle for f(x)
+                   z_EKF: "a priori" state estimate
+                   P: "a priori" estimated state covariance
+                   h: fanction handle for h(x)
+                   y: current measurement
+                   Q: process noise covariance 
+                   R: measurement noise covariance
+                   args: additional arguments to f(x, *args)
+        Output:    mx_kp1: "a posteriori" state estimate
+                   P_kp1: "a posteriori" state covariance
+                   
+        Notation: mx_k = E[x_k] and my_k = E[y_k], where m stands for "mean of"
+        """
+        xDim    = self.z.size                               # dimension of the state
+        mx_kp1  = self.f(self.z, u)                         # predict next state
+        A       = self.numerical_jac(self.f, self.z, u)     # linearize process model about current state
+        P_kp1   = dot(dot(A,self.P),A.T) + self.Q           # proprogate variance
+        my_kp1  = self.h(mx_kp1, u)                         # predict future output
+        H       = self.numerical_jac(self.h, mx_kp1, u)     # linearize measurement model about predicted next state
+
+        idx = []
+        if self.x_his[-1] == y[0]:
+            idx.append(0)
+        if self.y_his[-1] == y[1]:
+            idx.append(1)
+        if self.v_meas_his[-1] == y[2]:
+            idx.append(2)
+        if self.ax_his[-1] == y[3]:
+            idx.append(3)
+        if self.ay_his[-1] == y[4]:
+            idx.append(4)
+        if self.psiDot_his[-1] == y[5]:
+            idx.append(5)
+
+        if len(idx) == 6:
+            print "No measurement data received!"
+            (self.x_est, self.y_est, self.vx_est, self.vy_est, self.ax_est, self.ay_est, self.yaw_est, self.psiDot_est) = mx_kp1
+        else:
+            H      = np.delete(H,(idx),axis=0)
+            R      = np.delete(self.R,(idx),axis=0)
+            R      = np.delete(R,(idx),axis=1)
+            y      = np.delete(y,(idx),axis=0)
+            my_kp1 = np.delete(my_kp1,(idx),axis=0)
+            P12    = dot(P_kp1, H.T)                      # cross covariance
+            K      = dot(P12, inv( dot(H,P12) + R))       # Kalman filter gain
+            self.z = mx_kp1 + dot(K,(y - my_kp1))
+            self.P = dot(dot(K,R),K.T) + dot( dot( (eye(xDim) - dot(K,H)) , P_kp1)  ,  (eye(xDim) - dot(K,H)).T )
+            (self.x_est, self.y_est, self.vx_est, self.vy_est, self.ax_est, self.ay_est, self.yaw_est, self.psiDot_est) = self.z
 
     def ukf(self, y, u):
-       
+        """
+        UKF   Unscented Kalman Filter for nonlinear dynamic systems
+        ekf(f,mx,P,h,z,Q,R) returns state estimate, x and state covariance, P 
+        for nonlinear dynamic system:
+                  x[k] = f(x[k-1],u[k-1]) + v[k-1]
+                  y[k] = h(x[k]) + w[k]
+        where v ~ N(0,Q) meaning v is gaussian noise with covariance Q
+              w ~ N(0,R) meaning w is gaussian noise with covariance R
+        Inputs:    f: function handle for f(x)
+                   h: function handle for h(x)
+                   y: current measurement
+                   Q: process noise covariance 
+                   R: measurement noise covariance
+        Output:    mx_k: "a posteriori" state estimate
+                   P_k: "a posteriori" state covariance
+                   
+        Notation: mx_k = E[x_k] and my_k = E[y_k], where m stands for "mean of"
+        """
+
+        # sigma-points: generate a list, "sm_km1"
         xDim        = self.z.size
         sqrtnP      = cholesky(xDim*self.P)
         sm_km1      = list(add(self.z,sqrtnP))
@@ -269,7 +461,11 @@ class Estimator(object):
         (self.x_est, self.y_est, self.vx_est, self.vy_est, self.ax_est, self.ay_est, self.yaw_est, self.psiDot_est) = self.z
 
     def numerical_jac(self,func,x,u):
-       
+        """
+        Function to compute the numerical jacobian of a vector valued function 
+        using final differences
+        """
+        # numerical gradient and diagonal hessian
         y = func(x,u)
         
         jac = zeros( (y.size,x.size) )
@@ -297,23 +493,22 @@ class Estimator(object):
         zNext[5] = z[5]                                         # a_y
         zNext[6] = z[6] + dt*(z[7])                             # psi
         zNext[7] = z[7]                                         # psidot
-        # zNext[8] = z[8]                                         # psidot_drift
         return np.array(zNext)
 
     def h(self, x, u):
         """ This is the measurement model to the kinematic<->sensor model above """
-        y = [0]*7
+        y = [0]*6
         y[0] = x[0]      # x
         y[1] = x[1]      # y
         y[2] = x[2]      # vx
         y[3] = x[4]      # a_x
         y[4] = x[5]      # a_y
-        # y[5] = x[7]+x[8] # psiDot
-        y[5] = x[7] # psiDot
-        y[6] = x[3]      # vy
+        y[5] = x[7]      # psiDot
+        # y[6] = x[3]      # vy
         return np.array(y)
 
     def saveHistory(self):
+        # self.time_his.append(self.curr_time)
 
         self.x_est_his.append(self.x_est)
         self.y_est_his.append(self.y_est)
@@ -326,9 +521,21 @@ class Estimator(object):
         self.psiDot_est_his.append(self.psiDot_est)
 
 class ImuClass(object):
-    
+    """ Object collecting GPS measurement data
+    Attributes:
+        Measurement:
+            1.yaw 2.psiDot 3.ax 4.ay 5.roll 6.pitch
+        Measurement history:
+            1.yaw_his 2.psiDot_his 3.ax_his 4.ay_his 5.roll_his 6.pitch_his
+        Time stamp
+            1.t0 2.time_his
+    """
     def __init__(self,t0):
-        
+        """ Initialization
+        Arguments:
+            t0: starting measurement time
+        """
+
         # Imu measurement
         self.yaw     = 0.0
         self.psiDot  = 0.0
@@ -349,98 +556,41 @@ class ImuClass(object):
         self.t0          = t0
         self.time_his    = []
 
-
-    def imu_callback(self,data):
-        """Unpack message from sensor, IMU"""
-        
-        self.yaw += self.psiDot * 0.02
-   
-        ori = data.orientation
-        quaternion = (ori.x, ori.y, ori.z, ori.w)
-        (roll_raw, pitch_raw, dummy) = transformations.euler_from_quaternion(quaternion)
-        self.roll   = roll_raw
-        self.pitch  = pitch_raw
-
-        w_z = data.angular_velocity.z
-        a_x = data.linear_acceleration.x
-        a_y = data.linear_acceleration.y
-        a_z = data.linear_acceleration.z
-
-        self.psiDot = w_z
-        # Transformation from imu frame to vehicle frame (negative roll/pitch and reversed matrix multiplication to go back)
-        self.ax = cos(-pitch_raw)*a_x + sin(-pitch_raw)*sin(-roll_raw)*a_y - sin(-pitch_raw)*cos(-roll_raw)*a_z
-        self.ay = cos(-roll_raw)*a_y + sin(-roll_raw)*a_z
-
-        self.prev_time = self.curr_time
-
-    def saveHistory(self):
-        """ Save measurement data into history array"""
-
-        
-        self.yaw_his.append(self.yaw)
-        self.psiDot_his.append(self.psiDot)
-        self.ax_his.append(self.ax)
-        self.ay_his.append(self.ay)
-        self.roll_his.append(self.roll)
-        self.pitch_his.append(self.pitch)
-
-
-
 class GpsClass(object):
+    """ Object collecting GPS measurement data
+    Attributes:
+        Measurement:
+            1.x 2.y
+        Measurement history:
+            1.x_his 2.y_his
+        Time stamp
+            1.t0 2.time_his 3.curr_time
+    """
     def __init__(self,t0):
         """ Initialization
         Arguments:
             t0: starting measurement time
         """
-
+        # GPS measurement
         self.x      = 0.0
         self.y      = 0.0
+        self.x_ply  = 0.0
+        self.y_ply  = 0.0
         
         # GPS measurement history
-        self.x_his  = np.array([])
-        self.y_his  = np.array([])
-        
-        # time stamp
-        self.t0         = t0
-        self.time_his   = np.array([])
-
-    def gps_callback(self,data):
-        """Unpack message from sensor, GPS"""
-
-        self.x = data.x_m
-        self.y = data.y_m
-
-        # 1) x(t) ~ c0x + c1x * t + c2x * t^2
-        # 2) y(t) ~ c0y + c1y * t + c2y * t^2
-        # c_X = [c0x c1x c2x] and c_Y = [c0y c1y c2y] 
-        # n_intplt = 20
-        # if size(self.x_his,0) > n_intplt: # do interpolation when there is enough points
-        #     x_intplt = self.x_his[-n_intplt:]
-        #     y_intplt = self.y_his[-n_intplt:]
-        #     t_intplt = self.time_his[-n_intplt:]
-        #     t_matrix = vstack([t_intplt**2, t_intplt, ones(sz)]).T
-        #     self.c_X = linalg.lstsq(t_matrix, x_intplt)[0]
-        #     self.c_Y = linalg.lstsq(t_matrix, y_intplt)[0]
-        #     self.x = polyval(self.c_X, self.curr_time)
-        #     self.y = polyval(self.c_Y, self.curr_time)
-
-    def saveHistory(self):
-
-        self.x_his = np.append(self.x_his,self.x)
-        self.y_his = np.append(self.y_his,self.y)
+        self.x_his      = np.array([])
+        self.y_his      = np.array([])
+        self.x_ply_his  = np.array([0.0])
+        self.y_ply_his  = np.array([0.0])
 
 
 class EncClass(object):
-    """ Object collecting ENC measurement data
-    Attributes:
-        Measurement:
-            1.v_fl 2.v_fr 3. v_rl 4. v_rr
-        Measurement history:
-            1.v_fl_his 2.v_fr_his 3. v_rl_his 4. v_rr_his
-        Time stamp
-            1.t0 2.time_his 3.curr_time
-    """
+    
     def __init__(self,t0):
+        """ Initialization
+        Arguments:
+            t0: starting measurement time
+        """
 
         # ENC measurement
         self.v_fl      = 0.0
@@ -462,42 +612,8 @@ class EncClass(object):
         self.t0         = t0
         self.time_his   = []
 
-    def enc_callback(self,data):
-        """Unpack message from sensor, ENC"""
-
-        self.v_fl = data.vel_fl
-        self.v_fr = data.vel_fr
-        self.v_rl = data.vel_bl
-        self.v_rr = data.vel_br
-        v_est = (self.v_rl + self.v_rr)/2
-        if v_est != self.v_prev:
-            self.v_meas = v_est
-            self.v_prev = v_est
-            self.v_count = 0
-        else:
-            self.v_count += 1
-            if self.v_count > 10:     # if 10 times in a row the same measurement
-                self.v_meas = 0       # set velocity measurement to zero
-
-    def saveHistory(self):
-        
-        self.v_fl_his.append(self.v_fl)
-        self.v_fr_his.append(self.v_fr)
-        self.v_rl_his.append(self.v_rl)
-        self.v_rr_his.append(self.v_rr)
-
-        self.v_meas_his.append(self.v_meas)
-
 class EcuClass(object):
-    """ Object collecting CMD command data
-    Attributes:
-        Input command:
-            1.a 2.df
-        Input command history:
-            1.a_his 2.df_his
-        Time stamp
-            1.t0 2.time_his 3.curr_time
-    """
+
     def __init__(self,t0):
         """ Initialization
         Arguments:
@@ -515,18 +631,6 @@ class EcuClass(object):
         # time stamp
         self.t0         = t0
         self.time_his   = []
-
-    def ecu_callback(self,data):
-        """Unpack message from sensor, ECU"""
-
-        self.a  = data.motor
-        self.df = data.servo
-
-    def saveHistory(self):
-        
-        self.a_his.append(self.a)
-        self.df_his.append(self.df)
-
 
 if __name__ == '__main__':
     main()

@@ -4,7 +4,7 @@ import sys
 import pdb
 import matplotlib.pyplot as plt
 homedir = os.path.expanduser("~")
-sys.path.append(os.path.join(homedir,"barc/workspace/src/barc/src/Library"))
+sys.path.append(os.path.join(homedir,"barc/workspace/src/barc/src/library"))
 from Localization_helpers import Track
 # l = Track(0.01,0.8)
 # l.createRaceTrack()
@@ -48,7 +48,10 @@ x_his 		= npz_gps["x_his"]
 y_his 		= npz_gps["y_his"]
 x_ply_his 	= npz_gps["x_ply_his"]
 y_ply_his 	= npz_gps["y_ply_his"]
+gps_t       = npz_gps["gps_t"]
+gps_yaw     = npz_gps["gps_yaw"]
 gps_time  	= npz_gps["gps_time"]
+gps_ply_time= npz_gps["gps_ply_time"]
 print "Finish loading data from", pathSave
 
 pathSave = os.path.join(homedir,"barc_debugging2/estimator_enc.npz")
@@ -110,13 +113,13 @@ num_plot = 2
 fig = plt.figure("GPS")
 ax1 = fig.add_subplot(num_plot,1,1,ylabel="x")
 ax1.plot(gps_time, x_his, 			label="x")
-ax1.plot(gps_time, x_ply_his, 		label="x_ply")
+ax1.plot(gps_ply_time, x_ply_his, 		label="x_ply")
 ax1.plot(estimator_time, x_est_his, label="x_est")
 ax1.legend()
 ax1.grid()
 ax2 = fig.add_subplot(num_plot,1,2,ylabel="y")
 ax2.plot(gps_time, y_his, 			label="y")
-ax2.plot(gps_time, y_ply_his, 		label="y_ply")
+ax2.plot(gps_ply_time, y_ply_his, 		label="y_ply")
 ax2.plot(estimator_time, y_est_his, label="y_est")
 ax2.legend()
 ax2.grid()
@@ -171,6 +174,8 @@ ax4.plot(imu_time, psiDot_his, ".", label="psidot_meas")
 ax4.plot(estimator_time,psiDot_est_his,label="psidot_est")
 ax4.plot(imu_time, yaw_his, ".", label="yaw_meas")
 ax4.plot(estimator_time,yaw_est_his,label="yaw_est")
+ax4.plot(gps_t[:-1],gps_yaw,label="yaw_gps")
+
 # ax4.plot(estimator_time, df_his, "--",	label="cmd.df")
 ax4.legend()
 ax4.grid()
