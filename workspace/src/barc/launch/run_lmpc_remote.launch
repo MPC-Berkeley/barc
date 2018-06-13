@@ -40,7 +40,7 @@
          <param name="R_vx" type="double" value="0.1" />
          <param name="R_vy" type="double" value="0.01" />
          <param name="R_ax" type="double" value="10.0" />
-         <param name="R_ay" type="double" value="100.0" />
+         <param name="R_ay" type="double" value="20.0" />
          <param name="R_psiDot" type="double" value="0.001" />
     </node>
 
