@@ -54,14 +54,14 @@ def main():
     Q[5,5] = rospy.get_param("state_estimator/Q_ay")
     Q[6,6] = rospy.get_param("state_estimator/Q_psi")
     Q[7,7] = rospy.get_param("state_estimator/Q_psiDot")
-    R = eye(6)
+    R = eye(7)
     R[0,0] = rospy.get_param("state_estimator/R_x")
     R[1,1] = rospy.get_param("state_estimator/R_y")
     R[2,2] = rospy.get_param("state_estimator/R_vx")
     R[3,3] = rospy.get_param("state_estimator/R_ax")
     R[4,4] = rospy.get_param("state_estimator/R_ay")
     R[5,5] = rospy.get_param("state_estimator/R_psiDot")
-    # R[6,6] = rospy.get_param("state_estimator/R_vy")
+    R[6,6] = rospy.get_param("state_estimator/R_vy")
 
     t0 = rospy.get_rostime().to_sec()
     imu = ImuClass(t0)
@@ -234,10 +234,10 @@ class Estimator(object):
         # if ( dist >= 1 ) or ( (gps.x == self.oldGPS_x) and (gps.x == self.oldGPS_y) ):
         if ( (gps.x == self.oldGPS_x) and (gps.x == self.oldGPS_y) ):
             modeGPS = False
-            y = np.array([enc.v_meas, imu.ax, imu.ay, imu.psiDot])
+            y = np.array([enc.v_meas, imu.ax, imu.ay, imu.psiDot, bta * enc.v_meas])
         else:
             modeGPS = True
-            y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot])
+            y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot, bta * enc.v_meas])
 
         self.oldGPS_x = gps.x
         self.oldGPS_y = gps.y
@@ -256,6 +256,9 @@ class Estimator(object):
         ecu.df_his.append(u[1])
 
         KF(y,u, modeGPS)
+
+        if np.abs(imu.psiDot) < 1.0:
+            self.z[3] = 0
 
     def ekf(self, y, u, modeGPS):
         """
@@ -281,12 +284,16 @@ class Estimator(object):
         """
         
         xDim    = self.z.size                           # dimension of the state
-        mx_kp1  = self.f(self.z, u)                     # predict next state
-        A       = self.numerical_jac(self.f, self.z, u, modeGPS) # linearize process model about current state
-        P_kp1   = dot(dot(A,self.P),A.T) + self.Q           # proprogate variance
-        my_kp1  = self.h(mx_kp1, u, modeGPS)                              # predict future output
-        H       = self.numerical_jac(self.h, mx_kp1, u, modeGPS)     # linearize measurement model about predicted next state
-        P12     = dot(P_kp1, H.T)                           # cross covariance
+
+        mx_kp1  = self.f(self.z, u)                               # predict next state
+        A       = self.numerical_jac(self.f, self.z, u, modeGPS)  # linearize process model about current state
+
+        P_kp1   = dot(dot(A,self.P),A.T) + self.Q                 # proprogate variance
+
+        my_kp1  = self.h(mx_kp1, u, modeGPS)                      # predict future output
+        H       = self.numerical_jac(self.h, mx_kp1, u, modeGPS)  # linearize measurement model about predicted next state
+        
+        P12     = dot(P_kp1, H.T)                                 # cross covariance
 
         if modeGPS == True:
             K       = dot(P12, inv( dot(H,P12) + self.R))       # Kalman filter gain
@@ -297,11 +304,7 @@ class Estimator(object):
 
         if modeGPS == True:
             self.P  = dot(dot(K,self.R),K.T) + dot( dot( (eye(xDim) - dot(K,H)) , P_kp1)  ,  (eye(xDim) - dot(K,H)).T )
-            if np.abs(y[5]) < 1:
-                self.z[5] = 0
         else:
-            if np.abs(y[3]) < 1:
-                self.z[5] = 0
             self.P  = dot(dot(K,self.R[2:,2:]),K.T) + dot( dot( (eye(xDim) - dot(K,H)) , P_kp1)  ,  (eye(xDim) - dot(K,H)).T )
 
 
@@ -393,20 +396,21 @@ class Estimator(object):
     def h(self, x, u, modeGPS):
         """ This is the measurement model to the kinematic<->sensor model above """
         if modeGPS:
-            y = [0]*6
+            y = [0]*7
             y[0] = x[0]   # x
             y[1] = x[1]   # y
             y[2] = x[2]   # vx
             y[3] = x[4]   # a_x
             y[4] = x[5]   # a_y
             y[5] = x[7]   # psiDot
+            y[6] = x[3]   # vy
         else:
-            y = [0]*4
+            y = [0]*5
             y[0] = x[2]   # vx
             y[1] = x[4]   # a_x
             y[2] = x[5]   # a_y
             y[3] = x[7]   # psiDot
-
+            y[4] = x[3]   # vy
         return np.array(y)
 
     def saveHistory(self):

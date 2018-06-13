@@ -21,7 +21,7 @@ from utilities import Regression
 from dataStructures import LMPCprediction, EstimatorData, ClosedLoopDataObj
 from PathFollowingLTI_MPC import PathFollowingLTI_MPC
 from PathFollowingLTVMPC import PathFollowingLTV_MPC
-from LMPC import ControllerLMPC
+from dataStructures import LMPCprediction, EstimatorData, ClosedLoopDataObj
 
 def main():
     # Initializa ROS node
@@ -52,7 +52,7 @@ def main():
     NumberOfLaps   = 20
     vt = 1.0
     PathFollowingLaps = 1
-    PIDnoise = np.array([0.1, 0.5]) # noise on [Steering, Acceleration] 
+    PIDnoise = np.array([0.5, 1.0]) # noise on [Steering, Acceleration] 
     ControllerLap0, Controller,  OpenLoopData   = ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PIDnoise)
                  
     # Initialize variables for main loop
@@ -236,14 +236,14 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
         LMPC_Solver = "OSQP"          # Can pick CVX for cvxopt or OSQP. For OSQP uncomment line 14 in LMPC.py
         SysID_Solver = "scipy"        # Can pick CVX, OSQP or scipy. For OSQP uncomment line 14 in LMPC.py  
         numSS_it = 2                  # Number of trajectories used at each iteration to build the safe set
-        numSS_Points = 32 + N         # Number of points to select from each trajectory to build the safe set
+        numSS_Points = 42 + N         # Number of points to select from each trajectory to build the safe set
         shift = N / 2                     # Given the closed point, x_t^j, to the x(t) select the SS points from x_{t+shift}^j
         # Tuning Parameters
-        Qslack  = 10 * np.diag([10, 1, 1, 1, 10, 1])          # Cost on the slack variable for the terminal constraint
+        Qslack  =  1 * np.diag([10, 1, 1, 1, 10, 1])          # Cost on the slack variable for the terminal constraint
         Qlane   =  1 * np.array([100, 10]) # Quadratic and linear slack lane cost
         Q_LMPC  =  0 * np.diag([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])  # State cost x = [vx, vy, wz, epsi, s, ey]
         R_LMPC  =  0 * np.diag([1.0, 1.0])                      # Input cost u = [delta, a]
-        dR_LMPC =  5 * np.array([1.0, 1.0])                     # Input rate cost u
+        dR_LMPC =  1 * np.array([1.0, 1.0])                     # Input rate cost u
         Controller = ControllerLMPC(numSS_Points, numSS_it, N, Qslack, Qlane, Q_LMPC, R_LMPC, dR_LMPC, 6, 2, shift, 
                                         dt, map, Laps, TimeLMPC, LMPC_Solver, SysID_Solver, flag_LTV)
         # Controller.addTrajectory(ClosedLoopDataPID)

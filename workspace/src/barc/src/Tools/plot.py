@@ -1,6 +1,6 @@
 import sys
-sys.path.append(sys.path[0]+'/ControllersObject')
-sys.path.append(sys.path[0]+'/Utilities')
+sys.path.append(sys.path[0]+'/../ControllersObject')
+sys.path.append(sys.path[0]+'/../Utilities')
 from dataStructures import LMPCprediction, EstimatorData, ClosedLoopDataObj, LMPCprediction
 
 import numpy as np
@@ -12,10 +12,11 @@ import sys
 import pickle
 import pdb
 from trackInitialization import Map
+from dataStructures import LMPCprediction, EstimatorData, ClosedLoopDataObj
 
 
 def main():
-    file_data = open(sys.path[0]+'/data/experiments/ClosedLoopDataLMPC.obj', 'rb')
+    file_data = open(sys.path[0]+'/../data/experiments/ClosedLoopDataLMPC.obj', 'rb')
     ClosedLoopData = pickle.load(file_data)
     LMPController = pickle.load(file_data)
     LMPCOpenLoopData = pickle.load(file_data)    
@@ -24,6 +25,7 @@ def main():
 
     plotOneStepPreditionError(LMPController, LMPCOpenLoopData)
     plotClosedLoopLMPC(LMPController, map)
+
     plt.show()
     
 def plotOneStepPreditionError(LMPController, LMPCOpenLoopData):
@@ -72,8 +74,8 @@ def plotTrajectory(map, ClosedLoop):
     Points2 = np.zeros((int(Points), 2))
     Points0 = np.zeros((int(Points), 2))
     for i in range(0, int(Points)):
-        Points1[i, :] = map.getGlobalPosition(i * 0.1, map.width)
-        Points2[i, :] = map.getGlobalPosition(i * 0.1, -map.width)
+        Points1[i, :] = map.getGlobalPosition(i * 0.1, map.halfWidth)
+        Points2[i, :] = map.getGlobalPosition(i * 0.1, -map.halfWidth)
         Points0[i, :] = map.getGlobalPosition(i * 0.1, 0)
 
     plt.figure()
@@ -116,13 +118,14 @@ def plotClosedLoopLMPC(LMPController, map):
     uSS     = LMPController.uSS
 
     TotNumberIt = LMPController.it
+    print "Number iterations: ", TotNumberIt
     Points = np.floor(10 * (map.PointAndTangent[-1, 3] + map.PointAndTangent[-1, 4]))
     Points1 = np.zeros((int(Points), 2))
     Points2 = np.zeros((int(Points), 2))
     Points0 = np.zeros((int(Points), 2))
     for i in range(0, int(Points)):
-        Points1[i, :] = map.getGlobalPosition(i * 0.1, map.width)
-        Points2[i, :] = map.getGlobalPosition(i * 0.1, -map.width)
+        Points1[i, :] = map.getGlobalPosition(i * 0.1, map.halfWidth)
+        Points2[i, :] = map.getGlobalPosition(i * 0.1, -map.halfWidth)
         Points0[i, :] = map.getGlobalPosition(i * 0.1, 0)
 
     plt.figure()
