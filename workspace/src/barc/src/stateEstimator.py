@@ -26,7 +26,7 @@ sys.path.append(os.path.join(homedir,"barc/workspace/src/barc/src/library"))
 from Localization_helpers import Track
 from barc.msg import ECU, pos_info, Vel_est
 from sensor_msgs.msg import Imu
-from marvelmind_nav.msg import hedge_imu_fusion
+from marvelmind_nav.msg import hedge_imu_fusion, hedge_pos
 from std_msgs.msg import Header
 from numpy import eye, zeros, diag, tan, cos, sin, vstack, linalg, pi
 from numpy import ones, polyval, size, dot, add
@@ -251,6 +251,9 @@ class Estimator(object):
         y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot, 0.5*u[1]*enc.v_meas])
         # y = np.array([gps.x_ply, gps.y_ply, enc.v_meas, imu.ax, imu.ay, imu.psiDot])
         KF(y,u)
+
+        # if abs(y[5])<0.3:
+        #   self.z[3] = 0.0
 
         # SAVE THE measurement/input SEQUENCE USED BY KF
         self.x_his.append(y[0])
@@ -562,7 +565,8 @@ class GpsClass(object):
             t0: starting measurement time
         """
 
-        rospy.Subscriber('hedge_imu_fusion', hedge_imu_fusion, self.gps_callback, queue_size=1)
+        # rospy.Subscriber('hedge_imu_fusion', hedge_imu_fusion, self.gps_callback, queue_size=1)
+        rospy.Subscriber('hedge_pos', hedge_pos, self.gps_callback, queue_size=1)
 
         # GPS measurement
         self.x      = 0.0
@@ -586,25 +590,25 @@ class GpsClass(object):
         """Unpack message from sensor, GPS"""
         self.curr_time = rospy.get_rostime().to_sec() - self.t0
         dist = np.sqrt((data.x_m-self.x_his[-1])**2+(data.y_m-self.y_his[-1])**2)
-        if dist < 0.5:
-            self.x = data.x_m
-            self.y = data.y_m            
+        # if dist < 0.5:
+        self.x = data.x_m
+        self.y = data.y_m            
 
-            # 1) x(t) ~ c0x + c1x * t + c2x * t^2
-            # 2) y(t) ~ c0y + c1y * t + c2y * t^2
-            # c_X = [c0x c1x c2x] and c_Y = [c0y c1y c2y] 
-            n_intplt = 50 # 50*0.01=0.5s data
-            if size(self.x_ply_his,0) > n_intplt:
-                x_intplt = self.x_ply_his[-n_intplt:]
-                y_intplt = self.y_ply_his[-n_intplt:]
-                t_intplt = self.time_ply_his[-n_intplt:]-self.time_ply_his[-n_intplt]
-                t_matrix = vstack([t_intplt**2, t_intplt, ones(n_intplt)]).T
-                c_X = linalg.lstsq(t_matrix, x_intplt)[0]
-                c_Y = linalg.lstsq(t_matrix, y_intplt)[0]
-                self.x_ply = polyval(c_X, self.curr_time-self.time_ply_his[-n_intplt])
-                self.y_ply = polyval(c_Y, self.curr_time-self.time_ply_his[-n_intplt])
+        # 1) x(t) ~ c0x + c1x * t + c2x * t^2
+        # 2) y(t) ~ c0y + c1y * t + c2y * t^2
+        # c_X = [c0x c1x c2x] and c_Y = [c0y c1y c2y] 
+        n_intplt = 50 # 50*0.01=0.5s data
+        if size(self.x_ply_his,0) > n_intplt:
+            x_intplt = self.x_ply_his[-n_intplt:]
+            y_intplt = self.y_ply_his[-n_intplt:]
+            t_intplt = self.time_ply_his[-n_intplt:]-self.time_ply_his[-n_intplt]
+            t_matrix = vstack([t_intplt**2, t_intplt, ones(n_intplt)]).T
+            c_X = linalg.lstsq(t_matrix, x_intplt)[0]
+            c_Y = linalg.lstsq(t_matrix, y_intplt)[0]
+            self.x_ply = polyval(c_X, self.curr_time-self.time_ply_his[-n_intplt])
+            self.y_ply = polyval(c_Y, self.curr_time-self.time_ply_his[-n_intplt])
 
-            self.saveHistory()
+        self.saveHistory()
 
     def saveHistory(self):
         self.time_his = np.append(self.time_his,self.curr_time)

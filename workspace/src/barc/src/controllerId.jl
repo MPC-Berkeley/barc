@@ -15,8 +15,8 @@ using JuMP
 using Ipopt
 using JLD
 
-include("Library/modules.jl")
-include("Library/models.jl")
+include("library/modules.jl")
+include("library/models.jl")
 import mpcModels: MdlPf, MdlId
 import solveMpcProblem: solvePf, solveId
 using Types
@@ -34,7 +34,7 @@ function main()
     end
 
     # OBJECTS INITIALIZATION
-    track       = Track(createTrack("basic"))
+    track       = Track(createTrack("MSC_lab"))
     posInfo     = PosInfo()
     sysID       = SysID()
     SS          = SafeSet(BUFFERSIZE,raceSet.num_lap)
@@ -89,7 +89,7 @@ function main()
             if raceSet.PF_FLAG
                 setvalue(mdlPf.z_Ol[:,1],   mpcSol.z_prev[:,1]-track.s)
             else
-                buildFeatureSet(agent)
+                buildFeatureSetFromHistory(agent)
                 setvalue(mdlLMPC.z_Ol[:,1], mpcSol.z_prev[:,1]-track.s)
             end
 

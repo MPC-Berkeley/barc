@@ -18,7 +18,7 @@
     <param name="ey_tighten"    type="double" value="1.0" />
 
     <!-- Machines -->
-    <machine name="odroid" address="192.168.10.213" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_shuqi.sh"/>
+    <machine name="odroid" address="192.168.10.101" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid.sh"/>
 
     <machine name="this-pc" address="192.168.10.147" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc_shuqi.sh"/>
 
@@ -33,12 +33,12 @@
         <!-- Controller parameters -->
         <param name="dt"        type="double" value="0.1" />
         <param name="c_f"       type="double" value="0.5" />
-        <param name="delay_df"  type="int" value="0" />
-        <param name="delay_a"   type="int" value="0" />
+        <param name="delay_df"  type="int" value="1" />
+        <param name="delay_a"   type="int" value="1" />
         <param name="N"         type="int" value="10" />
         <param name="n_state"   type="int" value="4" />
         <!-- Safe set parameters -->
-        <param name="Nl"        type="int" value="2" />
+        <param name="Nl"        type="int" value="10" />
         <param name="Np"        type="int" value="30" />
         <!-- SYS ID parameters -->
         <param name="feature_Nl"    type="int" value="2" />
@@ -55,13 +55,13 @@
         <param name="delay_df"  type="double" value="0.0" />
         <param name="delay_a"   type="double" value="0.0" />
         <!-- ekf properties -->
-        <param name="Q_x"       type="double" value="0.0" />
-        <param name="Q_y"       type="double" value="0.0" />
-        <param name="Q_vx"      type="double" value="0.0" />
-        <param name="Q_vy"      type="double" value="0.0" />
+        <param name="Q_x"       type="double" value="0.01" />
+        <param name="Q_y"       type="double" value="0.01" />
+        <param name="Q_vx"      type="double" value="0.01" />
+        <param name="Q_vy"      type="double" value="0.01" />
         <param name="Q_ax"      type="double" value="1.0" />
         <param name="Q_ay"      type="double" value="1.0" />
-        <param name="Q_psi"     type="double" value="0.0" />
+        <param name="Q_psi"     type="double" value="0.01" />
         <param name="Q_psiDot"  type="double" value="1.0" />
         <param name="R_x"       type="double" value="10.0" />
         <param name="R_y"       type="double" value="10.0" />

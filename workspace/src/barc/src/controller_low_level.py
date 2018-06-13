@@ -135,7 +135,8 @@ class low_level_control(object):
         # elif msg.servo > 0.0:       # left curve
         #     # self.servo_pwm = 90.8 + 78.9*float(msg.servo)
         #     self.servo_pwm = 90.0 + 89.0*float(msg.servo)
-        self.servo_pwm = 90.0 + 89.0*float(msg.servo)
+        # self.servo_pwm = 83.3 + 103.1*float(msg.servo)
+        self.servo_pwm = 83.3 + 108.1*float(msg.servo)
 
         # compute motor command
         FxR = float(msg.motor)
@@ -143,8 +144,8 @@ class low_level_control(object):
             self.motor_pwm = 90.0
         elif FxR > 0:
             #self.motor_pwm = max(94,91 + 6.5*FxR)   # using writeMicroseconds() in Arduino
-            # self.motor_pwm = 91 + 6.5*FxR   # using writeMicroseconds() in Arduino
-            self.motor_pwm = 91 + 7.5*FxR   # using writeMicroseconds() in Arduino
+            self.motor_pwm = 91 + 6.5*FxR   # using writeMicroseconds() in Arduino
+            # self.motor_pwm = 91 + 7.5*FxR   # using writeMicroseconds() in Arduino
             # self.motor_pwm = ESCacc(self.vx, FxR)
             # self.motor_pwm = max(94,90.74 + 6.17*FxR)
             #self.motor_pwm = 90.74 + 6.17*FxR

@@ -26,8 +26,8 @@ export MdlPf,MdlKin,MdlId,MdlIdLin,MdlDynLin,MdlKinLin
             L_a  = get_param("L_a")
             L_b  = get_param("L_b")
             
-            u_lb = [-1    -18/180*pi]
-            u_ub = [ 2     18/180*pi]
+            u_lb = [-1    -0.5]
+            u_ub = [ 2     0.5]
             z_lb = [-Inf -Inf -Inf -0.5] # 1.s 2.ey 3.epsi 4.v
             z_ub = [ Inf  Inf  Inf  3.0] # 1.s 2.ey 3.epsi 4.v
 
@@ -274,7 +274,7 @@ export MdlPf,MdlKin,MdlId,MdlIdLin,MdlDynLin,MdlKinLin
             L_a     = get_param("L_a")
             L_b     = get_param("L_b")
             ey_max  = get_param("ey")*get_param("ey_tighten")/2
-            u_lb    = [ -2.0    -18/180*pi]
+            u_lb    = [ -0.5    -18/180*pi]
             u_ub    = [  2.0     18/180*pi]
             z_lb    = [-Inf -Inf -Inf    0 -Inf -Inf] # 1.s 2.ey 3.epsi 4.vx 5.vy 6.psi_dot
             z_ub    = [ Inf  Inf  Inf  6.0  Inf  Inf] # 1.s 2.ey 3.epsi 4.vx 5.vy 6.psi_dot

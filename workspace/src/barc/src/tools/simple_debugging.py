@@ -4,7 +4,7 @@ import sys
 import pdb
 import matplotlib.pyplot as plt
 homedir = os.path.expanduser("~")
-sys.path.append(os.path.join(homedir,"barc/workspace/src/barc/src/Library"))
+sys.path.append(os.path.join(homedir,"barc/workspace/src/barc/src/library"))
 from Localization_helpers import Track
 # l = Track(0.01,0.8)
 # l.createRaceTrack()

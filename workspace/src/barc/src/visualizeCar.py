@@ -26,7 +26,7 @@ sys.path.append(os.path.join(homedir,"barc/workspace/src/barc/src/library"))
 from Localization_helpers import Track
 from barc.msg import ECU, pos_info, Vel_est, mpc_visual
 from sensor_msgs.msg import Imu
-from marvelmind_nav.msg import hedge_imu_fusion
+from marvelmind_nav.msg import hedge_imu_fusion, hedge_pos
 from numpy import eye, array, zeros, cos, sin, vstack, append
 from numpy import ones, size, matrix
 import matplotlib.pyplot as plt
@@ -58,10 +58,13 @@ class Plotter(object):
         self.car_h, = self.ax.plot(car_x,car_y,"k-")
         self.traj_x = []
         self.traj_y = []
-        self.traj_h, = self.ax.plot(self.traj_x,self.traj_y,"b")
+        self.traj_h, = self.ax.plot(self.traj_x,self.traj_y,"b--")
         self.gps_x = []
         self.gps_y = []
-        self.gps_h, = self.ax.plot(self.gps_x,self.gps_y,"g")
+        self.gps_h, = self.ax.plot(self.gps_x,self.gps_y,"g--")
+        self.hedge_x = []
+        self.hedge_y = []
+        self.hedge_h, = self.ax.plot(self.hedge_x,self.hedge_y,"r")
         self.pre_x = zeros(rospy.get_param("controller/N"))
         self.pre_y = zeros(rospy.get_param("controller/N"))
         self.pre_h, = self.ax.plot(self.pre_x,self.pre_y,"b.-")
@@ -83,6 +86,7 @@ class Plotter(object):
         rospy.init_node("visualizeCar")
         rospy.Subscriber("pos_info",         pos_info,         self.posInfo_callback, queue_size=1)
         rospy.Subscriber("hedge_imu_fusion", hedge_imu_fusion, self.gps_callback,     queue_size=1)
+        rospy.Subscriber("hedge_pos",        hedge_pos,        self.hedge_callback,   queue_size=1)
         rospy.Subscriber("mpc_visual",       mpc_visual,       self.mpcVis_callback,  queue_size=1)
 
     def updatePlot(self):
@@ -92,6 +96,8 @@ class Plotter(object):
         self.traj_h.set_data(self.traj_x[:num],self.traj_y[:num])
         num = min(len(self.gps_x),len(self.gps_y))
         self.gps_h.set_data(self.gps_x[:num],self.gps_y[:num])
+        num = min(len(self.hedge_x),len(self.hedge_y))
+        self.hedge_h.set_data(self.hedge_x[:num],self.hedge_y[:num])
 
         self.pre_h.set_data(self.pre_x,self.pre_y)
         self.SS_h.set_data(self.SS_x,self.SS_y)
@@ -135,6 +141,14 @@ class Plotter(object):
         else:
             self.gps_x.append(gps.x_m)
             self.gps_y.append(gps.y_m)
+
+    def hedge_callback(self, gps):
+        if self.s_prev<0.3:
+            self.hedge_x = []
+            self.hedge_y = []
+        else:
+            self.hedge_x.append(gps.x_m)
+            self.hedge_y.append(gps.y_m)
 
     def mpcVis_callback(self,mpc_vis):
         self.pre_x   = mpc_vis.z_x

@@ -241,7 +241,7 @@ export SafeSet,SysID,FeatureData,MpcSol,MpcParams,ModelParams,GPData
             if get_param("sim_flag")
                 mpcParams.Q             = [0.0,50.0,5.0,20.0]
                 mpcParams.R             = 0*[10.0,10.0]
-                mpcParams.QderivU       = 1.0*[1.0,5.0]
+                mpcParams.QderivU       = 1.0*[1.0,1.0]
                 mpcParams.Q_term_cost   = 0.2
                 mpcParams.Q_lane        = 10.0
                 if mpcParams.n_state == 6
@@ -252,16 +252,16 @@ export SafeSet,SysID,FeatureData,MpcSol,MpcParams,ModelParams,GPData
                     mpcParams.Q_slack = 50.0*[1,1,1,1]
                 end
             else
-                mpcParams.Q             = [0.0,20.0,2.0,10.0]
+                mpcParams.Q             = [0.0,40.0,2.0,5.0]
                 mpcParams.R             = 0*[10.0,10.0]
-                mpcParams.QderivU       = 1*[1.0,5.0]
-                mpcParams.Q_term_cost   = 0.1
+                mpcParams.QderivU       = 1*[50.0,10.0]
+                mpcParams.Q_term_cost   = 0.4
                 mpcParams.Q_lane        = 16
                 if mpcParams.n_state == 6
                     mpcParams.QderivZ = 1.0*[0,0.1,0.1,2,0.1,0.0]
                     mpcParams.Q_slack = 50.0*[1.0,5.0,5.0,1.0,1.0,1.0]
                 elseif mpcParams.n_state == 4
-                    mpcParams.QderivZ = 1.0*[0,0.1,0.1,2]
+                    mpcParams.QderivZ = 1.0*[0,1.0,1.0,2.0]
                     mpcParams.Q_slack = 30.0*[1,1,1,1]
                 end
             end
@@ -825,7 +825,7 @@ end # end of module ControllerHelper
 
 module SysIDFuncs
 using Types
-export buildFeatureSet, sysIdTi, sysIdTv
+export sysIdTi, sysIdTv, buildFeatureSetFromHistory
     function buildFeatureSetFromHistory(agent::Agent)
         # THIS FUNCTION IS ONLY NEEDS TO BE CALLED ONCE EACH LAP
         Nl = agent.sysID.feature_Nl
