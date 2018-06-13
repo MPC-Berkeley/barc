@@ -288,10 +288,12 @@ export SafeSet,SysID,FeatureData,MpcSol,MpcParams,ModelParams,GPData
             modelParams.m   = get_param("m")
             modelParams.I_z = get_param("I_z")
             modelParams.c_f = get_param("controller/c_f")
-            modelParams.B  = get_param("simulator/B")
-            modelParams.C  = get_param("simulator/C")
-            modelParams.mu = get_param("simulator/mu")
-            modelParams.g  = get_param("simulator/g")
+            if get_param("sim_flag")
+                modelParams.B  = get_param("simulator/B")
+                modelParams.C  = get_param("simulator/C")
+                modelParams.mu = get_param("simulator/mu")
+                modelParams.g  = get_param("simulator/g")
+            end
             return modelParams
         end # Only used for: functions from CarSim module and DynLin controller
     end

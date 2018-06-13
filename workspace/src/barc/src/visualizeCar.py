@@ -40,14 +40,10 @@ class Plotter(object):
     def __init__(self):
         # NODE INITIALIZATION
         self.s_prev = 0.0
-        rospy.init_node("visualizeCar")
-        rospy.Subscriber("pos_info",         pos_info,         self.posInfo_callback, queue_size=1)
-        rospy.Subscriber("hedge_imu_fusion", hedge_imu_fusion, self.gps_callback,     queue_size=1)
-        rospy.Subscriber("mpc_visual",       mpc_visual,       self.mpcVis_callback,  queue_size=1)
 
         # FIGURE INITIALIZATION
         plt.ion()
-        self.fig = plt.figure("Race")
+        self.fig = plt.figure("Race",figsize=(12,8))
         self.ax  = self.fig.add_subplot(1,1,1)
 
         # PLOT DATA INITIALIZATION
@@ -83,6 +79,11 @@ class Plotter(object):
         self.v_avg = zeros(5)
         self.lapTime_s = [self.ax.annotate("Time: 0.00s, It: 0, v: 0.00 m/s", xy=[0.5,(0.6*i+5)/(len(self.lapTime)+10)], xycoords= "axes fraction", 
                                                fontsize=10, verticalalignment="top", horizontalalignment="center") for i in range(5)]
+
+        rospy.init_node("visualizeCar")
+        rospy.Subscriber("pos_info",         pos_info,         self.posInfo_callback, queue_size=1)
+        rospy.Subscriber("hedge_imu_fusion", hedge_imu_fusion, self.gps_callback,     queue_size=1)
+        rospy.Subscriber("mpc_visual",       mpc_visual,       self.mpcVis_callback,  queue_size=1)
 
     def updatePlot(self):
         self.car_h.set_data(self.car_update[0],self.car_update[1])

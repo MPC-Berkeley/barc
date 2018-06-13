@@ -51,14 +51,14 @@ def main():
     Q[5,5] = rospy.get_param("state_estimator/Q_ay")
     Q[6,6] = rospy.get_param("state_estimator/Q_psi")
     Q[7,7] = rospy.get_param("state_estimator/Q_psiDot")
-    R = eye(6)
+    R = eye(7)
     R[0,0] = rospy.get_param("state_estimator/R_x")
     R[1,1] = rospy.get_param("state_estimator/R_y")
     R[2,2] = rospy.get_param("state_estimator/R_vx")
     R[3,3] = rospy.get_param("state_estimator/R_ax")
     R[4,4] = rospy.get_param("state_estimator/R_ay")
     R[5,5] = rospy.get_param("state_estimator/R_psiDot")
-    # R[6,6] = rospy.get_param("state_estimator/R_vy")
+    R[6,6] = rospy.get_param("state_estimator/R_vy")
 
     t0 = rospy.get_rostime().to_sec()
     imu = ImuClass(t0)
@@ -76,27 +76,27 @@ def main():
     estMsg = pos_info()
     
     while not rospy.is_shutdown():
-        if ecu.a != 0:
-            est.estimateState(imu,gps,enc,ecu,est.ekfMultiRate)
+        # if ecu.a != 0:
+          est.estimateState(imu,gps,enc,ecu,est.ekf)
 
-            estMsg.s, estMsg.ey, estMsg.epsi = track.Localize(est.x_est, est.y_est, est.yaw_est)
-            
-            estMsg.header.stamp = rospy.get_rostime()
-            estMsg.v        = np.sqrt(est.vx_est**2 + est.vy_est**2)
-            estMsg.x        = est.x_est 
-            estMsg.y        = est.y_est
-            estMsg.v_x      = est.vx_est 
-            estMsg.v_y      = est.vy_est
-            estMsg.psi      = est.yaw_est
-            estMsg.psiDot   = est.psiDot_est
-            estMsg.a_x      = est.ax_est
-            estMsg.a_y      = est.ay_est
-            estMsg.u_a      = ecu.a
-            estMsg.u_df     = ecu.df
+          estMsg.s, estMsg.ey, estMsg.epsi = track.Localize(est.x_est, est.y_est, est.yaw_est)
+          
+          estMsg.header.stamp = rospy.get_rostime()
+          estMsg.v        = np.sqrt(est.vx_est**2 + est.vy_est**2)
+          estMsg.x        = est.x_est 
+          estMsg.y        = est.y_est
+          estMsg.v_x      = est.vx_est 
+          estMsg.v_y      = est.vy_est
+          estMsg.psi      = est.yaw_est
+          estMsg.psiDot   = est.psiDot_est
+          estMsg.a_x      = est.ax_est
+          estMsg.a_y      = est.ay_est
+          estMsg.u_a      = ecu.a
+          estMsg.u_df     = ecu.df
 
-            est.state_pub_pos.publish(estMsg)
-            est.saveHistory()
-            est.rate.sleep()
+          est.state_pub_pos.publish(estMsg)
+          est.saveHistory()
+          est.rate.sleep()
 
     homedir = os.path.expanduser("~")
     pathSave = os.path.join(homedir,"barc_debugging/estimator_output.npz")
@@ -247,7 +247,8 @@ class Estimator(object):
         self.df_his.append(ecu.df)
         u = [self.a_his.pop(0), self.df_his.pop(0)]
         
-        y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot])
+        # y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot])
+        y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot, 0.5*u[1]*enc.v_meas])
         # y = np.array([gps.x_ply, gps.y_ply, enc.v_meas, imu.ax, imu.ay, imu.psiDot])
         KF(y,u)
 
@@ -439,14 +440,14 @@ class Estimator(object):
 
     def h(self, x, u):
         """ This is the measurement model to the kinematic<->sensor model above """
-        y = [0]*6
+        y = [0]*7
         y[0] = x[0]      # x
         y[1] = x[1]      # y
         y[2] = x[2]      # vx
         y[3] = x[4]      # a_x
         y[4] = x[5]      # a_y
         y[5] = x[7]      # psiDot
-        # y[6] = x[3]      # vy
+        y[6] = x[3]      # vy
         return np.array(y)
 
     def saveHistory(self):
