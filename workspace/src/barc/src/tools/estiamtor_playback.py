@@ -149,7 +149,7 @@ def main():
         ecu.a       = KF_a_his[i]
         ecu.df      = KF_df_his[i]
 
-        est.estimateState(imu,gps,enc,ecu,est.ekfMultiRate)
+        est.estimateState(imu,gps,enc,ecu,est.ekf)
         est.saveHistory()
 
     gps_t, indices = np.unique(gps_time, return_index=True)

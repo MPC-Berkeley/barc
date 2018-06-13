@@ -51,7 +51,7 @@ def main():
     Q[5,5] = rospy.get_param("state_estimator/Q_ay")
     Q[6,6] = rospy.get_param("state_estimator/Q_psi")
     Q[7,7] = rospy.get_param("state_estimator/Q_psiDot")
-    R = eye(7)
+    R = eye(8)
     R[0,0] = rospy.get_param("state_estimator/R_x")
     R[1,1] = rospy.get_param("state_estimator/R_y")
     R[2,2] = rospy.get_param("state_estimator/R_vx")
@@ -59,6 +59,7 @@ def main():
     R[4,4] = rospy.get_param("state_estimator/R_ay")
     R[5,5] = rospy.get_param("state_estimator/R_psiDot")
     R[6,6] = rospy.get_param("state_estimator/R_vy")
+    R[7,7] = 0.0001
 
     t0 = rospy.get_rostime().to_sec()
     imu = ImuClass(t0)
@@ -248,7 +249,8 @@ class Estimator(object):
         u = [self.a_his.pop(0), self.df_his.pop(0)]
         
         # y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot])
-        y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot, 0.5*u[1]*enc.v_meas])
+        print gps.angle
+        y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot, 0.5*u[1]*enc.v_meas, gps.angle])
         # y = np.array([gps.x_ply, gps.y_ply, enc.v_meas, imu.ax, imu.ay, imu.psiDot])
         KF(y,u)
 
@@ -443,7 +445,7 @@ class Estimator(object):
 
     def h(self, x, u):
         """ This is the measurement model to the kinematic<->sensor model above """
-        y = [0]*7
+        y = [0]*8
         y[0] = x[0]      # x
         y[1] = x[1]      # y
         y[2] = x[2]      # vx
@@ -451,6 +453,7 @@ class Estimator(object):
         y[4] = x[5]      # a_y
         y[5] = x[7]      # psiDot
         y[6] = x[3]      # vy
+        y[7] = x[6]      # vy
         return np.array(y)
 
     def saveHistory(self):
@@ -569,12 +572,14 @@ class GpsClass(object):
         rospy.Subscriber('hedge_pos', hedge_pos, self.gps_callback, queue_size=1)
 
         # GPS measurement
+        self.angle  = 0.0
         self.x      = 0.0
         self.y      = 0.0
         self.x_ply  = 0.0
         self.y_ply  = 0.0
         
         # GPS measurement history
+        self.angle_his  = np.array([0.0])
         self.x_his      = np.array([0.0])
         self.y_his      = np.array([0.0])
         self.x_ply_his  = np.array([0.0])
@@ -591,8 +596,9 @@ class GpsClass(object):
         self.curr_time = rospy.get_rostime().to_sec() - self.t0
         dist = np.sqrt((data.x_m-self.x_his[-1])**2+(data.y_m-self.y_his[-1])**2)
         # if dist < 0.5:
-        self.x = data.x_m
-        self.y = data.y_m            
+        if self.x_his[-1] != data.x_m:
+          self.x = data.x_m
+          self.y = data.y_m            
 
         # 1) x(t) ~ c0x + c1x * t + c2x * t^2
         # 2) y(t) ~ c0y + c1y * t + c2y * t^2
@@ -608,18 +614,40 @@ class GpsClass(object):
             self.x_ply = polyval(c_X, self.curr_time-self.time_ply_his[-n_intplt])
             self.y_ply = polyval(c_Y, self.curr_time-self.time_ply_his[-n_intplt])
 
+        # Estimate yaw angle from previous 2 time steps
+        x_0 = self.x_his[-1]
+        y_0 = self.y_his[-1]
+        x_1 = self.x
+        y_1 = self.y
+        argument_y = y_1 - y_0
+        argument_x = x_1 - x_0
+        print "args", argument_x, argument_y
+        angle = 0.0
+        if argument_x > 0.0:
+            angle = np.arctan(argument_y / argument_x)
+        if argument_y >= 0.0 and argument_x < 0.0:
+            angle = np.pi + np.arctan(argument_y / argument_x)
+        if argument_y < 0.0 and argument_x < 0.0:
+            angle = - np.pi + np.arctan(argument_y / argument_x)
+        if argument_y > 0.0 and argument_x == 0.0:
+            angle = np.pi / 2.0
+        if argument_y < 0.0 and argument_x == 0.0:
+            angle = - np.pi / 2.0
+        if angle < 0.0:
+            angle += 2.0 * np.pi
+        self.angle = np.unwrap([self.angle_his[-1],angle])[1]
+
         self.saveHistory()
 
     def saveHistory(self):
         self.time_his = np.append(self.time_his,self.curr_time)
+        self.angle_his= np.append(self.angle_his,self.angle)
         self.x_his    = np.append(self.x_his,self.x)
         self.y_his    = np.append(self.y_his,self.y)
         # if self.x_ply_his[-1] != self.x_ply:
         self.x_ply_his  = np.append(self.x_ply_his,self.x_ply)
         self.y_ply_his  = np.append(self.y_ply_his,self.y_ply)
         self.time_ply_his = np.append(self.time_ply_his,self.curr_time)
-
-
 
 class EncClass(object):
     """ Object collecting ENC measurement data
