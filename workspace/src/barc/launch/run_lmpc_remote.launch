@@ -14,7 +14,7 @@
     <param name="trackShape" type="str" value="oval" />
 
     <!-- Machines -->
-    <machine name="odroid" address="192.168.10.213" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid_ugo.sh"/>
+    <machine name="odroid" address="192.168.10.101" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid_ugo.sh"/>
 
     <!-- <machine name="this-pc" address="10.0.0.72" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc.sh"/> -->
     <machine name="this-pc" address="192.168.10.157" user="ugo" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc.sh"/>
@@ -27,20 +27,21 @@
         <param name="delay_df" type="double" value="0.0" />
         <param name="delay_a" type="double" value="0.0" />
         <!-- ekf properties -->
-        <param name="Q_x" type="double" value="0.01" />
-        <param name="Q_y" type="double" value="0.01" />
-        <param name="Q_vx" type="double" value="0.01" />
-        <param name="Q_vy" type="double" value="0.01" />
-        <param name="Q_ax" type="double" value="1.0" />
-        <param name="Q_ay" type="double" value="1.0" />
-        <param name="Q_psi" type="double" value="1.0" />
-        <param name="Q_psiDot" type="double" value="1.0" />
-        <param name="R_x" type="double" value="1.0" />
-        <param name="R_y" type="double" value="1.0" />
-        <param name="R_vx" type="double" value="1.0" />
-        <param name="R_ax" type="double" value="10.0" />
-        <param name="R_ay" type="double" value="10.0" />
-        <param name="R_psiDot" type="double" value="0.1" />
+         <param name="Q_x" type="double" value="0.01" />
+         <param name="Q_y" type="double" value="0.01" />
+         <param name="Q_vx" type="double" value="0.01" />
+         <param name="Q_vy" type="double" value="0.01" />
+         <param name="Q_ax" type="double" value="1.0" />
+         <param name="Q_ay" type="double" value="1.0" />
+         <param name="Q_psi" type="double" value="0.0001" />
+         <param name="Q_psiDot" type="double" value="1.0" />
+         <param name="R_x" type="double" value="1.0" />
+         <param name="R_y" type="double" value="1.0" />
+         <param name="R_vx" type="double" value="0.1" />
+         <param name="R_vy" type="double" value="0.01" />
+         <param name="R_ax" type="double" value="10.0" />
+         <param name="R_ay" type="double" value="10.0" />
+         <param name="R_psiDot" type="double" value="0.001" />
     </node>
 
     <!-- LMPC CONTROL -->

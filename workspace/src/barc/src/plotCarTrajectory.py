@@ -114,7 +114,7 @@ def main():
 
         maxVx = np.maximum(maxVx, estimatedStates[0])
 
-        StringValue = "vx: "+str(estimatedStates[0])+" max vx: "+str(maxVx)
+        StringValue = "vx: "+str(estimatedStates[0])+" max vx: "+str(maxVx)+" psiDot: "+str(estimatedStates[2])
         axtr.set_title(StringValue)
         
         if insideMap == 1:

@@ -40,8 +40,8 @@ def main():
     Q[7,7] = 10.0 # psidot
     # Q[8,8] = 0.0 # psiDot in the model
     R = eye(6)
-    R[0,0] = 0.5   # x
-    R[1,1] = 0.5   # y
+    R[0,0] = 10*0.5   # x
+    R[1,1] = 10*0.5   # y
     R[2,2] = 1.0    # vx
     R[3,3] = 10.0   # ax
     R[4,4] = 10.0   # ay
@@ -160,7 +160,7 @@ def main():
 
             maxVx = np.maximum(maxVx, estimatedStates[0])
 
-            StringValue = "vx: "+str(estimatedStates[0])+" max vx: "+str(maxVx)
+            StringValue = "vx: "+str(estimatedStates[0])+" max vx: "+str(maxVx)+"psiDot: "+str(imu.psiDot)
             axtr.set_title(StringValue)
             
             if insideMap == 1:
@@ -322,7 +322,7 @@ class Estimator(object):
         
 
         self.z  = mx_kp1 + dot(K,(y - my_kp1))
-        if np.abs(y[5]) < 0.1:
+        if np.abs(y[5]) < 2.0:
             self.z[5] = 0
 
         self.P  = dot(dot(K,self.R),K.T) + dot( dot( (eye(xDim) - dot(K,H)) , P_kp1)  ,  (eye(xDim) - dot(K,H)).T )

@@ -297,10 +297,10 @@ class Estimator(object):
 
         if modeGPS == True:
             self.P  = dot(dot(K,self.R),K.T) + dot( dot( (eye(xDim) - dot(K,H)) , P_kp1)  ,  (eye(xDim) - dot(K,H)).T )
-            if np.abs(y[5]) < 0.05:
+            if np.abs(y[5]) < 1:
                 self.z[5] = 0
         else:
-            if np.abs(y[3]) < 0.05:
+            if np.abs(y[3]) < 1:
                 self.z[5] = 0
             self.P  = dot(dot(K,self.R[2:,2:]),K.T) + dot( dot( (eye(xDim) - dot(K,H)) , P_kp1)  ,  (eye(xDim) - dot(K,H)).T )
 
