@@ -228,7 +228,7 @@ def view_trajectory():
             # pos_info_x_vals = [0,0]
             # pos_info_y_vals = [0,0]
         
-        print("GPS off: ",np.sqrt((gps_x_vals[-1]-pos_info_x_vals[-1])**2+(gps_y_vals[-1]-pos_info_y_vals[-1])**2))
+        # print("GPS off: ",np.sqrt((gps_x_vals[-1]-pos_info_x_vals[-1])**2+(gps_y_vals[-1]-pos_info_y_vals[-1])**2))
 
         if ETS_TRUE_FLAG:
             x = real_x_vals[len(real_x_vals)-1]

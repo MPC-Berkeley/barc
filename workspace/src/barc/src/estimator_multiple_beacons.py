@@ -94,6 +94,11 @@ def main():
 
         est.state_pub_pos.publish(estMsg)
 
+        imu.saveHistory()
+        gps.saveHistory()
+        enc.saveHistory()
+        ecu.saveHistory()
+
         est.saveHistory()
         est.rate.sleep()
 
@@ -107,7 +112,20 @@ def main():
                       vy_est_his        = est.vy_est_his,
                       ax_est_his        = est.ax_est_his,
                       ay_est_his        = est.ay_est_his,
-                      estimator_time    = est.time_his)
+                      estimator_time    = est.time_his,
+                      x_his_sync        = gps.x_his_sync,
+                      y_his_sync        = gps.y_his_sync,
+                      angle_his_sync    = gps.angle_his_sync,
+                      v_fl_his_sync     = enc.v_fl_his_sync,
+                      v_fr_his_sync     = enc.v_fr_his_sync,
+                      v_rl_his_sync     = enc.v_rl_his_sync,
+                      v_rr_his_sync     = enc.v_rr_his_sync,
+                      v_meas_his_sync   = enc.v_meas_his_sync,
+                      ax_his_sync       = imu.ax_his_sync,
+                      ay_his_sync       = imu.ay_his_sync,
+                      psiDot_his_sync   = imu.psiDot_his_sync,
+                      a_his_sync        = ecu.a_his_sync,
+                      df_his_sync       = ecu.df_his_sync)
 
     pathSave = os.path.join(homedir,"barc_debugging/estimator_imu.npz")
     np.savez(pathSave,psiDot_his    = imu.psiDot_his,
@@ -127,8 +145,8 @@ def main():
                       y_his_1       = gps.y_his_1,
                       x_his_2       = gps.x_his_2,
                       y_his_2       = gps.y_his_2,
-                      gps_time_1      = gps.time_his_1,
-                      gps_time_2      = gps.time_his_2)
+                      gps_time_1    = gps.time_his_1,
+                      gps_time_2    = gps.time_his_2)
 
     pathSave = os.path.join(homedir,"barc_debugging/estimator_enc.npz")
     np.savez(pathSave,v_fl_his          = enc.v_fl_his,
@@ -235,20 +253,19 @@ class Estimator(object):
         bta = 0.5 * u[1]
         y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot, sin(bta)*enc.v_meas])
 
-        gps.x_his = np.append(gps.x_his,y[0])
-        gps.y_his = np.append(gps.y_his,y[1])
-        gps.angle_his = np.append(gps.angle_his, gps.angle)
-        enc.v_fl_his.append(y[2])
-        enc.v_fr_his.append(y[2])
-        enc.v_rl_his.append(y[2])
-        enc.v_rr_his.append(y[2])
-        enc.v_meas_his.append(y[2])
-        imu.ax_his.append(y[3])
-        imu.ay_his.append(y[4])
-        imu.psiDot_his.append(y[5])
-        ecu.a_his.append(u[0])
-        ecu.df_his.append(u[1])
-
+        gps.x_his_sync = np.append(gps.x_his_sync, y[0])
+        gps.y_his_sync = np.append(gps.y_his_sync, y[1])
+        gps.angle_his_sync = np.append(gps.angle_his_sync, gps.angle)
+        enc.v_fl_his_sync.append(enc.v_fl)
+        enc.v_fr_his_sync.append(enc.v_fr)
+        enc.v_rl_his_sync.append(enc.v_rl)
+        enc.v_rr_his_sync.append(enc.v_fr)
+        enc.v_meas_his_sync.append(y[2])
+        imu.ax_his_sync.append(y[3])
+        imu.ay_his_sync.append(y[4])
+        imu.psiDot_his_sync.append(y[5])
+        ecu.a_his_sync.append(u[0])
+        ecu.df_his_sync.append(u[1])
 
         # y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot])
 
@@ -435,6 +452,11 @@ class ImuClass(object):
         self.ay_his      = [0.0]
         self.roll_his    = [0.0]
         self.pitch_his   = [0.0]
+
+        # Imu measurement history synchronized to estimator
+        self.psiDot_his_sync  = [0.0]
+        self.ax_his_sync      = [0.0]
+        self.ay_his_sync      = [0.0]
         
         # time stamp
         self.t0          = t0
@@ -518,6 +540,10 @@ class GpsClass(object):
         self.x_his  = np.array([0.0])
         self.y_his  = np.array([0.0])
         self.angle_his = np.array([0.0])
+
+        self.x_his_sync  = np.array([0.0])
+        self.y_his_sync_  = np.array([0.0])
+        self.angle_his_sync = np.array([0.0])
         
         # GPS measurement history
         self.x_his_1  = np.array([0.0])
@@ -624,6 +650,13 @@ class EncClass(object):
         self.v_rl_his    = [0.0]
         self.v_rr_his    = [0.0]
         self.v_meas_his  = [0.0]
+
+        # ENC measurement history synchronized to estimator
+        self.v_fl_his_sync    = [0.0]
+        self.v_fr_his_sync    = [0.0]
+        self.v_rl_his_sync    = [0.0]
+        self.v_rr_his_sync    = [0.0]
+        self.v_meas_his_sync  = [0.0]
         
         # time stamp
         self.v_count    = 0
@@ -689,6 +722,10 @@ class EcuClass(object):
         # ECU measurement history
         self.a_his  = []
         self.df_his = []
+
+        # ECU measurement history synchronized to estimator
+        self.a_his_sync  = []
+        self.df_his_sync = []
         
         # time stamp
         self.t0         = t0

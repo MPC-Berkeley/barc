@@ -1,28 +1,7 @@
-#!/usr/bin/env python
-"""
-    File name: stateEstimator.py
-    Author: Shuqi Xu
-    Email: shuqixu@kth.se
-    Python Version: 2.7.12
-"""
-# ---------------------------------------------------------------------------
-# Licensing Information: You are free to use or extend these projects for
-# education or reserach purposes provided that (1) you retain this notice
-# and (2) you provide clear attribution to UC Berkeley, including a link
-# to http://barc-project.com
-#
-# Attibution Information: The barc project ROS code-base was developed
-# at UC Berkeley in the Model Predictive Control (MPC) lab by Jon Gonzales
-# (jon.gonzales@berkeley.edu). The cloud services integation with ROS was developed
-# by Kiet Lam  (kiet.lam@berkeley.edu). The web-server app Dator was
-# based on an open source project by Bruce Wootton
-# ---------------------------------------------------------------------------
-
-import rospy
 import os
 import sys
 homedir = os.path.expanduser("~")
-sys.path.append(os.path.join(homedir,"barc/workspace/src/barc/src/library"))
+sys.path.append(os.path.join(homedir,"barc/workspace/src/barc/src"))
 from Localization_helpers import Track
 from barc.msg import ECU, pos_info, Vel_est
 from sensor_msgs.msg import Imu
@@ -34,72 +13,156 @@ from scipy.linalg import inv, cholesky
 from tf import transformations
 import math
 import numpy as np
+import pdb
+
+def approximate_yaw(x, y, time, time_now):
+    index = np.argmin(abs(time - time_now))
+
+    x_0 = x[index - 1]
+    y_0 = y[index - 1]
+
+    x_1 = x[index]
+    y_1 = y[index]
+
+    argument_y = y_1 - y_0
+    argument_x = x_1 - x_0
+    # angle = np.arctan(argument_y / argument_x)
+
+    angle = 0.0
+
+    if argument_x > 0.0:
+        angle = np.arctan(argument_y / argument_x)
+
+    if argument_y >= 0.0 and argument_x < 0.0:
+        angle = np.pi + np.arctan(argument_y / argument_x)
+
+    if argument_y < 0.0 and argument_x < 0.0:
+        angle = - np.pi + np.arctan(argument_y / argument_x)
+
+    if argument_y > 0.0 and argument_x == 0.0:
+        angle = np.pi / 2.0
+
+    if argument_y < 0.0 and argument_x == 0.0:
+        angle = - np.pi / 2.0
+
+    if angle < 0.0:
+        angle += 2.0 * np.pi
+
+    # angle = np.arctan2(argument_y, argument_x)
+
+    return angle
 
 def main():
     # node initialization
-    rospy.init_node("state_estimation")
-    a_delay     = rospy.get_param("state_estimator/delay_a")
-    df_delay    = rospy.get_param("state_estimator/delay_df")
+    a_delay     = 0.2
+    df_delay    = 0.0
     loop_rate   = 50.0
    
     Q = eye(8)
-    Q[0,0] = rospy.get_param("state_estimator/Q_x")
-    Q[1,1] = rospy.get_param("state_estimator/Q_y")
-    Q[2,2] = rospy.get_param("state_estimator/Q_vx")
-    Q[3,3] = rospy.get_param("state_estimator/Q_vy")
-    Q[4,4] = rospy.get_param("state_estimator/Q_ax")
-    Q[5,5] = rospy.get_param("state_estimator/Q_ay")
-    Q[6,6] = rospy.get_param("state_estimator/Q_psi")
-    Q[7,7] = rospy.get_param("state_estimator/Q_psiDot")
-    R = eye(7)
-    R[0,0] = rospy.get_param("state_estimator/R_x")
-    R[1,1] = rospy.get_param("state_estimator/R_y")
-    R[2,2] = rospy.get_param("state_estimator/R_vx")
-    R[3,3] = rospy.get_param("state_estimator/R_ax")
-    R[4,4] = rospy.get_param("state_estimator/R_ay")
-    R[5,5] = rospy.get_param("state_estimator/R_psiDot")
-    R[6,6] = rospy.get_param("state_estimator/R_vy")
+    Q[0,0] = 0.01 # x
+    Q[1,1] = 0.01 # y
+    Q[2,2] = 0.01 # vx
+    Q[3,3] = 0.01 # vy
+    Q[4,4] = 1.0 # ax
+    Q[5,5] = 1.0 # ay
+    Q[6,6] = 0.0001 # psi
+    Q[7,7] = 1.0 # psidot
+    R = eye(6)
+    R[0,0] = 1.0    # x
+    R[1,1] = 1.0    # y
+    R[2,2] = 0.1    # vx
+    R[3,3] = 10.0   # ax
+    R[4,4] = 10.0   # ay
+    R[5,5] = 0.001  # psiDot
 
-    t0 = rospy.get_rostime().to_sec()
-    imu = ImuClass(t0)
-    gps = GpsClass(t0)
-    enc = EncClass(t0)
-    ecu = EcuClass(t0)
-    est = Estimator(t0,loop_rate,a_delay,df_delay,Q,R)
+    imu = ImuClass(0.0)
+    gps = GpsClass(0.0)
+    enc = EncClass(0.0)
+    ecu = EcuClass(0.0)
+    est = Estimator(0.0,loop_rate,a_delay,df_delay,Q,R)
     
-    track = Track(rospy.get_param("ds"),rospy.get_param("ey"))
-    if rospy.get_param("feature_flag"):
-        track.createFeatureTrack()
-    else:
-        track.createRaceTrack()
+    # track = Track(0.01,1.0)
+    # track.createRaceTrack()
 
     estMsg = pos_info()
     
-    while not rospy.is_shutdown():
-        # if ecu.a != 0:
-        est.estimateState(imu,gps,enc,ecu,est.ekf)
-
-        estMsg.s, estMsg.ey, estMsg.epsi = track.Localize(est.x_est, est.y_est, est.yaw_est)
-        
-        estMsg.header.stamp = rospy.get_rostime()
-        estMsg.v        = np.sqrt(est.vx_est**2 + est.vy_est**2)
-        estMsg.x        = est.x_est 
-        estMsg.y        = est.y_est
-        estMsg.v_x      = est.vx_est 
-        estMsg.v_y      = est.vy_est
-        estMsg.psi      = est.yaw_est
-        estMsg.psiDot   = est.psiDot_est
-        estMsg.a_x      = est.ax_est
-        estMsg.a_y      = est.ay_est
-        estMsg.u_a      = ecu.a
-        estMsg.u_df     = ecu.df
-
-        est.state_pub_pos.publish(estMsg)
-        est.saveHistory()
-        est.rate.sleep()
-
     homedir = os.path.expanduser("~")
     pathSave = os.path.join(homedir,"barc_debugging/estimator_output.npz")
+    npz_output = np.load(pathSave)
+    KF_x_his            = npz_output["KF_x_his"]
+    KF_y_his            = npz_output["KF_y_his"]
+    KF_v_meas_his       = npz_output["KF_v_meas_his"]
+    KF_ax_his           = npz_output["KF_ax_his"]
+    KF_ay_his           = npz_output["KF_ay_his"]
+    KF_psiDot_his       = npz_output["KF_psiDot_his"]
+    KF_a_his            = npz_output["KF_a_his"]
+    KF_df_his           = npz_output["KF_df_his"]
+    estimator_time      = npz_output["estimator_time"]
+    print "Finish loading data from", pathSave
+
+    pathSave = os.path.join(homedir,"barc_debugging/estimator_imu.npz")
+    npz_imu = np.load(pathSave)
+    psiDot_his      = npz_imu["psiDot_his"]
+    roll_his        = npz_imu["roll_his"]
+    pitch_his       = npz_imu["pitch_his"]
+    yaw_his         = npz_imu["yaw_his"]
+    ax_his          = npz_imu["ax_his"]
+    ay_his          = npz_imu["ay_his"]
+    imu_time        = npz_imu["imu_time"]
+    print "Finish loading data from", pathSave
+
+    pathSave = os.path.join(homedir,"barc_debugging/estimator_gps.npz")
+    npz_gps = np.load(pathSave)
+    x_his       = npz_gps["x_his"]
+    y_his       = npz_gps["y_his"]
+    x_ply_his   = npz_gps["x_ply_his"]
+    y_ply_his   = npz_gps["y_ply_his"]
+    gps_time    = npz_gps["gps_time"]
+    gps_ply_time= npz_gps["gps_ply_time"]
+    print "Finish loading data from", pathSave
+
+    pathSave = os.path.join(homedir,"barc_debugging/estimator_enc.npz")
+    npz_enc = np.load(pathSave)
+    v_fl_his    = npz_enc["v_fl_his"]
+    v_fr_his    = npz_enc["v_fr_his"]
+    v_rl_his    = npz_enc["v_rl_his"]
+    v_rr_his    = npz_enc["v_rr_his"]
+    v_meas_his  = npz_enc["v_meas_his"]
+    enc_time    = npz_enc["enc_time"]
+    print "Finish loading data from", pathSave
+
+    pathSave = os.path.join(homedir,"barc_debugging/estimator_ecu.npz")
+    npz_ecu = np.load(pathSave)
+    a_his       = npz_ecu["a_his"]
+    df_his      = npz_ecu["df_his"]
+    ecu_time    = npz_ecu["ecu_time"]
+    print "Finish loading data from", pathSave
+
+    for i in range(len(KF_a_his)):
+        # READ SENSOR DATA
+        gps.x       = KF_x_his[i]
+        gps.y       = KF_y_his[i]
+        imu.ax      = KF_ax_his[i]
+        imu.ay      = KF_ay_his[i]
+        imu.psiDot  = KF_psiDot_his[i]
+        enc.v_meas  = KF_v_meas_his[i]
+        ecu.a       = KF_a_his[i]
+        ecu.df      = KF_df_his[i]
+
+        est.estimateState(imu,gps,enc,ecu,est.ekfMultiRate)
+        est.saveHistory()
+
+    gps_t, indices = np.unique(gps_time, return_index=True)
+    gps_yaw = zeros(len(x_his[indices])-1)
+    pdb.set_trace()
+    for i in range(1,len(x_his[indices])):
+        if gps_t[i] > enc_time[np.argmax(v_meas_his>0.1)] :
+            gps_yaw[i-1] = approximate_yaw(x_his[indices], y_his[indices], gps_t, gps_t[i])
+    gps_yaw = np.unwrap(gps_yaw)
+    pdb.set_trace()
+    
+    homedir = os.path.expanduser("~")
+    pathSave = os.path.join(homedir,"barc_debugging2/estimator_output.npz")
     np.savez(pathSave,yaw_est_his       = est.yaw_est_his,
                       psiDot_est_his    = est.psiDot_est_his,
                       x_est_his         = est.x_est_his,
@@ -108,48 +171,49 @@ def main():
                       vy_est_his        = est.vy_est_his,
                       ax_est_his        = est.ax_est_his,
                       ay_est_his        = est.ay_est_his,
-                      KF_x_his          = est.x_his,
-                      KF_y_his          = est.y_his,
-                      KF_v_meas_his     = est.v_meas_his,
-                      KF_ax_his         = est.ax_his,
-                      KF_ay_his         = est.ay_his,
-                      KF_psiDot_his     = est.psiDot_his,
-                      KF_a_his          = est.a_his,
-                      KF_df_his         = est.df_his,
-                      estimator_time    = est.time_his)
+                      KF_x_his          = KF_x_his,
+                      KF_y_his          = KF_y_his,
+                      KF_v_meas_his     = KF_v_meas_his,
+                      KF_ax_his         = KF_ax_his,
+                      KF_ay_his         = KF_ay_his,
+                      KF_psiDot_his     = KF_psiDot_his,
+                      KF_a_his          = KF_a_his,
+                      KF_df_his         = KF_df_his,
+                      estimator_time    = estimator_time)
 
-    pathSave = os.path.join(homedir,"barc_debugging/estimator_imu.npz")
-    np.savez(pathSave,psiDot_his    = imu.psiDot_his,
-                      roll_his      = imu.roll_his,
-                      pitch_his     = imu.pitch_his,
-                      yaw_his       = imu.yaw_his,
-                      ax_his        = imu.ax_his,
-                      ay_his        = imu.ay_his,
-                      imu_time      = imu.time_his)
+    pathSave = os.path.join(homedir,"barc_debugging2/estimator_imu.npz")
+    np.savez(pathSave,psiDot_his    = psiDot_his,
+                      roll_his      = roll_his,
+                      pitch_his     = pitch_his,
+                      yaw_his       = yaw_his,
+                      ax_his        = ax_his,
+                      ay_his        = ay_his,
+                      imu_time      = imu_time)
 
-    pathSave = os.path.join(homedir,"barc_debugging/estimator_gps.npz")
-    np.savez(pathSave,x_his         = gps.x_his,
-                      y_his         = gps.y_his,
-                      x_ply_his     = gps.x_ply_his,
-                      y_ply_his     = gps.y_ply_his,
-                      gps_time      = gps.time_his,
-                      gps_ply_time  = gps.time_ply_his)
+    pathSave = os.path.join(homedir,"barc_debugging2/estimator_gps.npz")
+    np.savez(pathSave,x_his         = x_his,
+                      y_his         = y_his,
+                      x_ply_his     = x_ply_his,
+                      y_ply_his     = y_ply_his,
+                      gps_t         = gps_t,
+                      gps_yaw       = gps_yaw,
+                      gps_time      = gps_time,
+                      gps_ply_time  = gps_ply_time)
 
-    pathSave = os.path.join(homedir,"barc_debugging/estimator_enc.npz")
-    np.savez(pathSave,v_fl_his          = enc.v_fl_his,
-                      v_fr_his          = enc.v_fr_his,
-                      v_rl_his          = enc.v_rl_his,
-                      v_rr_his          = enc.v_rr_his,
-                      v_meas_his        = enc.v_meas_his,
-                      enc_time          = enc.time_his)
+    pathSave = os.path.join(homedir,"barc_debugging2/estimator_enc.npz")
+    np.savez(pathSave,v_fl_his          = v_fl_his,
+                      v_fr_his          = v_fr_his,
+                      v_rl_his          = v_rl_his,
+                      v_rr_his          = v_rr_his,
+                      v_meas_his        = v_meas_his,
+                      enc_time          = enc_time)
 
-    pathSave = os.path.join(homedir,"barc_debugging/estimator_ecu.npz")
-    np.savez(pathSave,a_his         = ecu.a_his,
-                      df_his        = ecu.df_his,
-                      ecu_time      = ecu.time_his)
+    pathSave = os.path.join(homedir,"barc_debugging2/estimator_ecu.npz")
+    np.savez(pathSave,a_his         = a_his,
+                      df_his        = df_his,
+                      ecu_time      = ecu_time)
 
     print "Finishing saveing state estimation data"
-
 
 class Estimator(object):
     """ Object collecting  estimated state data
@@ -187,22 +251,20 @@ class Estimator(object):
             t0: starting measurement time
         """
         dt          = 1.0 / loop_rate
-        self.rate   = rospy.Rate(loop_rate)
-        L_f         = rospy.get_param("L_a")       # distance from CoG to front axel
-        L_r         = rospy.get_param("L_b")       # distance from CoG to rear axel
+        self.rate   = 50.0
+        L_f         = 0.125
+        L_r         = 0.125
         self.vhMdl  = (L_f, L_r)
         self.Q      = Q
         self.R      = R
         self.P      = np.eye(np.size(Q,0)) # initializationtial covariance matrix
         self.z      = np.zeros(np.size(Q,0)) # initial state mean
-        if rospy.get_param("feature_flag"): self.z[6]   = pi/4
         self.dt     = dt
         self.a_delay        = a_delay
         self.df_delay       = df_delay
         self.a_his          = [0.0]*int(a_delay/dt)
         self.df_his         = [0.0]*int(df_delay/dt)
 
-        self.state_pub_pos  = rospy.Publisher('pos_info', pos_info, queue_size=1)
         self.t0             = t0
 
         self.x_est          = 0.0
@@ -215,18 +277,17 @@ class Estimator(object):
         self.yaw_est        = 0.0
         self.psiDot_est     = 0.0
         self.psiDot_drift_est = 0.0
-        self.curr_time      = rospy.get_rostime().to_sec() - self.t0
 
-        self.x_est_his          = [0.0]
-        self.y_est_his          = [0.0]
-        self.vx_est_his         = [0.0]
-        self.vy_est_his         = [0.0]
-        self.v_est_his          = [0.0]
-        self.ax_est_his         = [0.0]
-        self.ay_est_his         = [0.0]
-        self.yaw_est_his        = [0.0]
-        self.psiDot_est_his     = [0.0]
-        self.time_his           = [0.0]
+        self.x_est_his          = []
+        self.y_est_his          = []
+        self.vx_est_his         = []
+        self.vy_est_his         = []
+        self.v_est_his          = []
+        self.ax_est_his         = []
+        self.ay_est_his         = []
+        self.yaw_est_his        = []
+        self.psiDot_est_his     = []
+        self.time_his           = []
 
         # SAVE THE measurement/input SEQUENCE USED BY KF
         self.x_his      = [0.0]
@@ -241,13 +302,12 @@ class Estimator(object):
     # ecu command update
     def estimateState(self,imu,gps,enc,ecu,KF):
         """Do extended Kalman filter to estimate states"""
-        self.curr_time = rospy.get_rostime().to_sec() - self.t0
 
         self.a_his.append(ecu.a)
         self.df_his.append(ecu.df)
         u = [self.a_his.pop(0), self.df_his.pop(0)]
         
-        y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot, 0.5*u[1]*enc.v_meas])
+        y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot])
         # y = np.array([gps.x_ply, gps.y_ply, enc.v_meas, imu.ax, imu.ay, imu.psiDot])
         KF(y,u)
 
@@ -439,18 +499,18 @@ class Estimator(object):
 
     def h(self, x, u):
         """ This is the measurement model to the kinematic<->sensor model above """
-        y = [0]*7
+        y = [0]*6
         y[0] = x[0]      # x
         y[1] = x[1]      # y
         y[2] = x[2]      # vx
         y[3] = x[4]      # a_x
         y[4] = x[5]      # a_y
         y[5] = x[7]      # psiDot
-        y[6] = x[3]      # vy
+        # y[6] = x[3]      # vy
         return np.array(y)
 
     def saveHistory(self):
-        self.time_his.append(self.curr_time)
+        # self.time_his.append(self.curr_time)
 
         self.x_est_his.append(self.x_est)
         self.y_est_his.append(self.y_est)
@@ -478,8 +538,6 @@ class ImuClass(object):
             t0: starting measurement time
         """
 
-        rospy.Subscriber('imu/data', Imu, self.imu_callback, queue_size=1)
-
         # Imu measurement
         self.yaw     = 0.0
         self.psiDot  = 0.0
@@ -500,51 +558,6 @@ class ImuClass(object):
         self.t0          = t0
         self.time_his    = []
 
-        # Time for yawDot integration
-        self.curr_time = rospy.get_rostime().to_sec() - self.t0
-        self.prev_time = self.curr_time
-
-    def imu_callback(self,data):
-        """Unpack message from sensor, IMU"""
-        
-        self.curr_time = rospy.get_rostime().to_sec() - self.t0
-        if self.prev_time > 0:
-            self.yaw += self.psiDot * (self.curr_time-self.prev_time)
-        self.prev_time = self.curr_time
-   
-        ori = data.orientation
-        quaternion = (ori.x, ori.y, ori.z, ori.w)
-        (roll_raw, pitch_raw, dummy) = transformations.euler_from_quaternion(quaternion)
-        self.roll   = roll_raw
-        self.pitch  = pitch_raw
-
-        w_z = data.angular_velocity.z
-        a_x = data.linear_acceleration.x
-        a_y = data.linear_acceleration.y
-        a_z = data.linear_acceleration.z
-
-        self.psiDot = w_z
-        # Transformation from imu frame to vehicle frame (negative roll/pitch and reversed matrix multiplication to go back)
-        self.ax = cos(-pitch_raw)*a_x + sin(-pitch_raw)*sin(-roll_raw)*a_y - sin(-pitch_raw)*cos(-roll_raw)*a_z
-        self.ay = cos(-roll_raw)*a_y + sin(-roll_raw)*a_z
-
-        self.saveHistory()
-
-
-    def saveHistory(self):
-        """ Save measurement data into history array"""
-
-        self.time_his.append(self.curr_time)
-        
-        self.yaw_his.append(self.yaw)
-        self.psiDot_his.append(self.psiDot)
-        self.ax_his.append(self.ax)
-        self.ay_his.append(self.ay)
-        self.roll_his.append(self.roll)
-        self.pitch_his.append(self.pitch)
-
-
-
 class GpsClass(object):
     """ Object collecting GPS measurement data
     Attributes:
@@ -560,9 +573,6 @@ class GpsClass(object):
         Arguments:
             t0: starting measurement time
         """
-
-        rospy.Subscriber('hedge_imu_fusion', hedge_imu_fusion, self.gps_callback, queue_size=1)
-
         # GPS measurement
         self.x      = 0.0
         self.y      = 0.0
@@ -570,68 +580,19 @@ class GpsClass(object):
         self.y_ply  = 0.0
         
         # GPS measurement history
-        self.x_his      = np.array([0.0])
-        self.y_his      = np.array([0.0])
+        self.x_his      = np.array([])
+        self.y_his      = np.array([])
         self.x_ply_his  = np.array([0.0])
         self.y_ply_his  = np.array([0.0])
-        
-        # time stamp
-        self.t0         = t0
-        self.time_his   = np.array([0.0])
-        self.time_ply_his = np.array([0.0])
-        self.curr_time  = rospy.get_rostime().to_sec() - self.t0
-
-    def gps_callback(self,data):
-        """Unpack message from sensor, GPS"""
-        self.curr_time = rospy.get_rostime().to_sec() - self.t0
-        dist = np.sqrt((data.x_m-self.x_his[-1])**2+(data.y_m-self.y_his[-1])**2)
-        # if dist < 0.5:
-        self.x = data.x_m
-        self.y = data.y_m            
-
-        # 1) x(t) ~ c0x + c1x * t + c2x * t^2
-        # 2) y(t) ~ c0y + c1y * t + c2y * t^2
-        # c_X = [c0x c1x c2x] and c_Y = [c0y c1y c2y] 
-        n_intplt = 50 # 50*0.01=0.5s data
-        if size(self.x_ply_his,0) > n_intplt:
-            x_intplt = self.x_ply_his[-n_intplt:]
-            y_intplt = self.y_ply_his[-n_intplt:]
-            t_intplt = self.time_ply_his[-n_intplt:]-self.time_ply_his[-n_intplt]
-            t_matrix = vstack([t_intplt**2, t_intplt, ones(n_intplt)]).T
-            c_X = linalg.lstsq(t_matrix, x_intplt)[0]
-            c_Y = linalg.lstsq(t_matrix, y_intplt)[0]
-            self.x_ply = polyval(c_X, self.curr_time-self.time_ply_his[-n_intplt])
-            self.y_ply = polyval(c_Y, self.curr_time-self.time_ply_his[-n_intplt])
-
-        self.saveHistory()
-
-    def saveHistory(self):
-        self.time_his = np.append(self.time_his,self.curr_time)
-        self.x_his    = np.append(self.x_his,self.x)
-        self.y_his    = np.append(self.y_his,self.y)
-        # if self.x_ply_his[-1] != self.x_ply:
-        self.x_ply_his  = np.append(self.x_ply_his,self.x_ply)
-        self.y_ply_his  = np.append(self.y_ply_his,self.y_ply)
-        self.time_ply_his = np.append(self.time_ply_his,self.curr_time)
-
 
 
 class EncClass(object):
-    """ Object collecting ENC measurement data
-    Attributes:
-        Measurement:
-            1.v_fl 2.v_fr 3. v_rl 4. v_rr
-        Measurement history:
-            1.v_fl_his 2.v_fr_his 3. v_rl_his 4. v_rr_his
-        Time stamp
-            1.t0 2.time_his 3.curr_time
-    """
+    
     def __init__(self,t0):
         """ Initialization
         Arguments:
             t0: starting measurement time
         """
-        rospy.Subscriber('vel_est', Vel_est, self.enc_callback, queue_size=1)
 
         # ENC measurement
         self.v_fl      = 0.0
@@ -652,54 +613,14 @@ class EncClass(object):
         self.v_prev     = 0.0
         self.t0         = t0
         self.time_his   = []
-        self.curr_time  = rospy.get_rostime().to_sec() - self.t0
-
-    def enc_callback(self,data):
-        """Unpack message from sensor, ENC"""
-        self.curr_time = rospy.get_rostime().to_sec() - self.t0
-
-        self.v_fl = data.vel_fl
-        self.v_fr = data.vel_fr
-        self.v_rl = data.vel_bl
-        self.v_rr = data.vel_br
-        v_est = (self.v_rl + self.v_rr)/2
-        if v_est != self.v_prev:
-            self.v_meas = v_est
-            self.v_prev = v_est
-            self.v_count = 0
-        else:
-            self.v_count += 1
-            if self.v_count > 10:     # if 10 times in a row the same measurement
-                self.v_meas = 0       # set velocity measurement to zero
-
-        self.saveHistory()
-
-    def saveHistory(self):
-        self.time_his.append(self.curr_time)
-        
-        self.v_fl_his.append(self.v_fl)
-        self.v_fr_his.append(self.v_fr)
-        self.v_rl_his.append(self.v_rl)
-        self.v_rr_his.append(self.v_rr)
-
-        self.v_meas_his.append(self.v_meas)
 
 class EcuClass(object):
-    """ Object collecting CMD command data
-    Attributes:
-        Input command:
-            1.a 2.df
-        Input command history:
-            1.a_his 2.df_his
-        Time stamp
-            1.t0 2.time_his 3.curr_time
-    """
+
     def __init__(self,t0):
         """ Initialization
         Arguments:
             t0: starting measurement time
         """
-        rospy.Subscriber('ecu', ECU, self.ecu_callback, queue_size=1)
 
         # ECU measurement
         self.a  = 0.0
@@ -712,26 +633,6 @@ class EcuClass(object):
         # time stamp
         self.t0         = t0
         self.time_his   = []
-        self.curr_time  = rospy.get_rostime().to_sec() - self.t0
-
-    def ecu_callback(self,data):
-        """Unpack message from sensor, ECU"""
-        self.curr_time = rospy.get_rostime().to_sec() - self.t0
-
-        self.a  = data.motor
-        self.df = data.servo
-
-        self.saveHistory()
-
-    def saveHistory(self):
-        self.time_his.append(self.curr_time)
-        
-        self.a_his.append(self.a)
-        self.df_his.append(self.df)
-
 
 if __name__ == '__main__':
-    try:
-        main()
-    except rospy.ROSInterruptException:
-        pass
+    main()
