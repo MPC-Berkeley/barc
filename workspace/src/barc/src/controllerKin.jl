@@ -103,6 +103,8 @@ function main()
 
             # GAUSSIAN PROCESS
             GPR(agent)
+            println(agent.gpData.GP_ey_e)
+            println(agent.gpData.GP_epsi_e)
 
             # SAFESET CONSTRUCTION
             findSS(agent)

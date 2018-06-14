@@ -193,6 +193,22 @@ using barc.msg
 using RobotOS
 export LapStatus,History,PosInfo,RaceSet,Agent
 export SafeSet,SysID,FeatureData,MpcSol,MpcParams,ModelParams,GPData
+	# THIS FUNCTION IS NEEDED FOR GpData to do pre-computing
+	function GP_prepare_kin(e::Array{Float64,1},feature_state::Array{Float64,2})
+        # find the closest local feature points
+        num = size(feature_state,1)
+        Z=zeros(num,num)
+        for i = 1:num
+            for j=1:num
+                z = feature_state[i,2:6]-feature_state[j,2:6]
+                Z[i,j] = (0.5*z[1]^2+5*z[2]^2+5*z[3]^2+0.5*z[4]^2+5*z[5]^2)
+            end
+            # y[i]=e[i]
+        end
+        K=exp(-0.5*Z)
+        return K\e 
+    end
+
     type LapStatus
         #=
         Updated lap status information
@@ -243,7 +259,7 @@ export SafeSet,SysID,FeatureData,MpcSol,MpcParams,ModelParams,GPData
                 mpcParams.Q             = [0.0,50.0,5.0,20.0]
                 mpcParams.R             = 0*[10.0,10.0]
                 mpcParams.QderivU       = 1.0*[1.0,1.0]
-                mpcParams.Q_term_cost   = 0.8
+                mpcParams.Q_term_cost   = 0.1
                 mpcParams.Q_lane        = 10.0
                 if mpcParams.n_state == 6
                     mpcParams.QderivZ = 1.0*[0,0.1,0.1,2,0.1,0.0]
@@ -607,6 +623,10 @@ export SafeSet,SysID,FeatureData,MpcSol,MpcParams,ModelParams,GPData
         feature_GP_vx_e::Array{Float64}
         feature_GP_vy_e::Array{Float64}
         feature_GP_psiDot_e::Array{Float64}
+        GP_e_s_prepare::Array{Float64}
+        GP_e_ey_prepare::Array{Float64}
+        GP_e_epsi_prepare::Array{Float64}
+        GP_e_vx_prepare::Array{Float64}
         GP_e_vy_prepare::Array{Float64}
         GP_e_psiDot_prepare::Array{Float64}
         # GP result
@@ -620,27 +640,40 @@ export SafeSet,SysID,FeatureData,MpcSol,MpcParams,ModelParams,GPData
         function GPData(file_GP_name)
             gpData = new()
             if get_param("controller/GP_LOCAL_FLAG") || get_param("controller/GP_FULL_FLAG")
-                if get_param("PF_FLAG")              
+                if !get_param("PF_flag")
                     if get_param("sim_flag")
                         data = load("$(homedir())/simulations/GP-$(file_GP_name).jld")
                     else
                         data = load("$(homedir())/experiments/GP-$(file_GP_name).jld")
                     end
                 end
-                num_spare         = 30 # THE NUMBER OF POINTS SELECTED FOR SPARE GP
+                num_spare         = 2 # THE NUMBER OF POINTS SELECTED FOR SPARE GP
                 feature_GP_z      = data["feature_GP_z"]
                 feature_GP_u      = data["feature_GP_u"]
                 gpData.feature_GP_z   = feature_GP_z[1:num_spare:end,:]
                 gpData.feature_GP_u   = feature_GP_u[1:num_spare:end,:]
-                gpData.GP_feature     = hcat(feature_GP_z,feature_GP_u)
+                gpData.feature_GP     = hcat(gpData.feature_GP_z,gpData.feature_GP_u)
 
+                feature_GP_s_e          = data["feature_GP_s_e"]
+                feature_GP_ey_e         = data["feature_GP_ey_e"]
+                feature_GP_epsi_e       = data["feature_GP_epsi_e"]
+                feature_GP_vx_e         = data["feature_GP_vx_e"]
                 feature_GP_vy_e         = data["feature_GP_vy_e"]
                 feature_GP_psiDot_e     = data["feature_GP_psiDot_e"]
+                gpData.feature_GP_s_e       = feature_GP_s_e[1:num_spare:end]
+                gpData.feature_GP_ey_e      = feature_GP_ey_e[1:num_spare:end]
+                gpData.feature_GP_epsi_e    = feature_GP_epsi_e[1:num_spare:end]
+                gpData.feature_GP_vx_e      = feature_GP_vx_e[1:num_spare:end]
                 gpData.feature_GP_vy_e      = feature_GP_vy_e[1:num_spare:end]
                 gpData.feature_GP_psiDot_e  = feature_GP_psiDot_e[1:num_spare:end]
-
-                gpData.GP_e_vy_prepare      = GP_prepare(gpData.feature_GP_vy_e,gpData.GP_feature)
-                gpData.GP_e_psiDot_prepare  = GP_prepare(gpData.feature_GP_psiDot_e,gpData.GP_feature)
+                if get_param("controller/n_state") == 4
+                	println(size(gpData.feature_GP_s_e))
+                	println(size(gpData.feature_GP))
+	                gpData.GP_e_s_prepare       = GP_prepare_kin(gpData.feature_GP_s_e,gpData.feature_GP)
+	                gpData.GP_e_ey_prepare      = GP_prepare_kin(gpData.feature_GP_ey_e,gpData.feature_GP)
+	                gpData.GP_e_epsi_prepare    = GP_prepare_kin(gpData.feature_GP_epsi_e,gpData.feature_GP)
+	                gpData.GP_e_vx_prepare      = GP_prepare_kin(gpData.feature_GP_vx_e,gpData.feature_GP)
+	            end
             else
                 n_state = get_param("controller/n_state")
                 gpData.feature_GP_z         = zeros(10000,n_state)
@@ -653,6 +686,10 @@ export SafeSet,SysID,FeatureData,MpcSol,MpcParams,ModelParams,GPData
                 gpData.feature_GP_psiDot_e  = zeros(10000)
             end
             N = get_param("controller/N")
+            gpData.GP_s_e      = zeros(N)
+            gpData.GP_ey_e     = zeros(N)
+            gpData.GP_epsi_e   = zeros(N)
+            gpData.GP_vx_e     = zeros(N)
             gpData.GP_vy_e     = zeros(N)
             gpData.GP_psiDot_e = zeros(N)
             gpData.counter   = 1
@@ -1318,21 +1355,21 @@ export historyCollect, gpDataCollect
     function saveGPData(agent::Agent)
         run_time = Dates.format(now(),"yyyy-mm-dd-H:M")
         log_path = "$(homedir())/$(agent.raceSet.folder_name)/GP-$(agent.raceSet.file_name)-$(run_time).jld"
-        save(log_path,  "feature_GP_z",         agent.gpData.feature_GP_z[1:agent.gpData.counter,:],  
-                        "feature_GP_u",         agent.gpData.feature_GP_u[1:agent.gpData.counter,:],  
-                        "feature_GP_s_e",      	agent.gpData.feature_GP_s_e[1:agent.gpData.counter], 
-                        "feature_GP_ey_e",      agent.gpData.feature_GP_ey_e[1:agent.gpData.counter], 
-                        "feature_GP_epsi_e",    agent.gpData.feature_GP_epsi_e[1:agent.gpData.counter], 
-                        "feature_GP_vx_e",      agent.gpData.feature_GP_vx_e[1:agent.gpData.counter], 
-                        "feature_GP_vy_e",      agent.gpData.feature_GP_vy_e[1:agent.gpData.counter], 
-                        "feature_GP_psiDot_e",  agent.gpData.feature_GP_psiDot_e[1:agent.gpData.counter])
+        save(log_path,  "feature_GP_z",         agent.gpData.feature_GP_z[1:agent.gpData.counter-1,:],  
+                        "feature_GP_u",         agent.gpData.feature_GP_u[1:agent.gpData.counter-1,:],  
+                        "feature_GP_s_e",      	agent.gpData.feature_GP_s_e[1:agent.gpData.counter-1], 
+                        "feature_GP_ey_e",      agent.gpData.feature_GP_ey_e[1:agent.gpData.counter-1], 
+                        "feature_GP_epsi_e",    agent.gpData.feature_GP_epsi_e[1:agent.gpData.counter-1], 
+                        "feature_GP_vx_e",      agent.gpData.feature_GP_vx_e[1:agent.gpData.counter-1], 
+                        "feature_GP_vy_e",      agent.gpData.feature_GP_vy_e[1:agent.gpData.counter-1], 
+                        "feature_GP_psiDot_e",  agent.gpData.feature_GP_psiDot_e[1:agent.gpData.counter-1])
         println("Finish saving GP data to $log_path in controller node.")
     end
 
     function gpDataCollect(agent::Agent)
     	# ATTENTION: THIS WILLL COLLECT GP DATA FOR THE NEW SAMPLING TIME
-        agent.gpData.feature_GP_z[agent.gpData.counter,:] = agent.mpcSol.z_prev[1,:]
-        agent.gpData.feature_GP_u[agent.gpData.counter,:] = agent.mpcSol.u_prev[1,:]
+        agent.gpData.feature_GP_z[agent.gpData.counter,1:agent.mpcParams.n_state] = agent.mpcSol.z_prev[1,:]
+        agent.gpData.feature_GP_u[agent.gpData.counter,:] 						  = agent.mpcSol.u_prev[1,:]
         
         agent.gpData.feature_GP_s_e[agent.gpData.counter]      	= agent.mpcSol.z[1,1]-agent.mpcSol.z_prev[2,1]
         agent.gpData.feature_GP_ey_e[agent.gpData.counter]     	= agent.mpcSol.z[1,2]-agent.mpcSol.z_prev[2,2]
@@ -1464,6 +1501,26 @@ export GPR
         return GP_e[1]
     end
 
+    function GP_full(z::Array{Float64,2},u::Array{Float64,2},feature_state::Array{Float64,2},GP_prepare::Array{Float64,1})
+        state = hcat(z,u)
+        z = feature_state[:,4:8].-state[1,4:8]
+        Z = 0.5*z[:,1].^2+5*z[:,2].^2+5*z[:,3].^2+0.5*z[:,4].^2+5*z[:,5].^2
+        # Z = z[:,1].^2+z[:,2].^2+z[:,3].^2+z[:,4].^2+z[:,5].^2
+        k = 0.5^2*exp(-0.5*Z)
+        GP_e = k'*GP_prepare
+        return GP_e[1]
+    end
+
+    function GP_full_kin(z::Array{Float64,2},u::Array{Float64,2},feature_state::Array{Float64,2},GP_prepare::Array{Float64,1})
+        state = hcat(z,u)
+        z = feature_state[:,2:6].-state[1,2:6]
+        Z = 0.5*z[:,1].^2+5*z[:,2].^2+5*z[:,3].^2+0.5*z[:,4].^2+5*z[:,5].^2
+        # Z = z[:,1].^2+z[:,2].^2+z[:,3].^2+z[:,4].^2+z[:,5].^2
+        k = exp(-0.5*Z)
+        GP_e = k'*GP_prepare
+        return GP_e[1]
+    end
+
     function GPR(agent::Agent)
         if agent.mpcParams.n_state == 6
             z_curr = [agent.posInfo.s agent.posInfo.ey agent.posInfo.epsi agent.posInfo.vx agent.posInfo.vy agent.posInfo.psiDot]
@@ -1477,9 +1534,17 @@ export GPR
                 agent.gpData.GP_vy_e[i]      = regre(z_to_iden[i,:],u_to_iden[i,:],agent.gpData.feature_GP_vy_e,    agent.gpData.feature_GP)
                 agent.gpData.GP_psiDot_e[i]  = regre(z_to_iden[i,:],u_to_iden[i,:],agent.gpData.feature_GP_psiDot_e,agent.gpData.feature_GP)
             elseif agent.raceSet.GP_FULL_FLAG
-                agent.gpData.GP_vy_e[i]      = GP_full_vy(z_to_iden[i,:],    u_to_iden[i,:],agent.gpData.GP_feature,agent.gpData.GP_e_vy_prepare)
-                agent.gpData.GP_psiDot_e[i]  = GP_full_psidot(z_to_iden[i,:],u_to_iden[i,:],agent.gpData.GP_feature,agent.gpData.GP_e_psi_dot_prepare)
+                # agent.gpData.GP_s_e[i]      = GP_full_vy(z_to_iden[i,:],    u_to_iden[i,:],agent.gpData.GP_feature,agent.gpData.GP_e_vy_prepare)
+                agent.gpData.GP_ey_e[i]        = GP_full_kin(z_to_iden[i,:],    u_to_iden[i,:],agent.gpData.feature_GP,agent.gpData.GP_e_ey_prepare)
+                agent.gpData.GP_epsi_e[i]      = GP_full_kin(z_to_iden[i,:],    u_to_iden[i,:],agent.gpData.feature_GP,agent.gpData.GP_e_epsi_prepare)
+                # agent.gpData.GP_vx_e[i]      = GP_full_vy(z_to_iden[i,:],    u_to_iden[i,:],agent.gpData.GP_feature,agent.gpData.GP_e_vy_prepare)
+                # agent.gpData.GP_vy_e[i]      = GP_full_vy(z_to_iden[i,:],    u_to_iden[i,:],agent.gpData.GP_feature,agent.gpData.GP_e_vy_prepare)
+                # agent.gpData.GP_psiDot_e[i]  = GP_full_psidot(z_to_iden[i,:],u_to_iden[i,:],agent.gpData.GP_feature,agent.gpData.GP_e_psi_dot_prepare)
             else
+                agent.gpData.GP_s_e[i]       = 0
+                agent.gpData.GP_ey_e[i]      = 0
+                agent.gpData.GP_epsi_e[i]    = 0
+                agent.gpData.GP_vx_e[i]      = 0
                 agent.gpData.GP_vy_e[i]      = 0
                 agent.gpData.GP_psiDot_e[i]  = 0
             end

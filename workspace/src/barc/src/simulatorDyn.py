@@ -55,6 +55,7 @@ def main():
 
 		gps.gps_pub()
 		imu.imu_pub()
+		sim.sim_pub()
 
 		counter += 1
 		if counter == 5:
@@ -82,7 +83,7 @@ class Simulator(object):
 			Pacejka lateral tire modeling
     """
 	def __init__(self):
-
+		self.pub  = rospy.Publisher("real_val", pos_info, queue_size=1)
 		self.L_f = rospy.get_param("L_a")
 		self.L_r = rospy.get_param("L_b") 
 		self.m 	= rospy.get_param("m")
@@ -100,6 +101,7 @@ class Simulator(object):
 		self.vy 	= 0.0
 		self.ax 	= 0.0
 		self.ay 	= 0.0
+		self.msg 	= pos_info()
 		
 		if rospy.get_param("feature_flag"):
 			self.yaw = pi/4
@@ -168,6 +170,15 @@ class Simulator(object):
 		self.ay_his.append(self.ay)
 		self.psiDot_his.append(self.psiDot)
 		self.time_his.append(rospy.get_rostime().to_sec()) 
+
+	def sim_pub(self):
+		self.msg.a_x 	= self.ax
+		self.msg.a_y 	= self.ay
+		self.msg.psi 	= self.yaw
+		self.msg.psiDot = self.psiDot
+		self.msg.v_x 	= self.vx
+		self.msg.v_y 	= self.vy
+		self.pub.publish(self.msg)
 
 class ImuClass(object):
 	def __init__(self):

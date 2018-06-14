@@ -63,7 +63,7 @@ function main()
         mdlLMPC = MdlId(agent)
         sysIdTi(agent)
         sysIdTv(agent)
-        GPR(agent)
+        # GPR(agent)
         findSS(agent)
         solveId(mdlLMPC,agent)
 
@@ -134,7 +134,7 @@ function main()
             end
 
             # GAUSSIAN PROCESS
-            GPR(agent)
+            # GPR(agent)
 
             # SAFESET CONSTRUCTION
             findSS(agent)

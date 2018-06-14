@@ -1,3 +1,9 @@
+"""
+    File name: pythonPostPlot.py
+    Author: Shuqi Xu
+    Email: shuqixu@berkeley.edu (xushuqi8787@gmail.com)
+    Python Version: 2.7.12
+"""
 import numpy as np
 import os
 import sys
@@ -10,7 +16,7 @@ from Localization_helpers import Track
 # l.createRaceTrack()
 
 homedir = os.path.expanduser("~")
-pathSave = os.path.join(homedir,"barc_debugging2/estimator_output.npz")
+pathSave = os.path.join(homedir,"barc_debugging/estimator_output.npz")
 npz_output = np.load(pathSave)
 x_est_his     		= npz_output["x_est_his"]
 y_est_his     		= npz_output["y_est_his"]
@@ -28,10 +34,10 @@ KF_ay_his			= npz_output["KF_ay_his"]
 KF_psiDot_his		= npz_output["KF_psiDot_his"]
 KF_a_his			= npz_output["KF_a_his"]
 KF_df_his			= npz_output["KF_df_his"]
-estimator_time 		= npz_output["estimator_time"]
+estimator_time 		=npz_output["estimator_time"]
 print "Finish loading data from", pathSave
 
-pathSave = os.path.join(homedir,"barc_debugging2/estimator_imu.npz")
+pathSave = os.path.join(homedir,"barc_debugging/estimator_imu.npz")
 npz_imu = np.load(pathSave)
 psiDot_his    	= npz_imu["psiDot_his"]
 roll_his      	= npz_imu["roll_his"]
@@ -42,28 +48,26 @@ ay_his      	= npz_imu["ay_his"]
 imu_time  		= npz_imu["imu_time"]
 print "Finish loading data from", pathSave
 
-pathSave = os.path.join(homedir,"barc_debugging2/estimator_gps.npz")
+pathSave = os.path.join(homedir,"barc_debugging/estimator_gps.npz")
 npz_gps = np.load(pathSave)
 x_his 		= npz_gps["x_his"]
 y_his 		= npz_gps["y_his"]
 x_ply_his 	= npz_gps["x_ply_his"]
 y_ply_his 	= npz_gps["y_ply_his"]
-gps_t       = npz_gps["gps_t"]
-gps_yaw     = npz_gps["gps_yaw"]
 gps_time  	= npz_gps["gps_time"]
-gps_ply_time= npz_gps["gps_ply_time"]
 print "Finish loading data from", pathSave
 
-pathSave = os.path.join(homedir,"barc_debugging2/estimator_enc.npz")
+pathSave = os.path.join(homedir,"barc_debugging/estimator_enc.npz")
 npz_enc = np.load(pathSave)
 v_fl_his 	= npz_enc["v_fl_his"]
 v_fr_his 	= npz_enc["v_fr_his"]
 v_rl_his 	= npz_enc["v_rl_his"]
 v_rr_his 	= npz_enc["v_rr_his"]
+v_meas_his  = npz_enc["v_meas_his"]
 enc_time  	= npz_enc["enc_time"]
 print "Finish loading data from", pathSave
 
-pathSave = os.path.join(homedir,"barc_debugging2/estimator_ecu.npz")
+pathSave = os.path.join(homedir,"barc_debugging/estimator_ecu.npz")
 npz_ecu = np.load(pathSave)
 a_his 		= npz_ecu["a_his"]
 df_his 		= npz_ecu["df_his"]
@@ -71,7 +75,6 @@ ecu_time  	= npz_ecu["ecu_time"]
 print "Finish loading data from", pathSave
 
 # FIGURE 1 plotting of estimator data
-# pdb.set_trace()
 fig = plt.figure("Estimator")
 ax1 = fig.add_subplot(3,1,1,ylabel="yaw_estimation")
 ax1.plot(estimator_time,yaw_est_his,label="yaw_est")
@@ -113,13 +116,13 @@ num_plot = 2
 fig = plt.figure("GPS")
 ax1 = fig.add_subplot(num_plot,1,1,ylabel="x")
 ax1.plot(gps_time, x_his, 			label="x")
-ax1.plot(gps_ply_time, x_ply_his, 		label="x_ply")
+ax1.plot(gps_time, x_ply_his, 		label="x_ply")
 ax1.plot(estimator_time, x_est_his, label="x_est")
 ax1.legend()
 ax1.grid()
 ax2 = fig.add_subplot(num_plot,1,2,ylabel="y")
 ax2.plot(gps_time, y_his, 			label="y")
-ax2.plot(gps_ply_time, y_ply_his, 		label="y_ply")
+ax2.plot(gps_time, y_ply_his, 		label="y_ply")
 ax2.plot(estimator_time, y_est_his, label="y_est")
 ax2.legend()
 ax2.grid()
@@ -174,8 +177,6 @@ ax4.plot(imu_time, psiDot_his, ".", label="psidot_meas")
 ax4.plot(estimator_time,psiDot_est_his,label="psidot_est")
 ax4.plot(imu_time, yaw_his, ".", label="yaw_meas")
 ax4.plot(estimator_time,yaw_est_his,label="yaw_est")
-ax4.plot(gps_t[:-1],gps_yaw,label="yaw_gps")
-
 # ax4.plot(estimator_time, df_his, "--",	label="cmd.df")
 ax4.legend()
 ax4.grid()

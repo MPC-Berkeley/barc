@@ -127,6 +127,7 @@ def main():
                       roll_his      = imu.roll_his,
                       pitch_his     = imu.pitch_his,
                       yaw_his       = imu.yaw_his,
+                      yaw_raw_his   = imu.yaw_raw_his,
                       ax_his        = imu.ax_his,
                       ay_his        = imu.ay_his,
                       imu_time      = imu.time_his)
@@ -527,18 +528,20 @@ class ImuClass(object):
         self.ay      = 0.0
         self.roll    = 0.0
         self.pitch   = 0.0
+        self.yaw_raw = 0.0
         
         # Imu measurement history
-        self.yaw_his     = []
-        self.psiDot_his  = []
-        self.ax_his      = []
-        self.ay_his      = []
-        self.roll_his    = []
-        self.pitch_his   = []
+        self.yaw_his     = [0.0]
+        self.psiDot_his  = [0.0]
+        self.ax_his      = [0.0]
+        self.ay_his      = [0.0]
+        self.roll_his    = [0.0]
+        self.pitch_his   = [0.0]
+        self.yaw_raw_his = [0.0]
         
         # time stamp
         self.t0          = t0
-        self.time_his    = []
+        self.time_his    = [0.0]
 
         # Time for yawDot integration
         self.curr_time = rospy.get_rostime().to_sec() - self.t0
@@ -554,9 +557,10 @@ class ImuClass(object):
    
         ori = data.orientation
         quaternion = (ori.x, ori.y, ori.z, ori.w)
-        (roll_raw, pitch_raw, dummy) = transformations.euler_from_quaternion(quaternion)
+        (roll_raw, pitch_raw, yaw_raw) = transformations.euler_from_quaternion(quaternion)
         self.roll   = roll_raw
         self.pitch  = pitch_raw
+        self.yaw_raw= np.unwrap([self.yaw_raw_his[-1],yaw_raw])[1]
 
         w_z = data.angular_velocity.z
         a_x = data.linear_acceleration.x
@@ -582,8 +586,7 @@ class ImuClass(object):
         self.ay_his.append(self.ay)
         self.roll_his.append(self.roll)
         self.pitch_his.append(self.pitch)
-
-
+        self.yaw_raw_his.append(self.yaw_raw)
 
 class GpsClass(object):
     """ Object collecting GPS measurement data

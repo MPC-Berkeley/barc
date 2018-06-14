@@ -61,12 +61,12 @@ feature_GP_vx_e     = data["feature_GP_vx_e"]
 feature_GP_vy_e     = data["feature_GP_vy_e"]
 feature_GP_psiDot_e = data["feature_GP_psiDot_e"]
 figure("One step prediction error-$(file_names[idx])")
-subplot(3,2,1); plot(feature_GP_s_e,".",alpha=0.5);       ylabel("GP_s");     grid("on")
-subplot(3,2,2); plot(feature_GP_ey_e,".",alpha=0.5);      ylabel("GP_ey");    grid("on")
-subplot(3,2,3); plot(feature_GP_epsi_e,".",alpha=0.5);    ylabel("GP_epsi");  grid("on")
-subplot(3,2,4); plot(feature_GP_vx_e,".",alpha=0.5);      ylabel("GP_vx");    grid("on")
-subplot(3,2,5); plot(feature_GP_vy_e,".",alpha=0.5);      ylabel("GP_vy");    grid("on")
-subplot(3,2,6); plot(feature_GP_psiDot_e,".",alpha=0.5);  ylabel("GP_psiDot");grid("on")
+subplot(3,2,1); plot(2*feature_GP_s_e,        "-",alpha=0.5); ylabel("GP_s");     grid("on")
+subplot(3,2,2); plot(2*feature_GP_ey_e,       "-",alpha=0.5); ylabel("GP_ey");    grid("on")
+subplot(3,2,3); plot(2*feature_GP_epsi_e,     "-",alpha=0.5); ylabel("GP_epsi");  grid("on")
+subplot(3,2,4); plot(2*feature_GP_vx_e,       "-",alpha=0.5); ylabel("GP_vx");    grid("on")
+subplot(3,2,5); plot(2*feature_GP_vy_e,       "-",alpha=0.5); ylabel("GP_vy");    grid("on")
+subplot(3,2,6); plot(2*feature_GP_psiDot_e,   "-",alpha=0.5); ylabel("GP_psiDot");grid("on")
 
 # STATE AND SYS_ID PARAMETERS PLOT FOR LAPS DONE
 if ARGS[1] == "record" || ARGS[1]=="both"

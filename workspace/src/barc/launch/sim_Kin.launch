@@ -25,7 +25,7 @@
         <param name="SYS_ID_LIN_FLAG" type="bool" value="false" />
         <param name="num_spare"     type="int"  value="30"    />
         <param name="GP_LOCAL_FLAG" type="bool" value="false" />
-        <param name="GP_FULL_FLAG"  type="bool" value="false" />
+        <param name="GP_FULL_FLAG"  type="bool" value="true" />
         <!-- Controller parameters -->
         <param name="dt"        type="double" value="0.1" />
         <param name="c_f"       type="double" value="0.5" />

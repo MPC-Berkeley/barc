@@ -2,7 +2,7 @@
 #=
     File name: controllerId.jl
     Author: Shuqi Xu
-    Email: shuqixu@kth.se
+    Email: shuqixu@berkeley.edu (xushuqi8787@gmail.com)
     Julia Version: 0.4.7
 =#
 using RobotOS

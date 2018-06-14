@@ -1,4 +1,3 @@
-
 # This is a message to hold data with position and trajectory information
 Header header
 float64 s
