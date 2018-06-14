@@ -75,8 +75,8 @@ type MpcModel_pF
         # Set bounds
         z_lb_4s = ones(N + 1, 1) * [-Inf -Inf -Inf -0.5]  # lower bounds on states
         z_ub_4s = ones(N + 1, 1) * [Inf Inf Inf 1.5]  # upper bounds
-        u_lb_4s = ones(N, 1) * [0 -0.3]  # lower bounds on steering
-        u_ub_4s = ones(N, 1) * [1.2 0.3]  # upper bounds
+        u_lb_4s = ones(N, 1) * [0 -0.4]  # lower bounds on steering
+        u_ub_4s = ones(N, 1) * [1.2 0.4]  # upper bounds
 
         for i = 1 : 2
             for j = 1 : N
@@ -312,8 +312,8 @@ type MpcModel_convhull
 
         z_lb_6s = ones(N + 1, 1) * [0.1 -Inf -Inf -Inf -Inf -Inf -Inf]  # lower bounds on states
         z_ub_6s = ones(N + 1, 1) * [3.5  Inf Inf  Inf  Inf  Inf Inf]  # upper bounds
-        u_lb_6s = ones(N, 1) * [-1.3  -0.3]  # lower bounds on steering
-        u_ub_6s = ones(N, 1) * [3.0   0.3]  # upper bounds
+        u_lb_6s = ones(N, 1) * [-1.3  -0.4]  # lower bounds on steering
+        u_ub_6s = ones(N, 1) * [3.0   0.4]  # upper bounds
 
         for i = 1 : 2
             for j = 1 : N

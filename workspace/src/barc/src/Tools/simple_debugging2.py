@@ -20,7 +20,7 @@ ax_est_his          =npz_output["ax_est_his"]
 ay_est_his          =npz_output["ay_est_his"] 
 psiDot_est_his      =npz_output["psiDot_est_his"]  
 yaw_est_his         =npz_output["yaw_est_his"]  
-angle_est_his       = npz_output["angle_est_his"]
+# angle_est_his       = npz_output["angle_est_his"]
 KF_x_his            = npz_output["KF_x_his"]
 KF_y_his            = npz_output["KF_y_his"]
 KF_v_meas_his       = npz_output["KF_v_meas_his"]
@@ -51,7 +51,7 @@ x_ply_his   = npz_gps["x_ply_his"]
 y_ply_his   = npz_gps["y_ply_his"]
 gps_t       = npz_gps["gps_t"]
 gps_yaw     = npz_gps["gps_yaw"]
-gps_angle   = npz_gps["gps_angle"]
+# gps_angle   = npz_gps["gps_angle"]
 gps_time    = npz_gps["gps_time"]
 gps_ply_time= npz_gps["gps_ply_time"]
 print "Finish loading data from", pathSave
@@ -72,6 +72,7 @@ df_his      = npz_ecu["df_his"]
 ecu_time    = npz_ecu["ecu_time"]
 print "Finish loading data from", pathSave
 
+"""
 # FIGURE 1 plotting of estimator data
 # pdb.set_trace()
 fig = plt.figure("Estimator")
@@ -90,6 +91,28 @@ ax3.plot(estimator_time,ay_est_his,label="ay")
 ax3.plot(estimator_time,psiDot_est_his,label="psiDot")
 ax3.legend()
 ax3.grid()
+"""
+
+# FIGURE 1 plotting of estimator data
+# pdb.set_trace()
+fig = plt.figure("Estimator")
+ax1 = fig.add_subplot(3,1,1,ylabel="yaw_estimation")
+ax1.plot(estimator_time[7800 : 8200],yaw_est_his[7800 : 8200],label="yaw_est")
+ax1.legend()
+ax1.grid()
+ax2 = fig.add_subplot(3,1,2,ylabel="v estimation")
+ax2.plot(estimator_time[7800 : 8200],vx_est_his[7800 : 8200],label="vx_est")
+ax2.plot(estimator_time[7800 : 8200],vy_est_his[7800 : 8200],label="vy_est")
+ax2.legend()
+ax2.grid()
+ax3 = fig.add_subplot(3,1,3,ylabel="acc & psidot estimation")
+ax3.plot(estimator_time[7800 : 8200],ax_est_his[7800 : 8200],label="ax")
+ax3.plot(estimator_time[7800 : 8200],ay_est_his[7800 : 8200],label="ay")
+ax3.plot(estimator_time[7800 : 8200],psiDot_est_his[7800 : 8200],label="psiDot")
+ax3.legend()
+ax3.grid()
+
+
 
 # FIGURE 2 plotting of IMU data
 num_plot = 3
@@ -151,9 +174,12 @@ ax1 = fig.add_subplot(1,1,1,ylabel="track x-y plot")
 # ax1.plot(l.nodes_bound1[0],l.nodes_bound1[1],color="red",alpha=0.3)
 # ax1.plot(l.nodes_bound2[0],l.nodes_bound2[1],color="red",alpha=0.3)
 ax1.axis("equal")
-ax1.plot(x_his,y_his,"b.-",label="raw",alpha=0.3)
-ax1.plot(x_est_his,y_est_his,label="est",color="green",linewidth=2,alpha=0.5)
-ax1.plot(x_ply_his,y_ply_his,label="ply",color="red",linewidth=2,alpha=0.5)
+# ax1.plot(x_his,y_his,"b.-",label="raw",alpha=0.3)
+ax1.plot(KF_x_his[7800 : 8200],KF_y_his[7800 : 8200],"b.-",label="raw",alpha=0.3)
+
+ax1.plot(x_est_his[7800 : 8200],y_est_his[7800 : 8200],label="est",color="green",linewidth=2,alpha=0.5)
+
+# ax1.plot(x_ply_his,y_ply_his,label="ply",color="red",linewidth=2,alpha=0.5)
 ax1.legend()
 
 # raw data and estimation data comparison
@@ -172,15 +198,15 @@ ax3.plot(estimator_time, ay_est_his,    label="ay_est")
 ax3.legend()
 ax3.grid()
 
-gps_angle = np.unwrap(gps_angle)
+# gps_angle = np.unwrap(gps_angle)
 ax4 = fig.add_subplot(num_plot,1,3,ylabel="psidot")
 ax4.plot(imu_time, psiDot_his, ".", label="psidot_meas")
 ax4.plot(estimator_time,psiDot_est_his,label="psidot_est")
 ax4.plot(imu_time, yaw_his, ".", label="yaw_meas")
 ax4.plot(estimator_time,yaw_est_his,label="yaw_est")
 ax4.plot(gps_t[:-1], gps_yaw,label="yaw_gps")
-ax4.plot(gps_time, gps_angle,label="angle_gps")
-ax4.plot(estimator_time, angle_est_his,label="interpolated yaw")
+# ax4.plot(gps_time, gps_angle,label="angle_gps")
+# ax4.plot(estimator_time, angle_est_his,label="interpolated yaw")
 
 
 

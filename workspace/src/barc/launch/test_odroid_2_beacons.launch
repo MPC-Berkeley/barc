@@ -7,7 +7,7 @@
     <param name="m" type="double" value="1.98" />
     <param name="I_z" type="double" value="0.24" />
     <param name="dt" type="double" value="0.1" />
-    <param name="num_agents" type="int" value="2" />
+    <param name="num_agents" type="int" value="1" />
 
     <!-- MACHINES -->
     <machine name="yoga" address="127.0.0.1" user="lukas" timeout="20.0" env-loader="/home/lukas/barc/env_loader_yoga.sh" />
@@ -23,7 +23,7 @@
         <param name="mass" type="double" value="1.98" />
         <param name="time_offset" type="double" value="0.0" />
         <param name="delay_a" type="int" value="1" />
-        <param name="delay_df" type="int" value="3" />
+        <param name="delay_df" type="int" value="1" />
         <param name="sim" type="str" value="estimation" />
 
         <remap from="pos_info" to="agent_2/pos_info" />
@@ -38,26 +38,26 @@
     </node>
 
     <!-- Estimator -->
-    <node machine="ubuntu-pc" pkg="barc" type="state_estimator_multiple_beacons.py" name="state_estimator" output="screen">
+    <node machine="ubuntu-pc" pkg="barc" type="state_estimator_lukas_yaw.py" name="state_estimator_2" output="screen">
         <!-- delay in state estuiamtor -->
-        <param name="delay_df" type="double" value="0.2" />
+        <param name="delay_df" type="double" value="0.0" />
         <param name="delay_a" type="double" value="0.0" />
         <!-- ekf properties -->
-        <param name="Q_x" type="double" value="0.0" />
-        <param name="Q_y" type="double" value="0.0" />
-        <param name="Q_vx" type="double" value="0.0" />
-        <param name="Q_vy" type="double" value="0.0" />
-        <param name="Q_ax" type="double" value="1.0" />
-        <param name="Q_ay" type="double" value="1.0" />
-        <param name="Q_psi" type="double" value="0.000" />
-        <param name="Q_psiDot" type="double" value="1.0" />
-        <param name="R_x" type="double" value="10.0" />
-        <param name="R_y" type="double" value="10.0" />
-        <param name="R_vx" type="double" value="0.1" />
-        <param name="R_vy" type="double" value="0.01" />
-        <param name="R_ax" type="double" value="10.0" />
-        <param name="R_ay" type="double" value="10.0" />
-        <param name="R_psiDot" type="double" value="0.001" />
+        <param name="Q_x" type="double" value="0.01" />
+        <param name="Q_y" type="double" value="0.01" />
+        <param name="Q_vx" type="double" value="0.01" />
+        <param name="Q_vy" type="double" value="0.01" />
+        <param name="Q_ax" type="double" value="0.03" />
+        <param name="Q_ay" type="double" value="0.05" />
+        <param name="Q_psi" type="double" value="0.01" />
+        <param name="Q_psiDot" type="double" value="0.01" />
+        <param name="R_x" type="double" value="1.0" />
+        <param name="R_y" type="double" value="1.0" />
+        <param name="R_vx" type="double" value="1.0" />
+        <param name="R_vy" type="double" value="10.0" />
+        <param name="R_ax" type="double" value="2.0" />
+        <param name="R_ay" type="double" value="8.0" />
+        <param name="R_psiDot" type="double" value="0.5" />
 
         <remap from="hedge_pos" to="agent_2/hedge_pos" />
         <remap from="imu/data" to="agent_2/imu/data" />
@@ -65,8 +65,9 @@
         <remap from="pos_info" to="agent_2/pos_info" />
         <remap from="ecu" to="agent_2/ecu" />
         <remap from="hedge_pos_ang" to="agent_2/hedge_pos_ang" />
-        <remap from="hedge_imu_fusion_1" to="agent_2/hedge_imu_fusion_1" />
-        <remap from="hedge_imu_fusion_2" to="agent_2/hedge_imu_fusion_2" />
+        <!--<remap from="hedge_imu_fusion_1" to="agent_2/hedge_imu_fusion_1" /> -->
+        <!--<remap from="hedge_imu_fusion_2" to="agent_2/hedge_imu_fusion_2" /> -->
+        <remap from="hedge_imu_fusion" to="agent_2/hedge_imu_fusion" />
         <!-- ukf properties -->
     </node>
 
@@ -89,13 +90,10 @@
         <remap from="hedge_pos" to="agent_2/hedge_pos" />
         <remap from="hedge_pos_a" to="agent_2/hedge_pos_a" />
         <remap from="hedge_pos_ang" to="agent_2/hedge_pos_ang" />
-        <remap from="hedge_imu_fusion_1" to="agent_2/hedge_imu_fusion_1" />
+        <!-- <remap from="hedge_imu_fusion_1" to="agent_2/hedge_imu_fusion_1" /> -->
+        <remap from="hedge_imu_fusion" to="agent_2/hedge_imu_fusion" />
     </node>
 
-    <!-- GPS -->
-    <node machine="odroid_2" pkg="marvelmind_nav" type="hedge_rcv_bin" name="indoor_gps_2" args="/dev/ttyACM2" >
-    </node>
-    
     <!-- ARDUINO -->
     <!--  * encoders and ultrasound sensors -->
     <node machine="odroid_2" pkg="rosserial_python" type="serial_node.py" name="arduino_node_2" >

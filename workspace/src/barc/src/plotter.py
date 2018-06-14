@@ -98,8 +98,8 @@ class PlottedAgent:
         else:
             xy_sub = rospy.Subscriber(node_name + "/pos_info", pos_info, self.xy_callback)
 
-        # xy_gps_sub = rospy.Subscriber(node_name + "/hedge_imu_fusion", hedge_imu_fusion, self.xy_gps_callback)
-        xy_gps_sub = rospy.Subscriber(node_name + "/hedge_pos_ang", hedge_pos_ang, self.xy_gps_callback)
+        xy_gps_sub = rospy.Subscriber(node_name + "/hedge_imu_fusion", hedge_imu_fusion, self.xy_gps_callback)
+        # xy_gps_sub = rospy.Subscriber(node_name + "/hedge_pos_ang", hedge_pos_ang, self.xy_gps_callback)
         prediction_sub = rospy.Subscriber(node_name + "/xy_prediction", xy_prediction, self.prediction_callback)
         selection_sub = rospy.Subscriber(node_name + "/selected_states", selected_states, self.selection_callback)
 
@@ -177,6 +177,7 @@ class PlottedAgent:
 
         self.gps_pos, = ax.plot(self.x_gps, self.y_gps, self.star)
         self.trajectory_gps, = ax.plot(self.trajectory_gps_xy[:, 0], self.trajectory_gps_xy[:, 1], self.line_extra)
+        # self.trajectory_gps_dots, = ax.plot(self.trajectory_gps_xy[:, 0], self.trajectory_gps_xy[:, 1], self.dot_extra)
 
         # self.transform(ax)
 
@@ -317,6 +318,7 @@ class PlottedAgent:
 
         self.gps_pos.set_data(self.x_gps, self.y_gps)
         self.trajectory_gps.set_data(self.trajectory_gps_xy[:, 0], self.trajectory_gps_xy[:, 1])
+        # self.trajectory_gps_dots.set_data(self.trajectory_gps_xy[:, 0], self.trajectory_gps_xy[:, 1])
 
         self.transform(ax)
 
