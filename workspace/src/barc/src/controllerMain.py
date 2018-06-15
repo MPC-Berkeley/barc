@@ -52,7 +52,7 @@ def main():
     map = Map()                                              # Map
     
     # Choose Controller and Number of Laps
-    PickController = "TI_MPC"
+    PickController = "LMPC"
     NumberOfLaps   = 20
     vt = 1.0
     PathFollowingLaps = 1

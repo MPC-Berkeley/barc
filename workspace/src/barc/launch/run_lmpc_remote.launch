@@ -22,7 +22,7 @@
     <!-- START NODES -->
 
     <!-- Estimator -->
-    <node machine="this-pc" pkg="barc" type="stateEstimatorNoVy.py" name="state_estimator" output="screen">
+    <node machine="this-pc" pkg="barc" type="stateEstimator.py" name="state_estimator" output="screen">
     <!-- delay in state estuiamtor -->
         <param name="delay_df" type="double" value="0.0" />
         <param name="delay_a" type="double" value="0.0" />
