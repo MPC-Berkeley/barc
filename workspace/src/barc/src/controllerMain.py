@@ -233,7 +233,7 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
         ClosedLoopDataPID = pickle.load(file_data)
         file_data.close()
         Q = 1*np.diag([10.0, 1.0, 1, 10.0, 0.0, 10.0]) # vx, vy, wz, epsi, s, ey
-        R = np.diag([1.0, 1.0]) # delta, a
+        R = np.diag([1.0, 5.0]) # delta, a
         N = 12
         Controller = PathFollowingLTV_MPC(Q, R, N, vt, ClosedLoopDataPID.x[0:ClosedLoopDataPID.SimTime, :], 
                                                        ClosedLoopDataPID.u[0:ClosedLoopDataPID.SimTime, :], dt, map, "OSQP")

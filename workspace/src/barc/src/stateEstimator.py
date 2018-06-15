@@ -47,7 +47,7 @@ def main():
     Q[1,1] = 0.01    # y
     Q[2,2] = 0.5     # vx
     Q[3,3] = 0.5     # vy
-    Q[4,4] = 1.0     # ax
+    Q[4,4] = 5.0     # ax
     Q[5,5] = 1.0     # ay 
     Q[6,6] = 0.01    # psi
     Q[7,7] = 10.0    # psiDot
@@ -56,7 +56,7 @@ def main():
     R[1,1] = 0.0005   # y
     R[2,2] = 0.1      # vx
     R[3,3] = 0.01     # ax 
-    R[4,4] = 10.0     # ay 
+    R[4,4] = 50.0     # ay 
     R[5,5] = 20.0     # psiDot
     R[6,6] = 0.001    # vy
     thReset = 1.4
@@ -87,7 +87,7 @@ def main():
     Q_noVy[3,3] = 0.01 # vy
     Q_noVy[4,4] = 1.0 # ax
     Q_noVy[5,5] = 1.0 # ay
-    Q_noVy[6,6] = 1.0 # psi
+    Q_noVy[6,6] = 5.0 # psi
     Q_noVy[7,7] = 10.0 # psidot
     # Q[8,8] = 0.0 # psiDot in the model
     R_noVy = eye(6)
@@ -97,10 +97,10 @@ def main():
     R_noVy[3,3] = 10.0   # ax
     R_noVy[4,4] = 30.0   # ay
     R_noVy[5,5] = 0.01    # psiDot
-    thReset_noVy = 0.1
+    thReset_noVy = 0.8
 
     twoEstimators = False
-    switchEstimators = False
+    switchEstimators = True
 
 
 
@@ -137,7 +137,7 @@ def main():
         estMsg.header.stamp = rospy.get_rostime()
 
         if switchEstimators == True:
-            if (est.vx_est + 0.1 * est.psiDot_est) > 1.5:
+            if (est.vx_est + 0.0 * est.psiDot_est) > 1.8 or (np.abs(est.psiDot_est) > 2.0):
                 estMsg.v        = np.sqrt(estNoVy.vx_est**2 + estNoVy.vy_est**2)
                 estMsg.x        = estNoVy.x_est 
                 estMsg.y        = estNoVy.y_est

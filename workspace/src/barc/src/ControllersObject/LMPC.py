@@ -386,7 +386,7 @@ def _LMPC_BuildMatIneqConst(LMPC):
     bu = np.array([[0.4],  # Max Steering
                    [0.4],  # Max Steering
                    [2.],  # Max Acceleration
-                   [1.]])  # Max Acceleration
+                   [0.5]])  # Max Acceleration
 
 
 
@@ -646,7 +646,7 @@ def RegressionAndLinearization(LinPoints, LinInput, usedIt, SS, uSS, TimeSS, Max
 
     # Compute Index to use
     h = 5
-    lamb = 0.0
+    lamb = 0.0000
     stateFeatures = [0, 1, 2]
     ConsiderInput = 1
 
