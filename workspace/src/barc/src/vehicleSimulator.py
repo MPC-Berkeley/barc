@@ -23,7 +23,7 @@ sys.path.append(sys.path[0]+'/ControllersObject')
 sys.path.append(sys.path[0]+'/Utilities')
 import rospy
 import geometry_msgs.msg
-from barc.msg import ECU, pos_info, Vel_est
+from barc.msg import ECU, pos_info, Vel_est, simulatorStates
 from geometry_msgs.msg import Vector3
 from sensor_msgs.msg import Imu
 from marvelmind_nav.msg import hedge_imu_fusion
@@ -43,6 +43,9 @@ def main():
     a_his 	= [0.0]*int(rospy.get_param("simulator/delay_a")/rospy.get_param("simulator/dt"))
     df_his 	= [0.0]*int(rospy.get_param("simulator/delay_df")/rospy.get_param("simulator/dt"))
 
+    pub_simulatorStates = rospy.Publisher('simulatorStates', simulatorStates, queue_size=1)
+    simStates = simulatorStates()
+
     print "The simulator is running!"
     
     while not rospy.is_shutdown():
@@ -52,6 +55,16 @@ def main():
 		u = [a_his.pop(0), df_his.pop(0)]
 
 		sim.f(u)
+
+		simStates.x      = sim.x
+		simStates.y      = sim.y
+		simStates.vx     = sim.vx
+		simStates.vy     = sim.vy
+		simStates.psi    = sim.yaw
+		simStates.psiDot = sim.psiDot
+
+		# Publish input
+		pub_simulatorStates.publish(simStates)
 
 		imu.update(sim)
 		gps.update(sim)
@@ -106,11 +119,8 @@ class Simulator(object):
 		self.vy 	= 0.0
 		self.ax 	= 0.0
 		self.ay 	= 0.0
-		
-		if rospy.get_param("feature_flag"):
-			self.yaw = pi/4
-		else:
-			self.yaw = 0.0
+
+		self.yaw = 0.0
 
 		self.psiDot = 0.0
 

@@ -386,7 +386,7 @@ def _LMPC_BuildMatIneqConst(LMPC):
     bu = np.array([[0.4],  # Max Steering
                    [0.4],  # Max Steering
                    [2.],  # Max Acceleration
-                   [2.]])  # Max Acceleration
+                   [1.]])  # Max Acceleration
 
 
 
@@ -479,17 +479,17 @@ def _SelectPoints(LMPC, it, x0, numSS_Points, shift):
     #     print (np.all((xPred[:, 4] > TrackLength) == False))
 
     if xPred == []:
-        print "Here "
+        # print "Here "
         Sel_Qfun = Qfun[indexSSandQfun, it]
     elif (np.all((xPred[:, 4] > TrackLength) == False)):
-        print "Here 1"
+        # print "Here 1"
         Sel_Qfun = Qfun[indexSSandQfun, it]
     elif  it < currIt - 1:
-        print "Here 2"
+        # print "Here 2"
         Sel_Qfun = Qfun[indexSSandQfun, it] + Qfun[0, it + 1]
     else:
         sPred = xPred[:, 4]
-        print "Here 3", sum(sPred > TrackLength)
+        # print "Here 3", sum(sPred > TrackLength)
         predCurrLap = LMPC.N - sum(sPred > TrackLength)
         currLapTime = LMPC.LapTime
         Sel_Qfun = Qfun[indexSSandQfun, it] + currLapTime + predCurrLap

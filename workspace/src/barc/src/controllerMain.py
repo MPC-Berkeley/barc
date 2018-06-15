@@ -6,6 +6,7 @@
     Email: ugo.rosolia@berkeley.edu
     Python Version: 2.7.12
 '''
+import os
 import sys
 sys.path.append(sys.path[0]+'/ControllersObject')
 sys.path.append(sys.path[0]+'/Utilities')
@@ -23,10 +24,12 @@ from PathFollowingLTI_MPC import PathFollowingLTI_MPC
 from PathFollowingLTVMPC import PathFollowingLTV_MPC
 from dataStructures import LMPCprediction, EstimatorData, ClosedLoopDataObj
 from LMPC import ControllerLMPC
+homedir = os.path.expanduser("~")    
 
 def main():
     # Initializa ROS node
     rospy.init_node("LMPC")
+
     input_commands = rospy.Publisher('ecu', ECU, queue_size=1)
     pred_treajecto = rospy.Publisher('OL_predictions', prediction, queue_size=1)
     pred_treajecto = rospy.Publisher('OL_predictions', prediction, queue_size=1)
@@ -65,6 +68,8 @@ def main():
     TimeCounter = 0
     KeyInput = raw_input("Press enter to start the controller... \n")
     oneStepPrediction = np.zeros(6)
+
+    firtLap = True
     while (not rospy.is_shutdown()) and RunController == 1:    
         # Read Measurements
         GlobalState[:] = estimatorData.CurrentState
@@ -75,7 +80,10 @@ def main():
         if LocalState[4] >= 3*map.TrackLength/4:
             HalfTrack = 1
 
-        if HalfTrack == 1 and LocalState[4] <= map.TrackLength/4:
+        if LocalState[4] >= 1*map.TrackLength/4 and LocalState[4] <= 3*map.TrackLength/4:
+            firtLap = False
+
+        if HalfTrack == 1 and LocalState[4] <= map.TrackLength/4 and firtLap == False:
             HalfTrack = 0
             LapNumber += 1 
             print "Lap completed starting lap:", LapNumber, ". Lap time: ", float(TimeCounter)/loop_rate
@@ -174,7 +182,7 @@ def main():
         rate.sleep()
 
     # Save Data
-    file_data = open(sys.path[0]+'/data/'+mode+'/ClosedLoopData'+PickController+'.obj', 'wb')
+    file_data = open(homedir+'/barc_data/'+'/ClosedLoopData'+PickController+'.obj', 'wb')
     pickle.dump(ClosedLoopData, file_data)
     pickle.dump(Controller, file_data)
     pickle.dump(OpenLoopData, file_data)    
@@ -197,7 +205,7 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
     if PickController == 'PID':
         ControllerLap0 = PID(vt, PIDnoise) 
     else:
-        file_data = open(sys.path[0]+'/data/'+mode+'/ClosedLoopDataPID.obj', 'rb')
+        file_data = open(homedir+'/barc_data/'+'/ClosedLoopDataPID.obj', 'rb')
         ClosedLoopDataPID = pickle.load(file_data)
         file_data.close()
         lamb = 0.0000001
@@ -211,13 +219,13 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
         Controller = PID(vt, PIDnoise)
                                         # PID controller
     elif PickController == "TI_MPC":
-        file_data = open(sys.path[0]+'/data/'+mode+'/ClosedLoopDataPID.obj', 'rb')
+        file_data = open(homedir+'/barc_data/'+'/ClosedLoopDataPID.obj', 'rb')
         ClosedLoopDataPID = pickle.load(file_data)
         file_data.close()     
         Controller = PathFollowingLTI_MPC(A, B, Q, R, N, vt, TI_Qlane)
 
     elif PickController == "TV_MPC":
-        file_data = open(sys.path[0]+'/data/'+mode+'/ClosedLoopDataPID.obj', 'rb')
+        file_data = open(homedir+'/barc_data/'+'/ClosedLoopDataPID.obj', 'rb')
         ClosedLoopDataPID = pickle.load(file_data)
         file_data.close()
         Q = 1*np.diag([10.0, 1.0, 1, 10.0, 0.0, 10.0]) # vx, vy, wz, epsi, s, ey
@@ -226,7 +234,7 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
         Controller = PathFollowingLTV_MPC(Q, R, N, vt, ClosedLoopDataPID.x[0:ClosedLoopDataPID.SimTime, :], 
                                                        ClosedLoopDataPID.u[0:ClosedLoopDataPID.SimTime, :], dt, map, "OSQP")
     elif PickController == "LMPC":
-        file_data = open(sys.path[0]+'/data/'+mode+'/ClosedLoopDataTI_MPC.obj', 'rb')
+        file_data = open(homedir+'/barc_data/'+'/ClosedLoopDataTI_MPC.obj', 'rb')
         ClosedLoopDataTI_MPC = pickle.load(file_data)
         file_data.close()
         Laps       = NumberOfLaps+2   # Total LMPC laps
@@ -242,9 +250,9 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
         # Tuning Parameters
         Qslack  =  1 * np.diag([10, 1, 1, 1, 10, 1])          # Cost on the slack variable for the terminal constraint
         Qlane   =  1 * np.array([100, 10]) # Quadratic and linear slack lane cost
-        Q_LMPC  =  0 * np.diag([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])  # State cost x = [vx, vy, wz, epsi, s, ey]
+        Q_LMPC  =  0 * np.diag([0.0, 0.0, 1.0, 0.0, 0.0, 0.0])  # State cost x = [vx, vy, wz, epsi, s, ey]
         R_LMPC  =  0 * np.diag([1.0, 1.0])                      # Input cost u = [delta, a]
-        dR_LMPC =  1 * np.array([1.0, 10.0])                     # Input rate cost u
+        dR_LMPC =  1 * np.array([5.0, 10.0])                     # Input rate cost u
         Controller = ControllerLMPC(numSS_Points, numSS_it, N, Qslack, Qlane, Q_LMPC, R_LMPC, dR_LMPC, 6, 2, shift, 
                                         dt, map, Laps, TimeLMPC, LMPC_Solver, SysID_Solver, flag_LTV)
         # Controller.addTrajectory(ClosedLoopDataPID)

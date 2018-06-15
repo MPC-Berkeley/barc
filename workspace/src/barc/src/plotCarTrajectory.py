@@ -21,7 +21,7 @@ import rospy
 from marvelmind_nav.msg import hedge_pos, hedge_imu_fusion
 import numpy as np
 from trackInitialization import Map
-from barc.msg import pos_info, prediction, SafeSetGlob
+from barc.msg import pos_info, prediction, SafeSetGlob, simulatorStates
 import matplotlib.pyplot as plt    
 import pdb
 import matplotlib.patches as patches
@@ -30,7 +30,8 @@ def main():
     rospy.init_node("realTimePlotting")
     StateView = False
 
-    data = EstimationAndMesuredData()
+    mode = rospy.get_param("/control/mode")
+    data = EstimationAndMesuredData(mode)        
 
     map = Map()
 
@@ -40,7 +41,7 @@ def main():
     if StateView == True:
         fig, linevx, linevy, linewz, lineepsi, lineey, line_tr, line_pred = _initializeFigure(map)
     else:
-        fig, axtr, line_tr, line_pred, line_SS, line_cl, line_gps_cl, rec = _initializeFigure_xy(map)
+        fig, axtr, line_tr, line_pred, line_SS, line_cl, line_gps_cl, rec, rec_sim = _initializeFigure_xy(map, mode)
 
     ClosedLoopTraj_gps_x = []
     ClosedLoopTraj_gps_y = []
@@ -75,10 +76,7 @@ def main():
 
         psi = estimatedStates[3]
         l = 0.4; w = 0.2
-        car_x = [ x + l * np.cos(psi) - w * np.sin(psi), x + l*np.cos(psi) + w * np.sin(psi),
-                  x - l * np.cos(psi) + w * np.sin(psi), x - l * np.cos(psi) - w * np.sin(psi)]
-        car_y = [ y + l * np.sin(psi) + w * np.cos(psi), y + l * np.sin(psi) - w * np.cos(psi),
-                  y - l * np.sin(psi) - w * np.cos(psi), y - l * np.sin(psi) + w * np.cos(psi)]
+
 
         if data.s != []:
             xPredicted = np.zeros((len(data.s), 1))
@@ -110,7 +108,15 @@ def main():
         
         line_tr.set_data(estimatedStates[4], estimatedStates[5])
         
+        car_x, car_y = getCarPosition(x, y, psi, w, l)
         rec.set_xy(np.array([car_x, car_y]).T)
+        
+        if mode == "simulations":
+            x_sim   = data.sim_x[-1]
+            y_sim   = data.sim_y[-1]
+            psi_sim = data.sim_psi[-1]
+            car_sim_x, car_sim_y = getCarPosition(x_sim, y_sim, psi_sim, w, l)
+            rec_sim.set_xy(np.array([car_sim_x, car_sim_y]).T)
 
         maxVx = np.maximum(maxVx, estimatedStates[0])
 
@@ -122,16 +128,26 @@ def main():
 
         rate.sleep()
 
+def getCarPosition(x, y, psi, w, l):
+    car_x = [ x + l * np.cos(psi) - w * np.sin(psi), x + l*np.cos(psi) + w * np.sin(psi),
+              x - l * np.cos(psi) + w * np.sin(psi), x - l * np.cos(psi) - w * np.sin(psi)]
+    car_y = [ y + l * np.sin(psi) + w * np.cos(psi), y + l * np.sin(psi) - w * np.cos(psi),
+              y - l * np.sin(psi) - w * np.cos(psi), y - l * np.sin(psi) + w * np.cos(psi)]
+    return car_x, car_y
+
 class EstimationAndMesuredData():
     """Object collecting closed loop data points
     Attributes:
         updateInitialConditions: function which updates initial conditions and clear the memory
     """
-    def __init__(self):
+    def __init__(self, mode):
         """Initialization
         Arguments:
             
         """
+        if mode == "simulations":
+            rospy.Subscriber("simulatorStates", simulatorStates, self.simState_callback)
+
         rospy.Subscriber("hedge_imu_fusion", hedge_imu_fusion, self.gps_callback)
         rospy.Subscriber("pos_info", pos_info, self.pos_info_callback)
         rospy.Subscriber("OL_predictions", prediction, self.prediction_callback)
@@ -145,6 +161,15 @@ class EstimationAndMesuredData():
         self.SSy  = []
 
         self.MeasuredData = [0.0, 0.0]
+
+        self.sim_x   = [0.0]
+        self.sim_y   = [0.0]
+        self.sim_psi = [0.0]
+
+    def simState_callback(self, msg):
+        self.sim_x.append(msg.x)
+        self.sim_y.append(msg.y)
+        self.sim_psi.append(msg.psi)
 
     def gps_callback(self, msg):
         self.MeasuredData = [msg.x_m, msg.y_m]
@@ -169,7 +194,7 @@ class EstimationAndMesuredData():
 # ===================================================================================================================================== #
 # ============================================================= Internal Functions ==================================================== #
 # ===================================================================================================================================== #
-def _initializeFigure_xy(map):
+def _initializeFigure_xy(map, mode):
     xdata = []; ydata = []
     fig = plt.figure(figsize=(12,8))
     plt.ion()
@@ -202,9 +227,14 @@ def _initializeFigure_xy(map):
     rec = patches.Polygon(v, alpha=0.7,closed=True, fc='r', ec='k',zorder=10)
     axtr.add_patch(rec)
 
+    rec_sim = patches.Polygon(v, alpha=0.7,closed=True, fc='G', ec='k',zorder=10)
+
+    if mode == "simulations":
+        axtr.add_patch(rec_sim)
+
     plt.show()
 
-    return fig, axtr, line_tr, line_pred, line_SS, line_cl, line_gps_cl, rec
+    return fig, axtr, line_tr, line_pred, line_SS, line_cl, line_gps_cl, rec, rec_sim
 
 
 def _initializeFigure(map):

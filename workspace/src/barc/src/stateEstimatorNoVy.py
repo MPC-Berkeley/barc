@@ -45,39 +45,37 @@ def main():
     Q = eye(8)
     Q[0,0] = 0.01    # x
     Q[1,1] = 0.01    # y
-    Q[2,2] = 0.5     # vx
-    Q[3,3] = 0.5     # vy
+    Q[2,2] = 0.01    # vx
+    Q[3,3] = 0.01    # vy
     Q[4,4] = 1.0     # ax
-    Q[5,5] = 1.0     # ay 
-    Q[6,6] = 0.01    # psi
+    Q[5,5] = 1.0     # ay
+    Q[6,6] = 1.0     # psi
     Q[7,7] = 10.0    # psiDot
-    R = eye(7)
-    R[0,0] = 0.0005   # x
-    R[1,1] = 0.0005   # y
-    R[2,2] = 0.1      # vx
-    R[3,3] = 0.01     # ax 
-    R[4,4] = 10.0     # ay 
-    R[5,5] = 20.0     # psiDot
-    R[6,6] = 0.001    # vy
-    thReset = 1.4
+    R = eye(6)
+    R[0,0] = 1.0     # x
+    R[1,1] = 1.0     # y
+    R[2,2] = 0.1     # vx
+    R[3,3] = 10.0    # ax
+    R[4,4] = 30.0    # ay
+    R[5,5] = 0.01    # psiDot
+    thReset = 0.7
 
     Q_1 = eye(8)
-    Q_1[0,0] = 0.01    # x
-    Q_1[1,1] = 0.01    # y
-    Q_1[2,2] = 0.5     # vx
-    Q_1[3,3] = 0.5     # vy
-    Q_1[4,4] = 1.0     # ax
-    Q_1[5,5] = 1.0     # ay 
-    Q_1[6,6] = 0.01    # psi
-    Q_1[7,7] = 10.0    # psiDot
-    R_1 = eye(7)
-    R_1[0,0] = 5.0     # x
-    R_1[1,1] = 5.0     # y
-    R_1[2,2] = 1.0     # vx
-    R_1[3,3] = 0.0001  # ax 
-    R_1[4,4] = 10.0    # ay 
-    R_1[5,5] = 20.0    # psiDot
-    R_1[6,6] = 0.001   # vy
+    Q_1[0,0] = 0.01
+    Q_1[1,1] = 0.01
+    Q_1[2,2] = 0.5
+    Q_1[3,3] = 0.5
+    Q_1[4,4] = 1.0
+    Q_1[5,5] = 1.0
+    Q_1[6,6] = 0.01
+    Q_1[7,7] = 10.0
+    R_1 = eye(6)
+    R_1[0,0] = 5.0
+    R_1[1,1] = 5.0
+    R_1[2,2] = 1.0
+    R_1[3,3] = 0.0001
+    R_1[4,4] = 10.0
+    R_1[5,5] = 20.0
     thReset_1 = 0.4
 
     twoEstimators = False
@@ -312,10 +310,10 @@ class Estimator(object):
         # if ( (gps.x == self.oldGPS_x) and (gps.x == self.oldGPS_y) ):
         if 0 == 1:
             modeGPS = False
-            y = np.array([enc.v_meas, imu.ax, imu.ay, imu.psiDot, bta * enc.v_meas])
+            y = np.array([enc.v_meas, imu.ax, imu.ay, imu.psiDot])
         else:
             modeGPS = True
-            y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot, bta * enc.v_meas])
+            y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot])
 
 
         self.oldGPS_x = gps.x
@@ -477,21 +475,21 @@ class Estimator(object):
     def h(self, x, u, modeGPS):
         """ This is the measurement model to the kinematic<->sensor model above """
         if modeGPS:
-            y = [0]*7
+            y = [0]*6
             y[0] = x[0]   # x
             y[1] = x[1]   # y
             y[2] = x[2]   # vx
             y[3] = x[4]   # a_x
             y[4] = x[5]   # a_y
             y[5] = x[7]   # psiDot
-            y[6] = x[3]   # vy
+            # y[6] = x[3]   # vy
         else:
-            y = [0]*5
+            y = [0]*4
             y[0] = x[2]   # vx
             y[1] = x[4]   # a_x
             y[2] = x[5]   # a_y
             y[3] = x[7]   # psiDot
-            y[4] = x[3]   # vy
+            # y[4] = x[3]   # vy
         return np.array(y)
 
     def saveHistory(self):

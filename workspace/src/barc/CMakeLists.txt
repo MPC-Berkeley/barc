@@ -55,6 +55,7 @@ add_message_files(
    selected_states.msg
    xy_prediction.msg
    theta.msg
+   simulatorStates.msg
 )
 
 ## Generate services in the 'srv' folder

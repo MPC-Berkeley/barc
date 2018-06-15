@@ -26,80 +26,106 @@ from trackInitialization import Map
 
 def main():
     # node initialization
-    a_delay     = 0.2
+    a_delay     = 0.0
     df_delay    = 0.0
     loop_rate   = 50.0
    
-    Q = eye(8)
-    Q[0,0] = 0.01 # x
-    Q[1,1] = 0.01 # y
-    Q[2,2] = 0.01 # vx
-    Q[3,3] = 0.01 # vy
-    Q[4,4] = 1.0 # ax
-    Q[5,5] = 1.0 # ay
-    Q[6,6] = 0.01 # psi
-    Q[7,7] = 1.0 # psidot
+    Q_noVy = eye(8)
+    Q_noVy[0,0] = 0.01 # x
+    Q_noVy[1,1] = 0.01 # y
+    Q_noVy[2,2] = 0.01 # vx
+    Q_noVy[3,3] = 0.01 # vy
+    Q_noVy[4,4] = 1.0 # ax
+    Q_noVy[5,5] = 1.0 # ay
+    Q_noVy[6,6] = 1.0 # psi
+    Q_noVy[7,7] = 10.0 # psidot
     # Q[8,8] = 0.0 # psiDot in the model
-    R = eye(6)
-    R[0,0] = 1.0   # x
-    R[1,1] = 1.0   # y
-    R[2,2] = 0.1   # vx
-    R[3,3] = 10.0   # ax
-    R[4,4] = 10.0   # ay
-    R[5,5] = 0.001    # psiDot
-    # R[6,6] = 0.01   # vy
+    R_noVy = eye(6)
+    R_noVy[0,0] = 1.0   # x
+    R_noVy[1,1] = 1.0   # y
+    R_noVy[2,2] = 0.1   # vx
+    R_noVy[3,3] = 10.0   # ax
+    R_noVy[4,4] = 30.0   # ay
+    R_noVy[5,5] = 0.01    # psiDot
 
-    Q_new = eye(8)
-    Q_new[0,0] = 0.01 # x
-    Q_new[1,1] = 0.01 # y
-    Q_new[2,2] = 0.01  # vx
-    Q_new[3,3] = 0.01  # vy
-    Q_new[4,4] = 1.0  # ax
-    Q_new[5,5] = 1.0  # ay
-    Q_new[6,6] = 0.01 # psi
-    Q_new[7,7] = 1.0 # psiDot
-    R_new = eye(7)
-    R_new[0,0] = 10.0 # x
-    R_new[1,1] = 10.0 # y
-    R_new[2,2] = 0.1    # vx
-    R_new[3,3] = 0.01   # vy
-    R_new[4,4] = 10.0   # ax
-    R_new[5,5] = 10.0   # ay
-    R_new[6,6] = 0.1  # psiDot
+    Q = eye(8)
+    Q[0,0] = 0.01     # x
+    Q[1,1] = 0.01     # y
+    Q[2,2] = 0.5      # vx
+    Q[3,3] = 0.5      # vy
+    Q[4,4] = 1.0      # ax
+    Q[5,5] = 1.0      # ay
+    Q[6,6] = 0.01     # psi
+    Q[7,7] = 10.0     # psiDot
+    R = eye(7)
+    R[0,0] = 0.0005   # x
+    R[1,1] = 0.0005   # y
+    R[2,2] = 0.1      # vx
+    R[3,3] = 0.01     # ax
+    R[4,4] = 10.0     # ay
+    R[5,5] = 20.0     # psiDot
+    R[6,6] = 0.001    # vy
+    thReset = 1.4
 
-    Q_new1 = eye(8)
-    Q_new1[0,0] = 0.1 # x
-    Q_new1[1,1] = 0.1 # y
-    Q_new1[2,2] = 0.5  # vx
-    Q_new1[3,3] = 10.0  # vy
-    Q_new1[4,4] = 1.0  # ax
-    Q_new1[5,5] = 1.0  # ay
-    Q_new1[6,6] = 0.01 # psi
-    Q_new1[7,7] = 1.0 # psiDot
-    R_new1 = eye(7)
-    R_new1[0,0] = 5.0    # x
-    R_new1[1,1] = 5.0    # y
-    R_new1[2,2] = 1.0    # vx
-    R_new1[3,3] = 1.0 # vy
-    R_new1[4,4] = 10.0   # ax
-    R_new1[5,5] = 40.0   # ay
-    R_new1[6,6] = 0.001  # psiDot
+    Q_1 = eye(8)
+    Q_1[0,0] = 0.01     # x
+    Q_1[1,1] = 0.01     # y
+    Q_1[2,2] = 0.5      # vx
+    Q_1[3,3] = 0.5      # vy
+    Q_1[4,4] = 1.0      # ax
+    Q_1[5,5] = 1.0      # ay
+    Q_1[6,6] = 0.01     # psi
+    Q_1[7,7] = 10.0     # psiDot
+    R_1 = eye(7)
+    R_1[0,0] = 5.0      # x
+    R_1[1,1] = 5.0      # y
+    R_1[2,2] = 1.0      # vx
+    R_1[3,3] = 0.0001   # ax
+    R_1[4,4] = 10.0     # ay
+    R_1[5,5] = 20.0     # psiDot
+    R_1[6,6] = 0.001    # vy
+    thReset_1 = 0.4
 
     imu = ImuClass(0.0)
     gps = GpsClass(0.0)
     enc = EncClass(0.0)
     ecu = EcuClass(0.0)
 
-    est = Estimator(0.0,loop_rate,a_delay,df_delay,Q,R)
-    est_new = EstimatorNew(0.0,loop_rate,a_delay,df_delay,Q_new,R_new, 100.4)
-    est_new1 = EstimatorNew(0.0,loop_rate,a_delay,df_delay,Q_new1,R_new1, 100.4)
+    est = EstimatorNoVy(0.0,loop_rate,a_delay,df_delay,Q_noVy,R_noVy)
+    est_new = Estimator(0.0,loop_rate,a_delay,df_delay,Q,R, thReset)
+    est_new1 = Estimator(0.0,loop_rate,a_delay,df_delay,Q_1,R_1, thReset_1)
     
+
+    map = Map("oval")
 
     estMsg = pos_info()
     
     # LOAD EXPERIMENT DATA
     homedir = os.path.expanduser("~")
-    pathSave = os.path.join(homedir,"barc_debugging/estimator_imu.npz")
+    pathSave = os.path.join(homedir,"barc_data/estimator_output.npz")
+    npz_output = np.load(pathSave)
+    x_est_his           = npz_output["x_est_his"]
+    y_est_his           = npz_output["y_est_his"]
+    vx_est_his          = npz_output["vx_est_his"] 
+    vy_est_his          = npz_output["vy_est_his"] 
+    ax_est_his          = npz_output["ax_est_his"] 
+    ay_est_his          = npz_output["ay_est_his"] 
+    psiDot_est_his      = npz_output["psiDot_est_his"]  
+    yaw_est_his         = npz_output["yaw_est_his"]  
+    gps_time            = npz_output["gps_time"]
+    imu_time            = npz_output["imu_time"]
+    enc_time            = npz_output["enc_time"]
+    inp_x_his           = npz_output["inp_x_his"]
+    inp_y_his           = npz_output["inp_y_his"]
+    inp_v_meas_his      = npz_output["inp_v_meas_his"]
+    inp_ax_his          = npz_output["inp_ax_his"]
+    inp_ay_his          = npz_output["inp_ay_his"]
+    inp_psiDot_his      = npz_output["inp_psiDot_his"]
+    inp_a_his           = npz_output["inp_a_his"]
+    inp_df_his          = npz_output["inp_df_his"]
+
+
+    pathSave = os.path.join(homedir,"barc_data/estimator_imu.npz")
     npz_imu = np.load(pathSave)
     psiDot_his        = npz_imu["psiDot_his"]
     roll_his          = npz_imu["roll_his"]
@@ -108,35 +134,40 @@ def main():
     ax_his          = npz_imu["ax_his"]
     ay_his          = npz_imu["ay_his"]
 
-    homedir = os.path.expanduser("~")
-    pathSave = os.path.join(homedir,"barc_debugging/estimator_gps.npz")
+    pathSave = os.path.join(homedir,"barc_data/estimator_gps.npz")
     npz_gps = np.load(pathSave)
     x_his         = npz_gps["x_his"]
     y_his         = npz_gps["y_his"]
 
-    homedir = os.path.expanduser("~")
-    pathSave = os.path.join(homedir,"barc_debugging/estimator_enc.npz")
+    pathSave = os.path.join(homedir,"barc_data/estimator_enc.npz")
     npz_enc = np.load(pathSave)
     v_fl_his     = npz_enc["v_fl_his"]
     v_fr_his     = npz_enc["v_fr_his"]
     v_rl_his     = npz_enc["v_rl_his"]
     v_rr_his     = npz_enc["v_rr_his"]
 
-    homedir = os.path.expanduser("~")
-    pathSave = os.path.join(homedir,"barc_debugging/estimator_ecu.npz")
+    pathSave = os.path.join(homedir,"barc_data/estimator_ecu.npz")
     npz_ecu = np.load(pathSave)
     a_his         = npz_ecu["a_his"]
     df_his        = npz_ecu["df_his"]
 
-    map = Map("oval")
+    fig = plt.figure("track x-y plot")
+    ax1 = fig.add_subplot(1,1,1,ylabel="track x-y plot")
+    # ax1.plot(l.nodes[0],l.nodes[1],color="grey",linestyle="--", alpha=0.3)
+    # ax1.plot(l.nodes_bound1[0],l.nodes_bound1[1],color="red",alpha=0.3)
+    # ax1.plot(l.nodes_bound2[0],l.nodes_bound2[1],color="red",alpha=0.3)
+    ax1.axis("equal")
+    ax1.plot(x_his,y_his,color="blue")
+    ax1.legend()
 
+    plt.show()
     flagHalfLap = False
     plotDebug = False
 
     onVec = [1, 1, 1]
 
     if plotDebug == True:
-        fig, axtr, line_tr, line_tr_new, line_tr_new1, line_pred, line_SS, line_cl, line_cl_new, line_cl_new1, line_gps_cl, rec, rec_new, rec_new1 = _initializeFigure_xy(map, onVec)
+        fig, axtr, line_tr, line_tr_new, line_tr_new1, line_pred, line_SS, line_cl, line_cl_new, line_cl_new1, line_gps_cl, rec, rec_new, rec_new1, recEst = _initializeFigure_xy(map, onVec)
 
     ClosedLoopTraj_gps_x = [] 
     ClosedLoopTraj_gps_y = []
@@ -150,19 +181,16 @@ def main():
 
     maxVx = 0
 
-
-    for i in range(len(a_his)):
-        # READ SENSOR DATA
-        gps.x   = x_his[i]
-        gps.y   = y_his[i]
-        imu.ax  = ax_his[i]
-        imu.ay  = ay_his[i]
-        imu.psiDot  = psiDot_his[i]
-        enc.v_rl    = v_rl_his[i]
-        enc.v_rr    = v_rr_his[i]
-        enc.v_meas  = (v_rl_his[i]+v_rr_his[i])/2
-        ecu.a       = a_his[i]
-        ecu.df      = df_his[i]
+    for i in range(len(inp_ax_his)-1):
+        # READ DATA INPUT TO ESTIMATOR
+        gps.x       = inp_x_his[i]
+        gps.y       = inp_y_his[i]
+        imu.ax      = inp_ax_his[i]
+        imu.ay      = inp_ay_his[i]
+        imu.psiDot  = inp_psiDot_his[i]
+        enc.v_meas  = inp_v_meas_his[i]
+        ecu.a       = inp_a_his[i]
+        ecu.df      = inp_df_his[i]
 
         est.estimateState(imu,gps,enc,ecu,est.ekf)
         est_new.estimateState(imu,gps,enc,ecu,est_new.ekf)
@@ -202,10 +230,7 @@ def main():
                 ClosedLoopTraj_y.append(est.y_est)
                 psi = estimatedStates[3]
                 l = 0.4; w = 0.2
-                car_x = [ x + l * np.cos(psi) - w * np.sin(psi), x + l*np.cos(psi) + w * np.sin(psi),
-                          x - l * np.cos(psi) + w * np.sin(psi), x - l * np.cos(psi) - w * np.sin(psi)]
-                car_y = [ y + l * np.sin(psi) + w * np.cos(psi), y + l * np.sin(psi) - w * np.cos(psi),
-                          y - l * np.sin(psi) - w * np.cos(psi), y - l * np.sin(psi) + w * np.cos(psi)]
+                car_x, car_y = getCar_x_y(x, y, psi, l, w)
 
                 line_cl.set_data(ClosedLoopTraj_x, ClosedLoopTraj_y)
                 line_tr.set_data(estimatedStates[4], estimatedStates[5])
@@ -216,10 +241,7 @@ def main():
                 ClosedLoopTraj_y_new.append(est_new.y_est)
                 psi_new = estimatedStates_new[3]
                 l = 0.4; w = 0.2
-                car_x_new = [ x_new + l * np.cos(psi_new) - w * np.sin(psi_new), x_new + l * np.cos(psi_new) + w * np.sin(psi_new),
-                              x_new - l * np.cos(psi_new) + w * np.sin(psi_new), x_new - l * np.cos(psi_new) - w * np.sin(psi_new)]
-                car_y_new = [ y_new + l * np.sin(psi_new) + w * np.cos(psi_new), y_new + l * np.sin(psi_new) - w * np.cos(psi_new),
-                              y_new - l * np.sin(psi_new) - w * np.cos(psi_new), y_new - l * np.sin(psi_new) + w * np.cos(psi_new)]
+                car_x_new, car_y_new = getCar_x_y(x_new, y_new, psi_new, l, w)
 
                 line_cl_new.set_data(ClosedLoopTraj_x_new, ClosedLoopTraj_y_new)
                 line_tr_new.set_data(estimatedStates_new[4], estimatedStates_new[5])
@@ -229,17 +251,16 @@ def main():
             if onVec[2] == 1:
                 ClosedLoopTraj_x_new1.append(est_new1.x_est) 
                 ClosedLoopTraj_y_new1.append(est_new1.y_est)
-                psi_new1 = estimatedStates_new[3]
+                psi_new1 = estimatedStates_new1[3]
                 l = 0.4; w = 0.2
-                car_x_new1 = [ x_new1 + l * np.cos(psi_new1) - w * np.sin(psi_new1), x_new1 + l * np.cos(psi_new1) + w * np.sin(psi_new1),
-                              x_new1 - l * np.cos(psi_new1) + w * np.sin(psi_new1), x_new1 - l * np.cos(psi_new1) - w * np.sin(psi_new1)]
-                car_y_new1 = [ y_new1 + l * np.sin(psi_new1) + w * np.cos(psi_new1), y_new1 + l * np.sin(psi_new1) - w * np.cos(psi_new1),
-                              y_new1 - l * np.sin(psi_new1) - w * np.cos(psi_new1), y_new1 - l * np.sin(psi_new1) + w * np.cos(psi_new1)]
+                car_x_new1, car_y_new1 = getCar_x_y(x_new1, y_new1, psi_new1, l, w)
 
                 line_cl_new1.set_data(ClosedLoopTraj_x_new1, ClosedLoopTraj_y_new1)
                 line_tr_new1.set_data(estimatedStates_new1[4], estimatedStates_new1[5])
                 rec_new1.set_xy(np.array([car_x_new1, car_y_new1]).T)
             
+            car_xEst, car_yEst = getCar_x_y(x_est_his[i], y_est_his[i], yaw_est_his[i], l, w)
+            recEst.set_xy(np.array([car_xEst, car_yEst]).T)
 
             line_gps_cl.set_data(ClosedLoopTraj_gps_x, ClosedLoopTraj_gps_y)
             maxVx = np.maximum(maxVx, estimatedStates[0])
@@ -251,17 +272,8 @@ def main():
                 fig.canvas.draw()
 
 
-
-        imu.saveHistory()
-        gps.saveHistory()
-        enc.saveHistory()
-        ecu.saveHistory()
-        est.saveHistory()
-        est_new.saveHistory()
-        est_new1.saveHistory()
-
     homedir = os.path.expanduser("~")
-    pathSave = os.path.join(homedir,"barc_debugging_play_back/estimator_output.npz")
+    pathSave = os.path.join(homedir,"barc_estimator_play_back/estimator_output.npz")
     np.savez(pathSave,yaw_est_his       = est.yaw_est_his,
                       psiDot_est_his    = est.psiDot_est_his,
                       x_est_his         = est.x_est_his,
@@ -270,9 +282,17 @@ def main():
                       vy_est_his        = est.vy_est_his,
                       ax_est_his        = est.ax_est_his,
                       ay_est_his        = est.ay_est_his,
-                      estimator_time    = est.time_his)
+                      estimator_time    = est.time_his,
+                      inp_x_his         = est.x_his,
+                      inp_y_his         = est.y_his,
+                      inp_v_meas_his    = est.v_meas_his,
+                      inp_ax_his        = est.ax_his,
+                      inp_ay_his        = est.ay_his,
+                      inp_psiDot_his    = est.psiDot_his,
+                      inp_a_his         = est.a_his,
+                      inp_df_his        = est.df_his)
 
-    pathSave = os.path.join(homedir,"barc_debugging_play_back/estimator_imu.npz")
+    pathSave = os.path.join(homedir,"barc_estimator_play_back/estimator_imu.npz")
     np.savez(pathSave,psiDot_his    = imu.psiDot_his,
                       roll_his      = imu.roll_his,
                       pitch_his     = imu.pitch_his,
@@ -281,19 +301,19 @@ def main():
                       ay_his        = imu.ay_his,
                       imu_time      = imu.time_his)
 
-    pathSave = os.path.join(homedir,"barc_debugging_play_back/estimator_gps.npz")
+    pathSave = os.path.join(homedir,"barc_estimator_play_back/estimator_gps.npz")
     np.savez(pathSave,x_his         = gps.x_his,
                       y_his         = gps.y_his,
                       gps_time      = gps.time_his)
 
-    pathSave = os.path.join(homedir,"barc_debugging_play_back/estimator_enc.npz")
+    pathSave = os.path.join(homedir,"barc_estimator_play_back/estimator_enc.npz")
     np.savez(pathSave,v_fl_his          = enc.v_fl_his,
                       v_fr_his          = enc.v_fr_his,
                       v_rl_his          = enc.v_rl_his,
                       v_rr_his          = enc.v_rr_his,
                       enc_time          = enc.time_his)
 
-    pathSave = os.path.join(homedir,"barc_debugging_play_back/estimator_ecu.npz")
+    pathSave = os.path.join(homedir,"barc_estimator_play_back/estimator_ecu.npz")
     np.savez(pathSave,a_his         = ecu.a_his,
                       df_his        = ecu.df_his,
                       ecu_time      = ecu.time_his)
@@ -307,6 +327,7 @@ def main():
         plt.plot(range(0,len(est_new.vx_est_his)), est_new.vx_est_his, '-sb')
     if onVec[2] == 1:
         plt.plot(range(0,len(est_new1.vx_est_his)), est_new1.vx_est_his, '--og')
+    plt.plot(range(0,len(vx_est_his)), vx_est_his, '--sk')
     plt.ylabel('vx')
 
     plt.figure(11)
@@ -316,6 +337,7 @@ def main():
         plt.plot(range(0,len(est_new.vy_est_his)), est_new.vy_est_his, '-sb')
     if onVec[2] == 1:
         plt.plot(range(0,len(est_new1.vy_est_his)), est_new1.vy_est_his, '--og')
+    plt.plot(range(0,len(vy_est_his)), vy_est_his, '--sk')
     plt.ylabel('vy')
 
     plt.figure(12)
@@ -325,6 +347,7 @@ def main():
         plt.plot(range(0,len(est_new.psiDot_est_his)), est_new.psiDot_est_his, '-sb')
     if onVec[2] == 1:
         plt.plot(range(0,len(est_new1.psiDot_est_his)), est_new1.psiDot_est_his, '--og')
+    plt.plot(range(0,len(psiDot_est_his)), psiDot_est_his, '--sk')
     plt.ylabel('wz')
 
     plt.figure(13)
@@ -334,6 +357,7 @@ def main():
         plt.plot(range(0,len(est_new.yaw_est_his)), est_new.yaw_est_his, '-sb')
     if onVec[2] == 1:
         plt.plot(range(0,len(est_new1.yaw_est_his)), est_new1.yaw_est_his, '--og')
+    plt.plot(range(0,len(yaw_est_his)), yaw_est_his, '--sk')
     plt.ylabel('psi')
 
     plt.figure(14)
@@ -343,6 +367,7 @@ def main():
         plt.plot(range(0,len(est_new.x_est_his)), est_new.x_est_his, '-sb')
     if onVec[2] == 1:
         plt.plot(range(0,len(est_new1.x_est_his)), est_new1.x_est_his, '--og')
+    plt.plot(range(0,len(x_est_his)), x_est_his, '--sk')
     plt.ylabel('x')
 
     plt.figure(15)
@@ -352,10 +377,20 @@ def main():
         plt.plot(range(0,len(est_new.y_est_his)), est_new.y_est_his, '-sb')
     if onVec[2] == 1:
         plt.plot(range(0,len(est_new1.y_est_his)), est_new1.y_est_his, '--og')
+    plt.plot(range(0,len(y_est_his)), y_est_his, '--sk')
     plt.ylabel('y')
 
-    plt.show()
     pdb.set_trace()
+
+    plt.show()
+
+def getCar_x_y(x, y, psi, l, w):
+    car_x = [ x + l * np.cos(psi) - w * np.sin(psi), x + l*np.cos(psi) + w * np.sin(psi),
+              x - l * np.cos(psi) + w * np.sin(psi), x - l * np.cos(psi) - w * np.sin(psi)]
+    car_y = [ y + l * np.sin(psi) + w * np.cos(psi), y + l * np.sin(psi) - w * np.cos(psi),
+              y - l * np.sin(psi) - w * np.cos(psi), y - l * np.sin(psi) + w * np.cos(psi)]
+
+    return car_x, car_y
 
 def _initializeFigure_xy(map, onVec):
     xdata = []; ydata = []
@@ -394,6 +429,7 @@ def _initializeFigure_xy(map, onVec):
     rec = patches.Polygon(v, alpha=0.5,closed=True, fc='r', ec='k',zorder=10)
     rec_new = patches.Polygon(v, alpha=0.5,closed=True, fc='b', ec='k',zorder=10)
     rec_new1 = patches.Polygon(v, alpha=0.5,closed=True, fc='g', ec='k',zorder=10)
+    recEst = patches.Polygon(v, alpha=0.5,closed=True, fc='y', ec='k',zorder=10)
     if onVec[0] == 1:
         axtr.add_patch(rec)
     if onVec[1] == 1:
@@ -401,11 +437,13 @@ def _initializeFigure_xy(map, onVec):
     if onVec[2] == 1:
         axtr.add_patch(rec_new1)
 
+    axtr.add_patch(recEst)
+
     plt.show()
 
-    return fig, axtr, line_tr, line_tr_new, line_tr_new1, line_pred, line_SS, line_cl, line_cl_new, line_cl_new1, line_gps_cl, rec, rec_new, rec_new1
+    return fig, axtr, line_tr, line_tr_new, line_tr_new1, line_pred, line_SS, line_cl, line_cl_new, line_cl_new1, line_gps_cl, rec, rec_new, rec_new1, recEst
 
-class Estimator(object):
+class EstimatorNoVy(object):
     def __init__(self,t0,loop_rate,a_delay,df_delay,Q,R):
         """ Initialization
         Arguments:
@@ -449,6 +487,15 @@ class Estimator(object):
         self.psiDot_est_his     = []
         self.time_his           = []
 
+        # SAVE THE measurement/input SEQUENCE USED BY KF
+        self.x_his      = []
+        self.y_his      = []
+        self.v_meas_his = []
+        self.ax_his     = []
+        self.ay_his     = []
+        self.psiDot_his = []
+        self.a_his      = []
+        self.df_his     = []
     # ecu command update
     def estimateState(self,imu,gps,enc,ecu,KF):
         self.a_his.append(ecu.a)
@@ -460,8 +507,17 @@ class Estimator(object):
         y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot, sin(bta)*enc.v_meas])
         y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot])
 
+        if np.abs(imu.psiDot) < 0.5:
+            self.z[3] = 0.0001
+
         KF(y,u)
 
+        imu.saveHistory()
+        gps.saveHistory()
+        enc.saveHistory()
+        ecu.saveHistory()
+        self.saveHistory()
+        
     def ekf(self, y, u):
         
         xDim    = self.z.size                           # dimension of the state
@@ -567,7 +623,7 @@ class Estimator(object):
         self.yaw_est_his.append(self.yaw_est)
         self.psiDot_est_his.append(self.psiDot_est)
 
-class EstimatorNew(object):
+class Estimator(object):
     """ Object collecting  estimated state data
     Attributes:
         Estimated states:
@@ -642,6 +698,16 @@ class EstimatorNew(object):
         self.psiDot_est_his     = []
         self.time_his           = []
 
+        # SAVE THE measurement/input SEQUENCE USED BY KF
+        self.x_his      = []
+        self.y_his      = []
+        self.v_meas_his = []
+        self.ax_his     = []
+        self.ay_his     = []
+        self.psiDot_his = []
+        self.a_his      = []
+        self.df_his     = []
+
     # ecu command update
     def estimateState(self,imu,gps,enc,ecu,KF):
         """Do extended Kalman filter to estimate states"""
@@ -682,9 +748,15 @@ class EstimatorNew(object):
         ecu.df_his.append(u[1])
 
         if np.abs(imu.psiDot) < self.thReset:
-            self.z[3] = 0.0001
+            self.z[3] = 0.0
 
         KF(y,u, modeGPS)
+
+        imu.saveHistory()
+        gps.saveHistory()
+        enc.saveHistory()
+        ecu.saveHistory()
+        self.saveHistory()
 
 
     def ekf(self, y, u, modeGPS):
@@ -997,7 +1069,7 @@ class EncClass(object):
         self.v_fr = data.vel_fr
         self.v_rl = data.vel_bl
         self.v_rr = data.vel_br
-        v_est = (self.v_rl + self.v_rr)/2
+        v_est = self.v_rr
         if v_est != self.v_prev:
             self.v_meas = v_est
             self.v_prev = v_est
@@ -1039,7 +1111,7 @@ class EcuClass(object):
         # ECU measurement history
         self.a_his  = []
         self.df_his = []
-        
+    
         # time stamp
         self.t0         = t0
         self.time_his   = []

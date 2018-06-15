@@ -17,11 +17,11 @@ class Map():
         if flagTrackShape == 0:
             selectedTrack = rospy.get_param("trackShape")
         else:
-            selectedTrack = "oval"
+            selectedTrack = flagTrackShape
 
         if selectedTrack == "3110":
             self.halfWidth = 1.0
-            self.slack     = 0.15
+            self.slack     = 0.45
             spec = np.array([[60 * 0.03, 0],
                              [80 * 0.03, +80 * 0.03 * 2 / np.pi],
                              # Note s = 1 * np.pi / 2 and r = -1 ---> Angle spanned = np.pi / 2

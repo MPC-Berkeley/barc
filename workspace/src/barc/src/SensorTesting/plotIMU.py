@@ -25,30 +25,65 @@ def main():
 
     loop_rate = 100
     rate = rospy.Rate(loop_rate)
+    
+    plotAcc = False
 
-    fig, ax1, ax2, yawRatePlot, yawMeaPlot, yawIntPlot = _initializeFigureIMU()
+    if plotAcc == False:
+        fig, ax1, ax2, yawRatePlot, yawMeaPlot, yawIntPlot = _initializeFigureIMU()
+    else:
+        fig, ax1, ax2, axFig, ayFig, _ = _initializeFigureIMU()
 
+    ax_raw  = []
+    ay_raw  = []
     yaw_raw = []
     yaw_int = []
     yawRate = []
     time    = []
     
     counter = 0
+
+
     while not rospy.is_shutdown():
+
+
+        # ori = imu.orientation
+        # quaternion = (ori.x, ori.y, ori.z, ori.w)
+        # (roll_raw, pitch_raw, dummy) = transformations.euler_from_quaternion(quaternion)
+        # self.roll   = roll_raw
+        # self.pitch  = pitch_raw
+
+        # w_z = imu.angular_velocity.z
+        a_x = imu.ax
+        a_y = imu.ay
+        # a_z = imu.linear_acceleration.z
+
         yaw_raw.append(imu.yaw) 
         yaw_int.append(imu.yawInt)
         yawRate.append(imu.psiDot)
+        ax_raw.append(a_x)
+        ay_raw.append(a_y)
+
+
         time.append(counter)
         counter += 1
 
-        yawRatePlot.set_data(time, yawRate)
-        ax1.set_xlim([0, counter])
-        ax1.set_ylim([-10, 10])
-        
-        yawMeaPlot.set_data(time, yaw_raw)
-        yawIntPlot.set_data(time, yaw_int)
-        ax2.set_xlim([0, counter])
-        ax2.set_ylim([-10, 10])
+        if plotAcc == True:
+            axFig.set_data(time, ax_raw)
+            ax1.set_xlim([0, counter])
+            ax1.set_ylim([-10, 10])
+            
+            ayFig.set_data(time, ay_raw)
+            ax2.set_xlim([0, counter])
+            ax2.set_ylim([-10, 10])
+        else:
+            yawRatePlot.set_data(time, yawRate)
+            ax1.set_xlim([0, counter])
+            ax1.set_ylim([-10, 10])
+            
+            yawMeaPlot.set_data(time, yaw_raw)
+            yawIntPlot.set_data(time, yaw_int)
+            ax2.set_xlim([0, counter])
+            ax2.set_ylim([-10, 10])
         
         fig.canvas.draw()
 
@@ -60,6 +95,8 @@ def main():
     pickle.dump(yawRate, file_data)
     pickle.dump(yaw_raw, file_data)   
     pickle.dump(yaw_int, file_data)   
+    pickle.dump(ax_raw, file_data)   
+    pickle.dump(ay_raw, file_data)   
 
 class ImuClass(object):
     """ Object collecting GPS measurement data
@@ -139,8 +176,10 @@ class ImuClass(object):
 
         self.psiDot = w_z
         # Transformation from imu frame to vehicle frame (negative roll/pitch and reversed matrix multiplication to go back)
-        self.ax = cos(-pitch_raw)*a_x + sin(-pitch_raw)*sin(-roll_raw)*a_y - sin(-pitch_raw)*cos(-roll_raw)*a_z
-        self.ay = cos(-roll_raw)*a_y + sin(-roll_raw)*a_z
+        # self.ax = cos(-pitch_raw)*a_x + sin(-pitch_raw)*sin(-roll_raw)*a_y - sin(-pitch_raw)*cos(-roll_raw)*a_z
+        # self.ay = cos(-roll_raw)*a_y + sin(-roll_raw)*a_z
+        self.ax = a_x
+        self.ay = a_y
 
         self.prev_time = self.curr_time
 
