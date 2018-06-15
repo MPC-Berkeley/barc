@@ -1,0 +1,35 @@
+
+videoDevicePath: "/dev/video6"
+width:        640
+height:       480
+brightness:   0
+contrast:     50
+saturation:   255
+hue:          130
+
+mtx:  [[592.156892, 0.000000, 326.689246], [0.000000, 584.923917, 282.822026], [0.000000, 0.000000, 1.000000]]
+dist: [-0.585868, 0.248490, -0.023236, -0.002907, 0.000000]
+
+reference_velocity: 0.3
+numMovingAveragePoints: 5
+
+loop_rate:                   30
+colorFilter:                 True 
+overlayPointsOnColoredImage: False
+kernel_size:                 11
+
+lower_red: [0,40,100]
+upper_red: [50,140,255]
+
+lower_white: [180,180,180]
+upper_white: [255,255,255]
+
+boxsize: 10
+numStepsToLookAhead: 7
+converge_limit: 100
+
+f1Matrix:                   [1.710768660382783,-6.524484283908889,9.358279011682356,0.197256906693595]
+f2Matrix:                   [-6.999999999999822,93.499999999998010,-4.434999999999930e+02,8.449999999999919e+02]
+bMatrix:                    [0.508333333333392,-4.725000000000643,12.716666666668870,-13.200000000002325]
+yPixel_to_xInertial_Matrix: [6.411145374020274e-09,-1.983283503342550e-06,2.174079857675368e-04,-0.001870860719666,1.201296365747060]
+xInertial_to_yPixel_Matrix: [-2.212644307796434,35.129696915321540,-2.112454027397255e+02,5.899326913808403e+02,-4.600797581597852e+02]
