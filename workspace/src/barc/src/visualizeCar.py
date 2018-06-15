@@ -49,6 +49,7 @@ class Plotter(object):
         # PLOT DATA INITIALIZATION
         self.x = 0.0
         self.y = 0.0
+        self.state = zeros(8) # infomation about vehicle current state
         car_dx = 2*rospy.get_param("L_a")
         car_dy = 0.125
         car_x = [car_dx, car_dx, -car_dx, -car_dx, car_dx]
@@ -81,7 +82,7 @@ class Plotter(object):
         self.cost = [0]*5
         self.v_avg = zeros(5)
         self.lapTime_s = [self.ax.annotate("Time: 0.00s, It: 0, v: 0.00 m/s", xy=[0.5,(0.6*i+5)/(len(self.lapTime)+10)], xycoords= "axes fraction", 
-                                               fontsize=10, verticalalignment="top", horizontalalignment="center") for i in range(5)]
+                                               fontsize=12, verticalalignment="top", horizontalalignment="center") for i in range(5)]
 
         rospy.init_node("visualizeCar")
         rospy.Subscriber("pos_info",         pos_info,         self.posInfo_callback, queue_size=1)
@@ -92,16 +93,21 @@ class Plotter(object):
     def updatePlot(self):
         self.car_h.set_data(self.car_update[0],self.car_update[1])
 
+        # estimator trajectory
         num = min(len(self.traj_x),len(self.traj_y))
         self.traj_h.set_data(self.traj_x[:num],self.traj_y[:num])
+        # hedge_imu_fusion trajectory (100hz)
         num = min(len(self.gps_x),len(self.gps_y))
         self.gps_h.set_data(self.gps_x[:num],self.gps_y[:num])
+        # hedge_pos trajectory (16hz)
         num = min(len(self.hedge_x),len(self.hedge_y))
         self.hedge_h.set_data(self.hedge_x[:num],self.hedge_y[:num])
 
         self.pre_h.set_data(self.pre_x,self.pre_y)
         self.SS_h.set_data(self.SS_x,self.SS_y)
         self.sysID_h.set_data(self.sysID_x,self.sysID_y)
+
+        self.ax.set_xlabel("Lap: {}, vx: {} m/s, vy: {} m/s, ax: {} m/s2, ay: {} m/s2, psiDot: {} rad/s, a: {} m/s2, df: {} rad".format(int(self.state[7]), self.state[0], self.state[1], self.state[2], self.state[3], self.state[4], self.state[5], self.state[6]))
 
     def updateLapTime(self):
         if len(self.lapTime)<len(self.lapTime_s):
@@ -153,6 +159,7 @@ class Plotter(object):
     def mpcVis_callback(self,mpc_vis):
         self.pre_x   = mpc_vis.z_x
         self.pre_y   = mpc_vis.z_y
+        self.state   = np.round(mpc_vis.state,2)
         self.SS_x    = mpc_vis.SS_x
         self.SS_y    = mpc_vis.SS_y
         self.sysID_x = mpc_vis.z_iden_x

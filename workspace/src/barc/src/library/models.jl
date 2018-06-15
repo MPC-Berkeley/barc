@@ -134,7 +134,7 @@ export MdlPf,MdlKin,MdlId,MdlIdLin,MdlDynLin,MdlKinLin
             dt   = 0.1
             L_a  = get_param("L_a")
             L_b  = get_param("L_b")
-            u_lb = [-1    -18/180*pi]
+            u_lb = [-0.5    -18/180*pi]
             u_ub = [ 2     18/180*pi]
             z_lb = [-Inf -Inf -Inf -0.5] # 1.s 2.ey 3.epsi 4.v
             z_ub = [ Inf  Inf  Inf  6.0] # 1.s 2.ey 3.epsi 4.v
@@ -945,10 +945,10 @@ import CarSim:carPreDyn, carPreId
         setvalue(mdl.c,             curvature)
         setvalue(mdl.selStates,     agent.SS.selStates)
         setvalue(mdl.stateCost,     agent.SS.stateCost)
-        setvalue(mdl.GP_ey_e,       agent.gpData.GP_ey_e)
-        setvalue(mdl.GP_epsi_e,     agent.gpData.GP_epsi_e)
-        setvalue(mdl.GP_vy_e,       agent.gpData.GP_vy_e)
-        setvalue(mdl.GP_psiDot_e,   agent.gpData.GP_psiDot_e)
+        setvalue(mdl.GP_ey_e,       agent.gpData.GP_ey)
+        setvalue(mdl.GP_epsi_e,     agent.gpData.GP_epsi)
+        setvalue(mdl.GP_vy_e,       agent.gpData.GP_vy)
+        setvalue(mdl.GP_psiDot_e,   agent.gpData.GP_psiDot)
 
         agent.mpcSol.sol_status  = solve(mdl.mdl)
         agent.mpcSol.u = getvalue(mdl.u_Ol)

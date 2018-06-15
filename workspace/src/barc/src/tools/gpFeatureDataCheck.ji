@@ -1,0 +1,87 @@
+#=
+This file try variations on GP training data
+GP parameters can be tuned using this file
+=#
+
+using JLD
+using PyPlot
+
+function GP_prepare_kin(e::Array{Float64,1},feature_state::Array{Float64,2})
+    num = size(feature_state,1)
+    Z=zeros(num,num)
+    for i = 1:num
+        for j=1:num
+            z = feature_state[i,2:6]-feature_state[j,2:6]
+            Z[i,j] = (z[1]^2+z[2]^2+5*z[3]^2+z[4]^2+5*z[5]^2)
+        end
+    end
+    K = exp(-5.0*Z)
+
+    return K\e
+end
+function GP_full_kin(z::Array{Float64,2},u::Array{Float64,2},feature_state::Array{Float64,2},GP_prepare::Array{Float64,1})
+    state = hcat(z,u)
+    z = feature_state[:,2:6].-state[1,2:6]
+    Z = z[:,1].^2+z[:,2].^2+5*z[:,3].^2+z[:,4].^2+5*z[:,5].^2
+    k = exp(-5.0*Z)
+    GP_e = k'*GP_prepare
+    return GP_e[1]
+end
+
+folder_name = "simulations"
+file_name = "GP-KIN"
+data = load("$(homedir())/$(folder_name)/$(file_name).jld")
+println("Load data from $(homedir())/$(folder_name)/$(file_name).jld")
+
+feature_GP_s_e      = data["e_s"]
+feature_GP_ey_e     = data["e_ey"]
+feature_GP_epsi_e   = data["e_epsi"]
+feature_GP_vx_e     = data["e_vx"]
+feature_GP_vy_e     = data["e_vy"]
+feature_GP_psiDot_e = data["e_psiDot"]
+figure("One step prediction error-$(file_name)")
+subplot(3,2,1); plot(feature_GP_s_e,     "-",alpha=0.5); ylabel("GP_s");     grid("on")
+subplot(3,2,2); plot(feature_GP_ey_e,    "-",alpha=0.5); ylabel("GP_ey");    grid("on")
+subplot(3,2,3); plot(feature_GP_epsi_e,  "-",alpha=0.5); ylabel("GP_epsi");  grid("on")
+subplot(3,2,4); plot(feature_GP_vx_e,    "-",alpha=0.5); ylabel("GP_vx");    grid("on")
+subplot(3,2,5); plot(feature_GP_vy_e,    "-",alpha=0.5); ylabel("GP_vy");    grid("on")
+subplot(3,2,6); plot(feature_GP_psiDot_e,"-",alpha=0.5); ylabel("GP_psiDot");grid("on")
+
+num_sps         	= 2
+feature_GP_z      	= data["z"]
+feature_GP_u      	= data["u"]
+feature_GP_z   		= feature_GP_z[1:num_sps:end,:]
+feature_GP_u   		= feature_GP_u[1:num_sps:end,:]
+feature_GP     		= hcat(feature_GP_z,feature_GP_u)
+feature_GP_s_e		= feature_GP_s_e[1:num_sps:end]
+feature_GP_ey_e		= feature_GP_ey_e[1:num_sps:end]
+feature_GP_epsi_e	= feature_GP_epsi_e[1:num_sps:end]
+feature_GP_vx_e		= feature_GP_vx_e[1:num_sps:end]
+feature_GP_vy_e		= feature_GP_vy_e[1:num_sps:end]
+feature_GP_psiDot_e	= feature_GP_psiDot_e[1:num_sps:end]
+
+# full GPR testing
+feature_GP_e = feature_GP_epsi_e
+GP_e_check 	 = zeros(size(feature_GP,1))
+GP_e_prepare = GP_prepare_kin(feature_GP_e,feature_GP)
+# do state variation
+function bound(num,threshold)
+	n = randn(num)
+	n_new = max(n,-threshold)
+	n_new = min(n_new,threshold)
+	return n_new
+end
+feature_GP_z[:,2] += bound(size(feature_GP_z,1),0.3)
+feature_GP_z[:,3] += bound(size(feature_GP_z,1),0.2)
+feature_GP_z[:,4] += bound(size(feature_GP_z,1),0.3)
+feature_GP_u[:,1] += bound(size(feature_GP_z,1),0.3)
+feature_GP_u[:,2] += bound(size(feature_GP_z,1),0.1)
+for i = 1:size(feature_GP,1)
+	GP_e_check[i] = GP_full_kin(feature_GP_z[i,:],feature_GP_u[i,:],feature_GP,GP_e_prepare)
+end
+
+figure("GP function check")
+plot(feature_GP_e, "-", alpha=0.5)
+plot(GP_e_check, "o", alpha=1.0)
+grid("on")
+show()

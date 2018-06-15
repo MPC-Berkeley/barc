@@ -54,11 +54,11 @@ def main():
     R = eye(7)
     R[0,0] = 10.0 	# R_x
     R[1,1] = 10.0 	# R_y
-    R[2,2] = 0.1 	  # R_vx
+    R[2,2] = 0.1 	# R_vx
     R[3,3] = 0.01 	# R_ax
     R[4,4] = 10.0 	# R_ay
     R[5,5] = 10.0 	# R_psiDot
-    R[6,6] = 0.1 	  # R_vy
+    R[6,6] = 0.1 	# R_vy
 
     t0 = rospy.get_rostime().to_sec()
     imu = ImuClass(t0)
@@ -203,8 +203,8 @@ class Estimator(object):
         self.dt     = dt
         self.a_delay        = a_delay
         self.df_delay       = df_delay
-        self.a_his          = [0.0]*int(a_delay/dt)
-        self.df_his         = [0.0]*int(df_delay/dt)
+        self.motor_his      = [0.0]*int(a_delay/dt)
+        self.servo_his      = [0.0]*int(df_delay/dt)
 
         self.state_pub_pos  = rospy.Publisher('pos_info', pos_info, queue_size=1)
         self.t0             = t0
@@ -259,18 +259,14 @@ class Estimator(object):
         """Do extended Kalman filter to estimate states"""
         self.curr_time = rospy.get_rostime().to_sec() - self.t0
 
-        self.a_his.append(ecu.a)
-        self.df_his.append(ecu.df)
-        u = [self.a_his.pop(0), self.df_his.pop(0)]
+        self.motor_his.append(ecu.a)
+        self.servo_his.append(ecu.df)
+        u = [self.motor_his.pop(0), self.servo_his.pop(0)]
         
         # y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot])
         y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot, 0.5*u[1]*enc.v_meas])
         # y = np.array([gps.x_ply, gps.y_ply, enc.v_meas, imu.ax, imu.ay, imu.psiDot])
         KF(y,u)
-
-        # HARD RESET FOR VY FOR SMALL psiDot
-        # if abs(y[5])<0.3:
-        #   self.z[3] = 0.0
 
         # SAVE THE measurement/input SEQUENCE USED BY KF
         self.x_his.append(y[0])
