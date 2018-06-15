@@ -661,6 +661,7 @@ class Estimator(object):
         self.thReset = thReset
 
         dt          = 1.0 / loop_rate
+        self.rate   = 50
         L_f         = 0.125       # distance from CoG to front axel
         L_r         = 0.125       # distance from CoG to rear axel
         self.vhMdl  = (L_f, L_r)
@@ -685,7 +686,8 @@ class Estimator(object):
         self.ay_est         = 0.0
         self.yaw_est        = 0.0
         self.psiDot_est     = 0.0
-        self.psiDot_drift_est = 0.0
+        self.psiDrift_est   = 0.0
+        self.curr_time      = 0.0
 
         self.x_est_his          = []
         self.y_est_his          = []
@@ -705,13 +707,20 @@ class Estimator(object):
         self.ax_his     = []
         self.ay_his     = []
         self.psiDot_his = []
-        self.a_his      = []
-        self.df_his     = []
+        self.inp_a_his  = []
+        self.inp_df_his = []
+
+        self.gps_time = []
+        self.enc_time = []
+        self.imu_time = []
+
+        self.oldGPS_x = 0.0
+        self.oldGPS_y = 0.0
 
     # ecu command update
     def estimateState(self,imu,gps,enc,ecu,KF):
         """Do extended Kalman filter to estimate states"""
-        self.curr_time = 0
+        self.curr_time = 0.0
 
         self.a_his.append(ecu.a)
         self.df_his.append(ecu.df)
@@ -719,7 +728,6 @@ class Estimator(object):
         # u = [ecu.a, self.df_his.pop(0)]
         
         bta = 0.5 * u[1]
-
         dist   = np.sqrt(( self.x_est - gps.x )**2 + ( self.y_est - gps.y )**2)
 
         # if ( dist >= 1 ) or ( (gps.x == self.oldGPS_x) and (gps.x == self.oldGPS_y) ):
@@ -731,33 +739,28 @@ class Estimator(object):
             modeGPS = True
             y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot, bta * enc.v_meas])
 
+
         self.oldGPS_x = gps.x
         self.oldGPS_y = gps.y
 
-        gps.x_his = np.append(gps.x_his,y[0])
-        gps.y_his = np.append(gps.y_his,y[1])
-        enc.v_fl_his.append(enc.v_meas)
-        enc.v_fr_his.append(enc.v_meas)
-        enc.v_rl_his.append(enc.v_meas)
-        enc.v_rr_his.append(enc.v_meas)
-        enc.v_meas_his.append(enc.v_meas)
-        imu.ax_his.append(imu.ax)
-        imu.ay_his.append(imu.ay)
-        imu.psiDot_his.append(imu.psiDot)
-        ecu.a_his.append(u[0])
-        ecu.df_his.append(u[1])
-
         if np.abs(imu.psiDot) < self.thReset:
-            self.z[3] = 0.0
+            self.z[3] = 0
 
         KF(y,u, modeGPS)
 
-        imu.saveHistory()
-        gps.saveHistory()
-        enc.saveHistory()
-        ecu.saveHistory()
-        self.saveHistory()
 
+        # SAVE THE measurement/input SEQUENCE USED BY KF
+        self.x_his.append(gps.x)
+        self.y_his.append(gps.y)
+        self.v_meas_his.append(enc.v_meas)
+        self.ax_his.append(imu.ax)
+        self.ay_his.append(imu.ay)
+        self.psiDot_his.append(imu.psiDot)
+        self.inp_a_his.append(u[0])
+        self.inp_df_his.append(u[1])
+
+        # SAVE output KF given the above measurements
+        self.saveHistory()
 
     def ekf(self, y, u, modeGPS):
         """
@@ -805,8 +808,6 @@ class Estimator(object):
             self.P  = dot(dot(K,self.R),K.T) + dot( dot( (eye(xDim) - dot(K,H)) , P_kp1)  ,  (eye(xDim) - dot(K,H)).T )
         else:
             self.P  = dot(dot(K,self.R[2:,2:]),K.T) + dot( dot( (eye(xDim) - dot(K,H)) , P_kp1)  ,  (eye(xDim) - dot(K,H)).T )
-
-
 
         (self.x_est, self.y_est, self.vx_est, self.vy_est, self.ax_est, self.ay_est, self.yaw_est, self.psiDot_est) = self.z
 
@@ -924,6 +925,7 @@ class Estimator(object):
         self.ay_est_his.append(self.ay_est)
         self.yaw_est_his.append(self.yaw_est)
         self.psiDot_est_his.append(self.psiDot_est)
+
 
 class ImuClass(object):
     

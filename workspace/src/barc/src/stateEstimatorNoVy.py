@@ -43,14 +43,14 @@ def main():
    
 
     Q = eye(8)
-    Q[0,0] = 0.01    # x
-    Q[1,1] = 0.01    # y
+    Q[0,0] = 0.05    # x
+    Q[1,1] = 0.05    # y
     Q[2,2] = 0.01    # vx
     Q[3,3] = 0.01    # vy
     Q[4,4] = 1.0     # ax
     Q[5,5] = 1.0     # ay
-    Q[6,6] = 1.0     # psi
-    Q[7,7] = 10.0    # psiDot
+    Q[6,6] = 5.0     # psi
+    Q[7,7] = 50.0    # psiDot
     R = eye(6)
     R[0,0] = 1.0     # x
     R[1,1] = 1.0     # y
@@ -320,7 +320,7 @@ class Estimator(object):
         self.oldGPS_y = gps.y
 
         if np.abs(imu.psiDot) < self.thReset:
-            self.z[3] = 0
+            self.z[3] = 0.000001
 
         KF(y,u, modeGPS)
 

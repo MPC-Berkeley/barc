@@ -52,11 +52,11 @@ def main():
     map = Map()                                              # Map
     
     # Choose Controller and Number of Laps
-    PickController = "LMPC"
+    PickController = "TI_MPC"
     NumberOfLaps   = 20
     vt = 1.0
     PathFollowingLaps = 1
-    PIDnoise = np.array([0.5, 1.0]) # noise on [Steering, Acceleration] 
+    PIDnoise = np.array([0.2, 1.0]) # noise on [Steering, Acceleration] 
     ControllerLap0, Controller,  OpenLoopData   = ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PIDnoise)
                  
     # Initialize variables for main loop
@@ -104,6 +104,10 @@ def main():
                 ControllerLap0.solve(LocalState)
                 cmd.servo = ControllerLap0.uPred[0,0]
                 cmd.motor = ControllerLap0.uPred[0,1]
+                # cmd.servo = 0.0 #ControllerLap0.uPred[0,0]
+                # cmd.motor = 0.3 #ControllerLap0.uPred[0,1]
+
+
                 uApplied = np.array([cmd.servo, cmd.motor])
                 # Publish input
                 input_commands.publish(cmd)
