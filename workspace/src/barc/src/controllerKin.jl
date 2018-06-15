@@ -51,7 +51,7 @@ function main()
     solvePf(mdlPf,agent)
     if !raceSet.PF_FLAG
         mdlLMPC = MdlKin(agent)
-        GPR(agent)
+        gprKin(agent)
         findSS(agent)
         solveKin(mdlLMPC,agent)
     end
@@ -107,7 +107,7 @@ function main()
 
             # GAUSSIAN PROCESS
             if raceSet.GP_LOCAL_FLAG || raceSet.GP_FULL_FLAG
-                GPR(agent)
+                gprKin(agent)
                 gpResultCollect(agent)
                 findSS(agent)
                 solveKin(mdlLMPC,agent)

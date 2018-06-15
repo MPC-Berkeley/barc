@@ -315,11 +315,11 @@ class Estimator(object):
             self.psiDot_count += 1
         self.pkg_count += 1
 
-        xDim    = self.z.size                           # dimension of the state
-        mx_kp1  = self.f(self.z, u)                     # predict next state
-        A       = self.numerical_jac(self.f, self.z, u) # linearize process model about current state
+        xDim    = self.z.size                               # dimension of the state
+        mx_kp1  = self.f(self.z, u)                         # predict next state
+        A       = self.numerical_jac(self.f, self.z, u)     # linearize process model about current state
         P_kp1   = dot(dot(A,self.P),A.T) + self.Q           # proprogate variance
-        my_kp1  = self.h(mx_kp1, u)                              # predict future output
+        my_kp1  = self.h(mx_kp1, u)                         # predict future output
         H       = self.numerical_jac(self.h, mx_kp1, u)     # linearize measurement model about predicted next state
         P12     = dot(P_kp1, H.T)                           # cross covariance
         K       = dot(P12, inv( dot(H,P12) + self.R))       # Kalman filter gain

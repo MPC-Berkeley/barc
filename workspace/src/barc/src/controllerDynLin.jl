@@ -48,12 +48,14 @@ function main()
     solvePf(mdlPf,agent)
     if !raceSet.PF_FLAG
         mdlLMPC = MdlDynLin(agent)
-        GPR(agent)
+        gprDyn(agent)
         findSS(agent)
         solveDynLin(mdlLMPC,agent)
     end
     historyCollect(agent)
-    gpDataCollect(agent)
+    gpResultCollect(agent)
+    gpErrorCollect(agent)
+    gpFeatureCollect(agent)
 
     # NODE INITIALIZATION
     init_node("controller")
@@ -79,8 +81,10 @@ function main()
             # DATA SAVING AFTER FINISHING ALL LAPS
             if lapStatus.lap > raceSet.num_lap
                 saveHistory(agent)
-                if !raceSet.GP_LOCAL_FLAG && !raceSet.GP_FULL_FLAG
-                    saveGPData(agent)
+                if raceSet.GP_LOCAL_FLAG || raceSet.GP_FULL_FLAG
+                    saveGpResultData(agent)
+                else
+                    saveGpFeatureData(agent)
                 end
             end
         end
@@ -97,24 +101,23 @@ function main()
             end
 
             # GAUSSIAN PROCESS
-            GPR(agent)
-
-            # SAFESET CONSTRUCTION
-            findSS(agent)
-
-            # SOLVE LMPC
-        	solveDynLin(mdlLMPC,agent)
-
-            # COLLECT GAUSSIAN PROCESS FEATURE DATA
-            if !raceSet.GP_LOCAL_FLAG && !raceSet.GP_FULL_FLAG && lapStatus.it>1
-                gpDataCollect(agent)
+            if raceSet.GP_LOCAL_FLAG || raceSet.GP_FULL_FLAG
+                gprDyn(agent)
+                gpResultCollect(agent)
+                findSS(agent)
+                solveDynLin(mdlLMPC,agent)
+                gpErrorCollect(agent)
+            else
+                findSS(agent)
+                solveDynLin(mdlLMPC,agent)
+                gpFeatureCollect(agent)
             end
         end
 
         # VISUALIZATION UPDATE
         visualUpdate(mpc_vis,agent)
         publish(vis_pub, mpc_vis)
-        println("$(agent.mpcSol.sol_status): Lap:",lapStatus.lap,", It:",lapStatus.it," v:$(round(posInfo.v,2))")
+        # println("$(agent.mpcSol.sol_status): Lap:",lapStatus.lap,", It:",lapStatus.it," v:$(round(posInfo.v,2))")
         
         # ITERATION UPDATE
         historyCollect(agent)
@@ -124,8 +127,10 @@ function main()
     # DATA SAVING IF SIMULATION/EXPERIMENT IS KILLED
     if !raceSet.PF_FLAG
         saveHistory(agent)
-        if !raceSet.GP_LOCAL_FLAG && !raceSet.GP_FULL_FLAG
-            saveGPData(agent)
+        if raceSet.GP_LOCAL_FLAG || raceSet.GP_FULL_FLAG
+            saveGpResultData(agent)
+        else
+            saveGpFeatureData(agent)
         end
     end
 end

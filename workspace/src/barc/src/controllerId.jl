@@ -63,7 +63,7 @@ function main()
         mdlLMPC = MdlId(agent)
         sysIdTi(agent)
         sysIdTv(agent)
-        # GPR(agent)
+        gprDyn(agent)
         findSS(agent)
         solveId(mdlLMPC,agent)
 
@@ -75,7 +75,9 @@ function main()
         # buildFeatureSetFromBoth(agent,featureData)
     end
     historyCollect(agent)
-    gpDataCollect(agent)
+    gpResultCollect(agent)
+    gpErrorCollect(agent)
+    gpFeatureCollect(agent)
 
     # NODE INITIALIZATION
     init_node("controller")
@@ -108,8 +110,10 @@ function main()
             # DATA SAVING AFTER FINISHING ALL LAPS
             if lapStatus.lap > raceSet.num_lap
                 saveHistory(agent)
-                if !raceSet.GP_LOCAL_FLAG && !raceSet.GP_FULL_FLAG
-                    saveGPData(agent)
+                if raceSet.GP_LOCAL_FLAG || raceSet.GP_FULL_FLAG
+                    saveGpResultData(agent)
+                else
+                    saveGpFeatureData(agent)
                 end
             end
         end
@@ -132,20 +136,17 @@ function main()
             else
                 sysIdTi(agent)
             end
-
             # GAUSSIAN PROCESS
-            # GPR(agent)
-
-            # SAFESET CONSTRUCTION
-            findSS(agent)
-            # toc()
-            # tic()
-            # SOLVE LMPC
-        	solveId(mdlLMPC,agent)
-        	# toc()
-            # COLLECT GAUSSIAN PROCESS FEATURE DATA
-            if !raceSet.GP_LOCAL_FLAG && !raceSet.GP_FULL_FLAG && lapStatus.it>1
-                gpDataCollect(agent)
+            if raceSet.GP_LOCAL_FLAG || raceSet.GP_FULL_FLAG
+                gprDyn(agent)
+                gpResultCollect(agent)
+                findSS(agent)
+                solveId(mdlLMPC,agent)
+                gpErrorCollect(agent)
+            else
+                findSS(agent)
+                solveId(mdlLMPC,agent)
+                gpFeatureCollect(agent)
             end
         end
 
@@ -153,7 +154,7 @@ function main()
         # visualUpdate(mpc_vis,agent,track_Fd)
         visualUpdate(mpc_vis,agent)
         publish(vis_pub, mpc_vis)
-        println("$(agent.mpcSol.sol_status): Lap:",lapStatus.lap,", It:",lapStatus.it," v:$(round(posInfo.v,2))")
+        # println("$(agent.mpcSol.sol_status): Lap:",lapStatus.lap,", It:",lapStatus.it," v:$(round(posInfo.v,2))")
         
         # ITERATION UPDATE
         # if counter == 1
@@ -169,8 +170,10 @@ function main()
     # DATA SAVING IF SIMULATION/EXPERIMENT IS KILLED
     if !raceSet.PF_FLAG
         saveHistory(agent)
-        if !raceSet.GP_LOCAL_FLAG && !raceSet.GP_FULL_FLAG
-            saveGPData(agent)
+        if raceSet.GP_LOCAL_FLAG || raceSet.GP_FULL_FLAG
+            saveGpResultData(agent)
+        else
+            saveGpFeatureData(agent)
         end
     end
 end

@@ -12,3 +12,4 @@ float64[] lapTime
 int64[]   lapNum
 int64[]   cost
 float64[] v_avg
+float64[] pkgLoss

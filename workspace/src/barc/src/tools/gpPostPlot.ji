@@ -3,7 +3,7 @@ This file is to validate the GPR performance in the simulation
 =#
 using JLD
 using PyPlot
-file_name = "GP-KIN-RESULT-2018-06-14-18:43"
+file_name = "GP-DynLin-RESULT-2018-06-15-15:8"
 folder_name = "simulations"
 data = load("$(homedir())/$(folder_name)/$(file_name).jld")
 
@@ -21,11 +21,11 @@ erro_vy_his 	= data["erro_vy_his"]
 erro_psiDot_his = data["erro_psiDot_his"]
 
 figure("GPR result check: $(file_name)")
-subplot(3,2,1); plot(erro_s_his,     "-",alpha=0.5); plot(GP_s_his[:,1],     "o",alpha=0.9)
-subplot(3,2,2); plot(erro_ey_his,    "-",alpha=0.5); plot(GP_ey_his[:,1],    "o",alpha=0.9)
-subplot(3,2,3); plot(erro_epsi_his,  "-",alpha=0.5); plot(GP_epsi_his[:,1],  "o",alpha=0.9)
-subplot(3,2,4); plot(erro_vx_his,    "-",alpha=0.5); plot(GP_vx_his[:,1],    "o",alpha=0.9)
-subplot(3,2,5); plot(erro_vy_his,    "-",alpha=0.5); plot(GP_vy_his[:,1],    "o",alpha=0.9)
-subplot(3,2,6); plot(erro_psiDot_his,"-",alpha=0.5); plot(GP_psiDot_his[:,1],"o",alpha=0.9)
+subplot(3,2,1);  plot(GP_s_his[:,1],     "o",alpha=0.5); plot(erro_s_his,     "-",alpha=0.8);
+subplot(3,2,2);  plot(GP_ey_his[:,1],    "o",alpha=0.5); plot(erro_ey_his,    "-",alpha=0.8);
+subplot(3,2,3);  plot(GP_epsi_his[:,1],  "o",alpha=0.5); plot(erro_epsi_his,  "-",alpha=0.8);
+subplot(3,2,4);  plot(GP_vx_his[:,1],    "o",alpha=0.5); plot(erro_vx_his,    "-",alpha=0.8);
+subplot(3,2,5);  plot(GP_vy_his[:,1],    "o",alpha=0.5); plot(erro_vy_his,    "-",alpha=0.8);
+subplot(3,2,6);  plot(GP_psiDot_his[:,1],"o",alpha=0.5); plot(erro_psiDot_his,"-",alpha=0.8); 
 show()
 

@@ -87,7 +87,3 @@ subplot(3,2,4); plot(erro_vx_his,    "-",alpha=0.5)
 subplot(3,2,5); plot(erro_vy_his,    "-",alpha=0.5)
 subplot(3,2,6); plot(erro_psiDot_his,"-",alpha=0.5)
 show()
-
-
-
-
