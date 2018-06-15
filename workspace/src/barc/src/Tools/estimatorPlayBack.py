@@ -320,7 +320,35 @@ def main():
 
     print "Finishing saveing state estimation data"
 
+    # Acc 
+    plt.subplot(311)
+    plt.plot(range(0,len(inp_ax_his)), inp_ax_his, '-o')
+    plt.plot(range(0,len(ax_est_his)), ax_est_his, '-sb')
+    plt.plot(range(0,len(est.ax_est_his)), est.ax_est_his, '-or')
+    plt.plot(range(0,len(est_new.ax_est_his)), est_new.ax_est_his, '-ob')
+    plt.plot(range(0,len(est_new1.ax_est_his)), est_new1.ax_est_his, '--og')
+
+    plt.subplot(312)
+    plt.plot(range(0,len(inp_ay_his)), inp_ay_his, '-or')
+    plt.plot(range(0,len(ay_est_his)), ay_est_his, '-sb')
+    plt.plot(range(0,len(est.ay_est_his)), est.ay_est_his, '-or')
+    plt.plot(range(0,len(est_new.ay_est_his)), est_new.ay_est_his, '-ob')
+    plt.plot(range(0,len(est_new1.ay_est_his)), est_new1.ay_est_his, '--og')
+
+    plt.subplot(313)
+    plt.plot(range(0,len(inp_psiDot_his)), inp_psiDot_his, '-or')
+    plt.plot(range(0,len(psiDot_est_his)), psiDot_est_his, '-sb')
+    plt.plot(range(0,len(est.psiDot_est_his)), est.psiDot_est_his, '-or')
+    plt.plot(range(0,len(est_new.psiDot_est_his)), est_new.psiDot_est_his, '-ob')
+    plt.plot(range(0,len(est_new1.psiDot_est_his)), est_new1.psiDot_est_his, '--og')
+
+    plt.show()
+
+    xmin = 2950 # 0
+    xmax = 3250 # len(est.vx_est_his)
+
     plt.figure(10)
+    axes = plt.gca()
     if onVec[0] == 1:
         plt.plot(range(0,len(est.vx_est_his)), est.vx_est_his, '-or')
     if onVec[1] == 1:
@@ -328,9 +356,11 @@ def main():
     if onVec[2] == 1:
         plt.plot(range(0,len(est_new1.vx_est_his)), est_new1.vx_est_his, '--og')
     plt.plot(range(0,len(vx_est_his)), vx_est_his, '--sk')
+    axes.set_xlim([xmin,xmax])
     plt.ylabel('vx')
 
     plt.figure(11)
+    axes = plt.gca()
     if onVec[0] == 1:
         plt.plot(range(0,len(est.vy_est_his)), est.vy_est_his, '-or')
     if onVec[1] == 1:
@@ -338,9 +368,11 @@ def main():
     if onVec[2] == 1:
         plt.plot(range(0,len(est_new1.vy_est_his)), est_new1.vy_est_his, '--og')
     plt.plot(range(0,len(vy_est_his)), vy_est_his, '--sk')
+    axes.set_xlim([xmin,xmax])
     plt.ylabel('vy')
 
     plt.figure(12)
+    axes = plt.gca()
     if onVec[0] == 1:
         plt.plot(range(0,len(est.psiDot_est_his)), est.psiDot_est_his, '-or')
     if onVec[1] == 1:
@@ -348,9 +380,11 @@ def main():
     if onVec[2] == 1:
         plt.plot(range(0,len(est_new1.psiDot_est_his)), est_new1.psiDot_est_his, '--og')
     plt.plot(range(0,len(psiDot_est_his)), psiDot_est_his, '--sk')
+    axes.set_xlim([xmin,xmax])
     plt.ylabel('wz')
 
     plt.figure(13)
+    axes = plt.gca()
     if onVec[0] == 1:
         plt.plot(range(0,len(est.yaw_est_his)), est.yaw_est_his, '-or')
     if onVec[1] == 1:
@@ -358,9 +392,11 @@ def main():
     if onVec[2] == 1:
         plt.plot(range(0,len(est_new1.yaw_est_his)), est_new1.yaw_est_his, '--og')
     plt.plot(range(0,len(yaw_est_his)), yaw_est_his, '--sk')
+    axes.set_xlim([xmin,xmax])
     plt.ylabel('psi')
 
     plt.figure(14)
+    axes = plt.gca()
     if onVec[0] == 1:
         plt.plot(range(0,len(est.x_est_his)), est.x_est_his, '-or')
     if onVec[1] == 1:
@@ -368,9 +404,11 @@ def main():
     if onVec[2] == 1:
         plt.plot(range(0,len(est_new1.x_est_his)), est_new1.x_est_his, '--og')
     plt.plot(range(0,len(x_est_his)), x_est_his, '--sk')
+    axes.set_xlim([xmin,xmax])
     plt.ylabel('x')
 
     plt.figure(15)
+    axes = plt.gca()
     if onVec[0] == 1:
         plt.plot(range(0,len(est.y_est_his)), est.y_est_his, '-or')
     if onVec[1] == 1:
@@ -378,6 +416,7 @@ def main():
     if onVec[2] == 1:
         plt.plot(range(0,len(est_new1.y_est_his)), est_new1.y_est_his, '--og')
     plt.plot(range(0,len(y_est_his)), y_est_his, '--sk')
+    axes.set_xlim([xmin,xmax])
     plt.ylabel('y')
 
     pdb.set_trace()
@@ -507,7 +546,7 @@ class EstimatorNoVy(object):
         y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot, sin(bta)*enc.v_meas])
         y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot])
 
-        if np.abs(imu.psiDot) < 0.5:
+        if np.abs(imu.psiDot) < 0.1:
             self.z[3] = 0.0001
 
         KF(y,u)

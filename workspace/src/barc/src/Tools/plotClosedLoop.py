@@ -89,6 +89,20 @@ def main():
     plt.legend()
 
     plt.show()
+    # Acc 
+    plt.subplot(311)
+    plt.plot(range(0,len(inp_ax_his)), inp_ax_his, '-or')
+    plt.plot(range(0,len(ax_est_his)), ax_est_his, '-sb')
+
+    plt.subplot(312)
+    plt.plot(range(0,len(inp_ay_his)), inp_ay_his, '-or')
+    plt.plot(range(0,len(ay_est_his)), ay_est_his, '-sb')
+
+    plt.subplot(313)
+    plt.plot(range(0,len(inp_psiDot_his)), inp_psiDot_his, '-or')
+    plt.plot(range(0,len(psiDot_est_his)), psiDot_est_his, '-sb')
+
+
 
     # Check Redundancy
     plt.figure(10)
