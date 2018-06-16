@@ -158,10 +158,10 @@ function loop(pub_one, pub_two)
         # -----------------------------------------------------------
         #                      RUNNING MPC
         # -----------------------------------------------------------
-		#if count>1
-		#toc()
-		#end
-        #tic()
+		if count>1
+	    toc()
+		end
+        tic()
         solve(m)                                # Solve CFTOC
         zOpt = getvalue(z)
         uOpt = getvalue(u)

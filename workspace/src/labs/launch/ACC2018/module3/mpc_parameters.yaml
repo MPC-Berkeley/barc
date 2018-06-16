@@ -22,4 +22,4 @@ v_min: 0
 steer_min: -1
 steer_max: 1
 
-loop_rate: 25
+loop_rate: 10
