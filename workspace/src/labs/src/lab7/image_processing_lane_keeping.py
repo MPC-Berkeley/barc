@@ -74,6 +74,7 @@ class image_processing_node():
 
         # Initialize publishers and subscribers
         self.moving_pub                 = rospy.Publisher("moving", Moving, queue_size=1)
+        self.hold_previous_turn_pub     = rospy.Publisher("hold_previous_turn", Bool, queue_size=1)
         self.moving_pub.publish(True)
         self.reference_trajectory_pub   = rospy.Publisher("reference_trajectory", barc_state, queue_size = 1)
         self.reference_image_pub        = rospy.Publisher("image_raw", Image, queue_size = 1)
@@ -281,7 +282,9 @@ class image_processing_node():
             # Starting with one time step ahead, finds the pixel corresponding to that distance
             xIforward = (self.v_ref*dt*k)+self.camera_offset_distance
             y_base = int(self.calc_x_Inertial_to_y_newPixel(xIforward))
-            index_y = height - y_base -1
+            if y_base<1:
+                y_base = 1
+            index_y = height - y_base 
             index_x = previous_x
 
             # finds the lane edges at the x and y value of the pixel
@@ -326,7 +329,7 @@ class image_processing_node():
                 # if there is an optimal trajectory found, plots the points
                 j = k-1
                 if (self.statepoints[1][j]>self.height):
-                    self.statepoints[1][j] = self.height-1
+                    self.statepoints[1][j] = self.height-2
                 if ((j>0) and self.count > 10):
                     previous_statex = self.statepoints[0][j-1]
                     previous_statey = self.statepoints[1][j-1]
@@ -346,6 +349,10 @@ class image_processing_node():
         self.globalMidpointList = midpointlist
         self.globalLeftTrackPointList = leftlist
         self.globalRightTrackPointList = rightlist
+        if np.unique(leftlist[:,0]).shape[0] == 1 or np.unique(rightlist[:,0]).shape[0] == 1:
+            self.hold_previous_turn_pub.publish(True)
+        else:
+            self.hold_previous_turn_pub.publish(False)
         self.show_Image_pub.publish(True)
         self.publish_states_pub.publish(True)
 
@@ -439,12 +446,12 @@ class image_processing_node():
             for i in np.arange(len(xlist)):
                 if i == 0:
                     xPixelList[i] = self.width/2
-                    yPixelList[i] = self.height
+                    yPixelList[i] = self.height-1
                 else:
                     x = xlist[i]
                     y = ylist[i]
                     xPixelList[i] = self.width/2-int(self.f2(x)*y+self.b_eq(x))
-                    yPixelList[i] =  self.height-int(self.calc_x_Inertial_to_y_newPixel(x+self.camera_offset_distance))
+                    yPixelList[i] =  self.height-int(self.calc_x_Inertial_to_y_newPixel(x+self.camera_offset_distance))-1
             self.statepoints = (xPixelList,  yPixelList)
             #print(self.statepoints)
 

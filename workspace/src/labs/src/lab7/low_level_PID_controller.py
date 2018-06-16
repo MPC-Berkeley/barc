@@ -7,6 +7,7 @@ import rospy
 import time
 from geometry_msgs.msg import Twist
 from barc.msg import ECU, Input, Moving, Encoder
+from std_msgs.msg import String, Int32, Float32, Float32MultiArray, Bool, Float64
 from numpy import pi
 
 
@@ -25,7 +26,8 @@ r_tire      = 0.05 # radius of the tire
 motor_pwm   = 1500.0
 motor_pwm_offset = 1550.0
 
-
+delta_hold = False
+delta_hold_value = 0
 # encoder measurement update
 def enc_callback(data):
     global t0, v_meas
@@ -77,11 +79,23 @@ def moving_callback_function(data):
         move = False
         still_moving = False
 
+def hold_turn_function(data):
+    global delta_hold
+    if data.data == True:
+        delta_hold = True
+    else:
+        delta_hold = False
+
 # update
 def callback_function(data):
-    global move, still_moving, v_ref, servo_pwm
+    global move, still_moving, v_ref, servo_pwm, delta_hold, delta_hold_value
     v_ref = data.vel
-    servo_pwm = (data.delta*180/3.1415-53.6364)/-0.0346
+    if delta_hold == True:
+        delta = delta_hold_value
+    else:
+        delta = data.delta
+        delta_hold_value =  data.delta
+    servo_pwm = (delta*180/3.1415-53.6364)/-0.0346
 
     servomax = 1840
     servomin = 1160
@@ -148,6 +162,7 @@ def inputToPWM():
     rospy.Subscriber('turtle1/cmd_vel', Twist, start_callback)
     subname = rospy.Subscriber('uOpt', Input, callback_function)
     rospy.Subscriber('moving', Moving, moving_callback_function)
+    rospy.Subscriber('hold_previous_turn', Bool, hold_turn_function)
     rospy.Subscriber('encoder', Encoder, enc_callback)
     # set node rate
     loop_rate   = 40
@@ -156,8 +171,8 @@ def inputToPWM():
     t0          = time.time()
      
     # Initialize the PID controller
-    longitudinal_control = PID(kp=70, ki=5, kd=1)
-    maxspeed = 1650
+    longitudinal_control = PID(kp=30, ki=3, kd=0)
+    maxspeed = 1620
     minspeed = 1400
 
     while not rospy.is_shutdown():
