@@ -56,10 +56,10 @@ def main():
     R[1,1]  = 20.0      # y
     R[2,2]  =  0.1      # vx
     R[3,3]  = 10.0      # ax 
-    R[4,4]  = 30.0      # ay 
+    R[4,4]  = 10.0      # ay 
     R[5,5]  =  0.1      # psiDot
-    R[6,6]  =  0.001    # vy
-    thReset =  0.8
+    R[6,6]  =  0.01    # vy
+    thReset =  1.5
 
     # Q_noVy = eye(8)
     # Q_noVy[0,0] =  0.01  # x
@@ -103,12 +103,12 @@ def main():
 
     while not rospy.is_shutdown():
 
-        if (est.vx_est + 0.0 * np.abs(est.psiDot_est) ) > 1.3 or (np.abs(est.psiDot_est) > 1.0):
+        if (est.vx_est + 0.0 * np.abs(est.psiDot_est) ) > 0.8 or (np.abs(est.psiDot_est) > 1.0):
             flagVy      = True
-            print "================ Not using vy! =============="
+            # print "================ Not using vy! =============="
         else:
             flagVy      = False
-            print "================ Using vy! =============="
+            # print "================ Using vy! =============="
 
         est.estimateState(imu,gps,enc,ecu,est.ekf,flagVy)
         

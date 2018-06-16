@@ -227,8 +227,19 @@ def _buildMatCost(Controller):
     Mx = linalg.block_diag(*b)
     Qlane = Controller.Qlane
 
-    c = [R] * (N)
+    dR = np.array([20, 10])
+    c = [R + 2 * np.diag(dR)] * (N) # Need to add dR for the derivative input cost
+
     Mu = linalg.block_diag(*c)
+    # Need to condider that the last input appears just once in the difference
+    Mu[Mu.shape[0] - 1, Mu.shape[1] - 1] = Mu[Mu.shape[0] - 1, Mu.shape[1] - 1] - dR[1]
+    Mu[Mu.shape[0] - 2, Mu.shape[1] - 2] = Mu[Mu.shape[0] - 2, Mu.shape[1] - 2] - dR[0]
+
+    # Derivative Input Cost
+    OffDiaf = -np.tile(dR, N-1)
+    np.fill_diagonal(Mu[2:], OffDiaf)
+    np.fill_diagonal(Mu[:, 2:], OffDiaf)
+
 
     quadLaneSlack = Qlane[0] * np.eye(2*N)
     M00 = linalg.block_diag(Mx, P, Mu)

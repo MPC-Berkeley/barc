@@ -52,6 +52,7 @@ def main():
     map = Map()                                              # Map
     
     # Choose Controller and Number of Laps
+    twoStepDelay = False
     PickController = "LMPC"
     NumberOfLaps   = 20
     vt = 1.0
@@ -70,7 +71,6 @@ def main():
     oneStepPrediction = np.zeros(6)
     oldU = np.array([0.0, 0.0])
 
-    twoStepDelay = True
 
     firtLap = True
     while (not rospy.is_shutdown()) and RunController == 1:    
@@ -263,10 +263,10 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
         shift = N / 2                     # Given the closed point, x_t^j, to the x(t) select the SS points from x_{t+shift}^j
         # Tuning Parameters
         Qslack  =  1 * np.diag([10, 1, 1, 1, 10, 1])          # Cost on the slack variable for the terminal constraint
-        Qlane   =  1 * np.array([100, 10]) # Quadratic and linear slack lane cost
-        Q_LMPC  =  0 * np.diag([0.0, 0.0, 1.0, 0.0, 0.0, 0.0])  # State cost x = [vx, vy, wz, epsi, s, ey]
+        Qlane   =  1 * np.array([10, 50]) # Quadratic and linear slack lane cost
+        Q_LMPC  =  0 * np.diag([0.0, 0.0, 10.0, 0.0, 0.0, 0.0])  # State cost x = [vx, vy, wz, epsi, s, ey]
         R_LMPC  =  0 * np.diag([1.0, 1.0])                      # Input cost u = [delta, a]
-        dR_LMPC =  1 * np.array([5.0, 10.0])                     # Input rate cost u
+        dR_LMPC =  1 * np.array([10.0, 20.0])                     # Input rate cost u
         Controller = ControllerLMPC(numSS_Points, numSS_it, N, Qslack, Qlane, Q_LMPC, R_LMPC, dR_LMPC, 6, 2, shift, 
                                         dt, map, Laps, TimeLMPC, LMPC_Solver, SysID_Solver, flag_LTV)
         # Controller.addTrajectory(ClosedLoopDataPID)
