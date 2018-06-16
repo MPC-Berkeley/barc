@@ -44,8 +44,10 @@ class camera_node():
 
 	while not rospy.is_shutdown():
             self.rel,self.dst = self.vid.read() # gets the current frame from the camera
-            self.cv_image = cv2.remap(self.dst,self.mapx,self.mapy,cv2.INTER_LINEAR) #Undistorts the fisheye image to rectangular
-            self.cv_image = cv2.flip(self.cv_image,-1)
+            if self.flipped_camera:
+                self.cv_image = cv2.flip(cv2.remap(self.dst,self.mapx,self.mapy,cv2.INTER_LINEAR),-1) #Undistorts the fisheye image to rectangular
+            else:
+                self.cv_image = cv2.remap(self.dst,self.mapx,self.mapy,cv2.INTER_LINEAR) #Undistorts the fisheye image to rectangular
             self.x,self.y,self.w,self.h = self.roi
             self.dst = self.dst[self.y:self.y+self.h, self.x:self.x+self.w]
             cv2.imshow('Camera View',self.cv_image)

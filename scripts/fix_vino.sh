@@ -1,6 +1,5 @@
 #!/bin/bash
 
-sudo apt-get purge vino
 sudo apt-get install vino
 
 dconf write /org/gnome/desktop/remote-access/enabled true

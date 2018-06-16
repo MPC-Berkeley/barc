@@ -59,6 +59,7 @@ class image_processing_node():
         self.xInertial_to_yPixel_Matrix = rospy.get_param("/xInertial_to_yPixel_Matrix")
         self.furthest_distance = rospy.get_param("/furthest_distance")
         self.camera_offset_distance = rospy.get_param("/camera_offset_distance")
+        self.flipped_camera = rospy.get_param("/flipped_camera")
 
         # Compute the udistortion and rectification transformation map
         self.newcameramtx, self.roi     = cv2.getOptimalNewCameraMatrix(self.mtx,self.dist,(self.width,self.height),0,(self.width,self.height))
@@ -106,8 +107,10 @@ class image_processing_node():
                 # Updates the sample time
                 self.dt = time.time() - self.previousTime 
                 self.previousTime = time.time()
-
-                self.cv_image = cv2.flip(cv2.remap(self.dst,self.mapx,self.mapy,cv2.INTER_LINEAR),-1) #Undistorts the fisheye image to rectangular
+                if self.flipped_camera:
+                    self.cv_image = cv2.flip(cv2.remap(self.dst,self.mapx,self.mapy,cv2.INTER_LINEAR),-1) #Undistorts the fisheye image to rectangular
+                else:
+                    self.cv_image = cv2.remap(self.dst,self.mapx,self.mapy,cv2.INTER_LINEAR) #Undistorts the fisheye image to rectangular
                 self.x,self.y,self.width,self.height = self.roi
 
                 # colorFilter = True makes the edge detection search for a red/white track using HSV. False will use grayscale and search for any edge regardless of color
