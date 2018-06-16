@@ -119,11 +119,11 @@ class image_processing_node():
                     #self.hsv = cv2.cvtColor(imageToFilter, cv2.COLOR_BGR2HSV) #.004 
 
                     # define range of color thresholds in (B,G,R)
-                    lower_red = np.array(rospy.get_param("/lower_red"))
-                    upper_red = np.array(rospy.get_param("/upper_red"))
+                    lower_red = np.flipud(np.array(rospy.get_param("/lower_red")))
+                    upper_red = np.flipud(np.array(rospy.get_param("/upper_red")))
 
-                    lower_white = np.array(rospy.get_param("/lower_white"))
-                    upper_white = np.array(rospy.get_param("/upper_white"))
+                    lower_white = np.flipud(np.array(rospy.get_param("/lower_white")))
+                    upper_white = np.flipud(np.array(rospy.get_param("/upper_white")))
 
                     # Threshold the image to only have the red/white track appear
                     self.reds = cv2.inRange(imageToFilter, lower_red, upper_red)
