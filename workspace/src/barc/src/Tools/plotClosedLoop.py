@@ -68,20 +68,7 @@ def main():
     ecu_time  	= npz_ecu["ecu_time"]
 
     # Plot Trajectory
-    fig = plt.figure("track x-y plot")
-    Points = np.floor(10 * (map.PointAndTangent[-1, 3] + map.PointAndTangent[-1, 4]))
-    Points1 = np.zeros((Points, 2))
-    Points2 = np.zeros((Points, 2))
-    Points0 = np.zeros((Points, 2))
-    for i in range(0, int(Points)):
-        Points1[i, :] = map.getGlobalPosition(i * 0.1, map.halfWidth)
-        Points2[i, :] = map.getGlobalPosition(i * 0.1, -map.halfWidth)
-        Points0[i, :] = map.getGlobalPosition(i * 0.1, 0)
-
-    plt.plot(map.PointAndTangent[:, 0], map.PointAndTangent[:, 1], 'o')
-    plt.plot(Points0[:, 0], Points0[:, 1], '--')
-    plt.plot(Points1[:, 0], Points1[:, 1], '-b')
-    plt.plot(Points2[:, 0], Points2[:, 1], '-b')
+    fig = plotTrack(map)
 
     plt.axis("equal")
     plt.plot(x_est_his,y_est_his,color="green")
@@ -145,6 +132,25 @@ def main():
         rec.set_xy(np.array([car_x, car_y]).T)
 
         fig.canvas.draw()
+
+def plotTrack(map):
+    fig = plt.figure("track x-y plot")
+    Points = np.floor(10 * (map.PointAndTangent[-1, 3] + map.PointAndTangent[-1, 4]))
+    Points1 = np.zeros((Points, 2))
+    Points2 = np.zeros((Points, 2))
+    Points0 = np.zeros((Points, 2))
+    for i in range(0, int(Points)):
+        Points1[i, :] = map.getGlobalPosition(i * 0.1, map.halfWidth)
+        Points2[i, :] = map.getGlobalPosition(i * 0.1, -map.halfWidth)
+        Points0[i, :] = map.getGlobalPosition(i * 0.1, 0)
+
+    plt.plot(map.PointAndTangent[:, 0], map.PointAndTangent[:, 1], 'o')
+    plt.plot(Points0[:, 0], Points0[:, 1], '--')
+    plt.plot(Points1[:, 0], Points1[:, 1], '-b')
+    plt.plot(Points2[:, 0], Points2[:, 1], '-b')
+
+    return fig
+
 
 def getCar_x_y(x, y, psi, l, w):
     car_x = [ x + l * np.cos(psi) - w * np.sin(psi), x + l*np.cos(psi) + w * np.sin(psi),

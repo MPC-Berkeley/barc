@@ -61,25 +61,6 @@ def main():
     R[6,6] = 0.001    # vy
     thReset = 1.4
 
-    Q_1 = eye(8)
-    Q_1[0,0] = 0.01    # x
-    Q_1[1,1] = 0.01    # y
-    Q_1[2,2] = 0.5     # vx
-    Q_1[3,3] = 0.5     # vy
-    Q_1[4,4] = 1.0     # ax
-    Q_1[5,5] = 1.0     # ay 
-    Q_1[6,6] = 0.01    # psi
-    Q_1[7,7] = 10.0    # psiDot
-    R_1 = eye(7)
-    R_1[0,0] = 5.0     # x
-    R_1[1,1] = 5.0     # y
-    R_1[2,2] = 1.0     # vx
-    R_1[3,3] = 0.0001  # ax 
-    R_1[4,4] = 10.0    # ay 
-    R_1[5,5] = 20.0    # psiDot
-    R_1[6,6] = 0.001   # vy
-    thReset_1 = 0.4
-
     Q_noVy = eye(8)
     Q_noVy[0,0] = 0.01 # x
     Q_noVy[1,1] = 0.01 # y
@@ -99,10 +80,7 @@ def main():
     R_noVy[5,5] = 0.10    # psiDot
     thReset_noVy = 0.8
 
-    twoEstimators = False
     switchEstimators = True
-
-
 
     t0 = rospy.get_rostime().to_sec()
     imu = ImuClass(t0)
@@ -111,7 +89,6 @@ def main():
     ecu = EcuClass(t0)
 
     est     = Estimator(t0,loop_rate,a_delay,df_delay,Q,  R,   thReset)
-    est_1   = Estimator(t0,loop_rate,a_delay,df_delay,Q_1,R_1, thReset_1)
     estNoVy = EstimatorNoVy(t0,loop_rate,a_delay,df_delay,Q_noVy,R_noVy, thReset_noVy)
 
     estMsg = pos_info()
@@ -129,18 +106,17 @@ def main():
     while not rospy.is_shutdown():
         
         est.estimateState(imu,gps,enc,ecu,est.ekf)
-        if twoEstimators == True:          
-            est_1.estimateState(imu,gps,enc,ecu,est_1.ekf)
 
         if switchEstimators == True:
             estNoVy.estimateState(imu, gps, enc, ecu, estNoVy.ekf)
         
         estMsg.header.stamp = rospy.get_rostime()
 
-        flagVy_time_t   = 0.0
         if switchEstimators == True:
             if (est.vx_est + 0.0 * np.abs(est.psiDot_est) ) > 1.3 or (np.abs(est.psiDot_est) > 2.0):
-                flagVy_time_t   = 1.0
+                print "================ Not using vy! =============="
+
+                flagSwitch      = 1.0
                 estMsg.v        = np.sqrt(estNoVy.vx_est**2 + estNoVy.vy_est**2)
                 estMsg.x        = estNoVy.x_est 
                 estMsg.y        = estNoVy.y_est
@@ -152,8 +128,14 @@ def main():
                 estMsg.a_y      = estNoVy.ay_est
                 estMsg.u_a      = ecu.a
                 estMsg.u_df     = ecu.df
+
+                # Reset states for filter with vy
+                est.z = estNoVy.z
+                est.P = estNoVy.P
+
             else:
-                flagVy_time_t   = 0.0
+                print "================ Using vy! =============="
+                flagSwitch      = 0.0
                 estMsg.v        = np.sqrt(est.vx_est**2 + est.vy_est**2)
                 estMsg.x        = est.x_est 
                 estMsg.y        = est.y_est
@@ -165,18 +147,10 @@ def main():
                 estMsg.a_y      = est.ay_est
                 estMsg.u_a      = ecu.a
                 estMsg.u_df     = ecu.df
-        elif twoEstimators == True:    
-            estMsg.v        = np.sqrt(est_1.vx_est**2 + est_1.vy_est**2)
-            estMsg.x        = est.x_est 
-            estMsg.y        = est.y_est
-            estMsg.v_x      = est_1.vx_est 
-            estMsg.v_y      = est_1.vy_est
-            estMsg.psi      = est_1.yaw_est
-            estMsg.psiDot   = est_1.psiDot_est
-            estMsg.a_x      = est_1.ax_est
-            estMsg.a_y      = est_1.ay_est
-            estMsg.u_a      = ecu.a
-            estMsg.u_df     = ecu.df
+
+                # Reset states for filter with no vy
+                estNoVy.z = est.z
+                estNoVy.P = est.P
         else:
             estMsg.v        = np.sqrt(est.vx_est**2 + est.vy_est**2)
             estMsg.x        = est.x_est 
@@ -189,6 +163,7 @@ def main():
             estMsg.a_y      = est.ay_est
             estMsg.u_a      = ecu.a
             estMsg.u_df     = ecu.df
+            flagSwitch      = 0.0
 
 
         est.state_pub_pos.publish(estMsg)
@@ -203,8 +178,7 @@ def main():
         saved_psiDot_est.append(estMsg.psiDot)
         saved_ax_est.append(estMsg.a_x)
         saved_ay_est.append(estMsg.a_y)
-
-        saved_switch.append(flagVy_time_t)
+        saved_switch.append(flagSwitch)
 
         est.rate.sleep()
 

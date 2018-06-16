@@ -68,6 +68,9 @@ def main():
     TimeCounter = 0
     KeyInput = raw_input("Press enter to start the controller... \n")
     oneStepPrediction = np.zeros(6)
+    oldU = np.array([0.0, 0.0])
+
+    twoStepDelay = True
 
     firtLap = True
     while (not rospy.is_shutdown()) and RunController == 1:    
@@ -121,13 +124,20 @@ def main():
                 input_commands.publish(cmd)
                 
             else:                                     # Else use the selected controller
+                oldU = uApplied
                 uApplied = np.array([cmd.servo, cmd.motor])
                 # Publish input
                 input_commands.publish(cmd)
 
                 oneStepPredictionError = LocalState - oneStepPrediction # Subtract the local measurement to the previously predicted one step
 
-                oneStepPrediction, oneStepPredictionTime = Controller.oneStepPrediction(LocalState, uApplied, 1)
+                if twoStepDelay == True:
+                    oneStepPrediction, oneStepPredictionTime = Controller.oneStepPrediction(LocalState, oldU, 1)
+                    oneStepPrediction, oneStepPredictionTime = Controller.oneStepPrediction(oneStepPrediction, uApplied, 1)
+                else:
+                    oneStepPrediction, oneStepPredictionTime = Controller.oneStepPrediction(LocalState, uApplied, 1)
+
+
 
                 # print "LocalState: ", LocalState
                 # print "oneStepPrediction: ", oneStepPrediction
