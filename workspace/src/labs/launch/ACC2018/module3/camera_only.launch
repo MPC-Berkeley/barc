@@ -1,0 +1,13 @@
+<launch>
+	<rosparam command ="load" file="$(find labs)/launch/ACC2018/module3/image_processing_parameters.yaml"/>
+
+	<!-- IMAGE PROCESSING -->
+	<node 
+		pkg="labs" 
+		type="camera.py" 
+		name="camera" 
+		output="screen">
+	</node>
+
+
+</launch>

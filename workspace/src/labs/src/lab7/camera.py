@@ -13,33 +13,39 @@ import numpy as np
 # state estimation node
 class camera_node():
     def __init__(self):    
-        
-        self.vid = cv2.VideoCapture("/dev/video6")
-        self.vid.set(12,5) #contrast
-        self.vid.set(13,0) #saturation
+        # Define camera settings
+        # put bright, contrast, saturation, hue into image_processing_param.yaml file
+        self.vid = cv2.VideoCapture(rospy.get_param("/videoDevicePath")) # Sets the port /dev/video6 as the video device
+        self.vid.set(10, rospy.get_param("/brightness")) # brightness
+        self.vid.set(11, rospy.get_param("/contrast")) # contrast
+        self.vid.set(12, rospy.get_param("/saturation")) # saturation
+        self.vid.set(13, rospy.get_param("/hue")) # hue
 
-        # Calibration Matrices
-        self.mtx = np.array([[592.156892, 0.000000, 326.689246], [0.000000, 584.923917, 282.822026], [0.000000, 0.000000, 1.000000]])
-        self.dist = np.array([-0.585868, 0.248490, -0.023236, -0.002907, 0.000000])
+        # Decalre calibration matrices to rectify the image
+
+        self.mtx = np.array(rospy.get_param("/mtx"))
+        self.dist = np.array(rospy.get_param("/dist"))
+
 
         # Camera resolution
-        self.w = 640
-        self.h = 480
+        self.width = rospy.get_param("/width")
+        self.height = rospy.get_param("/height")
 
-        # Set node rate
-        self.loop_rate   = 30
-        self.ts          = 1.0 / self.loop_rate
+
+        # Set node loop rate (30 hz)
+        self.loop_rate   = rospy.get_param("/loop_rate")
+        self.dt          = 1.0 / self.loop_rate
         self.rate        = rospy.Rate(self.loop_rate)
         self.t0          = time.time()
 
         # Compute the udistortion and rectification transformation map
-        self.newcameramtx, self.roi = cv2.getOptimalNewCameraMatrix(self.mtx,self.dist,(self.w,self.h),0,(self.w,self.h))
-        self.mapx,self.mapy = cv2.initUndistortRectifyMap(self.mtx,self.dist,None,self.newcameramtx,(self.w,self.h),5)
+        self.newcameramtx, self.roi     = cv2.getOptimalNewCameraMatrix(self.mtx,self.dist,(self.width,self.height),0,(self.width,self.height))
+        self.mapx,self.mapy             = cv2.initUndistortRectifyMap(self.mtx,self.dist,None,self.newcameramtx,(self.width,self.height),5)
 
 	while not rospy.is_shutdown():
             self.rel,self.dst = self.vid.read() # gets the current frame from the camera
-
             self.cv_image = cv2.remap(self.dst,self.mapx,self.mapy,cv2.INTER_LINEAR) #Undistorts the fisheye image to rectangular
+            self.cv_image = cv2.flip(self.cv_image,-1)
             self.x,self.y,self.w,self.h = self.roi
             self.dst = self.dst[self.y:self.y+self.h, self.x:self.x+self.w]
             cv2.imshow('Camera View',self.cv_image)

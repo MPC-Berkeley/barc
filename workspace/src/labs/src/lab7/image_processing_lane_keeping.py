@@ -58,6 +58,7 @@ class image_processing_node():
         self.yPixel_to_xInertial_Matrix = rospy.get_param("/yPixel_to_xInertial_Matrix")
         self.xInertial_to_yPixel_Matrix = rospy.get_param("/xInertial_to_yPixel_Matrix")
         self.furthest_distance = rospy.get_param("/furthest_distance")
+        self.camera_offset_distance = rospy.get_param("/camera_offset_distance")
 
         # Compute the udistortion and rectification transformation map
         self.newcameramtx, self.roi     = cv2.getOptimalNewCameraMatrix(self.mtx,self.dist,(self.width,self.height),0,(self.width,self.height))
@@ -275,7 +276,7 @@ class image_processing_node():
         
         for k in xrange(1,self.numpoints+1,1):
             # Starting with one time step ahead, finds the pixel corresponding to that distance
-            xIforward = (self.v_ref*dt*k)
+            xIforward = (self.v_ref*dt*k)+self.camera_offset_distance
             y_base = int(self.calc_x_Inertial_to_y_newPixel(xIforward))
             index_y = height - y_base -1
             index_x = previous_x
@@ -433,10 +434,14 @@ class image_processing_node():
             xPixelList = list(xlist)
             yPixelList = list(ylist)
             for i in np.arange(len(xlist)):
-                x = xlist[i]
-                y = ylist[i]
-                xPixelList[i] = self.width/2-int(self.f2(x)*y+self.b_eq(x))
-                yPixelList[i] =  self.height-int(self.calc_x_Inertial_to_y_newPixel(x))
+                if i == 0:
+                    xPixelList[i] = self.width/2
+                    yPixelList[i] = self.height
+                else:
+                    x = xlist[i]
+                    y = ylist[i]
+                    xPixelList[i] = self.width/2-int(self.f2(x)*y+self.b_eq(x))
+                    yPixelList[i] =  self.height-int(self.calc_x_Inertial_to_y_newPixel(x+self.camera_offset_distance))
             self.statepoints = (xPixelList,  yPixelList)
             #print(self.statepoints)
 
