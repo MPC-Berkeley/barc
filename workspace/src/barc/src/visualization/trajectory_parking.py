@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import rospy
+import os
 from barc.msg import Z_KinBkMdl, mpcSol
 from numpy import array, ones, sin, cos, tan, vstack, matrix, roll
 import matplotlib.pyplot as plt
@@ -29,7 +30,7 @@ def main():
     simData.setInitialState( s0[0:3])
 
     # load solution data
-    filepath    = "/home/jgon13/barc/workspace/src/barc/src/control/parking/data/npz/sp10.npz"
+    filepath    = os.path.expanduser("~") + "/barc/workspace/src/barc/src/control/parking/data/npz/sp10.npz"
     sp10        = np.load(filepath)
     xRef        = sp10[0,:]
     yRef        = sp10[1,:]
@@ -43,11 +44,11 @@ def main():
 
     # draw objects
     simData.updateVhCorners()
-    car_plot,       = ax1.plot(simData.xc, simData.yc,"k-")
-    center_plot,    = ax1.plot(simData.x, simData.y, "ro")
-    #path_plot,      = ax1.plot(simData.x_hist, simData.y_hist, 'g-') # label="position history")
-    target_plot,    = ax1.plot(xRef, yRef,'k-',label='target path')
-    zOL_plot,       = ax1.plot(simData.z1OL, simData.z2OL,'r*',label='prediction')
+    car_edges_plot,     = ax1.plot(simData.xc, simData.yc,"k-")
+    car_center_dot,     = ax1.plot(simData.x, simData.y, "ro")
+    #path_plot,         = ax1.plot(simData.x_hist, simData.y_hist, 'g-') # label="position history")
+    target_path_plot,   = ax1.plot(xRef, yRef,'k-',label='target path')
+    prediction_plot,    = ax1.plot(simData.z1OL, simData.z2OL,'r*',label='prediction')
 
     # draw obstacles
     # for plotting
@@ -65,10 +66,10 @@ def main():
         
         # update drawing
         simData.updateVhCorners()
-        car_plot.set_data(simData.xc, simData.yc)
-        center_plot.set_data(simData.x, simData.y)
+        car_edges_plot.set_data(simData.xc, simData.yc)
+        car_center_dot.set_data(simData.x, simData.y)
         #path_plot.set_data(simData.x_hist, simData.y_hist)
-        zOL_plot.set_data(simData.z1OL, simData.z2OL)
+        prediction_plot.set_data(simData.z1OL, simData.z2OL)
 
         # refresh screen
         fig.canvas.draw()

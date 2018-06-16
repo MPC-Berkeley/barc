@@ -12,8 +12,9 @@ include("obstacle-configuration.jl")
 include("vehicle-configuration.jl")
 include("modules/mpcPathFollowing.jl")
 
-param_file 		= "/home/jgon13/barc/workspace/src/barc/launch/control/parking.yaml"
-save_path 		= "/home/jgon13/barc/workspace/src/barc/src/control/parking/data"
+home            = ENV["HOME"]
+param_file 		= string(home,"/barc/workspace/src/barc/launch/control/parking.yaml")
+save_path 		= string(home,"/barc/workspace/src/barc/src/control/parking/data")
 
 data = YAML.load(open(param_file))
 

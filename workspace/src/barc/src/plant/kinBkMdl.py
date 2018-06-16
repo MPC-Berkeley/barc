@@ -7,9 +7,9 @@ from std_msgs.msg import Float32
 
 class kinMdl:
     def __init__(self):
-        self.z  = [0,0,0,0]
-        self.Ts = 0.1
-        self.L  = 1.5
+        self.z  = [0.0, 0.0, 0.0, 0.0]
+        self.Ts = None
+        self.L  = None
         self.u  = [0.0, 0.0]
 
     def updateInput(self, msg):
@@ -56,8 +56,7 @@ def main():
     sysMdl.z    = rospy.get_param("/initial_state")
 
     # set node rate
-    loop_rate   = 10
-    Ts          = 1.0 / loop_rate
+    loop_rate   = int( 1.0 / sysMdl.Ts )
     rate        = rospy.Rate(loop_rate)
 
     while not rospy.is_shutdown():
