@@ -57,6 +57,7 @@ class image_processing_node():
         self.bMatrix = rospy.get_param("/bMatrix")
         self.yPixel_to_xInertial_Matrix = rospy.get_param("/yPixel_to_xInertial_Matrix")
         self.xInertial_to_yPixel_Matrix = rospy.get_param("/xInertial_to_yPixel_Matrix")
+        self.furthest_distance = rospy.get_param("/furthest_distance")
 
         # Compute the udistortion and rectification transformation map
         self.newcameramtx, self.roi     = cv2.getOptimalNewCameraMatrix(self.mtx,self.dist,(self.width,self.height),0,(self.width,self.height))
@@ -274,7 +275,7 @@ class image_processing_node():
         
         for k in xrange(1,self.numpoints+1,1):
             # Starting with one time step ahead, finds the pixel corresponding to that distance
-            xIforward = (self.v_ref*dt*k)/0.3048+1.2
+            xIforward = (self.v_ref*dt*k)
             y_base = int(self.calc_x_Inertial_to_y_newPixel(xIforward))
             index_y = height - y_base -1
             index_x = previous_x
@@ -361,7 +362,7 @@ class image_processing_node():
         midlist_x_Inertial,midlist_y_Inertial = self.convertPixelsToDistance(midpointlist)
         self.reference_trajectory.x = midlist_x_Inertial.tolist()
         self.reference_trajectory.y = midlist_y_Inertial.tolist()
-        if (midlist_x_Inertial[-1] <1.5*.3048):
+        if (midlist_x_Inertial[-1] <self.furthest_distance):
             self.stopMoving = True
             self.moving_pub.publish(False)
         else:
@@ -390,13 +391,13 @@ class image_processing_node():
 
     def calc_x_newPixel_to_y_Inertial(self,x_newPixel,y_newPixel):
         # Transforms the xnewpixel into yinertial frame
-        x_Inertial = self.calc_y_newPixel_to_x_Inertial(y_newPixel)/0.3048
+        x_Inertial = self.calc_y_newPixel_to_x_Inertial(y_newPixel)
         y_Inertial = (x_newPixel-self.b_eq(x_Inertial))/self.f2(x_Inertial)
         y_newPixelskewed = self.f1(y_Inertial)
         x_Inertial = self.calc_y_newPixel_to_x_Inertial(y_newPixel-y_newPixelskewed)
         y_Inertial = (x_newPixel-self.b_eq(x_Inertial))/self.f2(x_Inertial)
-        y_Inertial = y_Inertial*0.3048 #convert ft to m
-        return -y_Inertial
+        y_Inertial = y_Inertial
+        return y_Inertial
 
     # define auxiliary functions for mapping from pixel coordinate to inertial frame coordinate
     # these mapping are 3-rd order polynomials 
@@ -417,7 +418,7 @@ class image_processing_node():
     def calc_y_newPixel_to_x_Inertial(self,y_newPixel):
         # Transforms the ynewpixel into xinertial frame
         x_Inertial =  np.polyval(self.yPixel_to_xInertial_Matrix,y_newPixel)
-        x_Inertial=x_Inertial*0.3048 #convert ft to m
+        x_Inertial=x_Inertial
         return x_Inertial
 
     def calc_x_Inertial_to_y_newPixel(self,x_Inertial):
@@ -432,9 +433,9 @@ class image_processing_node():
             xPixelList = list(xlist)
             yPixelList = list(ylist)
             for i in np.arange(len(xlist)):
-                x = xlist[i]/0.3048+1.201
-                y = ylist[i]/0.3048
-                xPixelList[i] = self.width/2-int(self.f2(x)*y+self.b_eq(x))#int(320+(x/0.3048)*(-1.5316*self.calcyft(y)+344)) # 
+                x = xlist[i]
+                y = ylist[i]
+                xPixelList[i] = self.width/2-int(self.f2(x)*y+self.b_eq(x))
                 yPixelList[i] =  self.height-int(self.calc_x_Inertial_to_y_newPixel(x))
             self.statepoints = (xPixelList,  yPixelList)
             #print(self.statepoints)
