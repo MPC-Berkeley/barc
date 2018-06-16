@@ -34,7 +34,7 @@ type MpcModel
     mdl::JuMP.Model
 
     function MpcModel(mpcParams::MpcParams, mdlParams::MdlParams)
-        println("Starting creation of model .....")
+        println("Building mpc controller .....")
         m = new()
         
         # get model parameters
@@ -47,7 +47,6 @@ type MpcModel
         R           = mpcParams.R
         
         # Create Model
-        println("Creating model .....")
         mdl = Model(solver = IpoptSolver(print_level=0,max_cpu_time=5.10))
 
         # Create variables (these are going to be optimized)
@@ -55,7 +54,6 @@ type MpcModel
         @variable( mdl, uOL[1:2, 1:N],      start = 0)           # u = df, acc
 
         # Set bounds on inputs
-        println("Setting bounds .....")
         u_lb = [-0.6  -0.25]' * ones(1,mpcParams.N)       # lower bounds [steering, acceleration]
         u_ub = [0.6    0.25]' * ones(1,mpcParams.N)       # upper bounds
 
@@ -66,16 +64,13 @@ type MpcModel
             end
         end
 
-        println("Initializing parameters .....")
         @NLparameter(mdl, z0[i=1:4] == 0)
         @NLparameter(mdl, zRef[j=1:4,i=1:N+1] == 0)
         @NLparameter(mdl, uRef[j=1:2,i=1:N] == 0)
 
         # System dynamics
-        println("Setting initial condition .....")
         @NLconstraint(mdl, [i=1:4], zOL[i,1] == z0[i])         # initial condition
         
-        println("Defining systems dynamic constraints .....")
         for i=1:N
             @NLconstraint(mdl, zOL[1,i+1] == zOL[1,i] + Ts*(zOL[4,i]*cos( zOL[3,i] ))  )                # x
             @NLconstraint(mdl, zOL[2,i+1] == zOL[2,i] + Ts*(zOL[4,i]*sin( zOL[3,i] ))  )                # y
@@ -84,7 +79,6 @@ type MpcModel
         end
 
         # Cost definitions
-        println("Defining cost functions .....")
         # Input cost
         # ---------------------------------
         @NLexpression(mdl, costU, 0.5*sum(R[j,j] * sum((uOL[j,i] - uRef[j,i])^2 for i=1:N) for j = 1:2))
@@ -98,7 +92,6 @@ type MpcModel
         #@NLobjective(mdl, Min, costZ)
 
         # create first artificial solution (for warm start)
-        println("Creating first artificial solution .....")
         for i=1:N+1
             setvalue(zOL[:,i],[0.0, 0.0, 0.0, 0.0])
         end

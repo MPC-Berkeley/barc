@@ -10,8 +10,6 @@ using barc.msg
 using std_msgs.msg
 include("modules/mpcPathFollowing.jl")
 
-println(pwd())
-
 function euclideanDistance(s1::Array{Float64},s2::Array{Float64})
 	dx = s1[1] - s2[1]
 	dy = s1[2] - s2[2]
@@ -90,7 +88,6 @@ function main()
     p2 = Publisher("mpcSolution", mpcSol, queue_size=1)
     s1 = Subscriber{Z_KinBkMdl}("plant", updateState, (sCurr,sPrev,dist,sRef,uRef,sp10Ref,up10Ref,dp10Ref,N), queue_size=1)
     loop_rate = Rate( Int(1.0/Ts) )
-    println( Int(1.0/Ts) )
 
 	println("running mpc ...")
     while ! is_shutdown()

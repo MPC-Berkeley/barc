@@ -1,6 +1,6 @@
 <launch>
     <!-- global configuration -->
-    <rosparam command="load" file="$(find labs)/launch/ACC2018/module-4.yaml" />
+    <rosparam command="load" file="$(find labs)/launch/ACC2018/module4.yaml" />
 
     <!-- path planner and controller -->
     <node pkg="barc" type="parking_mpc.jl" name="mpc" output="screen" />  
