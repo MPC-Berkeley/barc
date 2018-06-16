@@ -20,10 +20,10 @@ colorFilter:                 True
 overlayPointsOnColoredImage: True
 kernel_size:                 11
 
-lower_red: [0,40,100]
-upper_red: [50,140,255]
+lower_red: [90,0,0]
+upper_red: [255,140,50]
 
-lower_white: [180,180,180]
+lower_white: [255,255,255]
 upper_white: [255,255,255]
 
 boxsize: 10

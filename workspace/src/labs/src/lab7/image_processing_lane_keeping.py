@@ -107,7 +107,7 @@ class image_processing_node():
                 self.dt = time.time() - self.previousTime 
                 self.previousTime = time.time()
 
-                self.cv_image = cv2.remap(self.dst,self.mapx,self.mapy,cv2.INTER_LINEAR) #Undistorts the fisheye image to rectangular
+                self.cv_image = cv2.flip(cv2.remap(self.dst,self.mapx,self.mapy,cv2.INTER_LINEAR),-1) #Undistorts the fisheye image to rectangular
                 self.x,self.y,self.width,self.height = self.roi
 
                 # colorFilter = True makes the edge detection search for a red/white track using HSV. False will use grayscale and search for any edge regardless of color
@@ -397,7 +397,7 @@ class image_processing_node():
         y_newPixelskewed = self.f1(y_Inertial)
         x_Inertial = self.calc_y_newPixel_to_x_Inertial(y_newPixel-y_newPixelskewed)
         y_Inertial = (x_newPixel-self.b_eq(x_Inertial))/self.f2(x_Inertial)
-        y_Inertial = y_Inertial
+        y_Inertial = -y_Inertial
         return y_Inertial
 
     # define auxiliary functions for mapping from pixel coordinate to inertial frame coordinate
