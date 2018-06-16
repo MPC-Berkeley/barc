@@ -77,7 +77,7 @@ def main():
     
     while not rospy.is_shutdown():
         if ecu.a != 0:
-          est.estimateState(imu,gps,enc,ecu,est.ekf)
+          est.estimateState(imu,gps,enc,ecu,est.ekfVySwitch)
           est.saveHistory()
 
         estMsg.s, estMsg.ey, estMsg.epsi = track.Localize(est.x_est, est.y_est, est.yaw_est)
@@ -93,6 +93,7 @@ def main():
         estMsg.a_y      = est.ay_est
         estMsg.u_a      = ecu.a
         estMsg.u_df     = ecu.df
+        estMsg.pkg_loss = np.array([float(est.x_count),float(est.y_count),float(est.v_meas_count),float(est.ax_count),float(est.ay_count),float(est.psiDot_count)])/float(est.pkg_count)
         est.state_pub_pos.publish(estMsg)
         est.rate.sleep()
     print "gps x      package lost:", float(est.x_count)/float(est.pkg_count)
@@ -330,27 +331,6 @@ class Estimator(object):
         (self.x_est, self.y_est, self.vx_est, self.vy_est, self.ax_est, self.ay_est, self.yaw_est, self.psiDot_est) = self.z
 
     def ekfMultiRate(self, y, u):
-        """
-        EKF   Extended Kalman Filter for nonlinear dynamic systems
-        ekf(f,mx,P,h,z,Q,R) returns state estimate, x and state covariance, P 
-        for nonlinear dynamic system:
-                  x_k+1 = f(x_k) + w_k
-                  y_k   = h(x_k) + v_k
-        where w ~ N(0,Q) meaning w is gaussian noise with covariance Q
-              v ~ N(0,R) meaning v is gaussian noise with covariance R
-        Inputs:    f: function handle for f(x)
-                   z_EKF: "a priori" state estimate
-                   P: "a priori" estimated state covariance
-                   h: fanction handle for h(x)
-                   y: current measurement
-                   Q: process noise covariance 
-                   R: measurement noise covariance
-                   args: additional arguments to f(x, *args)
-        Output:    mx_kp1: "a posteriori" state estimate
-                   P_kp1: "a posteriori" state covariance
-                   
-        Notation: mx_k = E[x_k] and my_k = E[y_k], where m stands for "mean of"
-        """
         xDim    = self.z.size                               # dimension of the state
         mx_kp1  = self.f(self.z, u)                         # predict next state
         A       = self.numerical_jac(self.f, self.z, u)     # linearize process model about current state
@@ -377,6 +357,7 @@ class Estimator(object):
         if self.psiDot_his[-1] == y[5]:
             self.psiDot_count += 1
             idx.append(5)
+        self.pkg_count += 1
 
         if len(idx) == 6:
             print "No measurement data received!"
@@ -392,6 +373,43 @@ class Estimator(object):
             self.z = mx_kp1 + dot(K,(y - my_kp1))
             self.P = dot(dot(K,R),K.T) + dot( dot( (eye(xDim) - dot(K,H)) , P_kp1)  ,  (eye(xDim) - dot(K,H)).T )
             (self.x_est, self.y_est, self.vx_est, self.vy_est, self.ax_est, self.ay_est, self.yaw_est, self.psiDot_est) = self.z
+
+    def ekfVySwitch(self, y, u):
+        xDim    = self.z.size                               # dimension of the state
+        mx_kp1  = self.f(self.z, u)                         # predict next state
+        A       = self.numerical_jac(self.f, self.z, u)     # linearize process model about current state
+        P_kp1   = dot(dot(A,self.P),A.T) + self.Q           # proprogate variance
+        my_kp1  = self.h(mx_kp1, u)                         # predict future output
+        H       = self.numerical_jac(self.h, mx_kp1, u)     # linearize measurement model about predicted next state
+
+        if self.x_his[-1] == y[0]:
+            self.x_count += 1
+        if self.y_his[-1] == y[1]:
+            self.y_count += 1
+        if self.v_meas_his[-1] == y[2]:
+            self.v_meas_count += 1
+        if self.ax_his[-1] == y[3]:
+            self.ax_count += 1
+        if self.ay_his[-1] == y[4]:
+            self.ay_count += 1
+        if self.psiDot_his[-1] == y[5]:
+            self.psiDot_count += 1
+        self.pkg_count += 1
+
+        idx = []
+        if y[2] > 1.8: # at high speed, remove vy_meas
+            idx.append(2)
+
+        H      = np.delete(H,(idx),axis=0)
+        R      = np.delete(self.R,(idx),axis=0)
+        R      = np.delete(R,(idx),axis=1)
+        y      = np.delete(y,(idx),axis=0)
+        my_kp1 = np.delete(my_kp1,(idx),axis=0)
+        P12    = dot(P_kp1, H.T)                      # cross covariance
+        K      = dot(P12, inv( dot(H,P12) + R))       # Kalman filter gain
+        self.z = mx_kp1 + dot(K,(y - my_kp1))
+        self.P = dot(dot(K,R),K.T) + dot( dot( (eye(xDim) - dot(K,H)) , P_kp1)  ,  (eye(xDim) - dot(K,H)).T )
+        (self.x_est, self.y_est, self.vx_est, self.vy_est, self.ax_est, self.ay_est, self.yaw_est, self.psiDot_est) = self.z
 
     def ukf(self, y, u):
         """

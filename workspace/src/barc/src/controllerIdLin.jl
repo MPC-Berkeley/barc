@@ -1,6 +1,6 @@
 #!/usr/bin/env julia
 #=
-    File name: controllerId.jl
+    File name: controllerIdLin.jl
     Author: Shuqi Xu
     Email: shuqixu@kth.se
     Julia Version: 0.4.7
@@ -15,8 +15,8 @@ using JuMP
 using Ipopt
 using JLD
 
-include("Library/modules.jl")
-include("Library/models.jl")
+include("library/modules.jl")
+include("library/models.jl")
 import mpcModels: MdlPf, MdlIdLin
 import solveMpcProblem: solvePf, solveIdLin
 using Types
@@ -34,7 +34,8 @@ function main()
     end
 
     # OBJECTS INITIALIZATION
-    track       = Track(createTrack("basic"))
+    track       = Track(createTrack(get_param("race_track")))
+    track_Fd    = Track(createTrack("feature"))
     posInfo     = PosInfo()
     sysID       = SysID()
     SS          = SafeSet(BUFFERSIZE,raceSet.num_lap)
@@ -62,12 +63,21 @@ function main()
         mdlLMPC = MdlIdLin(agent)
         sysIdTi(agent)
         sysIdTv(agent)
-        GPR(agent)
+        gprDyn(agent)
         findSS(agent)
         solveIdLin(mdlLMPC,agent)
+
+        # DIFFERENT OPTIONS FOR SELECTING FEATURE DATA FOR SYS ID
+        buildFeatureSetFromHistory(agent)
+        # data = load("$(homedir())/$(raceSet.folder_name)/FD.jld")
+        # featureData = data["featureData"]
+        # buildFeatureSetFromDataSet(agent,featureData)
+        # buildFeatureSetFromBoth(agent,featureData)
     end
     historyCollect(agent)
-    gpDataCollect(agent)
+    gpResultCollect(agent)
+    gpErrorCollect(agent)
+    gpFeatureCollect(agent)
 
     # NODE INITIALIZATION
     init_node("controller")
@@ -76,6 +86,7 @@ function main()
     vis_pub     = Publisher("mpc_visual",   mpc_visual,                      queue_size=1)
     pos_sub     = Subscriber("pos_info",    pos_info, SE_callback, (agent,), queue_size=1)
 
+    counter = 1
     while ! is_shutdown()
         # CONTROL SIGNAL PUBLISHING
         publish(ecu_pub, cmd)
@@ -89,15 +100,20 @@ function main()
             if raceSet.PF_FLAG
                 setvalue(mdlPf.z_Ol[:,1],   mpcSol.z_prev[:,1]-track.s)
             else
-                buildFeatureSet(agent)
+                # DIFFERENT OPTIONS FOR SELECTING FEATURE DATA FOR SYS ID
+                buildFeatureSetFromHistory(agent)
+                # buildFeatureSetFromDataSet(agent,featureData)
+                # buildFeatureSetFromBoth(agent,featureData)
                 setvalue(mdlLMPC.z_Ol[:,1], mpcSol.z_prev[:,1]-track.s)
             end
 
             # DATA SAVING AFTER FINISHING ALL LAPS
             if lapStatus.lap > raceSet.num_lap
                 saveHistory(agent)
-                if !raceSet.GP_LOCAL_FLAG && !raceSet.GP_FULL_FLAG
-                    saveGPData(agent)
+                if raceSet.GP_LOCAL_FLAG || raceSet.GP_FULL_FLAG
+                    saveGpResultData(agent)
+                else
+                    saveGpFeatureData(agent)
                 end
             end
         end
@@ -119,37 +135,44 @@ function main()
             else
                 sysIdTi(agent)
             end
-
             # GAUSSIAN PROCESS
-            GPR(agent)
-
-            # SAFESET CONSTRUCTION
-            findSS(agent)
-
-            # SOLVE LMPC
-        	solveIdLin(mdlLMPC,agent)
-
-            # COLLECT GAUSSIAN PROCESS FEATURE DATA
-            if !raceSet.GP_LOCAL_FLAG && !raceSet.GP_FULL_FLAG && lapStatus.it>1
-                gpDataCollect(agent)
+            if raceSet.GP_LOCAL_FLAG || raceSet.GP_FULL_FLAG
+                gprDyn(agent)
+                gpResultCollect(agent)
+                findSS(agent)
+                solveIdLin(mdlLMPC,agent)
+                gpErrorCollect(agent)
+            else
+                findSS(agent)
+                solveIdLin(mdlLMPC,agent)
+                gpFeatureCollect(agent)
             end
         end
 
         # VISUALIZATION UPDATE
+        # visualUpdate(mpc_vis,agent,track_Fd)
         visualUpdate(mpc_vis,agent)
         publish(vis_pub, mpc_vis)
-        println("$(agent.mpcSol.sol_status): Lap:",lapStatus.lap,", It:",lapStatus.it," v:$(round(posInfo.v,2))")
+        # println("$(agent.mpcSol.sol_status): Lap:",lapStatus.lap,", It:",lapStatus.it," v:$(round(posInfo.v,2))")
         
         # ITERATION UPDATE
+        # if counter == 1
         historyCollect(agent)
+        #     counter = 0
+        # else
+        #     counter += 1
+        # end
+        
         rossleep(loop_rate)
     end
 
     # DATA SAVING IF SIMULATION/EXPERIMENT IS KILLED
     if !raceSet.PF_FLAG
         saveHistory(agent)
-        if !raceSet.GP_LOCAL_FLAG && !raceSet.GP_FULL_FLAG
-            saveGPData(agent)
+        if raceSet.GP_LOCAL_FLAG || raceSet.GP_FULL_FLAG
+            saveGpResultData(agent)
+        else
+            saveGpFeatureData(agent)
         end
     end
 end

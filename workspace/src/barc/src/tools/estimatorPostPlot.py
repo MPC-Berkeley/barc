@@ -1,5 +1,5 @@
 """
-    File name: pythonPostPlot.py
+    File name: estimatorPostPlot.py
     Author: Shuqi Xu
     Email: shuqixu@berkeley.edu (xushuqi8787@gmail.com)
     Python Version: 2.7.12

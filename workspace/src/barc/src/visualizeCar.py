@@ -86,6 +86,9 @@ class Plotter(object):
         self.lapTime_s = [self.ax.annotate("Time: 0.00s, It: 0, v: 0.00 m/s", xy=[0.5,(0.6*i+5)/(len(self.lapTime)+10)], xycoords= "axes fraction", 
                                                fontsize=12, verticalalignment="top", horizontalalignment="center") for i in range(5)]
 
+        # pkg_loss
+        self.pkgLossRatio = zeros(6)
+
         # imu and encoder raw data monitor
         # self.ax_ax      = self.fig.add_subplot(gs[3,0])
         # self.ax_ax.set_ylim([-5.0,5.0])
@@ -133,6 +136,7 @@ class Plotter(object):
         self.sysID_h.set_data(self.sysID_x,self.sysID_y)
         # history lap times update
         self.ax.set_xlabel("Lap: {}, vx: {} m/s, vy: {} m/s, ax: {} m/s2, ay: {} m/s2, psiDot: {} rad/s, a: {} m/s2, df: {} rad".format(int(self.state[7]), self.state[0], self.state[1], self.state[2], self.state[3], self.state[4], self.state[5], self.state[6]))
+        self.ax.set_title("x:{},y:{},vx:{},ax:{},ay:{},psiDot:{},".format(self.pkgLossRatio[0],self.pkgLossRatio[1],self.pkgLossRatio[2],self.pkgLossRatio[3],self.pkgLossRatio[4],self.pkgLossRatio[5]))
 
         # UPDATE FOR RAW DATA MONITOR
         # self.ax_raw_h.set_ydata(self.ax_raw)
@@ -171,6 +175,9 @@ class Plotter(object):
         car = R * self.car_origin
         self.car_update[0] = car[0] + self.x
         self.car_update[1] = car[1] + self.y
+
+        # pkg_loss call_back
+        self.pkgLossRatio = np.round(posInfo.pkg_loss,3)
 
     def gps_callback(self, gps):
         if self.s_prev<0.3:

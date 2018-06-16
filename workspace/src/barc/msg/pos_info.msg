@@ -14,3 +14,4 @@ float64 a_x
 float64 a_y
 float64 u_a
 float64 u_df
+float64[] pkg_loss

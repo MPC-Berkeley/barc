@@ -7,6 +7,7 @@
     <param name="sim_flag"      type="bool" value="true" />
     <param name="PF_flag"       type="bool" value="false" />
     <param name="feature_flag"  type="bool" value="false" />
+    <param name="race_track"    type="str"  value="MSC_lab" />
     <!-- vehicle parameters -->
     <param name="L_a"   type="double" value="0.125" />
     <param name="L_b"   type="double" value="0.125" />

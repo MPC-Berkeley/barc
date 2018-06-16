@@ -442,6 +442,7 @@ export MdlPf,MdlKin,MdlId,MdlIdLin,MdlDynLin,MdlKinLin
         uPrev::Array{JuMP.NonlinearParameter,2}
         df_his::Array{JuMP.NonlinearParameter,1}
         a_his::Array{JuMP.NonlinearParameter,1}
+        GP_vx_e::Array{JuMP.NonlinearParameter,1}
         GP_vy_e::Array{JuMP.NonlinearParameter,1}
         GP_psiDot_e::Array{JuMP.NonlinearParameter,1}
 
@@ -497,6 +498,7 @@ export MdlPf,MdlKin,MdlId,MdlIdLin,MdlDynLin,MdlKinLin
             end
 
             @NLparameter(mdl, z0[i=1:6] == 0)
+            @NLparameter(mdl, GP_vx_e[i=1:N] == 0)
             @NLparameter(mdl, GP_vy_e[i=1:N] == 0)
             @NLparameter(mdl, GP_psiDot_e[i=1:N] == 0)
             @NLparameter(mdl, c[1:N] == 0)
@@ -540,7 +542,8 @@ export MdlPf,MdlKin,MdlId,MdlIdLin,MdlDynLin,MdlKinLin
                                                                c_Vx[i,2]*z_Ol[i,5] +
                                                                c_Vx[i,3]*z_Ol[i,6] +
                                                                c_Vx[i,4]*u_Ol[i,1] +
-                                                               c_Vx[i,5]*u_Ol[i,2])
+                                                               c_Vx[i,5]*u_Ol[i,2] +
+                                                               GP_vx_e[i])
                 @NLconstraint(mdl, z_Ol[i+1,5]  == z_Ol[i,5] + c_Vy[i,1]*z_Ol[i,4] + 
                                                                c_Vy[i,2]*z_Ol[i,5] + 
                                                                c_Vy[i,3]*z_Ol[i,6] + 
@@ -579,6 +582,7 @@ export MdlPf,MdlKin,MdlId,MdlIdLin,MdlDynLin,MdlKinLin
             m.terminalCost= terminalCost 
             m.selStates   = selStates    
             m.stateCost   = stateCost   
+            m.GP_vx_e     = GP_vx_e
             m.GP_vy_e     = GP_vy_e
             m.GP_psiDot_e = GP_psiDot_e
             m.alpha       = alpha
@@ -1058,8 +1062,9 @@ import CarSim:carPreDyn, carPreId
         setvalue(mdl.c,             curvature)
         setvalue(mdl.selStates,     agent.SS.selStates)
         setvalue(mdl.stateCost,     agent.SS.stateCost)
-        setvalue(mdl.GP_vy_e,       agent.gpData.GP_vy_e)
-        setvalue(mdl.GP_psiDot_e,   agent.gpData.GP_psiDot_e)
+        setvalue(mdl.GP_vx_e,       agent.gpData.GP_vx)
+        setvalue(mdl.GP_vy_e,       agent.gpData.GP_vy)
+        setvalue(mdl.GP_psiDot_e,   agent.gpData.GP_psiDot)
 
         setvalue(mdl.c_Vx, agent.sysID.c_Vx)
         setvalue(mdl.c_Vy, agent.sysID.c_Vy)
