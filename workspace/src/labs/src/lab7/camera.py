@@ -25,6 +25,7 @@ class camera_node():
 
         self.mtx = np.array(rospy.get_param("/mtx"))
         self.dist = np.array(rospy.get_param("/dist"))
+        self.flipped_camera = np.array(rospy.get_param("/flipped_camera"))
 
 
         # Camera resolution
