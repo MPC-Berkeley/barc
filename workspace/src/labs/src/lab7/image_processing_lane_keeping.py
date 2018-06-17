@@ -281,7 +281,9 @@ class image_processing_node():
             # Starting with one time step ahead, finds the pixel corresponding to that distance
             xIforward = (self.v_ref*dt*k)+self.camera_offset_distance
             y_base = int(self.calc_x_Inertial_to_y_newPixel(xIforward))
-            index_y = height - y_base -1
+            if y_base<1:
+                y_base = 1
+            index_y = height - y_base 
             index_x = previous_x
 
             # finds the lane edges at the x and y value of the pixel
@@ -326,7 +328,7 @@ class image_processing_node():
                 # if there is an optimal trajectory found, plots the points
                 j = k-1
                 if (self.statepoints[1][j]>self.height):
-                    self.statepoints[1][j] = self.height-1
+                    self.statepoints[1][j] = self.height-2
                 if ((j>0) and self.count > 10):
                     previous_statex = self.statepoints[0][j-1]
                     previous_statey = self.statepoints[1][j-1]
@@ -444,7 +446,7 @@ class image_processing_node():
                     x = xlist[i]
                     y = ylist[i]
                     xPixelList[i] = self.width/2-int(self.f2(x)*y+self.b_eq(x))
-                    yPixelList[i] =  self.height-int(self.calc_x_Inertial_to_y_newPixel(x+self.camera_offset_distance))
+                    yPixelList[i] =  self.height-int(self.calc_x_Inertial_to_y_newPixel(x+self.camera_offset_distance))-2
             self.statepoints = (xPixelList,  yPixelList)
             #print(self.statepoints)
 
