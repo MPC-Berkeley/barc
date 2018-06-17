@@ -593,24 +593,25 @@ function select_states(agent::Agent, track::Track)
 					closest_index[i] : closest_index[i] + round(Int64, NUM_HORIZONS * horizon) - 1, :], 
 					1)		
 
-		#=
+		
 		# Lukas' cost
 		agent.selected_states_cost[counter : counter + round(Int64, NUM_HORIZONS * horizon) - 1, :] = 
 			collect((round(Int64, NUM_HORIZONS * horizon) : - 1 : 1) + agent.iterations_needed[i] - min_iteration) 
-		=#
 		
-		# 1. new cost
-		cost = collect(0 : - 1 : - (round(Int64, NUM_HORIZONS * horizon) - 1)) + agent.iterations_needed[i] - closest_index[i]
-		if any(agent.predicted_s[:, 1] .> track.total_length)
-			if i < NUM_LOADED_LAPS + agent.current_lap - 1
-				cost += agent.iterations_needed[i + 1]
-			else 
-				# find state where finish line is crossed
-				finish_line_crossed_idx = findmax(agent.predicted_s .> track.total_length)[2]
-				cost += agent.current_iteration + finish_line_crossed_idx - 1
-			end
-		end
-		agent.selected_states_cost[counter : counter + round(Int64, NUM_HORIZONS * horizon) - 1, :] = cost
+		
+        
+		# # 1. new cost
+		# cost = collect(0 : - 1 : - (round(Int64, NUM_HORIZONS * horizon) - 1)) + agent.iterations_needed[i] - closest_index[i]
+		# if any(agent.predicted_s[:, 1] .> track.total_length)
+		# 	if i < NUM_LOADED_LAPS + agent.current_lap - 1
+		# 		cost += agent.iterations_needed[i + 1]
+		# 	else 
+		# 		# find state where finish line is crossed
+		# 		finish_line_crossed_idx = findmax(agent.predicted_s .> track.total_length)[2]
+		# 		cost += agent.current_iteration + finish_line_crossed_idx - 1
+		# 	end
+		# end
+		# agent.selected_states_cost[counter : counter + round(Int64, NUM_HORIZONS * horizon) - 1, :] = cost
 
 		#=
 		# 2. new cost

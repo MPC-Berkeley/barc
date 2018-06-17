@@ -761,8 +761,8 @@ function replay_recording(file)
 	num_laps = 125
 	=#
 
-    start_lap = 30
-    num_laps = 35
+    # start_lap = 30
+    # num_laps = 35
 
 	laps = collect(start_lap : num_laps)
 	plot_trajectories(track, laps, trajectories_s, trajectories_xy, file)

@@ -150,10 +150,16 @@ function create_track!(track::Track)
 end
 
 function oval_track!(track::Track)
+	# add_segment!(track, 1.0, 0.0)
+	# add_segment!(track, 4.5, 1.0 * pi)
+	# add_segment!(track, 2.0, 0.0)
+	# add_segment!(track, 4.5, 1.0 * pi)
+	# add_segment!(track, 1.0, 0.0)
+
 	add_segment!(track, 1.0, 0.0)
-	add_segment!(track, 4.5, 1.0 * pi)
+	add_segment!(track, 6.0, 1.0 * pi)
 	add_segment!(track, 2.0, 0.0)
-	add_segment!(track, 4.5, 1.0 * pi)
+	add_segment!(track, 6.0, 1.0 * pi)
 	add_segment!(track, 1.0, 0.0)
 
 	#=

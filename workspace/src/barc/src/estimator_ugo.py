@@ -104,10 +104,10 @@ def main():
     Q_dyn[0,0] = 0.01    # x
     Q_dyn[1,1] = 0.01    # y
     Q_dyn[2,2] = 0.01     # vx
-    Q_dyn[3,3] = 0.25 # 0.1 # pretty good # 0.01     # vy
+    Q_dyn[3,3] = 0.1 # pretty good # 0.01     # vy
     Q_dyn[4,4] = 1.0 * 1.0     # ax
     Q_dyn[5,5] = 1.0 * 1.0     # ay 
-    Q_dyn[6,6] = 0.1 * 1.0 # 0.01 # not bad, but drifting# 20.0    # psi
+    Q_dyn[6,6] = 0.01 # 0.05 # 0.01 # 0.1 * 1.0 # 0.01 # not bad, but drifting# 20.0    # psi
     Q_dyn[7,7] = 0.1 * 0.1 * 1.0    # psiDot
     R_dyn = eye(6)
     R_dyn[0,0] = 0.2 * 5.0 * 10.0   # x
@@ -117,6 +117,24 @@ def main():
     R_dyn[4,4] = 1.0 * 10.0     # ay 
     R_dyn[5,5] = 0.1     # psiDot
     thReset = 10000.0
+
+    # Q_dyn = eye(8)
+    # Q_dyn[0,0] = 0.01    # x
+    # Q_dyn[1,1] = 0.01    # y
+    # Q_dyn[2,2] = 0.01     # vx
+    # Q_dyn[3,3] = 0.01 # 0.1 # pretty good # 0.01     # vy
+    # Q_dyn[4,4] = 1.0 * 1.0     # ax
+    # Q_dyn[5,5] = 1.0 * 1.0     # ay 
+    # Q_dyn[6,6] = 0.1 * 1.0 # 0.01 # not bad, but drifting# 20.0    # psi
+    # Q_dyn[7,7] = 0.1 * 0.1 * 1.0    # psiDot
+    # R_dyn = eye(6)
+    # R_dyn[0,0] = 0.2 * 5.0 * 10.0   # x
+    # R_dyn[1,1] = 0.2 * 5.0 * 10.0   # y
+    # R_dyn[2,2] = 1.0 * 0.1      # vx
+    # R_dyn[3,3] = 0.5 * 10.0     # ax 
+    # R_dyn[4,4] = 1.0 * 10.0     # ay 
+    # R_dyn[5,5] = 0.1     # psiDot
+    # thReset = 10000.0
 
     twoEstimators = False
     switchEstimators = False
@@ -1095,8 +1113,8 @@ class GpsClass(object):
         Arguments:
             t0: starting measurement time
         """
-        # rospy.Subscriber('hedge_pos', hedge_pos, self.gps_callback, queue_size=1)
-        rospy.Subscriber('hedge_imu_fusion', hedge_imu_fusion, self.gps_callback, queue_size=1)
+        rospy.Subscriber('hedge_pos', hedge_pos, self.gps_callback, queue_size=1)
+        # rospy.Subscriber('hedge_imu_fusion', hedge_imu_fusion, self.gps_callback, queue_size=1)
 
         # GPS measurement
         self.x      = 0.0

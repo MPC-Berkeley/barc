@@ -7,8 +7,8 @@
     Julia Version: 0.4.7
 =#
 
-const MODE = "path_following"
-# const MODE = "learning"
+# const MODE = "path_following"
+const MODE = "learning"
 # const MODE = "racing"
 
 if MODE == "racing"
@@ -20,7 +20,7 @@ end
 
 # const SYS_ID = true
 
-const INITIALIZATION_TYPE = "outer"
+const INITIALIZATION_TYPE = "center"
 
 if MODE == "path_following"
 	const NUM_PF_LAPS = 5

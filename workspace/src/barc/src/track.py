@@ -120,10 +120,16 @@ class Track:
             # exit()
 
     def oval_track(self):
+        # self.add_segment(1.0, 0.0)
+        # self.add_segment(4.5, np.pi)
+        # self.add_segment(2.0, 0.0)
+        # self.add_segment(4.5, np.pi)
+        # self.add_segment(1.0, 0.0)
+
         self.add_segment(1.0, 0.0)
-        self.add_segment(4.5, np.pi)
+        self.add_segment(6.0, np.pi)
         self.add_segment(2.0, 0.0)
-        self.add_segment(4.5, np.pi)
+        self.add_segment(6.0, np.pi)
         self.add_segment(1.0, 0.0)
 
         """
