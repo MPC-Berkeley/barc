@@ -98,7 +98,7 @@ class image_processing_node():
         self.previousTime = time.time()
         self.printme = False
         self.statepoints=''
-
+        self.camera_distance_calibrated = False
 
         while not rospy.is_shutdown():
             try:
@@ -198,68 +198,6 @@ class image_processing_node():
         cv2.imshow("Advanced Lane Detection", self.pathOverlayedImage[270:480,:])
         cv2.waitKey(3) # Waitkey is necesarry to update image
 
-    #################################################################################
-    def find_lane_edges(self,img,x,y,width):
-        """
-        Finds the edge of the track by searching starting from the center of the image and towards the edge along that row of pixels. Also removes some noise with a custom filter
-        """
-        leftempty = True;
-        rightempty = True;
-        y_left = y
-        y_right = y
-        boxsize = rospy.get_param("/boxsize") # checks a box of +-boxsize points around the pixel to see if there are any breaks
-        while leftempty:
-            xleftarray = np.arange(x) # number range from 0 to the center point
-            x_left_index = np.where(img[y_left,xleftarray]>0) #finds the values along a certain row where the pixel value >0 which indicates the track
-            try:
-                i = -1
-                while leftempty:
-                    # starts from the last value in the row to see if the pixel is noise or part of the track by checking for continuity along the edges of the box
-                    x_left = xleftarray[x_left_index[0][i]] 
-                    leftbound = x_left-boxsize
-                    if leftbound <0:
-                        leftbound=0
-                    
-                    Top = img[y_left-boxsize,np.arange(leftbound,x_left+boxsize)]
-                    Bottom = img[y_left+boxsize,np.arange(leftbound,x_left+boxsize)]
-                    Right = img[np.arange(y_left-boxsize,y_left+boxsize),x_left+boxsize]
-                    Left = img[np.arange(y_left-boxsize,y_left+boxsize),leftbound]
-
-                    # if the box around the pixel does not have any bright values along all four edges, this is likely a noisy pixel rather the track
-                    if (all(Top==0) and all(Bottom==0) and all(Right==0) and all(Left==0)): 
-                        i-=1
-                    else:
-                        leftempty = False;
-            except:
-                x_left = 0
-                leftempty = False;
-        while rightempty:
-            xrightarray = np.arange(x,width) # number range from the center point to the right edge of the image
-            x_right_index = np.where(img[y_right,xrightarray]>0)
-            try:
-                i = 0
-                while rightempty:
-                    # starts from the first value in the row to see if the pixel is noise or part of the track by checking for continuity along the edges of the box
-                    x_right = xrightarray[x_right_index[0][i]]
-                    rightbound = x_right+boxsize
-                    if rightbound >=self.width:
-                        rightbound=self.width-1
-                    Top = img[y_right-boxsize,np.arange(x_right-boxsize,rightbound)]
-                    Bottom = img[y_right+boxsize,np.arange(x_right-boxsize,rightbound)]
-                    Right = img[np.arange(y_right-boxsize,y_right+boxsize),rightbound]
-                    Left = img[np.arange(y_right-boxsize,y_right+boxsize),x_right-10]
-
-                    # if the box around the pixel does not have any bright values along all four edges, this is likely a noisy pixel rather the track
-                    if (all(Top==0) and all(Bottom==0) and all(Right==0) and all(Left==0)):
-                        i+=1
-                    else:
-                        rightempty = False;
-            except:
-                x_right = self.width
-                rightempty = False;
-
-        return (x_left, x_right,y_left,y_right)
-
     ##############################################################################################
 
     def draw_lines(self,data):
@@ -277,13 +215,19 @@ class image_processing_node():
         converge_limit = rospy.get_param("/converge_limit") # if the left and rath paths converge within 100 pixels, it indicates an obstacle or dead end which stops the vehicle
         i=0
         dt = self.averageTime
-        
+        y_base = -1
+
         for k in xrange(1,self.numpoints+1,1):
             # Starting with one time step ahead, finds the pixel corresponding to that distance
+            while self.camera_distance_calibrated == False:
+                xIforward = (self.v_ref*dt*k)+self.camera_offset_distance
+                y_base = int(self.calc_x_Inertial_to_y_newPixel(xIforward))
+                if y_base < 1:
+                    self.camera_offset_distance = self.camera_offset_distance+0.005
+                else:
+                    self.camera_distance_calibrated = True
             xIforward = (self.v_ref*dt*k)+self.camera_offset_distance
             y_base = int(self.calc_x_Inertial_to_y_newPixel(xIforward))
-            if y_base<1:
-                y_base = 1
             index_y = height - y_base 
             index_x = previous_x
 
@@ -356,6 +300,70 @@ class image_processing_node():
         self.show_Image_pub.publish(True)
         self.publish_states_pub.publish(True)
 
+#################################################################################
+    def find_lane_edges(self,img,x,y,width):
+        """
+        Finds the edge of the track by searching starting from the center of the image and towards the edge along that row of pixels. Also removes some noise with a custom filter
+        """
+        leftempty = True;
+        rightempty = True;
+        y_left = y
+        y_right = y
+        boxsize = rospy.get_param("/boxsize") # checks a box of +-boxsize points around the pixel to see if there are any breaks
+        while leftempty:
+            xleftarray = np.arange(x) # number range from 0 to the center point
+            x_left_index = np.where(img[y_left,xleftarray]>0) #finds the values along a certain row where the pixel value >0 which indicates the track
+            try:
+                i = -1
+                while leftempty:
+                    # starts from the last value in the row to see if the pixel is noise or part of the track by checking for continuity along the edges of the box
+                    x_left = xleftarray[x_left_index[0][i]] 
+                    leftbound = x_left-boxsize
+                    if leftbound <0:
+                        leftbound=0
+                    
+                    Top = img[y_left-boxsize,np.arange(leftbound,x_left+boxsize)]
+                    Bottom = img[y_left+boxsize,np.arange(leftbound,x_left+boxsize)]
+                    Right = img[np.arange(y_left-boxsize,y_left+boxsize),x_left+boxsize]
+                    Left = img[np.arange(y_left-boxsize,y_left+boxsize),leftbound]
+
+                    # if the box around the pixel does not have any bright values along all four edges, this is likely a noisy pixel rather the track
+                    if (all(Top==0) and all(Bottom==0) and all(Right==0) and all(Left==0)): 
+                        i-=1
+                    else:
+                        leftempty = False;
+            except:
+                x_left = 0
+                leftempty = False;
+        while rightempty:
+            xrightarray = np.arange(x,width) # number range from the center point to the right edge of the image
+            x_right_index = np.where(img[y_right,xrightarray]>0)
+            try:
+                i = 0
+                while rightempty:
+                    # starts from the first value in the row to see if the pixel is noise or part of the track by checking for continuity along the edges of the box
+                    x_right = xrightarray[x_right_index[0][i]]
+                    rightbound = x_right+boxsize
+                    if rightbound >=self.width:
+                        rightbound=self.width-1
+                    Top = img[y_right-boxsize,np.arange(x_right-boxsize,rightbound)]
+                    Bottom = img[y_right+boxsize,np.arange(x_right-boxsize,rightbound)]
+                    Right = img[np.arange(y_right-boxsize,y_right+boxsize),rightbound]
+                    Left = img[np.arange(y_right-boxsize,y_right+boxsize),x_right-10]
+
+                    # if the box around the pixel does not have any bright values along all four edges, this is likely a noisy pixel rather the track
+                    if (all(Top==0) and all(Bottom==0) and all(Right==0) and all(Left==0)):
+                        i+=1
+                    else:
+                        rightempty = False;
+            except:
+                x_right = self.width
+                rightempty = False;
+
+        return (x_left, x_right,y_left,y_right)
+
+    ######################################################################################
+
     def publish_states(self,data):
         """ Converts the centerlane from pixel coordinates to inertial coordinates. Then, publishes the reference trajectory.
         """
@@ -384,6 +392,7 @@ class image_processing_node():
             print(self.reference_trajectory)
         
         self.reference_trajectory_pub.publish(self.reference_trajectory)
+
     ######################################################################################
 
     def convertPixelsToDistance(self,inputarray):
