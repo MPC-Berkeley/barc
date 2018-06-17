@@ -17,7 +17,7 @@ import rospy
 # from Localization_helpers import Localization
 from barc.msg import ECU, pos_info, Vel_est
 from sensor_msgs.msg import Imu
-from marvelmind_nav.msg import hedge_pos
+from marvelmind_nav.msg import hedge_pos, hedge_imu_fusion
 from std_msgs.msg import Header
 from numpy import eye, array, zeros, diag, unwrap, tan, cos, sin, vstack, linalg, append
 from numpy import ones, polyval, delete, size
@@ -208,6 +208,7 @@ def state_estimation():
     rospy.Subscriber('vel_est', Vel_est, se.encoder_vel_callback)
     rospy.Subscriber('ecu', ECU, se.ecu_callback)
     rospy.Subscriber('hedge_pos', hedge_pos, se.gps_callback, queue_size=1)
+    # rospy.Subscriber('hedge_imu_fusion', hedge_imu_fusion, se.gps_callback, queue_size=1)
     state_pub_pos = rospy.Publisher('pos_info', pos_info, queue_size=1)
 
     # get vehicle dimension parameters
@@ -226,15 +227,11 @@ def state_estimation():
 
     qa = 1000.0
     qp = 1000.0
-    #         x, y, vx, vy, ax, ay, psi, psidot, psidrift, x, y, psi, v
-    #Q = diag([1/20*dt**5*qa,1/20*dt**5*qa,1/3*dt**3*qa,1/3*dt**3*qa,dt*qa,dt*qa,1/3*dt**3*qp,dt*qp,0.01, 0.01,0.01,1.0,1.0,0.1])
-    #R = diag([0.5,0.5,0.5,0.1,10.0,1.0,1.0,     5.0,5.0,0.1,0.5, 1.0, 1.0])
-
+    
     Q = diag([1/20*dt**5*qa,1/20*dt**5*qa,1/3*dt**3*qa,1/3*dt**3*qa,dt*qa,dt*qa,1/3*dt**3*qp,dt*qp,0.1, 0.2,0.2,1.0,1.0,0.1])
     R = diag([5.0,5.0,1.0,10.0,100.0,1000.0,1000.0,     5.0,5.0,10.0,1.0, 10.0,10.0])
-    # R = diag([4*5.0,4*5.0,1.0,2*10.0,2*100.0,1000.0,1000.0,     4*5.0,4*5.0,10.0,1.0, 10.0,10.0])
-    # R = diag([1*5.0,1*5.0,1.0,2*10.0,2*100.0,1000.0,1000.0,     1*5.0,1*5.0,10.0,1.0, 10.0,10.0])
-    #         x,y,v,psi,psiDot,a_x,a_y, x, y, psi, v
+    R = diag([4*5.0,4*5.0,1.0,2*10.0,2*100.0,1000.0,1000.0,     4*5.0,4*5.0,10.0,1.0, 10.0,10.0])
+    R = diag([1*5.0,1*5.0,1.0,2*10.0,2*100.0,1000.0,1000.0,     1*5.0,1*5.0,10.0,1.0, 10.0,10.0])
 
     # Set up track parameters
     # l = Localization()

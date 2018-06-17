@@ -115,13 +115,13 @@ def main():
     Q[6,6] = 0.05 # psi
     Q[7,7] = 0.01 # psidot
     R = eye(7)
-    R[0,0] = 1.0    # x
-    R[1,1] = 1.0    # y
+    R[0,0] = 0.5    # x
+    R[1,1] = 0.5    # y
     R[2,2] = 1.0    # vx
     R[3,3] = 2.0   # ax
     R[4,4] = 8.0   # ay
-    R[5,5] = 0.5  # psiDot
-    R[6,6] = 20.0  # yaw
+    R[5,5] = 0.1  # psiDot
+    R[6,6] = 100.0  # yaw
 
     imu = ImuClass(0.0)
     gps = GpsClass(0.0)
@@ -362,9 +362,6 @@ class Estimator(object):
     def estimateState(self,imu,gps,enc,ecu,KF):
         """Do extended Kalman filter to estimate states"""
 
-        if abs(self.psiDot_est) < 0.3:
-            self.z[3] = 0.0
-
         self.a_his.append(ecu.a)
         self.df_his.append(ecu.df)
         u = [self.a_his.pop(0), self.df_his.pop(0)]
@@ -372,6 +369,11 @@ class Estimator(object):
         y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot, gps.angle])
         # y = np.array([gps.x_ply, gps.y_ply, enc.v_meas, imu.ax, imu.ay, imu.psiDot])
         KF(y,u)
+
+        """
+        if abs(self.y[5]) < 0.3:
+            self.z[3] = 0.0
+        """
 
         # SAVE THE measurement/input SEQUENCE USED BY KF
         self.x_his.append(y[0])

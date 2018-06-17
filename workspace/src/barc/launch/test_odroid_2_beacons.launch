@@ -23,7 +23,7 @@
         <param name="mass" type="double" value="1.98" />
         <param name="time_offset" type="double" value="0.0" />
         <param name="delay_a" type="int" value="1" />
-        <param name="delay_df" type="int" value="1" />
+        <param name="delay_df" type="int" value="3" />
         <param name="sim" type="str" value="estimation" />
 
         <remap from="pos_info" to="agent_2/pos_info" />
@@ -38,9 +38,11 @@
     </node>
 
     <!-- Estimator -->
-    <node machine="ubuntu-pc" pkg="barc" type="state_estimator_lukas_yaw.py" name="state_estimator_2" output="screen">
+    <node machine="ubuntu-pc" pkg="barc" type="estimator_ugo.py" name="state_estimator_2" output="screen">
+    <!-- <node machine="odroid_2" pkg="barc" type="estimator_dynamic.py" name="state_estimator_2" output="screen">  -->
+    <!--<node machine="odroid_2" pkg="barc" type="StateEstimatorClean.py" name="state_estimator_2" output="screen">-->
         <!-- delay in state estuiamtor -->
-        <param name="delay_df" type="double" value="0.0" />
+        <param name="delay_df" type="double" value="0.2" />
         <param name="delay_a" type="double" value="0.0" />
         <!-- ekf properties -->
         <param name="Q_x" type="double" value="0.01" />
@@ -64,9 +66,9 @@
         <remap from="vel_est" to="agent_2/vel_est" />
         <remap from="pos_info" to="agent_2/pos_info" />
         <remap from="ecu" to="agent_2/ecu" />
-        <remap from="hedge_pos_ang" to="agent_2/hedge_pos_ang" />
+        <!--<remap from="hedge_pos_ang" to="agent_2/hedge_pos_ang" /> -->
         <!--<remap from="hedge_imu_fusion_1" to="agent_2/hedge_imu_fusion_1" /> -->
-        <!--<remap from="hedge_imu_fusion_2" to="agent_2/hedge_imu_fusion_2" /> -->
+        <!--<remap from="hedge_imu_fusion_2" to="agent_2/hedge_imu_fusion_2" />-->
         <remap from="hedge_imu_fusion" to="agent_2/hedge_imu_fusion" />
         <!-- ukf properties -->
     </node>

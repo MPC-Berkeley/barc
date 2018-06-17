@@ -258,6 +258,10 @@ function race_lap!(agent::Agent, optimizer::Optimizer,
 			rossleep(Duration(0.005))
 		end
 
+		if agent.states_s[current_iteration, 1] > track.total_length / 2 && current_lap == 1 && current_iteration < 20
+			agent.states_s[current_iteration, 1] = - (track.total_length - agent.states_s[current_iteration, 1])
+		end
+
 		publish_inputs(optimizer, input_pub, agent)
 		# Convert and send the calculated steering commands
 		pwm_converter!(low_level_controller, agent.current_input[1], 
@@ -492,6 +496,11 @@ function race_iteration!(agent::Agent, optimizer::Optimizer,
 		end
 		toc()
 	else
+		# println("s now: ", agent.states_s[agent.current_iteration, :])
+		# println("s previous: ", agent.states_s[max(agent.current_iteration - 1, 1), :])
+		if agent.states_s[agent.current_iteration, :] == agent.states_s[max(agent.current_iteration - 1, 1), :]
+			println("=========================Same state used!!!!=======================")
+		end
 		solveMpcProblem_pathFollow(mpc_model, optimizer, agent, track, 
 								   CURRENT_REFERENCE)
 		# solve_path_following!(optimizer, track, CURRENT_REFERENCE)

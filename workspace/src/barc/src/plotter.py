@@ -176,7 +176,7 @@ class PlottedAgent:
                         color="gray", alpha=1.0, ec="black")
 
         self.gps_pos, = ax.plot(self.x_gps, self.y_gps, self.star)
-        self.trajectory_gps, = ax.plot(self.trajectory_gps_xy[:, 0], self.trajectory_gps_xy[:, 1], self.line_extra)
+        self.trajectory_gps, = ax.plot(self.trajectory_gps_xy[:, 0], self.trajectory_gps_xy[:, 1], self.star)
         # self.trajectory_gps_dots, = ax.plot(self.trajectory_gps_xy[:, 0], self.trajectory_gps_xy[:, 1], self.dot_extra)
 
         # self.transform(ax)
@@ -508,7 +508,7 @@ if __name__ == "__main__":
     try:
         rospy.init_node("plotting_stuff")
         colors = ["blue"]
-        # track = Track(ds=0.1, shape="test", width=1.0)
+        # track = Track(ds=0.1, shape="test", width=1.2)
         track = Track(ds=0.1, shape="oval", width=1.2)
         # track = Track(ds=0.1, shape="l_shape", width=1.2)
         plotter = Plotter(track, colors)

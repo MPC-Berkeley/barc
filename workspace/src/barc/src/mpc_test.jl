@@ -148,7 +148,6 @@ type MpcModel_pF
             end
         end
 
-        #=
         @NLconstraint(mdl, u_Ol[1, 2] - uPrev[1, 2] <= 0.06)
         @NLconstraint(mdl, u_Ol[1, 2] - uPrev[1, 2] >= - 0.06)
 
@@ -156,7 +155,6 @@ type MpcModel_pF
             @NLconstraint(mdl, u_Ol[i + 1, 2] - u_Ol[i, 2] <= 0.06)
             @NLconstraint(mdl, u_Ol[i + 1, 2] - u_Ol[i, 2] >= - 0.06)
         end
-        =#
 
         # Cost definitions
         # Derivative cost
@@ -259,7 +257,7 @@ type MpcModel_convhull
 
         ey_max      = track.width / 2           # bound for the state ey (distance from the center track). It is set as half of the width of the track for obvious reasons
         # n_poly_curv = trackCoeff.nPolyCurvature    # polynomial degree for curvature approximation
-        v_max       = 3                            # maximum allowed velocity
+        v_max       = 1.7                            # maximum allowed velocity
 
         delay_a = agent.delay_a
         delay_df = agent.delay_df
@@ -281,13 +279,14 @@ type MpcModel_convhull
         Q = [0.0, 10.0, 1.0, 10.0]  # Q (only for path following mode)
         R = 0.0 * [1.0, 1.0]  # put weights on a and d_f
         QderivZ = 1.0 * [1, 1, 1, 1, 1, 1.0]  # cost matrix for derivative cost of states
-        QderivU = 1.0 * 1.0 * 1.0 * [15.0, 0.1]
+        QderivU = 1.0 * 1.0 * 1.0 * [10.0, 0.1]
 
         vPathFollowing = 1.0  # reference speed for first lap of path following
         
         Q_term_cost = 1.0  # scaling of Q-function
-        Q_lane = 0.5 * 16.0
-        Q_slack = 1.1 * 1.0 * [100.0, 1.0, 1.0, 1.0, 4.0 * 5.0, 10.0]
+        Q_lane = 16.0
+        # Q_slack = 1.1 * 1.0 * [100.0, 1.0, 1.0, 1.0, 4.0 * 5.0, 10.0]
+        Q_slack = 1.0 * 1.0 * [100.0, 1.0, 1.0, 1.0, 0.5 * 0.5 * 4.0 * 5.0, 10.0]
         # Q_slack = 1.1 * 1.0 * [100.0, 1.0, 1.0, 0.1 * 1.0, 0.1 * 4.0 * 5.0, 10.0]
 
         println("prediction horizon = ", N)
@@ -357,7 +356,7 @@ type MpcModel_convhull
 
         @NLconstraint(mdl, [i = 2 : N + 1], z_Ol[i, 5] <= ey_max + eps_lane[i])
         @NLconstraint(mdl, [i = 2 : N + 1], z_Ol[i, 5] >= - ey_max - eps_lane[i])
-        #@NLconstraint(mdl,[i = 1:(N+1)], z_Ol[i,4] <= v_max + eps_vel[i] )  # soft constraint on maximum velocity
+        # @NLconstraint(mdl,[i = 1:(N+1)], z_Ol[i,4] <= v_max + eps_vel[i] )  # soft constraint on maximum velocity
         @NLconstraint(mdl, sum{alpha[i], i = 1 : num_considered_states} == 1)  # constraint on the coefficients of the convex hull
         
         #=
@@ -430,7 +429,6 @@ type MpcModel_convhull
             @NLconstraint(mdl, z_Ol[i + 1, 6] == z_Ol[i, 6] + dt * dsdt[i])                                                                                                
         end
 
-        #=
         @NLconstraint(mdl, u_Ol[1, 2] - uPrev[1, 2] <= 0.12)
         @NLconstraint(mdl, u_Ol[1, 2] - uPrev[1, 2] >= - 0.12)
 
@@ -438,7 +436,6 @@ type MpcModel_convhull
             @NLconstraint(mdl, u_Ol[i + 1, 2] - u_Ol[i, 2] <= 0.12)
             @NLconstraint(mdl, u_Ol[i + 1, 2] - u_Ol[i, 2] >= - 0.12)
         end
-        =#
 
         # Cost functions
         # Derivative cost
