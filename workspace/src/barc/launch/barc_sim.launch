@@ -67,6 +67,7 @@
      <!-- CONTROL -->
     <node pkg="barc" type="controllerMain.py" name="control" output="screen">
         <param name="mode" type="str" value="simulations" />
+        <param name="saveData" type="bool" value="false" />
     </node>
 
 

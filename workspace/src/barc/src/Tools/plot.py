@@ -13,15 +13,16 @@ import pickle
 import pdb
 from trackInitialization import Map
 from dataStructures import LMPCprediction, EstimatorData, ClosedLoopDataObj
+import os
 
 
 def main():
-    file_data = open(sys.path[0]+'/../data/experiments/ClosedLoopDataLMPC.obj', 'rb')
-    ClosedLoopData = pickle.load(file_data)
+    file_data = open('/barc_data/ClosedLoopDataLMPC.obj', 'rb')    
+    ClosedLoopData = pickle.load(pathSave)
     LMPController = pickle.load(file_data)
     LMPCOpenLoopData = pickle.load(file_data)    
     file_data.close()
-    map = Map(1)
+    map = Map("oval")
 
     plotOneStepPreditionError(LMPController, LMPCOpenLoopData)
     plotClosedLoopLMPC(LMPController, map)

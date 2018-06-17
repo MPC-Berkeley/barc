@@ -36,6 +36,7 @@ def main():
     sel_safe_set   = rospy.Publisher('SS', SafeSetGlob, queue_size=1)
 
     mode = rospy.get_param("/control/mode")
+    saveData = rospy.get_param("/control/saveData")
 
     loop_rate = 10.0
     dt = 1.0/loop_rate
@@ -52,11 +53,11 @@ def main():
     map = Map()                                              # Map
     
     # Choose Controller and Number of Laps
-    twoStepDelay = False
+    twoStepDelay   = False
     PickController = "LMPC"
-    NumberOfLaps   = 20
-    vt = 1.0
-    PathFollowingLaps = 1
+    NumberOfLaps   = 30
+    vt = 1.2
+    PathFollowingLaps = 2
     PIDnoise = np.array([0.2, 1.0]) # noise on [Steering, Acceleration] 
     ControllerLap0, Controller,  OpenLoopData   = ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PIDnoise)
                  
@@ -196,10 +197,11 @@ def main():
         rate.sleep()
 
     # Save Data
-    file_data = open(homedir+'/barc_data/'+'/ClosedLoopData'+PickController+'.obj', 'wb')
-    pickle.dump(ClosedLoopData, file_data)
-    pickle.dump(Controller, file_data)
-    pickle.dump(OpenLoopData, file_data)    
+    if saveData == True:
+        file_data = open(homedir+'/barc_data/'+'/ClosedLoopData'+PickController+'.obj', 'wb')
+        pickle.dump(ClosedLoopData, file_data)
+        pickle.dump(Controller, file_data)
+        pickle.dump(OpenLoopData, file_data)    
 
     file_data.close()
 
@@ -210,10 +212,10 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
     OpenLoopData = 0.0
 
     # TI MPC tuning
-    Q = 1*np.diag([500.0, 1.0, 10.0, 1.0, 0.0, 5 * 50.0]) # vx, vy, wz, epsi, s, ey
+    Q = 1*np.diag([500.0, 1.0, 10.0, 1.0, 0.0, 2 * 5 * 50.0]) # vx, vy, wz, epsi, s, ey
     R = np.diag([1.0, 1.0]) # delta, a
     N = 12
-    TI_Qlane   =  1 * np.array([100, 10]) # Quadratic and linear slack lane cost
+    TI_Qlane   =  1 * np.array([100, 0]) # Quadratic and linear slack lane cost
 
 
     if PickController == 'PID':
@@ -262,11 +264,11 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
         numSS_Points = 42 + N         # Number of points to select from each trajectory to build the safe set
         shift = N / 2                     # Given the closed point, x_t^j, to the x(t) select the SS points from x_{t+shift}^j
         # Tuning Parameters
-        Qslack  =  1 * np.diag([10, 1, 1, 1, 10, 1])          # Cost on the slack variable for the terminal constraint
-        Qlane   =  1 * np.array([10, 50]) # Quadratic and linear slack lane cost
+        Qslack  =  5 * np.diag([10, 1, 1, 1, 10, 1])          # Cost on the slack variable for the terminal constraint
+        Qlane   = 0.5 * 10 * np.array([50, 0]) # Quadratic and linear slack lane cost
         Q_LMPC  =  0 * np.diag([0.0, 0.0, 10.0, 0.0, 0.0, 0.0])  # State cost x = [vx, vy, wz, epsi, s, ey]
         R_LMPC  =  0 * np.diag([1.0, 1.0])                      # Input cost u = [delta, a]
-        dR_LMPC =  1 * np.array([10.0, 20.0])                     # Input rate cost u
+        dR_LMPC =  1 * np.array([0.5 * 10.0, 1 * 20.0])                     # Input rate cost u
         Controller = ControllerLMPC(numSS_Points, numSS_it, N, Qslack, Qlane, Q_LMPC, R_LMPC, dR_LMPC, 6, 2, shift, 
                                         dt, map, Laps, TimeLMPC, LMPC_Solver, SysID_Solver, flag_LTV)
         # Controller.addTrajectory(ClosedLoopDataPID)

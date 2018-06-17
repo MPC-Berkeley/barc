@@ -119,8 +119,11 @@ def main():
             rec_sim.set_xy(np.array([car_sim_x, car_sim_y]).T)
 
         maxVx = np.maximum(maxVx, estimatedStates[0])
+    
+        vSwitch      = 1.0
+        psiSwitch    = 0.5 * 2.0
 
-        StringValue = "vx: "+str(estimatedStates[0])+" max vx: "+str(maxVx)+" psiDot: "+str(estimatedStates[2])+" No vy: "+str(estimatedStates[0] > vSwitch or np.abs(estimatedStates[2]) > psiSwitch)
+        StringValue = "vx: "+str(estimatedStates[0])+" max vx: "+str(maxVx)+" psiDot: "+str(estimatedStates[2])+" No vy: "+str(estimatedStates[0] > vSwitch or np.abs(estimatedStates[3]) > psiSwitch)
         axtr.set_title(StringValue)
         
         if insideMap == 1:
@@ -160,7 +163,8 @@ class EstimationAndMesuredData():
         self.SSx  = []
         self.SSy  = []
 
-        self.MeasuredData = [0.0, 0.0]
+        self.MeasuredData = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+        self.EstimatedData= [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
 
         self.sim_x   = [0.0]
         self.sim_y   = [0.0]

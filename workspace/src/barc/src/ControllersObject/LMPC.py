@@ -371,22 +371,22 @@ def _LMPC_BuildMatIneqConst(LMPC):
     n = LMPC.n
     numSS_Points = LMPC.numSS_Points
     # Buil the matrices for the state constraint in each region. In the region i we want Fx[i]x <= bx[b]
-    Fx = np.array([[0., 0., 0., 0., 0., 1.],
+    Fx = np.array([[0., 0., 0., 0., 0.,  1.],
                    [0., 0., 0., 0., 0., -1.]])
 
-    bx = np.array([[LMPC.halfWidth],  # max ey
-                   [LMPC.halfWidth]])  # max ey
+    bx = np.array([[LMPC.halfWidth],   # max ey
+                   [LMPC.halfWidth]])  # min ey
 
     # Buil the matrices for the input constraint in each region. In the region i we want Fx[i]x <= bx[b]
-    Fu = np.array([[1., 0.],
-                   [-1., 0.],
-                   [0., 1.],
-                   [0., -1.]])
+    Fu = np.array([[ 1.,  0.],
+                   [-1.,  0.],
+                   [ 0.,  1.],
+                   [ 0., -1.]])
 
     bu = np.array([[0.4],  # Max Steering
                    [0.4],  # Max Steering
-                   [1.2],  # Max Acceleration
-                   [0.5]])  # Max Acceleration
+                   [1.8],  # Max Acceleration
+                   [0.7]])  # Min Acceleration
 
 
 
@@ -410,21 +410,29 @@ def _LMPC_BuildMatIneqConst(LMPC):
     Dummy2 = np.hstack((np.zeros((rFutot, cFxtot)), Futot))
 
     FDummy = np.vstack((Dummy1, Dummy2))
-    I = -np.eye(numSS_Points)
+    I = -np.eye(numSS_Points)                 # Lambda related with the safe set
     FDummy2 = linalg.block_diag(FDummy, I)
     Fslack = np.zeros((FDummy2.shape[0], n))
-    F_hard = np.hstack((FDummy2, Fslack))
+    
+    F_hard = np.hstack((FDummy2, Fslack))     # This has hard constraints on the lane boundaries
 
     LaneSlack = np.zeros((F_hard.shape[0], 2*N))
-    colIndex = range(2*N)
-    rowIndex = []
+    colIndexPositive = []
+    rowIndexPositive = []
+    colIndexNegative = []
+    rowIndexNegative = []
     for i in range(0, N):
-        rowIndex.append(i*Fx.shape[0] +0) # Slack on second element of Fx
-        rowIndex.append(i*Fx.shape[0] +1) # Slack on third element of Fx
-    LaneSlack[rowIndex, colIndex] = 1.0
+        colIndexPositive.append( i*2 + 0 )
+        colIndexNegative.append( i*2 + 1 )
+
+        rowIndexPositive.append(i*Fx.shape[0] + 0) # Slack on second element of Fx
+        rowIndexNegative.append(i*Fx.shape[0] + 1) # Slack on third element of Fx
+    
+    LaneSlack[rowIndexPositive, colIndexPositive] =  1.0
+    LaneSlack[rowIndexNegative, rowIndexNegative] = -1.0
 
     F = np.hstack((F_hard, LaneSlack))
-    # np.savetxt('F.csv', F, delimiter=',', fmt='%f')
+    np.savetxt('F.csv', F, delimiter=',', fmt='%f')
     # pdb.set_trace()
 
 

@@ -87,7 +87,7 @@ def main():
     Q_noVy[3,3] = 0.01 # vy
     Q_noVy[4,4] = 1.0 # ax
     Q_noVy[5,5] = 1.0 # ay
-    Q_noVy[6,6] = 10.0 # psi
+    Q_noVy[6,6] = 40.0 # psi
     Q_noVy[7,7] = 10.0 # psidot
     # Q[8,8] = 0.0 # psiDot in the model
     R_noVy = eye(6)
@@ -99,7 +99,7 @@ def main():
     R_noVy[5,5] = 0.10    # psiDot
     thReset_noVy = 0.8
     vSwitch      = 1.3
-    psiSwitch    = 2.0
+    psiSwitch    = 0.5 * 2.0
 
 
     twoEstimators = False

@@ -43,23 +43,47 @@ def main():
    
 
     Q = eye(8)
-    Q[0,0]  =  0.01     # x
-    Q[1,1]  =  0.01     # y
-    Q[2,2]  =  0.01     # vx
-    Q[3,3]  =  0.01     # vy
+    Q[0,0]  =  0.5     # x
+    Q[1,1]  =  0.5     # y
+    Q[2,2]  =  10.0     # vx
+    Q[3,3]  =  10.0     # vy
     Q[4,4]  =  1.0      # ax
     Q[5,5]  =  1.0      # ay 
-    Q[6,6]  = 10.0      # psi
-    Q[7,7]  = 10.0      # psiDot
+    Q[6,6]  = 10 + 80.0      # psi
+    Q[7,7]  = 2 * 50 * 10.0      # psiDot
     R = eye(7)
-    R[0,0]  = 20.0      # x
-    R[1,1]  = 20.0      # y
+    R[0,0]  = 10 + 40.0      # x
+    R[1,1]  = 10 + 40.0      # y
+    R[2,2]  =  0.1      # vx
+    R[3,3]  = 30 + 10.0      # ax 
+    R[4,4]  = 40.0      # ay 
+    R[5,5]  = 5 * 5 * 2 * 10 * 0.1      # psiDot
+    R[6,6]  =  0.01    # vy
+    thReset =  0.4
+    vSwitch      = 1.0
+    psiSwitch    = 0.5 * 2.0
+
+    Q = eye(8)
+    Q[0,0]  =  0.5     # x
+    Q[1,1]  =  0.5     # y
+    Q[2,2]  =  10.0     # vx
+    Q[3,3]  =  10.0     # vy
+    Q[4,4]  =  1.0      # ax
+    Q[5,5]  =  1.0      # ay 
+    Q[6,6]  = 80.0      # psi
+    Q[7,7]  = 2 * 10.0      # psiDot
+    R = eye(7)
+    R[0,0]  = 40.0      # x
+    R[1,1]  = 40.0      # y
     R[2,2]  =  0.1      # vx
     R[3,3]  = 10.0      # ax 
-    R[4,4]  = 10.0      # ay 
-    R[5,5]  =  0.1      # psiDot
+    R[4,4]  = 40.0      # ay 
+    R[5,5]  = 5 * 5 * 2 * 0.1      # psiDot
     R[6,6]  =  0.01    # vy
-    thReset =  1.5
+    thReset =  0.4
+    vSwitch      = 1.0
+    psiSwitch    = 0.5 * 2.0
+
 
     # Q_noVy = eye(8)
     # Q_noVy[0,0] =  0.01  # x
@@ -103,11 +127,12 @@ def main():
 
     while not rospy.is_shutdown():
 
-        if (est.vx_est + 0.0 * np.abs(est.psiDot_est) ) > 0.8 or (np.abs(est.psiDot_est) > 1.0):
+        if (est.vx_est > vSwitch or np.abs(est.psiDot_est) > psiSwitch):
             flagVy      = True
             # print "================ Not using vy! =============="
         else:
             flagVy      = False
+            est.Q[6,6] = 10
             # print "================ Using vy! =============="
 
         est.estimateState(imu,gps,enc,ecu,est.ekf,flagVy)

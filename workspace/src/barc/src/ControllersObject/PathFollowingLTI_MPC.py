@@ -206,12 +206,19 @@ def _buildMatIneqConst(Controller):
     b = np.hstack((bxtot, butot))
 
     LaneSlack = np.zeros((F_hard.shape[0], 2*N))
-    colIndex = range(2*N)
-    rowIndex = []
+    colIndexPositive = []
+    rowIndexPositive = []
+    colIndexNegative = []
+    rowIndexNegative = []
     for i in range(0, N):
-        rowIndex.append(i*Fx.shape[0] +0) # Slack on second element of Fx
-        rowIndex.append(i*Fx.shape[0] +1) # Slack on third element of Fx
-    LaneSlack[rowIndex, colIndex] = 1.0
+        colIndexPositive.append( i*2 + 0 )
+        colIndexNegative.append( i*2 + 1 )
+
+        rowIndexPositive.append(i*Fx.shape[0] + 0) # Slack on second element of Fx
+        rowIndexNegative.append(i*Fx.shape[0] + 1) # Slack on third element of Fx
+    
+    LaneSlack[rowIndexPositive, colIndexPositive] =  1.0
+    LaneSlack[rowIndexNegative, rowIndexNegative] = -1.0
 
     F = np.hstack((F_hard, LaneSlack))
 
@@ -227,7 +234,7 @@ def _buildMatCost(Controller):
     Mx = linalg.block_diag(*b)
     Qlane = Controller.Qlane
 
-    dR = np.array([20, 10])
+    dR = np.array([40, 10])
     c = [R + 2 * np.diag(dR)] * (N) # Need to add dR for the derivative input cost
 
     Mu = linalg.block_diag(*c)
