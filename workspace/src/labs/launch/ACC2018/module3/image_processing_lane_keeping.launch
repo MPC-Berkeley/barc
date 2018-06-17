@@ -30,8 +30,7 @@
 		pkg = "turtlesim"
 		type = "turtle_teleop_key"
 		name = "teleop_key"
-		required = "true"
-        output = "screen">
+		required = "true">
 	</node>
 
 

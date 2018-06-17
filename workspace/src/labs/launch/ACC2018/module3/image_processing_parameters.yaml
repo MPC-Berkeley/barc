@@ -31,8 +31,8 @@ boxsize: 10
 numStepsToLookAhead: 7
 converge_limit: 100
 
-bMatrix:                    [2.1429e+03,-4.6327e+03,3.2614e+03,-740.6041]
-f1Matrix:                   [-60.4515,-47.6005,35.6515,-0.5141]
-f2Matrix:                   [-7.8095e+03,1.9004e+04,-1.6294e+04,5.4940e+03]
-xInertial_to_yPixel_Matrix: [750,-2.025e+03,1.96e+03,-524.6]
-yPixel_to_xInertial_Matrix: [2.2360e-07,-3.722e-05,0.0043,0.3644]
+bMatrix:                    [121.4286,-275.8163,207.8571,-48.7322]
+f1Matrix:                   [-24.9029,-50.1717,11.0240,-0.0249]
+f2Matrix:                   [-3.2262e+03,9.8714e+03,-1.0633e+04,4.4753e+03]
+xInertial_to_yPixel_Matrix: [916.6667,-2.4393e+03,2.3183e+03,-647.9143]
+yPixel_to_xInertial_Matrix: [1.5637e-07,-1.2987e-05,0.0023,0.4653]

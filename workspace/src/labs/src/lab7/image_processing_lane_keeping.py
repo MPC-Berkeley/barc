@@ -99,7 +99,7 @@ class image_processing_node():
         self.printme = False
         self.statepoints=''
         self.camera_distance_calibrated = False
-
+        print("Press Up Arrow to start moving. Press Down Arrow to stop moving.")
         while not rospy.is_shutdown():
             try:
                 self.count = self.count +1 # updates the count
