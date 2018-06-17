@@ -139,6 +139,8 @@ class PID():
         
         if acc <= 0:
             acc = 20
+        if speed_current<speed_reference/2:
+            acc = acc/2
         return acc
 
 # state estimation node
