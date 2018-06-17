@@ -459,10 +459,10 @@ class image_processing_node():
                 else:
                     x = xlist[i]
                     y = ylist[i]
-                    xPixelList[i] = self.width/2-int(self.f2(x)*y+self.b_eq(x))
+                    xPixelList[i] = self.width/2-int(self.f2(x+self.camera_offset_distance)*y+self.b_eq(x+self.camera_offset_distance))
                     yPixelList[i] =  self.height-int(self.calc_x_Inertial_to_y_newPixel(x+self.camera_offset_distance))-1
             self.statepoints = (xPixelList,  yPixelList)
-            #print(self.statepoints)
+
 
 def shutdown_func():
     cv2.destroyAllWindows()
