@@ -210,7 +210,7 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
     OpenLoopData = 0.0
 
     # TI MPC tuning
-    Q = 1*np.diag([50.0, 1.0, 10.0, 10.0, 0.0, 50.0]) # vx, vy, wz, epsi, s, ey
+    Q = 1*np.diag([500.0, 1.0, 10.0, 1.0, 0.0, 5 * 50.0]) # vx, vy, wz, epsi, s, ey
     R = np.diag([1.0, 1.0]) # delta, a
     N = 12
     TI_Qlane   =  1 * np.array([100, 10]) # Quadratic and linear slack lane cost
@@ -303,7 +303,7 @@ class PID:
             x0: current state position
         """
         vt = self.vt
-        Steering = - 0.5 * 2.0 * x0[5] - 0.5 * x0[3] - 0.001 * self.integral[0]
+        Steering = - 0.5 * 2.0 * x0[5] - 2 * 0.5 * x0[3] - 0.001 * self.integral[0]
         Accelera = 0.5 * 1.5 * (vt - x0[0]) + 0.1 * self.integral[1]
 
         self.integral[0] = self.integral[0] +  0.1 * x0[5] + 0.1 * x0[3]

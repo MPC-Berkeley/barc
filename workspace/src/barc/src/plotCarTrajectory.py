@@ -120,7 +120,7 @@ def main():
 
         maxVx = np.maximum(maxVx, estimatedStates[0])
 
-        StringValue = "vx: "+str(estimatedStates[0])+" max vx: "+str(maxVx)+" psiDot: "+str(estimatedStates[2])
+        StringValue = "vx: "+str(estimatedStates[0])+" max vx: "+str(maxVx)+" psiDot: "+str(estimatedStates[2])+" No vy: "+str(estimatedStates[0] > vSwitch or np.abs(estimatedStates[2]) > psiSwitch)
         axtr.set_title(StringValue)
         
         if insideMap == 1:

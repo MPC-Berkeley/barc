@@ -98,6 +98,9 @@ def main():
     R_noVy[4,4] = 30.0   # ay
     R_noVy[5,5] = 0.10    # psiDot
     thReset_noVy = 0.8
+    vSwitch      = 1.3
+    psiSwitch    = 2.0
+
 
     twoEstimators = False
     switchEstimators = True
@@ -139,7 +142,7 @@ def main():
 
         flagVy_time_t   = 0.0
         if switchEstimators == True:
-            if (est.vx_est + 0.0 * np.abs(est.psiDot_est) ) > 1.3 or (np.abs(est.psiDot_est) > 2.0):
+            if (est.vx_est > vSwitch or np.abs(est.psiDot_est) > psiSwitch):
                 flagVy_time_t   = 1.0
                 estMsg.v        = np.sqrt(estNoVy.vx_est**2 + estNoVy.vy_est**2)
                 estMsg.x        = estNoVy.x_est 
