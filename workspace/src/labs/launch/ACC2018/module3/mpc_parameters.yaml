@@ -17,7 +17,7 @@ y_min: -2
 y_max: 2
 
 # Box constraints on input, A*u <= B
-v_max: 0.5
+v_max: 0.32
 v_min: 0
 steer_min: -1
 steer_max: 1

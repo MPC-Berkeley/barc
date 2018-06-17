@@ -156,8 +156,8 @@ def inputToPWM():
     t0          = time.time()
      
     # Initialize the PID controller
-    longitudinal_control = PID(kp=70, ki=5, kd=1)
-    maxspeed = 1650
+    longitudinal_control = PID(kp=30, ki=3, kd=0)
+    maxspeed = 1620
     minspeed = 1400
 
     while not rospy.is_shutdown():
