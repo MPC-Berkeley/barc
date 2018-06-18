@@ -40,7 +40,7 @@ def enc_callback(data):
     n_BR = data.BR
 
     # compute the average encoder measurement
-    n_mean =  n_BL
+    n_mean =  n_FL
 
     # transfer the encoder measurement to angular displacement
     ang_mean = n_mean*2*pi/8
@@ -140,7 +140,7 @@ class PID():
         if acc <= 0:
             acc = 20
         if speed_current<speed_reference/2:
-            acc = acc*.8
+            acc = acc*.9
         return acc
 
 # state estimation node
