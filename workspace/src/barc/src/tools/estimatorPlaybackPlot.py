@@ -1,3 +1,9 @@
+"""
+    File name: pythonPlayBackPlot.py
+    Author: Shuqi Xu
+    Email: shuqixu@berkeley.edu (xushuqi8787@gmail.com)
+    Python Version: 2.7.12
+"""
 import numpy as np
 import os
 import sys
@@ -10,7 +16,8 @@ from Localization_helpers import Track
 # l.createRaceTrack()
 
 homedir = os.path.expanduser("~")
-pathSave = os.path.join(homedir,"barc_debugging2/estimator_output.npz")
+folder_name = ARGS[0]
+pathSave = os.path.join(homedir,"barc_debugging2/",folder_name,"estimator_output.npz")
 npz_output = np.load(pathSave)
 x_est_his     		= npz_output["x_est_his"]
 y_est_his     		= npz_output["y_est_his"]
@@ -31,7 +38,7 @@ KF_df_his			= npz_output["KF_df_his"]
 estimator_time 		= npz_output["estimator_time"]
 print "Finish loading data from", pathSave
 
-pathSave = os.path.join(homedir,"barc_debugging2/estimator_imu.npz")
+pathSave = os.path.join(homedir,"barc_debugging2/",folder_name,"estimator_imu.npz")
 npz_imu = np.load(pathSave)
 psiDot_his    	= npz_imu["psiDot_his"]
 roll_his      	= npz_imu["roll_his"]
@@ -42,7 +49,7 @@ ay_his      	= npz_imu["ay_his"]
 imu_time  		= npz_imu["imu_time"]
 print "Finish loading data from", pathSave
 
-pathSave = os.path.join(homedir,"barc_debugging2/estimator_gps.npz")
+pathSave = os.path.join(homedir,"barc_debugging2/",folder_name,"estimator_gps.npz")
 npz_gps = np.load(pathSave)
 x_his 		= npz_gps["x_his"]
 y_his 		= npz_gps["y_his"]
@@ -54,7 +61,7 @@ gps_time  	= npz_gps["gps_time"]
 gps_ply_time= npz_gps["gps_ply_time"]
 print "Finish loading data from", pathSave
 
-pathSave = os.path.join(homedir,"barc_debugging2/estimator_enc.npz")
+pathSave = os.path.join(homedir,"barc_debugging2/",folder_name,"estimator_enc.npz")
 npz_enc = np.load(pathSave)
 v_fl_his 	= npz_enc["v_fl_his"]
 v_fr_his 	= npz_enc["v_fr_his"]
@@ -63,7 +70,7 @@ v_rr_his 	= npz_enc["v_rr_his"]
 enc_time  	= npz_enc["enc_time"]
 print "Finish loading data from", pathSave
 
-pathSave = os.path.join(homedir,"barc_debugging2/estimator_ecu.npz")
+pathSave = os.path.join(homedir,"barc_debugging2/",folder_name,"estimator_ecu.npz")
 npz_ecu = np.load(pathSave)
 a_his 		= npz_ecu["a_his"]
 df_his 		= npz_ecu["df_his"]

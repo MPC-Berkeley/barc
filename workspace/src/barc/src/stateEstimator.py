@@ -2,7 +2,7 @@
 """
     File name: stateEstimator.py
     Author: Shuqi Xu
-    Email: shuqixu@kth.se
+    Email: shuqixu@berkeley.edu (xushuqi8787@gmail.com)
     Python Version: 2.7.12
 """
 # ---------------------------------------------------------------------------
@@ -21,6 +21,7 @@
 import rospy
 import os
 import sys
+from datetime import datetime
 homedir = os.path.expanduser("~")
 sys.path.append(os.path.join(homedir,"barc/workspace/src/barc/src/library"))
 from Localization_helpers import Track
@@ -41,24 +42,24 @@ def main():
     a_delay     = rospy.get_param("state_estimator/delay_a")
     df_delay    = rospy.get_param("state_estimator/delay_df")
     loop_rate   = 50.0
-   
+   	
     Q = eye(8)
-    Q[0,0] = rospy.get_param("state_estimator/Q_x")
-    Q[1,1] = rospy.get_param("state_estimator/Q_y")
-    Q[2,2] = rospy.get_param("state_estimator/Q_vx")
-    Q[3,3] = rospy.get_param("state_estimator/Q_vy")
-    Q[4,4] = rospy.get_param("state_estimator/Q_ax")
-    Q[5,5] = rospy.get_param("state_estimator/Q_ay")
-    Q[6,6] = rospy.get_param("state_estimator/Q_psi")
-    Q[7,7] = rospy.get_param("state_estimator/Q_psiDot")
+    Q[0,0] = 0.01 	# Q_x
+    Q[1,1] = 0.01 	# Q_y
+    Q[2,2] = 0.01 	# Q_vx
+    Q[3,3] = 0.01 	# Q_vy
+    Q[4,4] = 1.0 	# Q_ax
+    Q[5,5] = 1.0 	# Q_ay
+    Q[6,6] = 0.01 	# Q_psi
+    Q[7,7] = 1.0 	# Q_psiDot
     R = eye(7)
-    R[0,0] = rospy.get_param("state_estimator/R_x")
-    R[1,1] = rospy.get_param("state_estimator/R_y")
-    R[2,2] = rospy.get_param("state_estimator/R_vx")
-    R[3,3] = rospy.get_param("state_estimator/R_ax")
-    R[4,4] = rospy.get_param("state_estimator/R_ay")
-    R[5,5] = rospy.get_param("state_estimator/R_psiDot")
-    R[6,6] = 0.1
+    R[0,0] = 10.0 	# R_x
+    R[1,1] = 10.0 	# R_y
+    R[2,2] = 0.1 	# R_vx
+    R[3,3] = 0.01 	# R_ax
+    R[4,4] = 10.0 	# R_ay
+    R[5,5] = 10.0 	# R_psiDot
+    R[6,6] = 0.1 	# R_vy
 
     t0 = rospy.get_rostime().to_sec()
     imu = ImuClass(t0)
@@ -71,35 +72,47 @@ def main():
     if rospy.get_param("feature_flag"):
         track.createFeatureTrack()
     else:
-        track.createRaceTrack()
+        track.createRaceTrack(rospy.get_param("race_track"))
 
     estMsg = pos_info()
     
     while not rospy.is_shutdown():
-        # if ecu.a != 0:
-          est.estimateState(imu,gps,enc,ecu,est.ekf)
-
-          estMsg.s, estMsg.ey, estMsg.epsi = track.Localize(est.x_est, est.y_est, est.yaw_est)
-          
-          estMsg.header.stamp = rospy.get_rostime()
-          estMsg.v        = np.sqrt(est.vx_est**2 + est.vy_est**2)
-          estMsg.x        = est.x_est 
-          estMsg.y        = est.y_est
-          estMsg.v_x      = est.vx_est 
-          estMsg.v_y      = est.vy_est
-          estMsg.psi      = est.yaw_est
-          estMsg.psiDot   = est.psiDot_est
-          estMsg.a_x      = est.ax_est
-          estMsg.a_y      = est.ay_est
-          estMsg.u_a      = ecu.a
-          estMsg.u_df     = ecu.df
-
-          est.state_pub_pos.publish(estMsg)
+        if ecu.a != 0:
+          est.estimateState(imu,gps,enc,ecu,est.ekfVySwitch)
           est.saveHistory()
-          est.rate.sleep()
+
+        estMsg.s, estMsg.ey, estMsg.epsi = track.Localize(est.x_est, est.y_est, est.yaw_est)
+        estMsg.header.stamp = rospy.get_rostime()
+        estMsg.v        = np.sqrt(est.vx_est**2 + est.vy_est**2)
+        estMsg.x        = est.x_est 
+        estMsg.y        = est.y_est
+        estMsg.v_x      = est.vx_est 
+        estMsg.v_y      = est.vy_est
+        estMsg.psi      = est.yaw_est
+        estMsg.psiDot   = est.psiDot_est
+        estMsg.a_x      = est.ax_est
+        estMsg.a_y      = est.ay_est
+        estMsg.u_a      = ecu.a
+        estMsg.u_df     = ecu.df
+        estMsg.pkg_loss = np.array([float(est.x_count),float(est.y_count),float(est.v_meas_count),float(est.ax_count),float(est.ay_count),float(est.psiDot_count)])/float(est.pkg_count)
+        est.state_pub_pos.publish(estMsg)
+        est.rate.sleep()
+    print "gps x      package lost:", float(est.x_count)/float(est.pkg_count)
+    print "gps y      package lost:", float(est.y_count)/float(est.pkg_count)
+    print "enc v      package lost:", float(est.v_meas_count)/float(est.pkg_count)
+    print "imu ax     package lost:", float(est.ax_count)/float(est.pkg_count)
+    print "imu ay     package lost:", float(est.ay_count)/float(est.pkg_count)
+    print "imu psiDot package lost:", float(est.psiDot_count)/float(est.pkg_count)
 
     homedir = os.path.expanduser("~")
-    pathSave = os.path.join(homedir,"barc_debugging/estimator_output.npz")
+    folder_name = datetime.now().strftime("%m-%d-%H:%m")
+    if rospy.get_param("sim_flag"):
+        folder_name+="-sim/"
+    else:
+        folder_name+="-exp/"
+    if not os.path.isdir(os.path.join(homedir,"barc_debugging/",folder_name)):
+	    os.mkdir(os.path.join(homedir,"barc_debugging/",folder_name))
+    pathSave = os.path.join(homedir,"barc_debugging/",folder_name,"estimator_output.npz")
     np.savez(pathSave,yaw_est_his       = est.yaw_est_his,
                       psiDot_est_his    = est.psiDot_est_his,
                       x_est_his         = est.x_est_his,
@@ -118,16 +131,17 @@ def main():
                       KF_df_his         = est.df_his,
                       estimator_time    = est.time_his)
 
-    pathSave = os.path.join(homedir,"barc_debugging/estimator_imu.npz")
+    pathSave = os.path.join(homedir,"barc_debugging/",folder_name,"estimator_imu.npz")
     np.savez(pathSave,psiDot_his    = imu.psiDot_his,
                       roll_his      = imu.roll_his,
                       pitch_his     = imu.pitch_his,
                       yaw_his       = imu.yaw_his,
+                      yaw_raw_his   = imu.yaw_raw_his,
                       ax_his        = imu.ax_his,
                       ay_his        = imu.ay_his,
                       imu_time      = imu.time_his)
 
-    pathSave = os.path.join(homedir,"barc_debugging/estimator_gps.npz")
+    pathSave = os.path.join(homedir,"barc_debugging/",folder_name,"estimator_gps.npz")
     np.savez(pathSave,x_his         = gps.x_his,
                       y_his         = gps.y_his,
                       x_ply_his     = gps.x_ply_his,
@@ -135,7 +149,7 @@ def main():
                       gps_time      = gps.time_his,
                       gps_ply_time  = gps.time_ply_his)
 
-    pathSave = os.path.join(homedir,"barc_debugging/estimator_enc.npz")
+    pathSave = os.path.join(homedir,"barc_debugging/",folder_name,"estimator_enc.npz")
     np.savez(pathSave,v_fl_his          = enc.v_fl_his,
                       v_fr_his          = enc.v_fr_his,
                       v_rl_his          = enc.v_rl_his,
@@ -143,7 +157,7 @@ def main():
                       v_meas_his        = enc.v_meas_his,
                       enc_time          = enc.time_his)
 
-    pathSave = os.path.join(homedir,"barc_debugging/estimator_ecu.npz")
+    pathSave = os.path.join(homedir,"barc_debugging/",folder_name,"estimator_ecu.npz")
     np.savez(pathSave,a_his         = ecu.a_his,
                       df_his        = ecu.df_his,
                       ecu_time      = ecu.time_his)
@@ -195,12 +209,11 @@ class Estimator(object):
         self.R      = R
         self.P      = np.eye(np.size(Q,0)) # initializationtial covariance matrix
         self.z      = np.zeros(np.size(Q,0)) # initial state mean
-        if rospy.get_param("feature_flag"): self.z[6]   = pi/4
         self.dt     = dt
         self.a_delay        = a_delay
         self.df_delay       = df_delay
-        self.a_his          = [0.0]*int(a_delay/dt)
-        self.df_his         = [0.0]*int(df_delay/dt)
+        self.motor_his      = [0.0]*int(a_delay/dt)
+        self.servo_his      = [0.0]*int(df_delay/dt)
 
         self.state_pub_pos  = rospy.Publisher('pos_info', pos_info, queue_size=1)
         self.t0             = t0
@@ -216,6 +229,10 @@ class Estimator(object):
         self.psiDot_est     = 0.0
         self.psiDot_drift_est = 0.0
         self.curr_time      = rospy.get_rostime().to_sec() - self.t0
+        
+        if rospy.get_param("feature_flag"):
+          self.z[6]     = pi/4
+          self.yaw_est  = pi/4
 
         self.x_est_his          = [0.0]
         self.y_est_his          = [0.0]
@@ -237,24 +254,28 @@ class Estimator(object):
         self.psiDot_his = [0.0]
         self.a_his      = [0.0]
         self.df_his     = [0.0]
+        # COUNTERS FOR PACKAGE LOST
+        self.pkg_count    = 0
+        self.x_count      = 0
+        self.y_count      = 0
+        self.v_meas_count = 0
+        self.ax_count     = 0
+        self.ay_count     = 0
+        self.psiDot_count = 0
 
     # ecu command update
     def estimateState(self,imu,gps,enc,ecu,KF):
         """Do extended Kalman filter to estimate states"""
         self.curr_time = rospy.get_rostime().to_sec() - self.t0
 
-        self.a_his.append(ecu.a)
-        self.df_his.append(ecu.df)
-        u = [self.a_his.pop(0), self.df_his.pop(0)]
+        self.motor_his.append(ecu.a)
+        self.servo_his.append(ecu.df)
+        u = [self.motor_his.pop(0), self.servo_his.pop(0)]
         
         # y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot])
-        print gps.angle
-        y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot, gps.angle])
+        y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot, 0.5*u[1]*enc.v_meas])
         # y = np.array([gps.x_ply, gps.y_ply, enc.v_meas, imu.ax, imu.ay, imu.psiDot])
         KF(y,u)
-
-        # if abs(y[5])<0.3:
-        #   self.z[3] = 0.0
 
         # SAVE THE measurement/input SEQUENCE USED BY KF
         self.x_his.append(y[0])
@@ -288,12 +309,26 @@ class Estimator(object):
                    
         Notation: mx_k = E[x_k] and my_k = E[y_k], where m stands for "mean of"
         """
-        
-        xDim    = self.z.size                           # dimension of the state
-        mx_kp1  = self.f(self.z, u)                     # predict next state
-        A       = self.numerical_jac(self.f, self.z, u) # linearize process model about current state
+        # pkg lost counting
+        if self.x_his[-1] == y[0]:
+            self.x_count += 1
+        if self.y_his[-1] == y[1]:
+            self.y_count += 1
+        if self.v_meas_his[-1] == y[2]:
+            self.v_meas_count += 1
+        if self.ax_his[-1] == y[3]:
+            self.ax_count += 1
+        if self.ay_his[-1] == y[4]:
+            self.ay_count += 1
+        if self.psiDot_his[-1] == y[5]:
+            self.psiDot_count += 1
+        self.pkg_count += 1
+
+        xDim    = self.z.size                               # dimension of the state
+        mx_kp1  = self.f(self.z, u)                         # predict next state
+        A       = self.numerical_jac(self.f, self.z, u)     # linearize process model about current state
         P_kp1   = dot(dot(A,self.P),A.T) + self.Q           # proprogate variance
-        my_kp1  = self.h(mx_kp1, u)                              # predict future output
+        my_kp1  = self.h(mx_kp1, u)                         # predict future output
         H       = self.numerical_jac(self.h, mx_kp1, u)     # linearize measurement model about predicted next state
         P12     = dot(P_kp1, H.T)                           # cross covariance
         K       = dot(P12, inv( dot(H,P12) + self.R))       # Kalman filter gain
@@ -304,27 +339,6 @@ class Estimator(object):
         (self.x_est, self.y_est, self.vx_est, self.vy_est, self.ax_est, self.ay_est, self.yaw_est, self.psiDot_est) = self.z
 
     def ekfMultiRate(self, y, u):
-        """
-        EKF   Extended Kalman Filter for nonlinear dynamic systems
-        ekf(f,mx,P,h,z,Q,R) returns state estimate, x and state covariance, P 
-        for nonlinear dynamic system:
-                  x_k+1 = f(x_k) + w_k
-                  y_k   = h(x_k) + v_k
-        where w ~ N(0,Q) meaning w is gaussian noise with covariance Q
-              v ~ N(0,R) meaning v is gaussian noise with covariance R
-        Inputs:    f: function handle for f(x)
-                   z_EKF: "a priori" state estimate
-                   P: "a priori" estimated state covariance
-                   h: fanction handle for h(x)
-                   y: current measurement
-                   Q: process noise covariance 
-                   R: measurement noise covariance
-                   args: additional arguments to f(x, *args)
-        Output:    mx_kp1: "a posteriori" state estimate
-                   P_kp1: "a posteriori" state covariance
-                   
-        Notation: mx_k = E[x_k] and my_k = E[y_k], where m stands for "mean of"
-        """
         xDim    = self.z.size                               # dimension of the state
         mx_kp1  = self.f(self.z, u)                         # predict next state
         A       = self.numerical_jac(self.f, self.z, u)     # linearize process model about current state
@@ -334,17 +348,24 @@ class Estimator(object):
 
         idx = []
         if self.x_his[-1] == y[0]:
+            self.x_count += 1
             idx.append(0)
         if self.y_his[-1] == y[1]:
+            self.y_count += 1
             idx.append(1)
         if self.v_meas_his[-1] == y[2]:
+            self.v_meas_count += 1
             idx.append(2)
         if self.ax_his[-1] == y[3]:
+            self.ax_count += 1
             idx.append(3)
         if self.ay_his[-1] == y[4]:
+            self.ay_count += 1
             idx.append(4)
         if self.psiDot_his[-1] == y[5]:
+            self.psiDot_count += 1
             idx.append(5)
+        self.pkg_count += 1
 
         if len(idx) == 6:
             print "No measurement data received!"
@@ -360,6 +381,43 @@ class Estimator(object):
             self.z = mx_kp1 + dot(K,(y - my_kp1))
             self.P = dot(dot(K,R),K.T) + dot( dot( (eye(xDim) - dot(K,H)) , P_kp1)  ,  (eye(xDim) - dot(K,H)).T )
             (self.x_est, self.y_est, self.vx_est, self.vy_est, self.ax_est, self.ay_est, self.yaw_est, self.psiDot_est) = self.z
+
+    def ekfVySwitch(self, y, u):
+        xDim    = self.z.size                               # dimension of the state
+        mx_kp1  = self.f(self.z, u)                         # predict next state
+        A       = self.numerical_jac(self.f, self.z, u)     # linearize process model about current state
+        P_kp1   = dot(dot(A,self.P),A.T) + self.Q           # proprogate variance
+        my_kp1  = self.h(mx_kp1, u)                         # predict future output
+        H       = self.numerical_jac(self.h, mx_kp1, u)     # linearize measurement model about predicted next state
+
+        if self.x_his[-1] == y[0]:
+            self.x_count += 1
+        if self.y_his[-1] == y[1]:
+            self.y_count += 1
+        if self.v_meas_his[-1] == y[2]:
+            self.v_meas_count += 1
+        if self.ax_his[-1] == y[3]:
+            self.ax_count += 1
+        if self.ay_his[-1] == y[4]:
+            self.ay_count += 1
+        if self.psiDot_his[-1] == y[5]:
+            self.psiDot_count += 1
+        self.pkg_count += 1
+
+        idx = []
+        if y[2] > 1.8: # at high speed, remove vy_meas
+            idx.append(2)
+
+        H      = np.delete(H,(idx),axis=0)
+        R      = np.delete(self.R,(idx),axis=0)
+        R      = np.delete(R,(idx),axis=1)
+        y      = np.delete(y,(idx),axis=0)
+        my_kp1 = np.delete(my_kp1,(idx),axis=0)
+        P12    = dot(P_kp1, H.T)                      # cross covariance
+        K      = dot(P12, inv( dot(H,P12) + R))       # Kalman filter gain
+        self.z = mx_kp1 + dot(K,(y - my_kp1))
+        self.P = dot(dot(K,R),K.T) + dot( dot( (eye(xDim) - dot(K,H)) , P_kp1)  ,  (eye(xDim) - dot(K,H)).T )
+        (self.x_est, self.y_est, self.vx_est, self.vy_est, self.ax_est, self.ay_est, self.yaw_est, self.psiDot_est) = self.z
 
     def ukf(self, y, u):
         """
@@ -451,8 +509,7 @@ class Estimator(object):
         y[3] = x[4]      # a_x
         y[4] = x[5]      # a_y
         y[5] = x[7]      # psiDot
-        # y[6] = x[3]      # vy
-        y[6] = x[6]      # psi
+        y[6] = x[3]      # vy
         return np.array(y)
 
     def saveHistory(self):
@@ -493,18 +550,20 @@ class ImuClass(object):
         self.ay      = 0.0
         self.roll    = 0.0
         self.pitch   = 0.0
+        self.yaw_raw = 0.0
         
         # Imu measurement history
-        self.yaw_his     = []
-        self.psiDot_his  = []
-        self.ax_his      = []
-        self.ay_his      = []
-        self.roll_his    = []
-        self.pitch_his   = []
+        self.yaw_his     = [0.0]
+        self.psiDot_his  = [0.0]
+        self.ax_his      = [0.0]
+        self.ay_his      = [0.0]
+        self.roll_his    = [0.0]
+        self.pitch_his   = [0.0]
+        self.yaw_raw_his = [0.0]
         
         # time stamp
         self.t0          = t0
-        self.time_his    = []
+        self.time_his    = [0.0]
 
         # Time for yawDot integration
         self.curr_time = rospy.get_rostime().to_sec() - self.t0
@@ -520,9 +579,10 @@ class ImuClass(object):
    
         ori = data.orientation
         quaternion = (ori.x, ori.y, ori.z, ori.w)
-        (roll_raw, pitch_raw, dummy) = transformations.euler_from_quaternion(quaternion)
+        (roll_raw, pitch_raw, yaw_raw) = transformations.euler_from_quaternion(quaternion)
         self.roll   = roll_raw
         self.pitch  = pitch_raw
+        self.yaw_raw= np.unwrap([self.yaw_raw_his[-1],yaw_raw])[1]
 
         w_z = data.angular_velocity.z
         a_x = data.linear_acceleration.x
@@ -548,8 +608,7 @@ class ImuClass(object):
         self.ay_his.append(self.ay)
         self.roll_his.append(self.roll)
         self.pitch_his.append(self.pitch)
-
-
+        self.yaw_raw_his.append(self.yaw_raw)
 
 class GpsClass(object):
     """ Object collecting GPS measurement data
@@ -567,8 +626,8 @@ class GpsClass(object):
             t0: starting measurement time
         """
 
-        # rospy.Subscriber('hedge_imu_fusion', hedge_imu_fusion, self.gps_callback, queue_size=1)
-        rospy.Subscriber('hedge_pos', hedge_pos, self.gps_callback, queue_size=1)
+        rospy.Subscriber('hedge_imu_fusion', hedge_imu_fusion, self.gps_callback, queue_size=1)
+        # rospy.Subscriber('hedge_pos', hedge_pos, self.gps_callback, queue_size=1)
 
         # GPS measurement
         self.angle  = 0.0
@@ -595,9 +654,9 @@ class GpsClass(object):
         self.curr_time = rospy.get_rostime().to_sec() - self.t0
         dist = np.sqrt((data.x_m-self.x_his[-1])**2+(data.y_m-self.y_his[-1])**2)
         # if dist < 0.5:
-        if self.x_his[-1] != data.x_m:
-          self.x = data.x_m
-          self.y = data.y_m            
+        # if self.x_his[-1] != data.x_m:
+        self.x = data.x_m
+        self.y = data.y_m            
 
         # 1) x(t) ~ c0x + c1x * t + c2x * t^2
         # 2) y(t) ~ c0y + c1y * t + c2y * t^2
@@ -613,27 +672,28 @@ class GpsClass(object):
             self.x_ply = polyval(c_X, self.curr_time-self.time_ply_his[-n_intplt])
             self.y_ply = polyval(c_Y, self.curr_time-self.time_ply_his[-n_intplt])
 
-        # Estimate yaw angle from previous 2 time steps
-        x_0 = self.x_his[-1]
-        y_0 = self.y_his[-1]
-        x_1 = self.x
-        y_1 = self.y
-        argument_y = y_1 - y_0
-        argument_x = x_1 - x_0
-        angle = 0.0
-        if argument_x > 0.0:
-            angle = np.arctan(argument_y / argument_x)
-        if argument_y >= 0.0 and argument_x < 0.0:
-            angle = np.pi + np.arctan(argument_y / argument_x)
-        if argument_y < 0.0 and argument_x < 0.0:
-            angle = - np.pi + np.arctan(argument_y / argument_x)
-        if argument_y > 0.0 and argument_x == 0.0:
-            angle = np.pi / 2.0
-        if argument_y < 0.0 and argument_x == 0.0:
-            angle = - np.pi / 2.0
-        if angle < 0.0:
-            angle += 2.0 * np.pi
-        self.angle = np.unwrap([self.angle_his[-1],angle])[1]
+        # # Estimate yaw angle from previous 2 time steps
+        # x_0 = self.x_his[-1]
+        # y_0 = self.y_his[-1]
+        # x_1 = self.x
+        # y_1 = self.y
+        # argument_y = y_1 - y_0
+        # argument_x = x_1 - x_0
+        # print "args", argument_x, argument_y
+        # angle = 0.0
+        # if argument_x > 0.0:
+        #     angle = np.arctan(argument_y / argument_x)
+        # if argument_y >= 0.0 and argument_x < 0.0:
+        #     angle = np.pi + np.arctan(argument_y / argument_x)
+        # if argument_y < 0.0 and argument_x < 0.0:
+        #     angle = - np.pi + np.arctan(argument_y / argument_x)
+        # if argument_y > 0.0 and argument_x == 0.0:
+        #     angle = np.pi / 2.0
+        # if argument_y < 0.0 and argument_x == 0.0:
+        #     angle = - np.pi / 2.0
+        # if angle < 0.0:
+        #     angle += 2.0 * np.pi
+        # self.angle = np.unwrap([self.angle_his[-1],angle])[1]
 
         self.saveHistory()
 

@@ -77,6 +77,7 @@ function main()
             # SAVE FEATURE DATA AFTER FINISHING ALL LAPS
             if lapStatus.lap > raceSet.num_lap
                 saveFeatureData(agent,Fd)
+                break
             end
         end
 
@@ -86,7 +87,7 @@ function main()
         # VISUALIZATION UPDATE
         visualUpdate(mpc_vis,agent)
         publish(vis_pub, mpc_vis)
-        println("$(agent.mpcSol.sol_status): Lap:",lapStatus.lap,", It:",lapStatus.it," v:$(round(posInfo.v,2))")
+        # println("$(agent.mpcSol.sol_status): Lap:",lapStatus.lap,", It:",lapStatus.it," v:$(round(posInfo.v,2))")
         
         # ITERATION UPDATE
         featureDataCollect(agent,Fd)

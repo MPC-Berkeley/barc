@@ -34,7 +34,8 @@ function main()
     end
 
     # OBJECTS INITIALIZATION
-    track       = Track(createTrack("MSC_lab"))
+    track       = Track(createTrack(get_param("race_track")))
+    track_Fd    = Track(createTrack("feature"))
     posInfo     = PosInfo()
     sysID       = SysID()
     SS          = SafeSet(BUFFERSIZE,raceSet.num_lap)
@@ -62,12 +63,21 @@ function main()
         mdlLMPC = MdlId(agent)
         sysIdTi(agent)
         sysIdTv(agent)
-        GPR(agent)
+        gprDyn(agent)
         findSS(agent)
         solveId(mdlLMPC,agent)
+
+        # DIFFERENT OPTIONS FOR SELECTING FEATURE DATA FOR SYS ID
+        buildFeatureSetFromHistory(agent)
+        # data = load("$(homedir())/$(raceSet.folder_name)/FD.jld")
+        # featureData = data["featureData"]
+        # buildFeatureSetFromDataSet(agent,featureData)
+        # buildFeatureSetFromBoth(agent,featureData)
     end
     historyCollect(agent)
-    gpDataCollect(agent)
+    gpResultCollect(agent)
+    gpErrorCollect(agent)
+    gpFeatureCollect(agent)
 
     # NODE INITIALIZATION
     init_node("controller")
@@ -76,6 +86,7 @@ function main()
     vis_pub     = Publisher("mpc_visual",   mpc_visual,                      queue_size=1)
     pos_sub     = Subscriber("pos_info",    pos_info, SE_callback, (agent,), queue_size=1)
 
+    counter = 1
     while ! is_shutdown()
         # CONTROL SIGNAL PUBLISHING
         publish(ecu_pub, cmd)
@@ -87,25 +98,31 @@ function main()
 
             # WARM START WHEN SWITCHING THE LAPS
             if raceSet.PF_FLAG
-                setvalue(mdlPf.z_Ol[:,1],   mpcSol.z_prev[:,1]-track.s)
+                setvalue(mdlPf.z_Ol[:,1],mpcSol.z_prev[:,1]-track.s)
             else
+                # DIFFERENT OPTIONS FOR SELECTING FEATURE DATA FOR SYS ID
                 buildFeatureSetFromHistory(agent)
+                # buildFeatureSetFromDataSet(agent,featureData)
+                # buildFeatureSetFromBoth(agent,featureData)
                 setvalue(mdlLMPC.z_Ol[:,1], mpcSol.z_prev[:,1]-track.s)
             end
 
             # DATA SAVING AFTER FINISHING ALL LAPS
             if lapStatus.lap > raceSet.num_lap
                 saveHistory(agent)
-                if !raceSet.GP_LOCAL_FLAG && !raceSet.GP_FULL_FLAG
-                    saveGPData(agent)
+                if raceSet.GP_LOCAL_FLAG || raceSet.GP_FULL_FLAG
+                    saveGpResultData(agent)
+                else
+                    saveGpFeatureData(agent)
                 end
             end
         end
-
+        
         # CONTROLLER
         if lapStatus.lap<=1+raceSet.PF_LAP
             solvePf(mdlPf,agent)
         else
+        	# tic()
             # PATH FOLLOWING DATA SAVING AFTER FINISHING PF LAPS
             if raceSet.PF_FLAG
                 savePF(agent)
@@ -119,37 +136,44 @@ function main()
             else
                 sysIdTi(agent)
             end
-
             # GAUSSIAN PROCESS
-            GPR(agent)
-
-            # SAFESET CONSTRUCTION
-            findSS(agent)
-
-            # SOLVE LMPC
-        	solveId(mdlLMPC,agent)
-
-            # COLLECT GAUSSIAN PROCESS FEATURE DATA
-            if !raceSet.GP_LOCAL_FLAG && !raceSet.GP_FULL_FLAG && lapStatus.it>1
-                gpDataCollect(agent)
+            if raceSet.GP_LOCAL_FLAG || raceSet.GP_FULL_FLAG
+                gprDyn(agent)
+                gpResultCollect(agent)
+                findSS(agent)
+                solveId(mdlLMPC,agent)
+                gpErrorCollect(agent)
+            else
+                findSS(agent)
+                solveId(mdlLMPC,agent)
+                gpFeatureCollect(agent)
             end
         end
 
         # VISUALIZATION UPDATE
+        # visualUpdate(mpc_vis,agent,track_Fd)
         visualUpdate(mpc_vis,agent)
         publish(vis_pub, mpc_vis)
-        println("$(agent.mpcSol.sol_status): Lap:",lapStatus.lap,", It:",lapStatus.it," v:$(round(posInfo.v,2))")
+        # println("$(agent.mpcSol.sol_status): Lap:",lapStatus.lap,", It:",lapStatus.it," v:$(round(posInfo.v,2))")
         
         # ITERATION UPDATE
+        # if counter == 1
         historyCollect(agent)
+        #     counter = 0
+        # else
+        #     counter += 1
+        # end
+
         rossleep(loop_rate)
     end
 
     # DATA SAVING IF SIMULATION/EXPERIMENT IS KILLED
     if !raceSet.PF_FLAG
         saveHistory(agent)
-        if !raceSet.GP_LOCAL_FLAG && !raceSet.GP_FULL_FLAG
-            saveGPData(agent)
+        if raceSet.GP_LOCAL_FLAG || raceSet.GP_FULL_FLAG
+            saveGpResultData(agent)
+        else
+            saveGpFeatureData(agent)
         end
     end
 end
