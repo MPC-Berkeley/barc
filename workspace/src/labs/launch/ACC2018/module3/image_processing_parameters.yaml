@@ -14,7 +14,7 @@ dist: [-0.585868, 0.248490, -0.023236, -0.002907, 0.000000]
 reference_velocity: 0.3
 numMovingAveragePoints: 5
 furthest_distance: 0.45
-camera_offset_distance: 0.40
+camera_offset_distance: 0.2
 
 loop_rate:                   30
 colorFilter:                 True 
