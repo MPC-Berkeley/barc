@@ -12,55 +12,71 @@
     <!-- MACHINES -->
     <machine name="yoga" address="127.0.0.1" user="lukas" timeout="20.0" env-loader="/home/lukas/barc/env_loader_yoga.sh" />
     <!-- <machine name="yoga" address="192.168.10.74" user="lukas" timeout="20.0" env-loader="/home/lukas/barc/env_loader_yoga.sh" /> -->
-
-    <machine name="odroid" address="192.168.10.213" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_shuqi.sh"/>
     <machine name="ubuntu-pc" address="192.168.10.147" user="mpcubuntu" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc_vis.sh"/>
-    <machine name="ugo-MacBookPro" address="192.168.10.157" user="ugo" timeout="20.0" env-loader="/home/ugo/GitHub/barc/env_loader_ugo_visual.sh"/>
-
+    <machine name="odroid" address="192.168.10.213" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_shuqi.sh"/>
+    <machine name="odroid_2" address="192.168.10.101" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid.sh"/>
 
     <!-- AGENT 1 NODES-->
     <!-- AGENT-NODE 1-->
     <node machine="ubuntu-pc" pkg="barc" type="agent_node.jl" name="agent_1" output="screen">
         <param name="index" type="int" value="1" />
-        <param name="color" type="str" value="blue" />
+        <param name="color" type="str" value="red" />
         <param name="mass" type="double" value="1.98" />
         <param name="time_offset" type="double" value="0.0" />
         <param name="delay_a" type="int" value="1" />
-        <param name="delay_df" type="int" value="1" />
+        <param name="delay_df" type="int" value="3" />
         <param name="sim" type="str" value="estimation" />
 
         <remap from="pos_info" to="agent_1/pos_info" />
+        <remap from="real_val" to="agent_1/real_val" />
         <remap from="ecu" to="agent_1/ecu" />
         <remap from="xy_prediction" to="agent_1/xy_prediction" />
         <remap from="selected_states" to="agent_1/selected_states" />
         <remap from="prediction" to="agent_1/prediction" />
-        <remap from="adv_prediction" to="agent_2/prediction_for_adv" />
+        <remap from="adv_prediction" to="agent_1/prediction_for_adv" />
         <remap from="prediction_for_adv" to="agent_1/prediction_for_adv" />
         <remap from="ecu_pwm" to="agent_1/ecu_pwm" />
     </node>
-    
-    <!--DYNAMIC OBSERVER-->
-    <node machine="ubuntu-pc" pkg="barc" type="state_estimation_SensorKinematicModel_lukas.py" name="state_estimation_dynamic_1" output="screen">
 
-    <!-- <node machine="ubuntu-pc" pkg="barc" type="estimator_max.py" name="state_estimation_dynamic_1" output="screen"> -->
+    <!-- Estimator -->
+    <node machine="ubuntu-pc" pkg="barc" type="estimator_ugo.py" name="state_estimator_1" output="screen">
+    <!-- <node machine="odroid_2" pkg="barc" type="estimator_dynamic.py" name="state_estimator_2" output="screen">  -->
+    <!--<node machine="odroid_2" pkg="barc" type="StateEstimatorClean.py" name="state_estimator_2" output="screen">-->
+        <!-- delay in state estuiamtor -->
+        <param name="delay_df" type="double" value="0.2" />
+        <param name="delay_a" type="double" value="0.0" />
         <!-- ekf properties -->
-        <param name="q_std" type="double" value="0.1" />
-        <param name="psi_std" type="double" value="0.5" />
-        <param name="v_std" type="double" value="0.5" />
-        <param name="gps_std" type="double" value="0.8" />
-        <param name="ang_v_std" type="double" value="0.8" />
-        <param name="est_mode" type="double" value="1" />
+        <param name="Q_x" type="double" value="0.01" />
+        <param name="Q_y" type="double" value="0.01" />
+        <param name="Q_vx" type="double" value="0.01" />
+        <param name="Q_vy" type="double" value="0.01" />
+        <param name="Q_ax" type="double" value="0.03" />
+        <param name="Q_ay" type="double" value="0.05" />
+        <param name="Q_psi" type="double" value="0.01" />
+        <param name="Q_psiDot" type="double" value="0.01" />
+        <param name="R_x" type="double" value="1.0" />
+        <param name="R_y" type="double" value="1.0" />
+        <param name="R_vx" type="double" value="1.0" />
+        <param name="R_vy" type="double" value="10.0" />
+        <param name="R_ax" type="double" value="2.0" />
+        <param name="R_ay" type="double" value="8.0" />
+        <param name="R_psiDot" type="double" value="0.5" />
 
         <remap from="hedge_pos" to="agent_1/hedge_pos" />
         <remap from="imu/data" to="agent_1/imu/data" />
         <remap from="vel_est" to="agent_1/vel_est" />
         <remap from="pos_info" to="agent_1/pos_info" />
         <remap from="ecu" to="agent_1/ecu" />
+        <!--<remap from="hedge_pos_ang" to="agent_1/hedge_pos_ang" /> -->
+        <!--<remap from="hedge_imu_fusion_1" to="agent_1/hedge_imu_fusion_1" /> -->
+        <!--<remap from="hedge_imu_fusion_2" to="agent_1/hedge_imu_fusion_2" />-->
         <remap from="hedge_imu_fusion" to="agent_1/hedge_imu_fusion" />
+        <!-- ukf properties -->
     </node>
 
+
     <!-- IMU -->
-    <node machine="odroid" pkg="myahrs_driver" type="myahrs_driver" name="myahrs_driver">
+    <node machine="odroid" pkg="myahrs_driver" type="myahrs_driver" name="myahrs_driver_1">
         <param name="port" value="/dev/ttyACM0" />
         <param name="baud_rate" value="115200" />
 
@@ -72,16 +88,20 @@
     </node>
 
     <!-- GPS -->
-    <node machine="odroid" pkg="marvelmind_nav" type="hedge_rcv_bin" name="indoor_gps" args="/dev/ttyACM1" >
+    <node machine="odroid" pkg="marvelmind_nav" type="hedge_rcv_bin" name="indoor_gps_1" args="/dev/ttyACM1" >
         <remap from="beacons_pos_a" to="agent_1/beacons_pos_a" />
         <remap from="hedge_pos" to="agent_1/hedge_pos" />
+        <!-- <remap from="hedge_pos" to="agent_1/hedge_imu_fusion" /> -->
+
         <remap from="hedge_pos_a" to="agent_1/hedge_pos_a" />
+        <remap from="hedge_pos_ang" to="agent_1/hedge_pos_ang" />
+        <!-- <remap from="hedge_imu_fusion_1" to="agent_1/hedge_imu_fusion_1" /> -->
         <remap from="hedge_imu_fusion" to="agent_1/hedge_imu_fusion" />
     </node>
-    
+
     <!-- ARDUINO -->
     <!--  * encoders and ultrasound sensors -->
-    <node machine="odroid" pkg="rosserial_python" type="serial_node.py" name="arduino_node" >
+    <node machine="odroid" pkg="rosserial_python" type="serial_node.py" name="arduino_node_1" >
         <param name="port" value="/dev/ttyUSB0" />
         <remap from="vel_est" to="agent_1/vel_est" />
         <remap from="ecu_pwm" to="agent_1/ecu_pwm" />

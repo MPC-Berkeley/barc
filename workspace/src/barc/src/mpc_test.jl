@@ -592,7 +592,7 @@ type MpcModel_obstacle
 
         ey_max      = track.width / 2           # bound for the state ey (distance from the center track). It is set as half of the width of the track for obvious reasons
         # n_poly_curv = trackCoeff.nPolyCurvature    # polynomial degree for curvature approximation
-        v_max       = 3                            # maximum allowed velocity
+        v_max       = 1.5                            # maximum allowed velocity
         delay_a = agent.delay_a
         delay_df = agent.delay_df
 
@@ -606,6 +606,7 @@ type MpcModel_obstacle
         Q_term_cost = 1.0  # scaling of Q-function
         Q_lane = 0.5 * 16.0
         Q_slack = 1.1 * 1.0 * [100.0, 1.0, 1.0, 1.0, 1.0 * 5.0, 10.0]
+        Q_vel = 1.0
 
         weights_progress = 0.5 * (- 1.0 * ones(N + 1))
 
@@ -627,7 +628,7 @@ type MpcModel_obstacle
         @variable( mdl, eps_lane[1 : N + 1] >= 0)  # eps for soft lane constraints
         @variable( mdl, alpha[1 : num_considered_states] >= 0)  # coefficients of the convex hull
         # @variable( mdl, eps_alpha[1:6] >=0)  # eps for soft constraint on alpha
-        # @variable( mdl, eps_vel[1:N+1]>=0)  # eps for soft constraint on velocity
+        @variable( mdl, eps_vel[1:N+1]>=0)  # eps for soft constraint on velocity
 
         z_lb_6s = ones(N + 1, 1) * [0.1 -Inf -Inf -Inf -Inf -Inf -Inf]  # lower bounds on states
         z_ub_6s = ones(N + 1, 1) * [3.5  Inf Inf  Inf  Inf  Inf Inf]  # upper bounds
@@ -685,7 +686,7 @@ type MpcModel_obstacle
 
         @NLconstraint(mdl, [i = 2 : N + 1], z_Ol[i, 5] <= ey_max + eps_lane[i])
         @NLconstraint(mdl, [i = 2 : N + 1], z_Ol[i, 5] >= - ey_max - eps_lane[i])
-        #@NLconstraint(mdl,[i = 1:(N+1)], z_Ol[i,4] <= v_max + eps_vel[i] )  # soft constraint on maximum velocity
+        @NLconstraint(mdl,[i = 1:(N+1)], z_Ol[i,4] <= v_max + eps_vel[i] )  # soft constraint on maximum velocity
         @NLconstraint(mdl, sum{alpha[i], i = 1 : num_considered_states} == 1)  # constraint on the coefficients of the convex hull
 
         
@@ -800,7 +801,7 @@ type MpcModel_obstacle
         @NLexpression(mdl, slackS, (z_Ol[N + 1, 6] - sum{alpha[j] * selStates[j, 6], j = 1 : num_considered_states})^2)
 
         # Velocity Cost
-        #@NLexpression(mdl, velocityCost , Q_vel*sum{10.0*eps_vel[i]+100.0*eps_vel[i]^2 ,i=2:N+1})
+        @NLexpression(mdl, velocityCost , Q_vel*sum{10.0*eps_vel[i]+100.0*eps_vel[i]^2 ,i=2:N+1})
 
         radius_s = zeros(NUM_AGENTS - 1)
         radius_e_y = zeros(NUM_AGENTS - 1)
@@ -821,7 +822,7 @@ type MpcModel_obstacle
 
         # Overall Cost function (objective of the minimization)
         #@NLobjective(mdl, Min, derivCost + laneCost + controlCost + terminalCost )#+ slackCost)#+ velocityCost)
-        @NLobjective(mdl, Min, derivCost + laneCost + Q_term_cost * terminalCost + controlCost + 
+        @NLobjective(mdl, Min, derivCost + laneCost + Q_term_cost * terminalCost + controlCost + velocityCost +
                                Q_slack[1] * slackVx + Q_slack[2] * slackVy + 
                                Q_slack[3] * slackPsidot + Q_slack[4] * slackEpsi + 
                                Q_slack[5] * slackEy + Q_slack[6] * slackS +

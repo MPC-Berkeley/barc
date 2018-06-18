@@ -23,8 +23,9 @@
         <param name="mass" type="double" value="1.98" />
         <param name="time_offset" type="double" value="0.0" />
         <param name="delay_a" type="int" value="1" />
-        <param name="delay_df" type="int" value="1" />
+        <param name="delay_df" type="int" value="3" />
         <param name="sim" type="str" value="estimation" />
+        <param name="flags" type="int" value="66" />
 
         <remap from="pos_info" to="agent_1/pos_info" />
         <remap from="real_val" to="agent_1/real_val" />
@@ -37,21 +38,41 @@
         <remap from="ecu_pwm" to="agent_1/ecu_pwm" />
     </node>
 
-    <!--DYNAMIC OBSERVER-->
-    <node machine="ubuntu-pc" pkg="barc" type="state_estimation_SensorKinematicModel_lukas.py" name="state_estimation_dynamic_1" output="screen">
+    <!-- Estimator -->
+    <node machine="odroid" pkg="barc" type="estimator_ugo.py" name="state_estimator_1" output="screen">
+    <!-- <node machine="odroid_2" pkg="barc" type="estimator_dynamic.py" name="state_estimator_2" output="screen">  -->
+    <!--<node machine="odroid_2" pkg="barc" type="StateEstimatorClean.py" name="state_estimator_2" output="screen">-->
+        <!-- delay in state estuiamtor -->
+        <param name="delay_df" type="double" value="0.2" />
+        <param name="delay_a" type="double" value="0.0" />
+        <param name="flags" type="int" value="66" />
         <!-- ekf properties -->
-        <param name="q_std" type="double" value="0.1" />
-        <param name="psi_std" type="double" value="0.5" />
-        <param name="v_std" type="double" value="0.5" />
-        <param name="gps_std" type="double" value="0.8" />
-        <param name="ang_v_std" type="double" value="0.8" />
-        <param name="est_mode" type="double" value="1" />
+        <param name="Q_x" type="double" value="0.01" />
+        <param name="Q_y" type="double" value="0.01" />
+        <param name="Q_vx" type="double" value="0.01" />
+        <param name="Q_vy" type="double" value="0.01" />
+        <param name="Q_ax" type="double" value="0.03" />
+        <param name="Q_ay" type="double" value="0.05" />
+        <param name="Q_psi" type="double" value="0.01" />
+        <param name="Q_psiDot" type="double" value="0.01" />
+        <param name="R_x" type="double" value="1.0" />
+        <param name="R_y" type="double" value="1.0" />
+        <param name="R_vx" type="double" value="1.0" />
+        <param name="R_vy" type="double" value="10.0" />
+        <param name="R_ax" type="double" value="2.0" />
+        <param name="R_ay" type="double" value="8.0" />
+        <param name="R_psiDot" type="double" value="0.5" />
 
-        <remap from="hedge_imu_fusion" to="agent_1/hedge_imu_fusion" />
+        <remap from="hedge_pos" to="agent_1/hedge_pos" />
         <remap from="imu/data" to="agent_1/imu/data" />
         <remap from="vel_est" to="agent_1/vel_est" />
         <remap from="pos_info" to="agent_1/pos_info" />
         <remap from="ecu" to="agent_1/ecu" />
+        <!--<remap from="hedge_pos_ang" to="agent_1/hedge_pos_ang" /> -->
+        <!--<remap from="hedge_imu_fusion_1" to="agent_1/hedge_imu_fusion_1" /> -->
+        <!--<remap from="hedge_imu_fusion_2" to="agent_1/hedge_imu_fusion_2" />-->
+        <remap from="hedge_imu_fusion" to="agent_1/hedge_imu_fusion" />
+        <!-- ukf properties -->
     </node>
 
     <!-- IMU -->
@@ -92,8 +113,9 @@
         <param name="mass" type="double" value="1.98" />
         <param name="time_offset" type="double" value="7.0" />
         <param name="delay_a" type="int" value="1" />
-        <param name="delay_df" type="int" value="1" />
+        <param name="delay_df" type="int" value="3" />
         <param name="sim" type="str" value="estimation" />
+        <param name="flags" type="int" value="2" />
 
         <remap from="pos_info" to="agent_2/pos_info" />
         <remap from="real_val" to="agent_2/real_val" />
@@ -106,22 +128,42 @@
         <remap from="ecu_pwm" to="agent_2/ecu_pwm" />
     </node>
 
-    <!--DYNAMIC OBSERVER-->
-    <node machine="ubuntu-pc" pkg="barc" type="state_estimation_SensorKinematicModel_lukas.py" name="state_estimation_dynamic_2" output="screen">
+    <!-- Estimator -->
+    <node machine="odroid_2" pkg="barc" type="estimator_ugo.py" name="state_estimator_2" output="screen">
+    <!-- <node machine="odroid_2" pkg="barc" type="estimator_dynamic.py" name="state_estimator_2" output="screen">  -->
+    <!--<node machine="odroid_2" pkg="barc" type="StateEstimatorClean.py" name="state_estimator_2" output="screen">-->
+        <!-- delay in state estuiamtor -->
+        <param name="delay_df" type="double" value="0.2" />
+        <param name="delay_a" type="double" value="0.0" />
+
+        <param name="flags" type="int" value="2" />
         <!-- ekf properties -->
-        <param name="q_std" type="double" value="0.1" />
-        <param name="psi_std" type="double" value="0.5" />
-        <param name="v_std" type="double" value="0.5" />
-        <param name="gps_std" type="double" value="0.8" />
-        <param name="ang_v_std" type="double" value="0.8" />
-        <param name="est_mode" type="double" value="1" />
+        <param name="Q_x" type="double" value="0.01" />
+        <param name="Q_y" type="double" value="0.01" />
+        <param name="Q_vx" type="double" value="0.01" />
+        <param name="Q_vy" type="double" value="0.01" />
+        <param name="Q_ax" type="double" value="0.03" />
+        <param name="Q_ay" type="double" value="0.05" />
+        <param name="Q_psi" type="double" value="0.01" />
+        <param name="Q_psiDot" type="double" value="0.01" />
+        <param name="R_x" type="double" value="1.0" />
+        <param name="R_y" type="double" value="1.0" />
+        <param name="R_vx" type="double" value="1.0" />
+        <param name="R_vy" type="double" value="10.0" />
+        <param name="R_ax" type="double" value="2.0" />
+        <param name="R_ay" type="double" value="8.0" />
+        <param name="R_psiDot" type="double" value="0.5" />
 
         <remap from="hedge_pos" to="agent_2/hedge_pos" />
         <remap from="imu/data" to="agent_2/imu/data" />
         <remap from="vel_est" to="agent_2/vel_est" />
         <remap from="pos_info" to="agent_2/pos_info" />
         <remap from="ecu" to="agent_2/ecu" />
+        <!--<remap from="hedge_pos_ang" to="agent_2/hedge_pos_ang" /> -->
+        <!--<remap from="hedge_imu_fusion_1" to="agent_2/hedge_imu_fusion_1" /> -->
+        <!--<remap from="hedge_imu_fusion_2" to="agent_2/hedge_imu_fusion_2" />-->
         <remap from="hedge_imu_fusion" to="agent_2/hedge_imu_fusion" />
+        <!-- ukf properties -->
     </node>
 
     <!-- IMU -->

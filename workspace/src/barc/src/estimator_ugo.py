@@ -37,8 +37,10 @@ import pdb
 def main():
     # node initialization
     rospy.init_node("state_estimation")
-    a_delay     = rospy.get_param("state_estimator_2/delay_a")
-    df_delay    = rospy.get_param("state_estimator_2/delay_df")
+
+    node_name = rospy.get_name()
+    a_delay     = rospy.get_param(node_name + "/delay_a")
+    df_delay    = rospy.get_param(node_name + "/delay_df")
     loop_rate   = 50.0
    
     # low velocity
@@ -100,23 +102,46 @@ def main():
     R_noVy[5,5] = 0.1    # psiDot
     thReset_noVy = 0.8
 
-    Q_dyn = eye(8)
-    Q_dyn[0,0] = 0.01    # x
-    Q_dyn[1,1] = 0.01    # y
-    Q_dyn[2,2] = 0.01     # vx
-    Q_dyn[3,3] = 0.1 # pretty good # 0.01     # vy
-    Q_dyn[4,4] = 1.0 * 1.0     # ax
-    Q_dyn[5,5] = 1.0 * 1.0     # ay 
-    Q_dyn[6,6] = 0.01 # 0.05 # 0.01 # 0.1 * 1.0 # 0.01 # not bad, but drifting# 20.0    # psi
-    Q_dyn[7,7] = 0.1 * 0.1 * 1.0    # psiDot
-    R_dyn = eye(6)
-    R_dyn[0,0] = 0.2 * 5.0 * 10.0   # x
-    R_dyn[1,1] = 0.2 * 5.0 * 10.0   # y
-    R_dyn[2,2] = 1.0 * 0.1      # vx
-    R_dyn[3,3] = 0.5 * 10.0     # ax 
-    R_dyn[4,4] = 1.0 * 10.0     # ay 
-    R_dyn[5,5] = 0.1     # psiDot
-    thReset = 10000.0
+    node_name = rospy.get_name()
+    if node_name[-1] == "2":
+        # Agent 2 Tuning
+        Q_dyn = eye(8)
+        Q_dyn[0,0] = 0.01    # x
+        Q_dyn[1,1] = 0.01    # y
+        Q_dyn[2,2] = 0.01     # vx
+        Q_dyn[3,3] = 0.1 # pretty good # 0.01     # vy
+        Q_dyn[4,4] = 1.0 * 1.0     # ax
+        Q_dyn[5,5] = 1.0 * 1.0     # ay 
+        Q_dyn[6,6] = 0.0001 # 0.05 # 0.01 # 0.1 * 1.0 # 0.01 # not bad, but drifting# 20.0    # psi
+        Q_dyn[7,7] = 0.1 * 0.1 * 1.0    # psiDot
+        R_dyn = eye(6)
+        R_dyn[0,0] = 7.0 # 0.2 * 5.0 * 10.0   # x
+        R_dyn[1,1] = 7.0 # 0.2 * 5.0 * 10.0   # y
+        R_dyn[2,2] = 1.0 * 0.1      # vx
+        R_dyn[3,3] = 0.5 * 10.0     # ax 
+        R_dyn[4,4] = 1.0 * 10.0     # ay 
+        R_dyn[5,5] = 0.1     # psiDot
+        thReset = 10000.0
+    else:
+        # Agent 1 Tuning
+        Q_dyn = eye(8)
+        Q_dyn[0,0] = 0.01    # x
+        Q_dyn[1,1] = 0.01    # y
+        Q_dyn[2,2] = 0.01     # vx
+        Q_dyn[3,3] = 0.1 # pretty good # 0.01     # vy
+        Q_dyn[4,4] = 1.0 * 1.0     # ax
+        Q_dyn[5,5] = 1.0 * 1.0     # ay 
+        Q_dyn[6,6] = 0.0005 # 0.05 # 0.01 # 0.1 * 1.0 # 0.01 # not bad, but drifting# 20.0    # psi
+        Q_dyn[7,7] = 0.1 * 0.1 * 1.0    # psiDot
+        R_dyn = eye(6)
+        R_dyn[0,0] = 7.0 # 0.2 * 5.0 * 10.0   # x
+        R_dyn[1,1] = 7.0 # 0.2 * 5.0 * 10.0   # y
+        R_dyn[2,2] = 1.0 * 0.1      # vx
+        R_dyn[3,3] = 0.5 * 10.0     # ax 
+        R_dyn[4,4] = 1.0 * 10.0     # ay 
+        R_dyn[5,5] = 0.1     # psiDot
+        thReset = 10000.0
+
 
     # Q_dyn = eye(8)
     # Q_dyn[0,0] = 0.01    # x
@@ -362,12 +387,19 @@ class Estimator(object):
         """
         self.dynamic_model = dynamic_model
 
-        self.front_corner_stiffness = 13.03
-        self.rear_corner_stiffness = 10.06
         self.l_f = 0.125
         self.l_r = 0.125
-        self.mass = 1.75
         self.I_z = 0.24
+
+        node_name = rospy.get_name()
+        if node_name[-1] == "2":
+            self.front_corner_stiffness = 13.03
+            self.rear_corner_stiffness = 10.06
+            self.mass = 1.75
+        else: 
+            self.front_corner_stiffness = 12.38
+            self.rear_corner_stiffness = 9.6
+            self.mass = 2.0
 
         self.thReset = thReset
 
@@ -1131,26 +1163,27 @@ class GpsClass(object):
 
     def gps_callback(self,data):
         """Unpack message from sensor, GPS"""
-        self.curr_time = rospy.get_rostime().to_sec()
+        if 2 == data.flags:
+            self.curr_time = rospy.get_rostime().to_sec()
 
-        self.x = data.x_m
-        self.y = data.y_m
+            self.x = data.x_m
+            self.y = data.y_m
 
-        # 1) x(t) ~ c0x + c1x * t + c2x * t^2
-        # 2) y(t) ~ c0y + c1y * t + c2y * t^2
-        # c_X = [c0x c1x c2x] and c_Y = [c0y c1y c2y] 
-        # n_intplt = 20
-        # if size(self.x_his,0) > n_intplt: # do interpolation when there is enough points
-        #     x_intplt = self.x_his[-n_intplt:]
-        #     y_intplt = self.y_his[-n_intplt:]
-        #     t_intplt = self.time_his[-n_intplt:]
-        #     t_matrix = vstack([t_intplt**2, t_intplt, ones(sz)]).T
-        #     self.c_X = linalg.lstsq(t_matrix, x_intplt)[0]
-        #     self.c_Y = linalg.lstsq(t_matrix, y_intplt)[0]
-        #     self.x = polyval(self.c_X, self.curr_time)
-        #     self.y = polyval(self.c_Y, self.curr_time)
+            # 1) x(t) ~ c0x + c1x * t + c2x * t^2
+            # 2) y(t) ~ c0y + c1y * t + c2y * t^2
+            # c_X = [c0x c1x c2x] and c_Y = [c0y c1y c2y] 
+            # n_intplt = 20
+            # if size(self.x_his,0) > n_intplt: # do interpolation when there is enough points
+            #     x_intplt = self.x_his[-n_intplt:]
+            #     y_intplt = self.y_his[-n_intplt:]
+            #     t_intplt = self.time_his[-n_intplt:]
+            #     t_matrix = vstack([t_intplt**2, t_intplt, ones(sz)]).T
+            #     self.c_X = linalg.lstsq(t_matrix, x_intplt)[0]
+            #     self.c_Y = linalg.lstsq(t_matrix, y_intplt)[0]
+            #     self.x = polyval(self.c_X, self.curr_time)
+            #     self.y = polyval(self.c_Y, self.curr_time)
 
-        self.saveHistory()
+            self.saveHistory()
 
     def saveHistory(self):
         self.time_his = np.append(self.time_his,self.curr_time)
@@ -1175,6 +1208,12 @@ class EncClass(object):
             t0: starting measurement time
         """
         rospy.Subscriber('vel_est', Vel_est, self.enc_callback, queue_size=1)
+
+        node_name = rospy.get_name()
+        if node_name[-1] == "2":
+            self.use_both_encoders = False
+        else:
+            self.use_both_encoders = True
 
         # ENC measurement
         self.v_fl      = 0.0
@@ -1205,14 +1244,19 @@ class EncClass(object):
         self.v_fr = data.vel_fr
         self.v_rl = data.vel_bl
         self.v_rr = data.vel_br
-        v_est = self.v_rr
+
+        if self.use_both_encoders:
+            v_est = (self.v_rl + self.v_rr) / 2.0
+        else:
+            v_est = self.v_rr
+
         if v_est != self.v_prev:
             self.v_meas = v_est
             self.v_prev = v_est
             self.v_count = 0
         else:
             self.v_count += 1
-            if self.v_count > 10:     # if 10 times in a row the same measurement
+            if self.v_count > 10 and self.v_meas < 0.5:     # if 10 times in a row the same measurement
                 self.v_meas = 0       # set velocity measurement to zero
 
         self.saveHistory()

@@ -26,7 +26,8 @@ type CornerStiffnessIdentification
         
         l_f = 0.125
         l_r = 0.125
-        mass = 1.75
+        mass = 2.0  # old Barc
+        # mass = 1.75  # new Barc
         I_z = 0.24
 
         # Create Model
@@ -129,7 +130,10 @@ average_psidot = zeros(num_experiments)
 average_df = zeros(num_experiments)
 
 for i = 1 : num_experiments
-    data_vx = npzread(dir * folders[i] * "/estimator_enc.npz")["v_rr_his"]
+    # old Barc: 
+    data_vx = 0.5 * (npzread(dir * folders[i] * "/estimator_enc.npz")["v_rr_his"] + npzread(dir * folders[i] * "/estimator_enc.npz")["v_rl_his"])
+    # new Barc: 
+    # data_vx = npzread(dir * folders[i] * "/estimator_enc.npz")["v_rr_his"]
     data_psidot = npzread(dir * folders[i] * "/estimator_imu.npz")["psiDot_his"]
 
     average_vx[i] = mean(data_vx[100 : end - 50])

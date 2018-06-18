@@ -19,7 +19,7 @@ import rospy
 # from Localization_helpers import Track
 from barc.msg import ECU, pos_info, Vel_est
 from sensor_msgs.msg import Imu
-from marvelmind_nav.msg import hedge_imu_fusion
+from marvelmind_nav.msg import hedge_imu_fusion, hedge_pos
 from std_msgs.msg import Header
 from numpy import eye, zeros, diag, tan, cos, sin, vstack, linalg
 from numpy import ones, polyval, size, dot, add

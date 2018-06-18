@@ -87,7 +87,7 @@
     </node>
 
     <!-- GPS -->
-    <node machine="odroid_2" pkg="marvelmind_nav" type="hedge_rcv_bin" name="indoor_gps_1" args="/dev/ttyACM1" >
+    <node machine="odroid_2" pkg="marvelmind_nav" type="hedge_rcv_bin" name="indoor_gps_2" args="/dev/ttyACM1" >
         <remap from="beacons_pos_a" to="agent_2/beacons_pos_a" />
         <remap from="hedge_pos" to="agent_2/hedge_pos" />
         <!-- <remap from="hedge_pos" to="agent_2/hedge_imu_fusion" /> -->

@@ -8,8 +8,8 @@
 =#
 
 # const MODE = "path_following"
-const MODE = "learning"
-# const MODE = "racing"
+# const MODE = "learning"
+const MODE = "racing"
 
 if MODE == "racing"
 	# const NUM_AGENTS = 1
@@ -30,13 +30,15 @@ if MODE == "path_following"
 elseif MODE == "learning"
 	const NUM_PF_LAPS = 1
 	const LEARNING = true
-	const NUM_LAPS = 30
+	const NUM_LAPS = 10 # 30
 	const NUM_LOADED_LAPS = 5
 elseif MODE == "racing"
 	const NUM_PF_LAPS = 1
 	const LEARNING = true
-	const NUM_LAPS = 30
-	const NUM_LOADED_LAPS = 5 + 30 + 30 + 30
+	const NUM_LAPS = 10
+	const NUM_LOADED_LAPS = 5 + 10
+	# const NUM_LOADED_LAPS = 5 + 30 + 30 + 30
+
 	# const NUM_LOADED_LAPS = 5
 end
 

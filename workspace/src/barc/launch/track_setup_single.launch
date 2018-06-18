@@ -50,8 +50,8 @@
     <!-- GPS -->
     <node machine="odroid" pkg="marvelmind_nav" type="hedge_rcv_bin" name="indoor_gps" args="/dev/ttyACM1" >
         <remap from="beacons_pos_a" to="agent_1/beacons_pos_a" />
-        <remap from="hedge_pos" to="agent_1/hedge_pos" />
-        <remap from="hedge_pos_a" to="agent_1/hedge_pos_a" />
+<!--         <remap from="hedge_pos" to="agent_1/hedge_pos" />
+ -->        <remap from="hedge_pos_a" to="agent_1/hedge_pos_a" />
         <remap from="hedge_imu_fusion" to="agent_1/hedge_imu_fusion" />
     </node>
     
@@ -66,7 +66,7 @@
     <!-- AGENT 1 NODES-->
 
     <!-- VISUALIZATION -->
-    <node machine="ugo-MacBookPro" pkg="barc" type="plotter.py" name="visualization" output="screen">
+    <node machine="ubuntu-pc" pkg="barc" type="plotter.py" name="visualization" output="screen">
         <param name="num_agents" type="int" value="1" />
         <param name="index" type="int" value="1" />
         <param name="agent_1" type="str" value="estimation" />

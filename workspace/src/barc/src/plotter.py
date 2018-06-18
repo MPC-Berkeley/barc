@@ -92,6 +92,7 @@ class PlottedAgent:
 
     def __init__(self, color_string, ax, track):
         node_name = color_string.split("/")[0]
+        self.node_name = node_name
         sim_string = rospy.get_param(rospy.get_name() + "/" + node_name)
         if sim_string == "simulation":
             xy_sub = rospy.Subscriber(node_name + "/real_val", pos_info, self.xy_callback)
@@ -215,6 +216,7 @@ class PlottedAgent:
         self.center_rear_wheel_right = self.center_rear_wheel[1, :]
 
     def xy_gps_callback(self, msg):
+        # if 2 == msg.flags:
         self.x_gps = msg.x_m
         self.y_gps = msg.y_m
 

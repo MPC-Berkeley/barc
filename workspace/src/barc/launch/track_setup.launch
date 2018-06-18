@@ -114,7 +114,7 @@
     </node>
 
     <!-- VISUALIZATION -->
-    <node machine="ugo-MacBookPro" pkg="barc" type="plotter.py" name="visualization" output="screen">
+    <node machine="ubuntu-pc" pkg="barc" type="plotter.py" name="visualization" output="screen">
         <param name="num_agents" type="int" value="2" />
         <param name="index" type="int" value="2" />
         <param name="agent_1" type="str" value="estimation" />

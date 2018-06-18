@@ -756,10 +756,8 @@ function replay_recording(file)
 	# start_lap = 1 
 	# num_laps = 5
 
-	#=
 	start_lap = 96
-	num_laps = 125
-	=#
+	num_laps = 100
 
     # start_lap = 30
     # num_laps = 35

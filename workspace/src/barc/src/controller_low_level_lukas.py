@@ -95,7 +95,8 @@ class low_level_control(object):
         return motor_pwm
 
     def pwm_convert_steering(self, steering):
-        return 83.3 + 103.1 * float(steering)
+        return 81.4 + 89.1 * float(steering)
+        # return 83.3 + 103.1 * float(steering)
 
 def arduino_interface():
     # launch node, subscribe to motorPWM and servoPWM, publish ecu

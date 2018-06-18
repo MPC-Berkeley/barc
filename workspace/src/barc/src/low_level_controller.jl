@@ -51,7 +51,8 @@ function pwm_converter!(low_level_controller::LowLevelController,
 
     if node_name == "agent_1"
         # println("AGENT 1 STEERING!!!!")
-        low_level_controller.servo_pwm = 90.0 + 89.0 * Float64(steering_angle)
+        # low_level_controller.servo_pwm = 90.0 + 89.0 * Float64(steering_angle)
+        low_level_controller.servo_pwm = 81.4 + 89.1 * Float64(steering_angle)
     else
         # println("AGENT 2 STEERING!!!!")
         low_level_controller.servo_pwm = 83.3 + 103.1 * Float64(steering_angle)
