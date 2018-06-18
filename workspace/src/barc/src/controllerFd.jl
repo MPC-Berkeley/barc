@@ -44,7 +44,7 @@ function main()
     agent       = Agent(track,posInfo,lapStatus,mpcSol,
                         mpcParams,modelParams,raceSet,cmd)
 
-    v_ref       = vcat(1.0,1.0:0.2:2.0)
+    v_ref       = vcat(1.0,1.0:0.2:3.0)
     Fd          = FeatureData(BUFFERSIZE,length(v_ref))
     
     # UPDATE THE NUMBER OF LAPS TO RACE
@@ -87,7 +87,7 @@ function main()
         # VISUALIZATION UPDATE
         visualUpdate(mpc_vis,agent)
         publish(vis_pub, mpc_vis)
-        println("$(agent.mpcSol.sol_status): Lap:",lapStatus.lap,", It:",lapStatus.it," v:$(round(posInfo.v,2))")
+        # println("$(agent.mpcSol.sol_status): Lap:",lapStatus.lap,", It:",lapStatus.it," v:$(round(posInfo.v,2))")
         
         # ITERATION UPDATE
         featureDataCollect(agent,Fd)

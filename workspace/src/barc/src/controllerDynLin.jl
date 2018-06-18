@@ -64,6 +64,7 @@ function main()
     vis_pub     = Publisher("mpc_visual",   mpc_visual,                      queue_size=1)
     pos_sub     = Subscriber("pos_info",    pos_info, SE_callback, (agent,), queue_size=1)
 
+    counter = 1
     while ! is_shutdown()
         # CONTROL SIGNAL PUBLISHING
         publish(ecu_pub, cmd)
@@ -120,7 +121,13 @@ function main()
         # println("$(agent.mpcSol.sol_status): Lap:",lapStatus.lap,", It:",lapStatus.it," v:$(round(posInfo.v,2))")
         
         # ITERATION UPDATE
+        # if counter == 1
         historyCollect(agent)
+        #     counter = 0
+        # else
+        #     counter += 1
+        # end
+
         rossleep(loop_rate)
     end
 

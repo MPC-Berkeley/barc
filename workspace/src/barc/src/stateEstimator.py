@@ -21,6 +21,7 @@
 import rospy
 import os
 import sys
+from datetime import datetime
 homedir = os.path.expanduser("~")
 sys.path.append(os.path.join(homedir,"barc/workspace/src/barc/src/library"))
 from Localization_helpers import Track
@@ -104,7 +105,14 @@ def main():
     print "imu psiDot package lost:", float(est.psiDot_count)/float(est.pkg_count)
 
     homedir = os.path.expanduser("~")
-    pathSave = os.path.join(homedir,"barc_debugging/estimator_output.npz")
+    folder_name = datetime.now().strftime("%m-%d-%H:%m")
+    if rospy.get_param("sim_flag"):
+        folder_name+="-sim/"
+    else:
+        folder_name+="-exp/"
+    if not os.path.isdir(os.path.join(homedir,"barc_debugging/",folder_name)):
+	    os.mkdir(os.path.join(homedir,"barc_debugging/",folder_name))
+    pathSave = os.path.join(homedir,"barc_debugging/",folder_name,"estimator_output.npz")
     np.savez(pathSave,yaw_est_his       = est.yaw_est_his,
                       psiDot_est_his    = est.psiDot_est_his,
                       x_est_his         = est.x_est_his,
@@ -123,7 +131,7 @@ def main():
                       KF_df_his         = est.df_his,
                       estimator_time    = est.time_his)
 
-    pathSave = os.path.join(homedir,"barc_debugging/estimator_imu.npz")
+    pathSave = os.path.join(homedir,"barc_debugging/",folder_name,"estimator_imu.npz")
     np.savez(pathSave,psiDot_his    = imu.psiDot_his,
                       roll_his      = imu.roll_his,
                       pitch_his     = imu.pitch_his,
@@ -133,7 +141,7 @@ def main():
                       ay_his        = imu.ay_his,
                       imu_time      = imu.time_his)
 
-    pathSave = os.path.join(homedir,"barc_debugging/estimator_gps.npz")
+    pathSave = os.path.join(homedir,"barc_debugging/",folder_name,"estimator_gps.npz")
     np.savez(pathSave,x_his         = gps.x_his,
                       y_his         = gps.y_his,
                       x_ply_his     = gps.x_ply_his,
@@ -141,7 +149,7 @@ def main():
                       gps_time      = gps.time_his,
                       gps_ply_time  = gps.time_ply_his)
 
-    pathSave = os.path.join(homedir,"barc_debugging/estimator_enc.npz")
+    pathSave = os.path.join(homedir,"barc_debugging/",folder_name,"estimator_enc.npz")
     np.savez(pathSave,v_fl_his          = enc.v_fl_his,
                       v_fr_his          = enc.v_fr_his,
                       v_rl_his          = enc.v_rl_his,
@@ -149,7 +157,7 @@ def main():
                       v_meas_his        = enc.v_meas_his,
                       enc_time          = enc.time_his)
 
-    pathSave = os.path.join(homedir,"barc_debugging/estimator_ecu.npz")
+    pathSave = os.path.join(homedir,"barc_debugging/",folder_name,"estimator_ecu.npz")
     np.savez(pathSave,a_his         = ecu.a_his,
                       df_his        = ecu.df_his,
                       ecu_time      = ecu.time_his)

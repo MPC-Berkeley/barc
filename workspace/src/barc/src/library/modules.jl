@@ -1494,6 +1494,11 @@ export historyCollect, gpFeatureCollect, gpResultCollect, gpErrorCollect
             featureData.feature_u = featureData.feature_u[:,1:agent.lapStatus.lap,:]
             featureData.cost      = featureData.cost[1:agent.lapStatus.lap]
             featureData.v_avg     = featureData.v_avg[1:agent.lapStatus.lap]
+        else
+            featureData.feature_z = featureData.feature_z
+            featureData.feature_u = featureData.feature_u
+            featureData.cost      = featureData.cost
+            featureData.v_avg     = featureData.v_avg
         end
         save(log_path,"featureData",featureData)
         println("Finsh saving feature data to $log_path.")
@@ -1579,8 +1584,8 @@ export gprKin,gprDyn
         u_to_iden = vcat(agent.mpcSol.u_prev[2:end,:],agent.mpcSol.u_prev[end,:])
         for i = 1:size(u_to_iden,1)
             if agent.raceSet.GP_LOCAL_FLAG
-                agent.gpData.GP_vy_e[i]      = regre(z_to_iden[i,:],u_to_iden[i,:],agent.gpData.feature_GP_vy_e,    agent.gpData.feature_GP)
-                agent.gpData.GP_psiDot_e[i]  = regre(z_to_iden[i,:],u_to_iden[i,:],agent.gpData.feature_GP_psiDot_e,agent.gpData.feature_GP)
+                # agent.gpData.GP_vy_e[i]      = regre(z_to_iden[i,:],u_to_iden[i,:],agent.gpData.feature_GP_vy_e,    agent.gpData.feature_GP)
+                # agent.gpData.GP_psiDot_e[i]  = regre(z_to_iden[i,:],u_to_iden[i,:],agent.gpData.feature_GP_psiDot_e,agent.gpData.feature_GP)
             elseif agent.raceSet.GP_FULL_FLAG
                 # agent.gpData.GP_ey[i]   = gpFullKin(z_to_iden[i,:],u_to_iden[i,:],agent.gpData.zu,agent.gpData.prep_ey)
                 # agent.gpData.GP_epsi[i] = gpFullKin(z_to_iden[i,:],u_to_iden[i,:],agent.gpData.zu,agent.gpData.prep_epsi)
@@ -1594,8 +1599,8 @@ export gprKin,gprDyn
         u_to_iden = vcat(agent.mpcSol.u_prev[2:end,:],agent.mpcSol.u_prev[end,:])
         for i = 1:size(u_to_iden,1)
             if agent.raceSet.GP_LOCAL_FLAG
-                agent.gpData.GP_vy_e[i]      = regre(z_to_iden[i,:],u_to_iden[i,:],agent.gpData.feature_GP_vy_e,    agent.gpData.feature_GP)
-                agent.gpData.GP_psiDot_e[i]  = regre(z_to_iden[i,:],u_to_iden[i,:],agent.gpData.feature_GP_psiDot_e,agent.gpData.feature_GP)
+                # agent.gpData.GP_vy_e[i]      = regre(z_to_iden[i,:],u_to_iden[i,:],agent.gpData.feature_GP_vy_e,    agent.gpData.feature_GP)
+                # agent.gpData.GP_psiDot_e[i]  = regre(z_to_iden[i,:],u_to_iden[i,:],agent.gpData.feature_GP_psiDot_e,agent.gpData.feature_GP)
             elseif agent.raceSet.GP_FULL_FLAG
                 # agent.gpData.GP_ey[i]     = gpFullDyn(z_to_iden[i,:],u_to_iden[i,:],agent.gpData.zu,agent.gpData.prep_ey)
                 # agent.gpData.GP_epsi[i]   = gpFullDyn(z_to_iden[i,:],u_to_iden[i,:],agent.gpData.zu,agent.gpData.prep_epsi)

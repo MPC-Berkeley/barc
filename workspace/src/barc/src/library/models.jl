@@ -376,22 +376,22 @@ export MdlPf,MdlKin,MdlId,MdlIdLin,MdlDynLin,MdlKinLin
                                                                    (agent.mpcParams.dt/dt)*c_Psi[i,3]*u_Ol[i,2] + 
                                                                    GP_psiDot_e[i])                  # psiDot
                 else
-                    @NLconstraint(mdl, z_Ol[i+1,1]  == z_Ol[i,1] + dt * dsdt[i])                    # s
+                    @NLconstraint(mdl, z_Ol[i+1,1]  == z_Ol[i,1] + dt * dsdt[i])                            # s
                     @NLconstraint(mdl, z_Ol[i+1,2]  == z_Ol[i,2] + dt * (z_Ol[i,4]*sin(z_Ol[i,3]) + z_Ol[i,5]*cos(z_Ol[i,3])))  # eY
-                    @NLconstraint(mdl, z_Ol[i+1,3]  == z_Ol[i,3] + dt * (z_Ol[i,6]-dsdt[i]*c[i]))   # ePsi
+                    @NLconstraint(mdl, z_Ol[i+1,3]  == z_Ol[i,3] + dt * (z_Ol[i,6]-dsdt[i]*c[i]))           # ePsi
                     @NLconstraint(mdl, z_Ol[i+1,4]  == z_Ol[i,4] + c_Vx[i,1]*z_Ol[i,5]*z_Ol[i,6] + 
                                                                    c_Vx[i,2]*z_Ol[i,4] +
                                                                    c_Vx[i,3]*u_Ol[i,1] + 
-                                                                   GP_vx_e[i])
+                                                                   (dt/agent.mpcParams.dt)*GP_vx_e[i])
                     @NLconstraint(mdl, z_Ol[i+1,5]  == z_Ol[i,5] + c_Vy[i,1]*z_Ol[i,5]/z_Ol[i,4] + 
                                                                    c_Vy[i,2]*z_Ol[i,4]*z_Ol[i,6] + 
                                                                    c_Vy[i,3]*z_Ol[i,6]/z_Ol[i,4] + 
                                                                    c_Vy[i,4]*u_Ol[i,2] + 
-                                                                   GP_vy_e[i])                      # vy
+                                                                   (dt/agent.mpcParams.dt)*GP_vy_e[i])      # vy
                     @NLconstraint(mdl, z_Ol[i+1,6]  == z_Ol[i,6] + c_Psi[i,1]*z_Ol[i,6]/z_Ol[i,4] + 
                                                                    c_Psi[i,2]*z_Ol[i,5]/z_Ol[i,4] + 
                                                                    c_Psi[i,3]*u_Ol[i,2] + 
-                                                                   GP_psiDot_e[i])                  # psiDot
+                                                                   (dt/agent.mpcParams.dt)*GP_psiDot_e[i])  # psiDot
                 end
             end
 
@@ -460,7 +460,8 @@ export MdlPf,MdlKin,MdlId,MdlIdLin,MdlDynLin,MdlKinLin
 
         function MdlIdLin(agent::Agent)
             m = new()
-            dt      = get_param("controller/dt")
+            # dt      = get_param("controller/dt")
+            dt      = 0.1
             L_a     = get_param("L_a")
             L_b     = get_param("L_b")
             ey_max  = get_param("ey")*get_param("ey_tighten")/2
@@ -535,25 +536,46 @@ export MdlPf,MdlKin,MdlId,MdlIdLin,MdlDynLin,MdlKinLin
 
             # System dynamics
             for i=1:N
-                @NLconstraint(mdl, z_Ol[i+1,1]  == z_Ol[i,1] + dt * dsdt[i])                    # s
-                @NLconstraint(mdl, z_Ol[i+1,2]  == z_Ol[i,2] + dt * (z_Ol[i,4]*sin(z_Ol[i,3]) + z_Ol[i,5]*cos(z_Ol[i,3])))  # eY
-                @NLconstraint(mdl, z_Ol[i+1,3]  == z_Ol[i,3] + dt * (z_Ol[i,6]-dsdt[i]*c[i]))   # ePsi
-                @NLconstraint(mdl, z_Ol[i+1,4]  == z_Ol[i,4] + c_Vx[i,1]*z_Ol[i,4] + 
-                                                               c_Vx[i,2]*z_Ol[i,5] +
-                                                               c_Vx[i,3]*z_Ol[i,6] +
-                                                               c_Vx[i,4]*u_Ol[i,1] +
-                                                               c_Vx[i,5]*u_Ol[i,2] +
-                                                               GP_vx_e[i])
-                @NLconstraint(mdl, z_Ol[i+1,5]  == z_Ol[i,5] + c_Vy[i,1]*z_Ol[i,4] + 
-                                                               c_Vy[i,2]*z_Ol[i,5] + 
-                                                               c_Vy[i,3]*z_Ol[i,6] + 
-                                                               c_Vy[i,4]*u_Ol[i,2] + 
-                                                               GP_vy_e[i])                      # vy
-                @NLconstraint(mdl, z_Ol[i+1,6]  == z_Ol[i,6] + c_Psi[i,1]*z_Ol[i,4] + 
-                                                               c_Psi[i,2]*z_Ol[i,5] +
-                                                               c_Psi[i,3]*z_Ol[i,6] + 
-                                                               c_Psi[i,4]*u_Ol[i,2] + 
-                                                               GP_psiDot_e[i])                  # psiDot
+                if i == 1
+                    @NLconstraint(mdl, z_Ol[i+1,1]  == z_Ol[i,1] + dt * dsdt[i])                    # s
+                    @NLconstraint(mdl, z_Ol[i+1,2]  == z_Ol[i,2] + dt * (z_Ol[i,4]*sin(z_Ol[i,3]) + z_Ol[i,5]*cos(z_Ol[i,3])))  # eY
+                    @NLconstraint(mdl, z_Ol[i+1,3]  == z_Ol[i,3] + dt * (z_Ol[i,6]-dsdt[i]*c[i]))   # ePsi
+                    @NLconstraint(mdl, z_Ol[i+1,4]  == z_Ol[i,4] + (agent.mpcParams.dt/dt)*c_Vx[i,1]*z_Ol[i,4] + 
+                                                                   (agent.mpcParams.dt/dt)*c_Vx[i,2]*z_Ol[i,5] +
+                                                                   (agent.mpcParams.dt/dt)*c_Vx[i,3]*z_Ol[i,6] +
+                                                                   (agent.mpcParams.dt/dt)*c_Vx[i,4]*u_Ol[i,1] +
+                                                                   (agent.mpcParams.dt/dt)*c_Vx[i,5]*u_Ol[i,2] +
+                                                                   GP_vx_e[i])
+                    @NLconstraint(mdl, z_Ol[i+1,5]  == z_Ol[i,5] + (agent.mpcParams.dt/dt)*c_Vy[i,1]*z_Ol[i,4] + 
+                                                                   (agent.mpcParams.dt/dt)*c_Vy[i,2]*z_Ol[i,5] + 
+                                                                   (agent.mpcParams.dt/dt)*c_Vy[i,3]*z_Ol[i,6] + 
+                                                                   (agent.mpcParams.dt/dt)*c_Vy[i,4]*u_Ol[i,2] + 
+                                                                   GP_vy_e[i])                      # vy
+                    @NLconstraint(mdl, z_Ol[i+1,6]  == z_Ol[i,6] + (agent.mpcParams.dt/dt)*c_Psi[i,1]*z_Ol[i,4] + 
+                                                                   (agent.mpcParams.dt/dt)*c_Psi[i,2]*z_Ol[i,5] +
+                                                                   (agent.mpcParams.dt/dt)*c_Psi[i,3]*z_Ol[i,6] + 
+                                                                   (agent.mpcParams.dt/dt)*c_Psi[i,4]*u_Ol[i,2] + 
+                                                                   GP_psiDot_e[i])                  # psiDot
+                else
+                    @NLconstraint(mdl, z_Ol[i+1,1]  == z_Ol[i,1] + dt * dsdt[i])                    # s
+                    @NLconstraint(mdl, z_Ol[i+1,2]  == z_Ol[i,2] + dt * (z_Ol[i,4]*sin(z_Ol[i,3]) + z_Ol[i,5]*cos(z_Ol[i,3])))  # eY
+                    @NLconstraint(mdl, z_Ol[i+1,3]  == z_Ol[i,3] + dt * (z_Ol[i,6]-dsdt[i]*c[i]))   # ePsi
+                    @NLconstraint(mdl, z_Ol[i+1,4]  == z_Ol[i,4] + c_Vx[i,1]*z_Ol[i,4] + 
+                                                                   c_Vx[i,2]*z_Ol[i,5] +
+                                                                   c_Vx[i,3]*z_Ol[i,6] +
+                                                                   c_Vx[i,4]*u_Ol[i,1] +
+                                                                   c_Vx[i,5]*u_Ol[i,2] +
+                                                                   (dt/agent.mpcParams.dt)*GP_vx_e[i])
+                    @NLconstraint(mdl, z_Ol[i+1,5]  == z_Ol[i,5] + c_Vy[i,1]*z_Ol[i,4] + 
+                                                                   c_Vy[i,2]*z_Ol[i,5] + 
+                                                                   c_Vy[i,3]*z_Ol[i,6] + 
+                                                                   c_Vy[i,4]*u_Ol[i,2] + 
+                                                                   (dt/agent.mpcParams.dt)*GP_vy_e[i])      # vy
+                    @NLconstraint(mdl, z_Ol[i+1,6]  == z_Ol[i,6] + c_Psi[i,1]*z_Ol[i,4] + 
+                                                                   c_Psi[i,2]*z_Ol[i,5] +
+                                                                   c_Psi[i,3]*z_Ol[i,6] + 
+                                                                   c_Psi[i,4]*u_Ol[i,2] + 
+                                                                   (dt/agent.mpcParams.dt)*GP_psiDot_e[i])  # psiDot
             end
 
             @NLexpression(mdl, derivCost, sum{QderivZ[j]*sum{(z_Ol[i,j]-z_Ol[i+1,j])^2,i=1:N},j=1:6} +
@@ -753,7 +775,6 @@ export MdlPf,MdlKin,MdlId,MdlIdLin,MdlDynLin,MdlKinLin
 
         function MdlDynLin(agent::Agent)
             m = new()
-            dt      = get_param("controller/dt")
             L_a     = get_param("L_a")
             L_b     = get_param("L_b")
             ey_max  = get_param("ey")*get_param("ey_tighten")/2
@@ -1036,7 +1057,7 @@ import CarSim:carPreDyn, carPreId
         agent.mpcSol.a_x = agent.mpcSol.u[1+agent.mpcParams.delay_a,1] 
         agent.mpcSol.d_f = agent.mpcSol.u[1+agent.mpcParams.delay_df,2]
         agent.cmd.motor = agent.mpcSol.a_x 
-        agent.cmd.servo = agent.mpcSol.d_f 
+        agent.cmd.servo = agent.mpcSol.d_f
 
         push!(agent.mpcSol.a_his,agent.mpcSol.a_x)
         shift!(agent.mpcSol.a_his)
@@ -1091,6 +1112,8 @@ import CarSim:carPreDyn, carPreId
         u_linear = vcat(agent.mpcSol.u_prev[2:end,:],agent.mpcSol.u_prev[end,:])
         z_linear = carPreId(z_curr,u_linear,agent)
 
+        z_linear[2:end,4] += agent.gpData.GP_vx
+
         curvature= curvature_prediction(z_linear[:,1],agent.track)
 
         setvalue(mdl.z_linear,z_linear)
@@ -1100,10 +1123,16 @@ import CarSim:carPreDyn, carPreId
         B   = zeros(4,2,agent.mpcParams.N)
         L_a = agent.modelParams.L_a
         L_b = agent.modelParams.L_b
-        dt  = agent.mpcParams.dt
+        # dt  = agent.mpcParams.dt
         c_f = agent.modelParams.c_f
         curvature = curvature_prediction(z_linear[:,1],agent.track)
         for k=1:agent.mpcParams.N
+            if k == 1
+                dt = agent.modelParams.dt
+            else
+                dt = 0.1
+            end
+            
             bta_val=atan((L_a*tan(u_linear[k,2]))/(L_a + L_b))
 
             A[1,1,k]= 1
@@ -1180,7 +1209,7 @@ import CarSim:carPreDyn, carPreId
 
         L_a=agent.modelParams.L_a
         L_b=agent.modelParams.L_b
-        dt =agent.modelParams.dt
+        # dt =agent.modelParams.dt
         c_f=agent.modelParams.c_f
         m  =agent.modelParams.m
         I_z=agent.modelParams.I_z
@@ -1191,6 +1220,12 @@ import CarSim:carPreDyn, carPreId
         A_m=zeros(6,6,agent.mpcParams.N)
         B_m=zeros(6,2,agent.mpcParams.N)
         for k=1:agent.mpcParams.N
+            if k == 1
+                dt = agent.modelParams.dt
+            else
+                dt = 0.1
+            end
+            
             A_m[1,1,k]= 1
             A_m[1,2,k]= (dt*(z_linear[k,4]*cos(z_linear[k,3]) - z_linear[k,5]*sin(z_linear[k,3]))*curvature[k])/(z_linear[k,2]*curvature[k] - 1)^2
             A_m[1,3,k]= (dt*(z_linear[k,5]*cos(z_linear[k,3]) + z_linear[k,4]*sin(z_linear[k,3])))/(z_linear[k,2]*curvature[k] - 1)

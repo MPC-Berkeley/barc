@@ -15,43 +15,6 @@ import math
 import numpy as np
 import pdb
 
-def approximate_yaw(x, y, time, time_now):
-    index = np.argmin(abs(time - time_now))
-
-    x_0 = x[index - 1]
-    y_0 = y[index - 1]
-
-    x_1 = x[index]
-    y_1 = y[index]
-
-    argument_y = y_1 - y_0
-    argument_x = x_1 - x_0
-    # angle = np.arctan(argument_y / argument_x)
-
-    angle = 0.0
-
-    if argument_x > 0.0:
-        angle = np.arctan(argument_y / argument_x)
-
-    if argument_y >= 0.0 and argument_x < 0.0:
-        angle = np.pi + np.arctan(argument_y / argument_x)
-
-    if argument_y < 0.0 and argument_x < 0.0:
-        angle = - np.pi + np.arctan(argument_y / argument_x)
-
-    if argument_y > 0.0 and argument_x == 0.0:
-        angle = np.pi / 2.0
-
-    if argument_y < 0.0 and argument_x == 0.0:
-        angle = - np.pi / 2.0
-
-    if angle < 0.0:
-        angle += 2.0 * np.pi
-
-    # angle = np.arctan2(argument_y, argument_x)
-
-    return angle
-
 def main():
     # node initialization
     a_delay     = 0.2
@@ -87,7 +50,8 @@ def main():
     estMsg = pos_info()
     
     homedir = os.path.expanduser("~")
-    pathSave = os.path.join(homedir,"barc_debugging/estimator_output.npz")
+    folder_name = ARGS[0]
+    pathSave = os.path.join(homedir,"barc_debugging/",folder_name,"estimator_output.npz")
     npz_output = np.load(pathSave)
     KF_x_his            = npz_output["KF_x_his"]
     KF_y_his            = npz_output["KF_y_his"]
@@ -100,7 +64,7 @@ def main():
     estimator_time      = npz_output["estimator_time"]
     print "Finish loading data from", pathSave
 
-    pathSave = os.path.join(homedir,"barc_debugging/estimator_imu.npz")
+    pathSave = os.path.join(homedir,"barc_debugging/",folder_name,"estimator_imu.npz")
     npz_imu = np.load(pathSave)
     psiDot_his      = npz_imu["psiDot_his"]
     roll_his        = npz_imu["roll_his"]
@@ -111,7 +75,7 @@ def main():
     imu_time        = npz_imu["imu_time"]
     print "Finish loading data from", pathSave
 
-    pathSave = os.path.join(homedir,"barc_debugging/estimator_gps.npz")
+    pathSave = os.path.join(homedir,"barc_debugging/",folder_name,"estimator_gps.npz")
     npz_gps = np.load(pathSave)
     x_his       = npz_gps["x_his"]
     y_his       = npz_gps["y_his"]
@@ -121,7 +85,7 @@ def main():
     gps_ply_time= npz_gps["gps_ply_time"]
     print "Finish loading data from", pathSave
 
-    pathSave = os.path.join(homedir,"barc_debugging/estimator_enc.npz")
+    pathSave = os.path.join(homedir,"barc_debugging/",folder_name,"estimator_enc.npz")
     npz_enc = np.load(pathSave)
     v_fl_his    = npz_enc["v_fl_his"]
     v_fr_his    = npz_enc["v_fr_his"]
@@ -131,7 +95,7 @@ def main():
     enc_time    = npz_enc["enc_time"]
     print "Finish loading data from", pathSave
 
-    pathSave = os.path.join(homedir,"barc_debugging/estimator_ecu.npz")
+    pathSave = os.path.join(homedir,"barc_debugging/",folder_name,"estimator_ecu.npz")
     npz_ecu = np.load(pathSave)
     a_his       = npz_ecu["a_his"]
     df_his      = npz_ecu["df_his"]
@@ -151,16 +115,11 @@ def main():
 
         est.estimateState(imu,gps,enc,ecu,est.ekf)
         est.saveHistory()
-
-    gps_t, indices = np.unique(gps_time, return_index=True)
-    gps_yaw = zeros(len(x_his[indices])-1)
-    pdb.set_trace()
-    for i in range(1,len(x_his[indices])):
-        gps_yaw[i-1] = approximate_yaw(x_his[indices], y_his[indices], gps_t, gps_t[i])
-    gps_yaw = np.unwrap(gps_yaw)
     
     homedir = os.path.expanduser("~")
-    pathSave = os.path.join(homedir,"barc_debugging2/estimator_output.npz")
+    if not os.path.isdir(os.path.join(homedir,"barc_debugging2/",folder_name)):
+        os.mkdir()
+    pathSave = os.path.join(homedir,"barc_debugging2/",folder_name,"estimator_output.npz")
     np.savez(pathSave,yaw_est_his       = est.yaw_est_his,
                       psiDot_est_his    = est.psiDot_est_his,
                       x_est_his         = est.x_est_his,
@@ -179,7 +138,7 @@ def main():
                       KF_df_his         = KF_df_his,
                       estimator_time    = estimator_time)
 
-    pathSave = os.path.join(homedir,"barc_debugging2/estimator_imu.npz")
+    pathSave = os.path.join(homedir,"barc_debugging2/",folder_name,"estimator_imu.npz")
     np.savez(pathSave,psiDot_his    = psiDot_his,
                       roll_his      = roll_his,
                       pitch_his     = pitch_his,
@@ -188,7 +147,7 @@ def main():
                       ay_his        = ay_his,
                       imu_time      = imu_time)
 
-    pathSave = os.path.join(homedir,"barc_debugging2/estimator_gps.npz")
+    pathSave = os.path.join(homedir,"barc_debugging2/",folder_name,"estimator_gps.npz")
     np.savez(pathSave,x_his         = x_his,
                       y_his         = y_his,
                       x_ply_his     = x_ply_his,
@@ -198,7 +157,7 @@ def main():
                       gps_time      = gps_time,
                       gps_ply_time  = gps_ply_time)
 
-    pathSave = os.path.join(homedir,"barc_debugging2/estimator_enc.npz")
+    pathSave = os.path.join(homedir,"barc_debugging2/",folder_name,"estimator_enc.npz")
     np.savez(pathSave,v_fl_his          = v_fl_his,
                       v_fr_his          = v_fr_his,
                       v_rl_his          = v_rl_his,
@@ -206,7 +165,7 @@ def main():
                       v_meas_his        = v_meas_his,
                       enc_time          = enc_time)
 
-    pathSave = os.path.join(homedir,"barc_debugging2/estimator_ecu.npz")
+    pathSave = os.path.join(homedir,"barc_debugging2/",folder_name,"estimator_ecu.npz")
     np.savez(pathSave,a_his         = a_his,
                       df_his        = df_his,
                       ecu_time      = ecu_time)
@@ -214,34 +173,6 @@ def main():
     print "Finishing saveing state estimation data"
 
 class Estimator(object):
-    """ Object collecting  estimated state data
-    Attributes:
-        Estimated states:
-            1.x_est     2.y_est
-            3.vx_est    4.vy_est        5.v_est
-            6.ax_est    7.ay_est
-            8.yaw_est   9.psiDot_est    10.psiDrift_est
-        Estimated states history:
-            1.x_est_his     2.y_est_his
-            3.vx_est_his    4.vy_est_his        5.v_est_his
-            6.ax_est_his    7.ay_est_his
-            8.yaw_est_his   9.psiDot_est_his    10.psiDrift_est_his
-        Time stamp
-            1.t0 2.time_his 3.curr_time
-    Methods:
-        stateEstimate(imu,gps,enc,ecu):
-            Estimate current state from sensor data
-        ekf(y,u):
-            Extended Kalman filter
-        ukf(y,u):
-            Unscented Kalman filter
-        numerical_jac(func,x,u):
-            Calculate jacobian numerically
-        f(x,u):
-            System prediction model
-        h(x,u):
-            System measurement model
-    """
 
     def __init__(self,t0,loop_rate,a_delay,df_delay,Q,R):
         """ Initialization
@@ -320,28 +251,6 @@ class Estimator(object):
         self.df_his.append(u[1])
 
     def ekf(self, y, u):
-        """
-        EKF   Extended Kalman Filter for nonlinear dynamic systems
-        ekf(f,mx,P,h,z,Q,R) returns state estimate, x and state covariance, P 
-        for nonlinear dynamic system:
-                  x_k+1 = f(x_k) + w_k
-                  y_k   = h(x_k) + v_k
-        where w ~ N(0,Q) meaning w is gaussian noise with covariance Q
-              v ~ N(0,R) meaning v is gaussian noise with covariance R
-        Inputs:    f: function handle for f(x)
-                   z_EKF: "a priori" state estimate
-                   P: "a priori" estimated state covariance
-                   h: fanction handle for h(x)
-                   y: current measurement
-                   Q: process noise covariance 
-                   R: measurement noise covariance
-                   args: additional arguments to f(x, *args)
-        Output:    mx_kp1: "a posteriori" state estimate
-                   P_kp1: "a posteriori" state covariance
-                   
-        Notation: mx_k = E[x_k] and my_k = E[y_k], where m stands for "mean of"
-        """
-        
         xDim    = self.z.size                           # dimension of the state
         mx_kp1  = self.f(self.z, u)                     # predict next state
         A       = self.numerical_jac(self.f, self.z, u) # linearize process model about current state
@@ -357,27 +266,6 @@ class Estimator(object):
         (self.x_est, self.y_est, self.vx_est, self.vy_est, self.ax_est, self.ay_est, self.yaw_est, self.psiDot_est) = self.z
 
     def ekfMultiRate(self, y, u):
-        """
-        EKF   Extended Kalman Filter for nonlinear dynamic systems
-        ekf(f,mx,P,h,z,Q,R) returns state estimate, x and state covariance, P 
-        for nonlinear dynamic system:
-                  x_k+1 = f(x_k) + w_k
-                  y_k   = h(x_k) + v_k
-        where w ~ N(0,Q) meaning w is gaussian noise with covariance Q
-              v ~ N(0,R) meaning v is gaussian noise with covariance R
-        Inputs:    f: function handle for f(x)
-                   z_EKF: "a priori" state estimate
-                   P: "a priori" estimated state covariance
-                   h: fanction handle for h(x)
-                   y: current measurement
-                   Q: process noise covariance 
-                   R: measurement noise covariance
-                   args: additional arguments to f(x, *args)
-        Output:    mx_kp1: "a posteriori" state estimate
-                   P_kp1: "a posteriori" state covariance
-                   
-        Notation: mx_k = E[x_k] and my_k = E[y_k], where m stands for "mean of"
-        """
         xDim    = self.z.size                               # dimension of the state
         mx_kp1  = self.f(self.z, u)                         # predict next state
         A       = self.numerical_jac(self.f, self.z, u)     # linearize process model about current state
@@ -415,26 +303,6 @@ class Estimator(object):
             (self.x_est, self.y_est, self.vx_est, self.vy_est, self.ax_est, self.ay_est, self.yaw_est, self.psiDot_est) = self.z
 
     def ukf(self, y, u):
-        """
-        UKF   Unscented Kalman Filter for nonlinear dynamic systems
-        ekf(f,mx,P,h,z,Q,R) returns state estimate, x and state covariance, P 
-        for nonlinear dynamic system:
-                  x[k] = f(x[k-1],u[k-1]) + v[k-1]
-                  y[k] = h(x[k]) + w[k]
-        where v ~ N(0,Q) meaning v is gaussian noise with covariance Q
-              w ~ N(0,R) meaning w is gaussian noise with covariance R
-        Inputs:    f: function handle for f(x)
-                   h: function handle for h(x)
-                   y: current measurement
-                   Q: process noise covariance 
-                   R: measurement noise covariance
-        Output:    mx_k: "a posteriori" state estimate
-                   P_k: "a posteriori" state covariance
-                   
-        Notation: mx_k = E[x_k] and my_k = E[y_k], where m stands for "mean of"
-        """
-
-        # sigma-points: generate a list, "sm_km1"
         xDim        = self.z.size
         sqrtnP      = cholesky(xDim*self.P)
         sm_km1      = list(add(self.z,sqrtnP))
@@ -521,21 +389,7 @@ class Estimator(object):
         self.psiDot_est_his.append(self.psiDot_est)
 
 class ImuClass(object):
-    """ Object collecting GPS measurement data
-    Attributes:
-        Measurement:
-            1.yaw 2.psiDot 3.ax 4.ay 5.roll 6.pitch
-        Measurement history:
-            1.yaw_his 2.psiDot_his 3.ax_his 4.ay_his 5.roll_his 6.pitch_his
-        Time stamp
-            1.t0 2.time_his
-    """
     def __init__(self,t0):
-        """ Initialization
-        Arguments:
-            t0: starting measurement time
-        """
-
         # Imu measurement
         self.yaw     = 0.0
         self.psiDot  = 0.0
@@ -557,15 +411,6 @@ class ImuClass(object):
         self.time_his    = []
 
 class GpsClass(object):
-    """ Object collecting GPS measurement data
-    Attributes:
-        Measurement:
-            1.x 2.y
-        Measurement history:
-            1.x_his 2.y_his
-        Time stamp
-            1.t0 2.time_his 3.curr_time
-    """
     def __init__(self,t0):
         """ Initialization
         Arguments:

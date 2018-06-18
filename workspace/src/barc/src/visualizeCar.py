@@ -61,10 +61,10 @@ class Plotter(object):
         self.car_h, = self.ax.plot(car_x,car_y,"k-")
         self.traj_x = []
         self.traj_y = []
-        self.traj_h, = self.ax.plot(self.traj_x,self.traj_y,"b--")
+        self.traj_h, = self.ax.plot(self.traj_x,self.traj_y,"b-")
         self.gps_x = []
         self.gps_y = []
-        self.gps_h, = self.ax.plot(self.gps_x,self.gps_y,"g.",alpha=0.2)
+        self.gps_h, = self.ax.plot(self.gps_x,self.gps_y,"g.-",alpha=0.2)
         self.hedge_x = []
         self.hedge_y = []
         self.hedge_h, = self.ax.plot(self.hedge_x,self.hedge_y,"r")
