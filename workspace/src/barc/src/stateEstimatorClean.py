@@ -41,48 +41,68 @@ def main():
     df_delay    = rospy.get_param("state_estimator/delay_df")
     loop_rate   = 50.0
    
+    # Tuning for estimator at high speed
+    Q_hs = eye(8)
+    Q_hs[0,0]  =  rospy.get_param("/state_estimator/Qx_hs") # 0.5     # x
+    Q_hs[1,1]  =  rospy.get_param("/state_estimator/Qy_hs") # 0.5     # y
+    Q_hs[2,2]  =  rospy.get_param("/state_estimator/Qvx_hs") #10.0     # vx
+    Q_hs[3,3]  =  rospy.get_param("/state_estimator/Qvy_hs") #10.0     # vy
+    Q_hs[4,4]  =  rospy.get_param("/state_estimator/Qax_hs") #1.0      # ax
+    Q_hs[5,5]  =  rospy.get_param("/state_estimator/Qay_hs") #1.0      # ay 
+    Q_hs[6,6]  =  rospy.get_param("/state_estimator/Qpsi_hs") #10 + 80.0      # psi
+    Q_hs[7,7]  =  rospy.get_param("/state_estimator/QpsiDot_hs") #2 * 50 * 10.0      # psiDot
+    R_hs = eye(7)
+    R_hs[0,0]  = rospy.get_param("/state_estimator/Rx_hs")      # 10 + 40.0      # x
+    R_hs[1,1]  = rospy.get_param("/state_estimator/Ry_hs")      #10 + 40.0      # y
+    R_hs[2,2]  = rospy.get_param("/state_estimator/Rvx_hs")     # 0.1      # vx
+    R_hs[3,3]  = rospy.get_param("/state_estimator/Rax_hs")     #30 + 10.0      # ax 
+    R_hs[4,4]  = rospy.get_param("/state_estimator/Ray_hs")     #40.0      # ay 
+    R_hs[5,5]  = rospy.get_param("/state_estimator/RpsiDot_hs") #5 * 5 * 2 * 10 * 0.1      # psiDot
+    R_hs[6,6]  = rospy.get_param("/state_estimator/Rvy_hs")     # 0.01    # vy
 
-    Q = eye(8)
-    Q[0,0]  =  0.5     # x
-    Q[1,1]  =  0.5     # y
-    Q[2,2]  =  10.0     # vx
-    Q[3,3]  =  10.0     # vy
-    Q[4,4]  =  1.0      # ax
-    Q[5,5]  =  1.0      # ay 
-    Q[6,6]  = 10 + 80.0      # psi
-    Q[7,7]  = 2 * 50 * 10.0      # psiDot
-    R = eye(7)
-    R[0,0]  = 10 + 40.0      # x
-    R[1,1]  = 10 + 40.0      # y
-    R[2,2]  =  0.1      # vx
-    R[3,3]  = 30 + 10.0      # ax 
-    R[4,4]  = 40.0      # ay 
-    R[5,5]  = 5 * 5 * 2 * 10 * 0.1      # psiDot
-    R[6,6]  =  0.01    # vy
-    thReset =  0.4
-    vSwitch      = 1.0
-    psiSwitch    = 0.5 * 2.0
+    # Tuning for estimator at low speed
+    Q_ls = eye(8)
+    Q_ls[0,0]  =  rospy.get_param("/state_estimator/Qx_ls") # 0.5     # x
+    Q_ls[1,1]  =  rospy.get_param("/state_estimator/Qy_ls") #0.5     # y
+    Q_ls[2,2]  =  rospy.get_param("/state_estimator/Qvx_ls") #10.0     # vx
+    Q_ls[3,3]  =  rospy.get_param("/state_estimator/Qvy_ls") #10.0     # vy
+    Q_ls[4,4]  =  rospy.get_param("/state_estimator/Qax_ls") #1.0      # ax
+    Q_ls[5,5]  =  rospy.get_param("/state_estimator/Qay_ls") #1.0      # ay 
+    Q_ls[6,6]  =  rospy.get_param("/state_estimator/Qpsi_ls") #10 + 80.0      # psi
+    Q_ls[7,7]  =  rospy.get_param("/state_estimator/QpsiDot_ls") #2 * 50 * 10.0      # psiDot
+    R_ls = eye(7)
+    R_ls[0,0]  = rospy.get_param("/state_estimator/Rx_ls")       # 10 + 40.0      # x
+    R_ls[1,1]  = rospy.get_param("/state_estimator/Ry_ls")       # 10 + 40.0      # y
+    R_ls[2,2]  = rospy.get_param("/state_estimator/Rvx_ls")      # 0.1      # vx
+    R_ls[3,3]  = rospy.get_param("/state_estimator/Rax_ls")      # 30 + 10.0      # ax 
+    R_ls[4,4]  = rospy.get_param("/state_estimator/Ray_ls")      # 40.0      # ay 
+    R_ls[5,5]  = rospy.get_param("/state_estimator/RpsiDot_ls")  # 5 * 5 * 2 * 10 * 0.1      # psiDot
+    R_ls[6,6]  = rospy.get_param("/state_estimator/Rvy_ls")      #  0.01    # vy    
 
-    Q = eye(8)
-    Q[0,0]  =  0.5     # x
-    Q[1,1]  =  0.5     # y
-    Q[2,2]  =  10.0     # vx
-    Q[3,3]  =  10.0     # vy
-    Q[4,4]  =  1.0      # ax
-    Q[5,5]  =  1.0      # ay 
-    Q[6,6]  = 80.0      # psi
-    Q[7,7]  = 2 * 10.0      # psiDot
-    R = eye(7)
-    R[0,0]  = 40.0      # x
-    R[1,1]  = 40.0      # y
-    R[2,2]  =  0.1      # vx
-    R[3,3]  = 10.0      # ax 
-    R[4,4]  = 40.0      # ay 
-    R[5,5]  = 5 * 5 * 2 * 0.1      # psiDot
-    R[6,6]  =  0.01    # vy
-    thReset =  0.4
-    vSwitch      = 1.0
-    psiSwitch    = 0.5 * 2.0
+    thReset      = rospy.get_param("/state_estimator/thReset")       # 0.4
+    vSwitch      = rospy.get_param("/state_estimator/vSwitch")       # 1.0
+    psiSwitch    = rospy.get_param("/state_estimator/vSwitch")       # 0.5 * 2.0
+
+    # Q = eye(8)
+    # Q[0,0]  =  0.5     # x
+    # Q[1,1]  =  0.5     # y
+    # Q[2,2]  =  10.0     # vx
+    # Q[3,3]  =  10.0     # vy
+    # Q[4,4]  =  1.0      # ax
+    # Q[5,5]  =  1.0      # ay 
+    # Q[6,6]  = 80.0      # psi
+    # Q[7,7]  = 2 * 10.0      # psiDot
+    # R = eye(7)
+    # R[0,0]  = 40.0      # x
+    # R[1,1]  = 40.0      # y
+    # R[2,2]  =  0.1      # vx
+    # R[3,3]  = 10.0      # ax 
+    # R[4,4]  = 40.0      # ay 
+    # R[5,5]  = 5 * 5 * 2 * 0.1      # psiDot
+    # R[6,6]  =  0.01    # vy
+    # thReset =  0.4
+    # vSwitch      = 1.0
+    # psiSwitch    = 0.5 * 2.0
 
 
     # Q_noVy = eye(8)
@@ -111,7 +131,7 @@ def main():
     enc = EncClass(t0)
     ecu = EcuClass(t0)
 
-    est     = Estimator(t0,loop_rate,a_delay,df_delay,Q,  R,   thReset)
+    est     = Estimator(t0,loop_rate,a_delay,df_delay,Q_hs,  R_hs,   thReset)
 
     estMsg = pos_info()
     
@@ -129,10 +149,13 @@ def main():
 
         if (est.vx_est > vSwitch or np.abs(est.psiDot_est) > psiSwitch):
             flagVy      = True
+            est.Q = Q_hs
+            est.R = R_hs
             # print "================ Not using vy! =============="
         else:
+            est.Q = Q_ls
+            est.R = R_ls
             flagVy      = False
-            est.Q[6,6] = 10
             # print "================ Using vy! =============="
 
         est.estimateState(imu,gps,enc,ecu,est.ekf,flagVy)
@@ -154,7 +177,6 @@ def main():
         est.state_pub_pos.publish(estMsg)
 
         # Save estimator output.
-        # NEED TO DO IT HERE AS THERE ARE MULTIPLE ESTIMATOR RUNNING IN PARALLEL
         saved_x_est.append(estMsg.x)
         saved_y_est.append(estMsg.y)
         saved_vx_est.append(estMsg.v_x)
@@ -350,7 +372,8 @@ class Estimator(object):
         self.gps_time.append(gps.curr_time)
         self.imu_time.append(imu.curr_time)
         self.enc_time.append(enc.curr_time)
-        # SAVE output KF given the above measurements
+
+        # Save the output of the KF
         self.saveHistory()
 
     def ekf(self, y, u, flagVy):
@@ -375,12 +398,16 @@ class Estimator(object):
                    
         Notation: mx_k = E[x_k] and my_k = E[y_k], where m stands for "mean of"
         """
-        numericalDiffActive = True
+        numericalDiffActive = False
         
         xDim    = self.z.size                           # dimension of the state
 
         mx_kp1, Aa  = self.f(self.z, u)                               # predict next state
         An          = self.numerical_jac(self.f, self.z, u, flagVy)  # linearize process model about current state
+
+        if np.max(np.abs(An-Aa)) > 0.001:
+            print An
+            print Aa
 
         if numericalDiffActive == True:
             A = An
@@ -396,6 +423,10 @@ class Estimator(object):
             H = Hn
         else:
             H = Ha
+
+        if np.max(np.abs(Hn-Ha)) > 0.001:
+            print Hn
+            print Ha
 
         P12     = dot(P_kp1, H.T)                                 # cross covariance
 
@@ -711,7 +742,7 @@ class EncClass(object):
             self.v_count = 0
         else:
             self.v_count += 1
-            if self.v_count > 10:     # if 10 times in a row the same measurement
+            if (self.v_count > 20) and (self.v_meas < 0.5):     # if 20 times in a row the same measurement
                 self.v_meas = 0       # set velocity measurement to zero
 
         self.saveHistory()

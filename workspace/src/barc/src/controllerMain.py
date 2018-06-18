@@ -38,6 +38,7 @@ def main():
     mode = rospy.get_param("/control/mode")
     saveData = rospy.get_param("/control/saveData")
 
+
     loop_rate = 10.0
     dt = 1.0/loop_rate
     rate = rospy.Rate(loop_rate)
@@ -65,6 +66,9 @@ def main():
     GlobalState      = np.zeros(6)
     LocalState       = np.zeros(6)
     HalfTrack   = 0; LapNumber = 0; RunController = 1
+    
+    if saveData == False:
+        print "======================== Not saving data for this esperiment ========================"
 
     # Loop running at loop rate
     TimeCounter = 0
@@ -203,7 +207,7 @@ def main():
         pickle.dump(Controller, file_data)
         pickle.dump(OpenLoopData, file_data)    
 
-    file_data.close()
+        file_data.close()
 
 # ===============================================================================================================================
 # ==================================================== END OF MAIN ==============================================================

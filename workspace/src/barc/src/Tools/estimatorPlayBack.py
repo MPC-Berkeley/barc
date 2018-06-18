@@ -68,7 +68,8 @@ def main():
     R_noVyEstNew[4,4] = 10.0   # ay
     R_noVyEstNew[5,5] = 0.1    # psiDot
     R_noVyEstNew[6,6] = 0.01  # vy
-    thReset_noVy = 0.8
+    thReset_noVy = 0.4
+
     # Blue
     Q = eye(8)
     Q[0,0] = 0.01     # x
@@ -88,6 +89,8 @@ def main():
     R[5,5] = 20.0     # psiDot
     R[6,6] = 0.001    # vy
     thReset = 1.4
+    vSwitch = 1.3
+    psiSwith = 1.0
 
     # Green
     Q_1 = eye(8)
@@ -178,13 +181,15 @@ def main():
     df_his        = npz_ecu["df_his"]
 
     fig = plotTrack(map)
-    # ax1.plot(l.nodes[0],l.nodes[1],color="grey",linestyle="--", alpha=0.3)
-    # ax1.plot(l.nodes_bound1[0],l.nodes_bound1[1],color="red",alpha=0.3)
-    # ax1.plot(l.nodes_bound2[0],l.nodes_bound2[1],color="red",alpha=0.3)
     plt.axis("equal")
     plt.plot(x_his,y_his,color="blue")
 
     plt.show()
+
+    plt.figure("Encoder Input")
+    plt.plot(inp_v_meas_his, 'o-')
+    plt.show()
+
     flagHalfLap = False
     plotDebug = False
 
@@ -216,7 +221,7 @@ def main():
         ecu.df      = inp_df_his[i]
 
         est.estimateState(imu,gps,enc,ecu,est.ekf)
-        if (est.vx_est + 0.0 * np.abs(est.psiDot_est) ) > 1.3 or (np.abs(est.psiDot_est) > 1.0):
+        if (est.vx_est + 0.0 * np.abs(est.psiDot_est) ) > vSwitch or (np.abs(est.psiDot_est) > psiSwith):
             flagVy      = True
         else:
             flagVy      = False
@@ -383,35 +388,37 @@ def main():
     # fig = plotTrack(map)
     axes = plt.gca()
     if onVec[0] == 1:
-        plt.plot(est.x_est_his[xmin:xmax], est.y_est_his[xmin:xmax], '-or')
+        plt.plot(est.x_est_his[xmin:xmax], est.y_est_his[xmin:xmax], '-sr')
     if onVec[1] == 1:
         plt.plot(est_new.x_est_his[xmin:xmax], est_new.y_est_his[xmin:xmax], '-sb')
     if onVec[2] == 1:
-        plt.plot(est_new1.x_est_his[xmin:xmax], est_new1.y_est_his[xmin:xmax], '--og')
-    plt.plot(x_est_his[xmin:xmax], y_est_his[xmin:xmax], '--sk')
+        plt.plot(est_new1.x_est_his[xmin:xmax], est_new1.y_est_his[xmin:xmax], '-sg')
+    plt.plot(x_est_his[xmin:xmax], y_est_his[xmin:xmax], '--ok')
+    plt.plot(x_est_his[xmin:xmax], inp_y_his[xmin:xmax], '--oy')
     # axes.set_xlim([xmin,xmax])
     # plt.ylabel('y')    
 
     plt.figure(10)
     axes = plt.gca()
     if onVec[0] == 1:
-        plt.plot(range(xmin,xmax), est.vx_est_his[xmin:xmax], '-or')
+        plt.plot(range(xmin,xmax), est.vx_est_his[xmin:xmax], '-sr')
     if onVec[1] == 1:
         plt.plot(range(xmin,xmax), est_new.vx_est_his[xmin:xmax], '-sb')
     if onVec[2] == 1:
-        plt.plot(range(xmin,xmax), est_new1.vx_est_his[xmin:xmax], '--og')
+        plt.plot(range(xmin,xmax), est_new1.vx_est_his[xmin:xmax], '-sg')
     plt.plot(range(xmin,xmax), vx_est_his[xmin:xmax], '--sk')
+    plt.plot(range(xmin,xmax), inp_v_meas_his[xmin:xmax], '--sy')
     axes.set_xlim([xmin,xmax])
     plt.ylabel('vx')
 
     plt.figure(11)
     axes = plt.gca()
     if onVec[0] == 1:
-        plt.plot(range(xmin,xmax), est.vy_est_his[xmin:xmax], '-or')
+        plt.plot(range(xmin,xmax), est.vy_est_his[xmin:xmax], '-sr')
     if onVec[1] == 1:
         plt.plot(range(xmin,xmax), est_new.vy_est_his[xmin:xmax], '-sb')
     if onVec[2] == 1:
-        plt.plot(range(xmin,xmax), est_new1.vy_est_his[xmin:xmax], '--og')
+        plt.plot(range(xmin,xmax), est_new1.vy_est_his[xmin:xmax], '-sg')
     plt.plot(range(xmin,xmax), vy_est_his[xmin:xmax], '--sk')
     axes.set_xlim([xmin,xmax])
     plt.ylabel('vy')
@@ -419,54 +426,59 @@ def main():
     plt.figure(12)
     axes = plt.gca()
     if onVec[0] == 1:
-        plt.plot(range(xmin,xmax), est.psiDot_est_his[xmin:xmax], '-or')
+        plt.plot(range(xmin,xmax), est.psiDot_est_his[xmin:xmax], '-sr', label="No vy")
     if onVec[1] == 1:
-        plt.plot(range(xmin,xmax), est_new.psiDot_est_his[xmin:xmax], '-sb')
+        plt.plot(range(xmin,xmax), est_new.psiDot_est_his[xmin:xmax], '-sb', label="Clean")
     if onVec[2] == 1:
-        plt.plot(range(xmin,xmax), est_new1.psiDot_est_his[xmin:xmax], '--og')
-    plt.plot(range(xmin,xmax), psiDot_est_his[xmin:xmax], '--sk')
+        plt.plot(range(xmin,xmax), est_new1.psiDot_est_his[xmin:xmax], '-sg', label="With vy")
+    plt.plot(range(xmin,xmax), psiDot_est_his[xmin:xmax], '--sk', label="Est")
+    plt.plot(range(xmin,xmax), inp_psiDot_his[xmin:xmax], '--sy', label="Meas")
     axes.set_xlim([xmin,xmax])
+    axes.legend()
     plt.ylabel('wz')
 
     plt.figure(13)
     axes = plt.gca()
     if onVec[0] == 1:
-        plt.plot(range(xmin,xmax), est.yaw_est_his[xmin:xmax], '-or')
+        plt.plot(range(xmin,xmax), est.yaw_est_his[xmin:xmax], '-or', label="No vy")
     if onVec[1] == 1:
-        plt.plot(range(xmin,xmax), est_new.yaw_est_his[xmin:xmax], '-sb')
+        plt.plot(range(xmin,xmax), est_new.yaw_est_his[xmin:xmax], '-sb', label="Clean")
     if onVec[2] == 1:
-        plt.plot(range(xmin,xmax), est_new1.yaw_est_his[xmin:xmax], '--og')
+        plt.plot(range(xmin,xmax), est_new1.yaw_est_his[xmin:xmax], '--og', label="With vy")
     plt.plot(range(xmin,xmax), yaw_est_his[xmin:xmax], '--sk')
     axes.set_xlim([xmin,xmax])
+    axes.legend()
     plt.ylabel('psi')
 
     plt.figure(14)
     axes = plt.gca()
     if onVec[0] == 1:
-        plt.plot(range(xmin,xmax), est.x_est_his[xmin:xmax], '-or')
+        plt.plot(range(xmin,xmax), est.x_est_his[xmin:xmax], '-sr')
     if onVec[1] == 1:
         plt.plot(range(xmin,xmax), est_new.x_est_his[xmin:xmax], '-sb')
     if onVec[2] == 1:
-        plt.plot(range(xmin,xmax), est_new1.x_est_his[xmin:xmax], '--og')
+        plt.plot(range(xmin,xmax), est_new1.x_est_his[xmin:xmax], '-sg')
     plt.plot(range(xmin,xmax), x_est_his[xmin:xmax], '--sk')
+    plt.plot(range(xmin,xmax), inp_x_his[xmin:xmax], '--sy')
     axes.set_xlim([xmin,xmax])
     plt.ylabel('x')
 
     plt.figure(15)
     axes = plt.gca()
     if onVec[0] == 1:
-        plt.plot(range(xmin,xmax), est.y_est_his[xmin:xmax], '-or')
+        plt.plot(range(xmin,xmax), est.y_est_his[xmin:xmax], '-sr')
     if onVec[1] == 1:
         plt.plot(range(xmin,xmax), est_new.y_est_his[xmin:xmax], '-sb')
     if onVec[2] == 1:
-        plt.plot(range(xmin,xmax), est_new1.y_est_his[xmin:xmax], '--og')
+        plt.plot(range(xmin,xmax), est_new1.y_est_his[xmin:xmax], '--sg')
     plt.plot(range(xmin,xmax), y_est_his[xmin:xmax], '--sk')
+    plt.plot(range(xmin,xmax), inp_y_his[xmin:xmax], '--sy')
     axes.set_xlim([xmin,xmax])
     plt.ylabel('y')
 
-    pdb.set_trace()
-
     plt.show()
+
+    pdb.set_trace()
 
 def plotTrack(map):
     fig = plt.figure("track x-y plot")

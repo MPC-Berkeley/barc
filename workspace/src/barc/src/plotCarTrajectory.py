@@ -31,6 +31,9 @@ def main():
     StateView = False
 
     mode = rospy.get_param("/control/mode")
+    vSwitch      = rospy.get_param("/state_estimator/vSwitch")       # 1.0
+    psiSwitch    = rospy.get_param("/state_estimator/vSwitch")       # 0.5 * 2.0
+
     data = EstimationAndMesuredData(mode)        
 
     map = Map()
@@ -119,11 +122,8 @@ def main():
             rec_sim.set_xy(np.array([car_sim_x, car_sim_y]).T)
 
         maxVx = np.maximum(maxVx, estimatedStates[0])
-    
-        vSwitch      = 1.0
-        psiSwitch    = 0.5 * 2.0
 
-        StringValue = "vx: "+str(estimatedStates[0])+" max vx: "+str(maxVx)+" psiDot: "+str(estimatedStates[2])+" No vy: "+str(estimatedStates[0] > vSwitch or np.abs(estimatedStates[3]) > psiSwitch)
+        StringValue = "vx: "+str(estimatedStates[0])+" max vx: "+str(maxVx)+" psiDot: "+str(estimatedStates[2])+" No vy: "+str(estimatedStates[0] > vSwitch or np.abs(estimatedStates[2]) > psiSwitch)
         axtr.set_title(StringValue)
         
         if insideMap == 1:
