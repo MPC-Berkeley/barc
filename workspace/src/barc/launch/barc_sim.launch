@@ -12,7 +12,9 @@
 
    
     <!-- VISUALIZATION -->
-    <node pkg="barc" type="plotCarTrajectory.py" name="visualization" output="screen"/>
+    <node pkg="barc" type="plotCarTrajectory.py" name="visualization" output="screen">
+        <param name="plotGPS" type="bool" value="false" />
+    </node>
 
 
     <!-- SIMULATOR -->
@@ -100,7 +102,7 @@
      <!-- CONTROL -->
     <node pkg="barc" type="controllerMain.py" name="control" output="screen">
         <param name="mode" type="str" value="simulations" />
-        <param name="saveData" type="bool" value="false" />
+        <param name="saveData" type="bool" value="True" />
     </node>
 
 

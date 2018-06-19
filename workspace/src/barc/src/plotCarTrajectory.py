@@ -31,10 +31,11 @@ def main():
     StateView = False
 
     mode = rospy.get_param("/control/mode")
+    plotGPS = rospy.get_param("/visualization/plotGPS")
     vSwitch      = rospy.get_param("/state_estimator/vSwitch")       # 1.0
     psiSwitch    = rospy.get_param("/state_estimator/vSwitch")       # 0.5 * 2.0
 
-    data = EstimationAndMesuredData(mode)        
+    data = EstimationAndMesuredData(mode, plotGPS)        
 
     map = Map()
 
@@ -71,8 +72,9 @@ def main():
         x = estimatedStates[4]
         y = estimatedStates[5]
 
-        ClosedLoopTraj_gps_x.append(data.MeasuredData[0]) 
-        ClosedLoopTraj_gps_y.append(data.MeasuredData[1])
+        if plotGPS == True:
+            ClosedLoopTraj_gps_x.append(data.MeasuredData[0]) 
+            ClosedLoopTraj_gps_y.append(data.MeasuredData[1])
 
         ClosedLoopTraj_x.append(x) 
         ClosedLoopTraj_y.append(y)
@@ -99,7 +101,8 @@ def main():
             line_SS.set_data(data.SSx, data.SSy)
 
         line_cl.set_data(ClosedLoopTraj_x, ClosedLoopTraj_y)
-        line_gps_cl.set_data(ClosedLoopTraj_gps_x, ClosedLoopTraj_gps_y)
+        if plotGPS == True:
+            line_gps_cl.set_data(ClosedLoopTraj_gps_x, ClosedLoopTraj_gps_y)
 
 
         if StateView == True:
@@ -143,7 +146,7 @@ class EstimationAndMesuredData():
     Attributes:
         updateInitialConditions: function which updates initial conditions and clear the memory
     """
-    def __init__(self, mode):
+    def __init__(self, mode, plotGPS):
         """Initialization
         Arguments:
             
@@ -151,7 +154,8 @@ class EstimationAndMesuredData():
         if mode == "simulations":
             rospy.Subscriber("simulatorStates", simulatorStates, self.simState_callback)
 
-        rospy.Subscriber("hedge_imu_fusion", hedge_imu_fusion, self.gps_callback)
+        if plotGPS == True:
+            rospy.Subscriber("hedge_imu_fusion", hedge_imu_fusion, self.gps_callback)
         rospy.Subscriber("pos_info", pos_info, self.pos_info_callback)
         rospy.Subscriber("OL_predictions", prediction, self.prediction_callback)
         rospy.Subscriber('SS', SafeSetGlob, self.SS_callback)

@@ -65,11 +65,12 @@ class ControllerLMPC():
 
         # Initialize the following quantities to avoid dynamic allocation
         NumPoints = int(TimeLMPC / dt) + 1
-        self.TimeSS  = 10000 * np.ones(Laps).astype(int)        # Time at which each j-th iteration is completed
-        self.SS      = 10000 * np.ones((NumPoints, 6, Laps))    # Sampled Safe SS
-        self.uSS     = 10000 * np.ones((NumPoints, 2, Laps))    # Input associated with the points in SS
-        self.Qfun    =     0 * np.ones((NumPoints, Laps))       # Qfun: cost-to-go from each point in SS
-        self.SS_glob = 10000 * np.ones((NumPoints, 6, Laps))    # SS in global (X-Y) used for plotting
+        self.TimeSS      = -10000 * np.ones(Laps).astype(int)        # Time at which each j-th iteration is completed
+        self.LapCounter  = -10000 * np.ones(Laps).astype(int)        # Number of points in j-th iterations (counts also points after finisch line)
+        self.SS          = -10000 * np.ones((NumPoints, 6, Laps))    # Sampled Safe SS
+        self.uSS         = -10000 * np.ones((NumPoints, 2, Laps))    # Input associated with the points in SS
+        self.Qfun        =      0 * np.ones((NumPoints, Laps))       # Qfun: cost-to-go from each point in SS
+        self.SS_glob     = -10000 * np.ones((NumPoints, 6, Laps))    # SS in global (X-Y) used for plotting
 
         # Initialize the controller iteration
         self.it      = 0
@@ -180,11 +181,12 @@ class ControllerLMPC():
         it = self.it
 
         self.TimeSS[it] = ClosedLoopData.SimTime
+        self.LapCounter[it] = ClosedLoopData.SimTime
         self.SS[0:(self.TimeSS[it] + 1), :, it] = ClosedLoopData.x[0:(self.TimeSS[it] + 1), :]
         self.SS_glob[0:(self.TimeSS[it] + 1), :, it] = ClosedLoopData.x_glob[0:(self.TimeSS[it] + 1), :]
-        self.uSS[0:self.TimeSS[it], :, it]      = ClosedLoopData.u[0:(self.TimeSS[it]), :]
+        self.uSS[0:self.TimeSS[it]+ 1, :, it]      = ClosedLoopData.u[0:(self.TimeSS[it] + 1), :]
         self.Qfun[0:(self.TimeSS[it] + 1), it]  = _ComputeCost(ClosedLoopData.x[0:(self.TimeSS[it] + 1), :],
-                                                              ClosedLoopData.u[0:(self.TimeSS[it]), :], self.map.TrackLength)
+                                                               ClosedLoopData.u[0:(self.TimeSS[it]), :], self.map.TrackLength)
         for i in np.arange(0, self.Qfun.shape[0]):
             if self.Qfun[i, it] == 0:
                 self.Qfun[i, it] = self.Qfun[i - 1, it] - 1
@@ -202,13 +204,24 @@ class ControllerLMPC():
             u: current input
             i: at the j-th iteration i is the time at which (x,u) are recorded
         """
+        self.TimeSS[self.it - 1] = self.TimeSS[self.it - 1] + 1
         Counter = self.TimeSS[self.it - 1]
-        self.SS[Counter + i + 1, :, self.it - 1] = x + np.array([0, 0, 0, 0, self.map.TrackLength, 0])
-        self.SS_glob[Counter + i + 1, :, self.it - 1] = x_glob
-        self.uSS[Counter + i + 1, :, self.it - 1] = u
-        if self.Qfun[Counter + i + 1, self.it - 1] == 0:
-            self.Qfun[Counter + i + 1, self.it - 1] = self.Qfun[Counter + i, self.it - 1] - 1
+        # print "Counter is: ", Counter, " iteration: ", self.it - 1 
+        # print "Current Time is: i"
+        # print "SS is: ", self.SS[0:Counter , :, self.it - 1]
+        # print "previous Point to modify is: ", self.SS[Counter-1, :, self.it - 1]
+        # print "Point to modify is: ", self.SS[Counter, :, self.it - 1]
+        # print "Point to add is: ", x + np.array([0, 0, 0, 0, self.map.TrackLength, 0]), self.map.TrackLength
+        
+        self.SS[Counter, :, self.it - 1] = x + np.array([0, 0, 0, 0, self.map.TrackLength, 0])
+        self.SS_glob[Counter, :, self.it - 1] = x_glob
+        self.uSS[Counter, :, self.it - 1] = u
+        if self.Qfun[Counter, self.it - 1] == 0:
+            self.Qfun[Counter, self.it - 1] = self.Qfun[Counter + i - 1, self.it - 1] - 1
 
+        # print "Qfun updated is: ", self.Qfun[Counter, self.it - 1]
+        
+        
     def update(self, SS, uSS, Qfun, TimeSS, it, LinPoints, LinInput):
         """update controller parameters. This function is useful to transfer information among LMPC controller
            with different tuning
@@ -245,7 +258,7 @@ class ControllerLMPC():
             self.LinPoints[0, :] = x
             self.LinInput[0, :]  = u
 
-            Ai, Bi, Ci, indexSelected = RegressionAndLinearization(self.LinPoints, self.LinInput, usedIt, self.SS, self.uSS, self.TimeSS,
+            Ai, Bi, Ci, indexSelected = RegressionAndLinearization(self.LinPoints, self.LinInput, usedIt, self.SS, self.uSS, self.LapCounter,
                                                        self.MaxNumPoint, self.n, self.d, matrix, self.map.PointAndTangent, self.dt, 0, self.SysID_Solver)
             x_next = np.dot(Ai, x) + np.dot(Bi, u) + np.squeeze(Ci)
         else:
@@ -617,7 +630,7 @@ def _LMPC_EstimateABC(ControllerLMPC):
     d               = ControllerLMPC.d
     SS              = ControllerLMPC.SS
     uSS             = ControllerLMPC.uSS
-    TimeSS          = ControllerLMPC.TimeSS
+    LapCounter      = ControllerLMPC.LapCounter
     PointAndTangent = ControllerLMPC.map.PointAndTangent
     dt              = ControllerLMPC.dt
     it              = ControllerLMPC.it
@@ -634,7 +647,7 @@ def _LMPC_EstimateABC(ControllerLMPC):
         if (i > 0) and (flag_LTV == False):
             Ai, Bi, Ci = Linearization(LinPoints, PointAndTangent, dt, i, Atv[0], Btv[0], Ctv[0])            
         else:
-            Ai, Bi, Ci, indexSelected = RegressionAndLinearization(LinPoints, LinInput, usedIt, SS, uSS, TimeSS,
+            Ai, Bi, Ci, indexSelected = RegressionAndLinearization(LinPoints, LinInput, usedIt, SS, uSS, LapCounter,
                                                            MaxNumPoint, n, d, matrix, PointAndTangent, dt, i, SysID_Solver)
         Atv.append(Ai)
         Btv.append(Bi)
@@ -643,7 +656,7 @@ def _LMPC_EstimateABC(ControllerLMPC):
 
     return Atv, Btv, Ctv, indexUsed_list
 
-def RegressionAndLinearization(LinPoints, LinInput, usedIt, SS, uSS, TimeSS, MaxNumPoint, n, d, matrix, PointAndTangent, dt, i, SysID_Solver):
+def RegressionAndLinearization(LinPoints, LinInput, usedIt, SS, uSS, LapCounter, MaxNumPoint, n, d, matrix, PointAndTangent, dt, i, SysID_Solver):
 
 
     x0 = LinPoints[i, :]
@@ -675,7 +688,7 @@ def RegressionAndLinearization(LinPoints, LinInput, usedIt, SS, uSS, TimeSS, Max
     indexSelected = []
     K = []
     for i in usedIt:
-        indexSelected_i, K_i = ComputeIndex(h, SS, uSS, TimeSS, i, xLin, stateFeatures, scaling, MaxNumPoint,
+        indexSelected_i, K_i = ComputeIndex(h, SS, uSS, LapCounter, i, xLin, stateFeatures, scaling, MaxNumPoint,
                                             ConsiderInput)
         indexSelected.append(indexSelected_i)
         K.append(K_i)
@@ -775,6 +788,7 @@ def Linearization(LinPoints, PointAndTangent, dt, i, Ai, Bi, Ci):
 
 
     x0 = LinPoints[i, :]
+
 
     # ===========================
     # ===== Linearization =======
@@ -887,18 +901,18 @@ def LMPC_LocLinReg(Q, b, stateFeatures, inputFeatures, qp, SysID_Solver):
 
     return A, B, C
 
-def ComputeIndex(h, SS, uSS, TimeSS, it, x0, stateFeatures, scaling, MaxNumPoint, ConsiderInput):
+def ComputeIndex(h, SS, uSS, LapCounter, it, x0, stateFeatures, scaling, MaxNumPoint, ConsiderInput):
     startTimer = datetime.datetime.now()  # Start timer for LMPC iteration
 
     # What to learn a model such that: x_{k+1} = A x_k  + B u_k + C
-    oneVec = np.ones( (SS[0:TimeSS[it], :, it].shape[0]-1, 1) )
+    oneVec = np.ones( (SS[0:LapCounter[it]-1, :, it].shape[0], 1) )
 
     x0Vec = (np.dot( np.array([x0]).T, oneVec.T )).T
 
     if ConsiderInput == 1:
-        DataMatrix = np.hstack((SS[0:TimeSS[it]-1, stateFeatures, it], uSS[0:TimeSS[it]-1, :, it]))
+        DataMatrix = np.hstack((SS[0:LapCounter[it]-1, stateFeatures, it], uSS[0:LapCounter[it]-1, :, it]))
     else:
-        DataMatrix = SS[0:TimeSS[it]-1, stateFeatures, it]
+        DataMatrix = SS[0:LapCounter[it]-1, stateFeatures, it]
 
     diff  = np.dot(( DataMatrix - x0Vec ), scaling)
     # print 'x0Vec \n',x0Vec

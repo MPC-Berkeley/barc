@@ -51,7 +51,7 @@ class ClosedLoopDataObj():
         self.u = np.zeros((self.Points, 2))  # Initialize the input vector
         self.x = np.zeros((self.Points + 1, 6))  # Initialize state vector (In curvilinear abscissas)
         self.x_glob = np.zeros((self.Points + 1, 6))  # Initialize the state vector in absolute reference frame
-        self.SimTime = 0
+        self.SimTime = -1
         self.x[0,0] = v0
         self.x_glob[0,0] = v0
         self.CurrentState = [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
@@ -66,7 +66,7 @@ class ClosedLoopDataObj():
 
         self.x[1:, :] = np.zeros((self.x.shape[0]-1, 6))
         self.x_glob[1:, :] = np.zeros((self.x.shape[0]-1, 6))
-        self.SimTime = 0
+        self.SimTime = -1
 
     def addMeasurement(self, xMeasuredGlob, xMeasuredLoc, uApplied):
         """Add point to the object ClosedLoopData
@@ -74,7 +74,7 @@ class ClosedLoopDataObj():
         xMeasuredLoc: measured state in the curvilinear reference frame
         uApplied: input applied to the system
         """
+        self.SimTime = self.SimTime + 1
         self.x[self.SimTime, :]      = xMeasuredLoc
         self.x_glob[self.SimTime, :] = xMeasuredGlob
         self.u[self.SimTime, :]      = uApplied
-        self.SimTime = self.SimTime + 1

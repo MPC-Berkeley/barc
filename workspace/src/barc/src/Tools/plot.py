@@ -17,15 +17,28 @@ import os
 
 
 def main():
-    file_data = open('/barc_data/ClosedLoopDataLMPC.obj', 'rb')    
-    ClosedLoopData = pickle.load(pathSave)
+    homedir = os.path.expanduser("~")
+
+    file_data = open(homedir+'/barc_data/ClosedLoopDataLMPC.obj', 'rb')    
+    ClosedLoopData = pickle.load(file_data)
     LMPController = pickle.load(file_data)
     LMPCOpenLoopData = pickle.load(file_data)    
     file_data.close()
     map = Map("oval")
 
+    # pdb.set_trace()
+    print "Track length is: ", map.TrackLength
     plotOneStepPreditionError(LMPController, LMPCOpenLoopData)
+
+    plt.show()
+
     plotClosedLoopLMPC(LMPController, map)
+    
+    plt.show()
+
+    pdb.set_trace()
+
+    animation_states(map, LMPCOpenLoopData, LMPController, 2)
 
     plt.show()
     
@@ -135,36 +148,41 @@ def plotClosedLoopLMPC(LMPController, map):
     plt.plot(Points1[:, 0], Points1[:, 1], '-b')
     plt.plot(Points2[:, 0], Points2[:, 1], '-b')
 
-    for i in range(2, TotNumberIt):
+    for i in range(0, TotNumberIt):
         plt.plot(SS_glob[0:TimeSS[i], 4, i], SS_glob[0:TimeSS[i], 5, i], '-r')
 
     plt.figure()
     plt.subplot(711)
-    for i in range(2, TotNumberIt):
+    for i in range(0, TotNumberIt):
         plt.plot(SS[0:TimeSS[i], 4, i], SS[0:TimeSS[i], 0, i], '-o')
+    plt.axvline(map.TrackLength, linewidth=4, color='g')
     plt.ylabel('vx')
     plt.subplot(712)
-    for i in range(2, TotNumberIt):
+    for i in range(0, TotNumberIt):
         plt.plot(SS[0:TimeSS[i], 4, i], SS[0:TimeSS[i], 1, i], '-o')
+    plt.axvline(map.TrackLength, linewidth=4, color='g')
     plt.ylabel('vy')
     plt.subplot(713)
-    for i in range(2, TotNumberIt):
+    for i in range(0, TotNumberIt):
         plt.plot(SS[0:TimeSS[i], 4, i], SS[0:TimeSS[i], 2, i], '-o')
+    plt.axvline(map.TrackLength, linewidth=4, color='g')
     plt.ylabel('wz')
     plt.subplot(714)
-    for i in range(2, TotNumberIt):
+    for i in range(0, TotNumberIt):
         plt.plot(SS[0:TimeSS[i], 4, i], SS[0:TimeSS[i], 3, i], '-o')
+    plt.axvline(map.TrackLength, linewidth=4, color='g')
     plt.ylabel('epsi')
     plt.subplot(715)
-    for i in range(2, TotNumberIt):
+    for i in range(0, TotNumberIt):
         plt.plot(SS[0:TimeSS[i], 4, i], SS[0:TimeSS[i], 5, i], '-o')
+    plt.axvline(map.TrackLength, linewidth=4, color='g')
     plt.ylabel('ey')
     plt.subplot(716)
-    for i in range(2, TotNumberIt):
+    for i in range(0, TotNumberIt):
         plt.plot(uSS[0:TimeSS[i] - 1, 0, i], '-o')
     plt.ylabel('Steering')
     plt.subplot(717)
-    for i in range(2, TotNumberIt):
+    for i in range(0, TotNumberIt):
         plt.plot(uSS[0:TimeSS[i] - 1, 1, i], '-o')
     plt.ylabel('Acc')
 
@@ -180,8 +198,8 @@ def animation_xy(map, LMPCOpenLoopData, LMPController, it):
     Points2 = np.zeros((Points, 2))
     Points0 = np.zeros((Points, 2))
     for i in range(0, int(Points)):
-        Points1[i, :] = map.getGlobalPosition(i * 0.1, map.width)
-        Points2[i, :] = map.getGlobalPosition(i * 0.1, -map.width)
+        Points1[i, :] = map.getGlobalPosition(i * 0.1, map.halfWidth)
+        Points2[i, :] = map.getGlobalPosition(i * 0.1, -map.halfWidth)
         Points0[i, :] = map.getGlobalPosition(i * 0.1, 0)
 
     plt.figure()
@@ -295,8 +313,8 @@ def animation_states(map, LMPCOpenLoopData, LMPController, it):
     Points2 = np.zeros((Points, 2))
     Points0 = np.zeros((Points, 2))
     for i in range(0, int(Points)):
-        Points1[i, :] = map.getGlobalPosition(i * 0.1, map.width)
-        Points2[i, :] = map.getGlobalPosition(i * 0.1, -map.width)
+        Points1[i, :] = map.getGlobalPosition(i * 0.1, map.halfWidth)
+        Points2[i, :] = map.getGlobalPosition(i * 0.1, -map.halfWidth)
         Points0[i, :] = map.getGlobalPosition(i * 0.1, 0)
 
     axtr = fig.add_subplot(3, 2, 6)

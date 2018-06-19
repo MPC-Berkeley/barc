@@ -54,12 +54,18 @@ def main():
     map = Map()                                              # Map
     
     # Choose Controller and Number of Laps
-    twoStepDelay   = False
+    InputDelay = 1 # 0 for no delay, 1 for 1 step delay, 2 for 2 steps delay
+
     PickController = "LMPC"
     NumberOfLaps   = 30
     vt = 1.2
     PathFollowingLaps = 2
-    PIDnoise = np.array([0.2, 1.0]) # noise on [Steering, Acceleration] 
+    
+    if mode == "simulations":
+        PIDnoise = np.array([1.0, 1.0]) # noise on [Steering, Acceleration] 
+    else:
+        PIDnoise = np.array([0.2, 1.0]) # noise on [Steering, Acceleration] 
+
     ControllerLap0, Controller,  OpenLoopData   = ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PIDnoise)
                  
     # Initialize variables for main loop
@@ -75,12 +81,16 @@ def main():
     KeyInput = raw_input("Press enter to start the controller... \n")
     oneStepPrediction = np.zeros(6)
     oldU = np.array([0.0, 0.0])
+    oldX = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
 
 
     firtLap = True
     while (not rospy.is_shutdown()) and RunController == 1:    
         # Read Measurements
         GlobalState[:] = estimatorData.CurrentState
+        if (GlobalState == oldX).all():
+            print "================ Package Loss! The state as not been updated! ==============="
+        oldX[:] = GlobalState
         LocalState[:]  = estimatorData.CurrentState
         LocalState[4], LocalState[5], LocalState[3], insideTrack = map.getLocalPosition(GlobalState[4], GlobalState[5], GlobalState[3])
 
@@ -92,18 +102,28 @@ def main():
             firtLap = False
 
         if HalfTrack == 1 and LocalState[4] <= map.TrackLength/4 and firtLap == False:
-            HalfTrack = 0
-            LapNumber += 1 
-            print "Lap completed starting lap:", LapNumber, ". Lap time: ", float(TimeCounter)/loop_rate
-            TimeCounter = 0
-            if PickController == "LMPC":
-                print "Lap completed starting lap:", LapNumber, ". Lap time: ", float(Controller.LapTime)/loop_rate
-                Controller.resetTime()
+
+            # If not LMPC then reset initial conditon after Lap 0
+            if LapNumber == 0 and PickController != "LMPC":
+                ClosedLoopData.updateInitialConditions(LocalState, GlobalState)
+
+            # If LMPC put in SS lap after finisching lap 1
+            if LapNumber >= 1 and PickController == "LMPC":
                 Controller.addTrajectory(ClosedLoopData)
                 ClosedLoopData.updateInitialConditions(LocalState, GlobalState)
 
+            LapNumber += 1
+
+            print "Lap completed starting lap:", LapNumber, ". Lap time: ", float(TimeCounter)/loop_rate
+            if PickController == "LMPC":
+                print "Lap completed starting lap:", LapNumber, ". Lap time: ", float(Controller.LapTime)/loop_rate
+                Controller.resetTime()
+
             if LapNumber >= NumberOfLaps:
                 RunController = 0
+
+            HalfTrack = 0
+            TimeCounter = 0
 
         # If inside the track publish input
         if (insideTrack == 1):
@@ -136,13 +156,17 @@ def main():
 
                 oneStepPredictionError = LocalState - oneStepPrediction # Subtract the local measurement to the previously predicted one step
 
-                if twoStepDelay == True:
+                if InputDelay == 0:
+                    startTimerDummy = datetime.datetime.now()
+                    oneStepPrediction = LocalState
+                    endTimerDummy = datetime.datetime.now()
+                    deltaTimerDummy = endTimerDummy - startTimerDummy
+                    oneStepPredictionTime = deltaTimerDummy
+                elif InputDelay == 1:
+                    oneStepPrediction, oneStepPredictionTime = Controller.oneStepPrediction(LocalState, uApplied, 1)
+                elif InputDelay == 2:
                     oneStepPrediction, oneStepPredictionTime = Controller.oneStepPrediction(LocalState, oldU, 1)
                     oneStepPrediction, oneStepPredictionTime = Controller.oneStepPrediction(oneStepPrediction, uApplied, 1)
-                else:
-                    oneStepPrediction, oneStepPredictionTime = Controller.oneStepPrediction(LocalState, uApplied, 1)
-
-
 
                 # print "LocalState: ", LocalState
                 # print "oneStepPrediction: ", oneStepPrediction
@@ -161,9 +185,9 @@ def main():
 
             # Record data
             if (PickController != "LMPC") and (LapNumber >= 1):
-                GlobalState[4] = GlobalState[4] + (LapNumber - 1)*map.TrackLength
+                LocalState[4] = LocalState[4] + (LapNumber - 1)*map.TrackLength
                 ClosedLoopData.addMeasurement(GlobalState, LocalState, uApplied)
-            else:
+            elif LapNumber >= 1:
                 ClosedLoopData.addMeasurement(GlobalState, LocalState, uApplied)
 
             # Add data to SS and Record Prediction
@@ -272,7 +296,7 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
         Qlane   = 0.5 * 10 * np.array([50, 0]) # Quadratic and linear slack lane cost
         Q_LMPC  =  0 * np.diag([0.0, 0.0, 10.0, 0.0, 0.0, 0.0])  # State cost x = [vx, vy, wz, epsi, s, ey]
         R_LMPC  =  0 * np.diag([1.0, 1.0])                      # Input cost u = [delta, a]
-        dR_LMPC =  1 * np.array([0.5 * 10.0, 1 * 20.0])                     # Input rate cost u
+        dR_LMPC =  1 * np.array([10 * 0.5 * 10.0, 8 * 20.0])                     # Input rate cost u
         Controller = ControllerLMPC(numSS_Points, numSS_it, N, Qslack, Qlane, Q_LMPC, R_LMPC, dR_LMPC, 6, 2, shift, 
                                         dt, map, Laps, TimeLMPC, LMPC_Solver, SysID_Solver, flag_LTV)
         # Controller.addTrajectory(ClosedLoopDataPID)

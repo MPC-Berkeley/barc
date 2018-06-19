@@ -80,14 +80,16 @@
     <!-- LMPC CONTROL -->
     <node machine="this-pc" pkg="barc" type="controllerMain.py" name="control" output="screen">
         <param name="mode" type="str" value="experiments" />
-        <param name="saveData" type="bool" value="true" />
+        <param name="saveData" type="bool" value="false" />
     </node>
 
     <!-- LOW LEVEL CONTROLLER -->
     <node machine="this-pc" pkg="barc" type="controllerLowLevel.py" name="low_level_controller" />
 
     <!-- VISUALIZATION -->
-    <node machine="this-pc" pkg="barc" type="plotCarTrajectory.py" name="visualization" />
+    <node machine="this-pc" pkg="barc" type="plotCarTrajectory.py" name="visualization" >
+        <param name="plotGPS" type="bool" value="true" />
+    </node>
 
     <!-- IMU -->
     <node machine="odroid" pkg="myahrs_driver" type="myahrs_driver" name="myahrs_driver">
