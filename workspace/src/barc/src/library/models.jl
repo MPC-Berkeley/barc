@@ -576,6 +576,7 @@ export MdlPf,MdlKin,MdlId,MdlIdLin,MdlDynLin,MdlKinLin
                                                                    c_Psi[i,3]*z_Ol[i,6] + 
                                                                    c_Psi[i,4]*u_Ol[i,2] + 
                                                                    (dt/agent.mpcParams.dt)*GP_psiDot_e[i])  # psiDot
+                end
             end
 
             @NLexpression(mdl, derivCost, sum{QderivZ[j]*sum{(z_Ol[i,j]-z_Ol[i+1,j])^2,i=1:N},j=1:6} +

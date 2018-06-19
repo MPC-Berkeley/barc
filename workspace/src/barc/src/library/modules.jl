@@ -1145,7 +1145,7 @@ export findSS
         Nl      = agent.SS.Nl
         Np      = agent.SS.Np
         Np_here = agent.SS.Np/2
-        target_s= s+agent.posInfo.v*0.1*agent.mpcParams.N+0.5 # 1.0 is a manual shift
+        target_s= s+agent.posInfo.v*0.1*agent.mpcParams.N # 1.0 is a manual shift
         t_s     = copy(target_s)
 
         cost_correction = findmin(agent.SS.oldCost[agent.lapStatus.lap-Nl-1:agent.lapStatus.lap-1])[1]

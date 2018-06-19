@@ -39,8 +39,8 @@ import numpy as np
 def main():
     # node initialization
     rospy.init_node("state_estimation")
-    a_delay     = rospy.get_param("state_estimator/delay_a")
-    df_delay    = rospy.get_param("state_estimator/delay_df")
+    a_delay     = 0.0
+    df_delay    = 0.0
     loop_rate   = 50.0
    	
     Q = eye(8)
@@ -56,9 +56,9 @@ def main():
     R[0,0] = 10.0 	# R_x
     R[1,1] = 10.0 	# R_y
     R[2,2] = 0.1 	# R_vx
-    R[3,3] = 0.01 	# R_ax
+    R[3,3] = 10.0 	# R_ax
     R[4,4] = 10.0 	# R_ay
-    R[5,5] = 10.0 	# R_psiDot
+    R[5,5] = 0.1 	# R_psiDot
     R[6,6] = 0.1 	# R_vy
 
     t0 = rospy.get_rostime().to_sec()
@@ -129,6 +129,8 @@ def main():
                       KF_psiDot_his     = est.psiDot_his,
                       KF_a_his          = est.a_his,
                       KF_df_his         = est.df_his,
+                      Q                 = est.Q,
+                      R                 = est.R,
                       estimator_time    = est.time_his)
 
     pathSave = os.path.join(homedir,"barc_debugging/",folder_name,"estimator_imu.npz")
@@ -356,6 +358,7 @@ class Estimator(object):
         if self.v_meas_his[-1] == y[2]:
             self.v_meas_count += 1
             idx.append(2)
+            idx.append(6)
         if self.ax_his[-1] == y[3]:
             self.ax_count += 1
             idx.append(3)
@@ -405,8 +408,11 @@ class Estimator(object):
         self.pkg_count += 1
 
         idx = []
-        if y[2] > 1.8: # at high speed, remove vy_meas
-            idx.append(2)
+        if y[2] > 1.8 or y[5] > 2.0: # vx and psiDot criterion for Vy switch
+            idx.append(6)
+            self.Q[6,6] = 1  # Q_psi
+        else:
+            self.Q[6,6] = 0.1 # Q_psi
 
         H      = np.delete(H,(idx),axis=0)
         R      = np.delete(self.R,(idx),axis=0)

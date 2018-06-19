@@ -2,7 +2,7 @@
 """
     File name: visualizeCar.py
     Author: Shuqi Xu
-    Email: shuqixu@kth.se
+    Email: shuqixu@berkeley.edu (xushuqi8787@gmail.com)
     Python Version: 2.7.12
 """
 # ---------------------------------------------------------------------------
@@ -112,8 +112,8 @@ class Plotter(object):
 
         rospy.init_node("visualizeCar")
         rospy.Subscriber("pos_info",         pos_info,         self.posInfo_callback, queue_size=1)
-        rospy.Subscriber("hedge_imu_fusion", hedge_imu_fusion, self.gps_callback,     queue_size=1)
-        rospy.Subscriber("hedge_pos",        hedge_pos,        self.hedge_callback,   queue_size=1)
+        # rospy.Subscriber("hedge_imu_fusion", hedge_imu_fusion, self.gps_callback,     queue_size=1)
+        # rospy.Subscriber("hedge_pos",        hedge_pos,        self.hedge_callback,   queue_size=1)
         rospy.Subscriber("mpc_visual",       mpc_visual,       self.mpcVis_callback,  queue_size=1)
         # rospy.Subscriber('imu/data',         Imu,              self.imu_callback,     queue_size=1)
         # rospy.Subscriber('vel_est',          Vel_est,          self.enc_callback,     queue_size=1)
@@ -121,19 +121,24 @@ class Plotter(object):
     def updatePlot(self):
         # UPDATE IN THE MAIN SUBPLOT
         self.car_h.set_data(self.car_update[0],self.car_update[1])
+
         # estimator trajectory
         num = min(len(self.traj_x),len(self.traj_y))
         self.traj_h.set_data(self.traj_x[:num],self.traj_y[:num])
+
         # hedge_imu_fusion trajectory (100hz)
-        num = min(len(self.gps_x),len(self.gps_y))
-        self.gps_h.set_data(self.gps_x[:num],self.gps_y[:num])
+        # num = min(len(self.gps_x),len(self.gps_y))
+        # self.gps_h.set_data(self.gps_x[:num],self.gps_y[:num])
+
         # hedge_pos trajectory (16hz)
-        num = min(len(self.hedge_x),len(self.hedge_y))
-        self.hedge_h.set_data(self.hedge_x[:num],self.hedge_y[:num])
+        # num = min(len(self.hedge_x),len(self.hedge_y))
+        # self.hedge_h.set_data(self.hedge_x[:num],self.hedge_y[:num])
+
         # mpc related stuff update
         self.pre_h.set_data(self.pre_x,self.pre_y)
         self.SS_h.set_data(self.SS_x,self.SS_y)
         self.sysID_h.set_data(self.sysID_x,self.sysID_y)
+        
         # history lap times update
         self.ax.set_xlabel("Lap: {}, vx: {} m/s, vy: {} m/s, ax: {} m/s2, ay: {} m/s2, psiDot: {} rad/s, a: {} m/s2, df: {} rad".format(int(self.state[7]), self.state[0], self.state[1], self.state[2], self.state[3], self.state[4], self.state[5], self.state[6]))
         self.ax.set_title("x:{},y:{},vx:{},ax:{},ay:{},psiDot:{},".format(self.pkgLossRatio[0],self.pkgLossRatio[1],self.pkgLossRatio[2],self.pkgLossRatio[3],self.pkgLossRatio[4],self.pkgLossRatio[5]))
@@ -143,7 +148,6 @@ class Plotter(object):
         # self.ay_raw_h.set_ydata(self.ay_raw)
         # self.psiDot_raw_h.set_ydata(self.psiDot_raw)
         # self.vx_raw_h.set_ydata(self.vx_raw)
-
 
     def updateLapTime(self):
         if len(self.lapTime)<len(self.lapTime_s):

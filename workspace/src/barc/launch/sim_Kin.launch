@@ -5,7 +5,7 @@
     <param name="LMPC_LAP" type="int" value="30" />
     <!-- flags -->
     <param name="sim_flag"      type="bool" value="true" />
-    <param name="PF_flag"       type="bool" value="true" />
+    <param name="PF_flag"       type="bool" value="false" />
     <param name="feature_flag"  type="bool" value="false" />
     <param name="race_track"    type="str"  value="MSC_lab" />
     <!-- vehicle parameters -->

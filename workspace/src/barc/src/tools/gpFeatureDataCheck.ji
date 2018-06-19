@@ -55,7 +55,7 @@ function gpFullDyn(z::Array{Float64,2},u::Array{Float64,2},feature_state::Array{
 end
 
 folder_name = "simulations"
-file_name = "GP-SYS_ID_TV"
+file_name = "GP-KIN"
 data = load("$(homedir())/$(folder_name)/$(file_name).jld")
 println("Load data from $(homedir())/$(folder_name)/$(file_name).jld")
 
@@ -89,8 +89,10 @@ feature_GP_psiDot_e	= feature_GP_psiDot_e[1:num_sps:end]
 # full GPR testing
 feature_GP_e = feature_GP_vx_e
 GP_e_check 	 = zeros(size(feature_GP,1))
-# GP_e_prepare = GP_prepare_kin(feature_GP_e,feature_GP)
-GP_e_prepare = gpPrepDyn(feature_GP_e,feature_GP)
+GP_e_prepare = GP_prepare_kin(feature_GP_e,feature_GP)
+# GP_e_prepare = gpPrepDyn(feature_GP_e,feature_GP)
+
+
 # do state variation
 function bound(num,threshold)
 	n = randn(num)
@@ -98,16 +100,16 @@ function bound(num,threshold)
 	n_new = min(n_new,threshold)
 	return n_new
 end
-# feature_GP_z[:,2] += bound(size(feature_GP_z,1),0.3)
-# feature_GP_z[:,3] += bound(size(feature_GP_z,1),0.2)
+feature_GP_z[:,2] += bound(size(feature_GP_z,1),0.3)
+feature_GP_z[:,3] += bound(size(feature_GP_z,1),0.2)
 feature_GP_z[:,4] += bound(size(feature_GP_z,1),0.1)
-feature_GP_z[:,5] += bound(size(feature_GP_z,1),0.01)
-feature_GP_z[:,6] += bound(size(feature_GP_z,1),0.05)
+# feature_GP_z[:,5] += bound(size(feature_GP_z,1),0.01)
+# feature_GP_z[:,6] += bound(size(feature_GP_z,1),0.05)
 feature_GP_u[:,1] += bound(size(feature_GP_z,1),0.1)
 feature_GP_u[:,2] += bound(size(feature_GP_z,1),0.05)
 for i = 1:size(feature_GP,1)
-    # GP_e_check[i] = GP_full_kin(feature_GP_z[i,:],feature_GP_u[i,:],feature_GP,GP_e_prepare)
-	GP_e_check[i] = gpFullDyn(feature_GP_z[i,:],feature_GP_u[i,:],feature_GP,GP_e_prepare)
+    GP_e_check[i] = GP_full_kin(feature_GP_z[i,:],feature_GP_u[i,:],feature_GP,GP_e_prepare)
+	# GP_e_check[i] = gpFullDyn(feature_GP_z[i,:],feature_GP_u[i,:],feature_GP,GP_e_prepare)
 end
 
 figure("GP function check")

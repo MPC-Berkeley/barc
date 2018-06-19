@@ -14,7 +14,7 @@ function gpPrepKin(e::Array{Float64,1},zu::Array{Float64,2})
             Z[i,j] = (10*z[1]^2+10*z[2]^2+z[3]^2+z[4]^2+5*z[5]^2)
         end
     end
-    K=0.1^2*exp(-2.0*Z)
+    K=0.1^2*exp(-20.0*Z)
     return K\e 
 end
 
@@ -22,7 +22,29 @@ function gpFullKin(z::Array{Float64,2},u::Array{Float64,2},feature_state::Array{
     state = hcat(z,u)
     z = feature_state[:,2:6].-state[1,2:6]
     Z = 10*z[:,1].^2+10*z[:,2].^2+z[:,3].^2+z[:,4].^2+5*z[:,5].^2
-    k = 0.1^2*exp(-2.0*Z)
+    k = 0.1^2*exp(-20.0*Z)
+    GP_e = k'*GP_prepare
+    return GP_e[1]
+end
+
+function gpPrepDyn(e::Array{Float64,1},zu::Array{Float64,2})
+    num = size(zu,1)
+    Z=zeros(num,num)
+    for i = 1:num
+        for j=1:num
+            z = zu[i,2:8]-zu[j,2:8]
+            Z[i,j] = (10*z[1]^2+10*z[2]^2+z[3]^2+z[4]^2+5*z[5]^2)
+        end
+    end
+    K=exp(-50.0*Z)
+    return K\e
+end
+
+function gpFullDyn(z::Array{Float64,2},u::Array{Float64,2},feature_state::Array{Float64,2},GP_prepare::Array{Float64,1})
+    state = hcat(z,u)
+    z = feature_state[:,4:8].-state[1,4:8]
+    Z = 10*z[:,1].^2+10*z[:,2].^2+z[:,3].^2+z[:,4].^2+5*z[:,5].^2
+    k = exp(-50.0*Z)
     GP_e = k'*GP_prepare
     return GP_e[1]
 end
@@ -36,6 +58,8 @@ u_his	= data["u"]
 # u = Array{Float64}(0,2)
 z = zeros(1,4)
 u = zeros(1,2)
+# z = zeros(1,6)
+# u = zeros(1,2)
 cost = data["cost"]
 for i = 5:length(cost)
 	z = vcat(z,reshape(z_his[1:Int(cost[i]),i,1,1:4],Int(cost[i]),4))
@@ -60,30 +84,39 @@ GP_psiDot_his 	= data["GP_psiDot_his"]
 
 data = load("$(homedir())/$(folder_name)/GP-KIN.jld")
 num_sps  	= 2
-e_ey    	= data["e_ey"]
-e_epsi  	= data["e_epsi"]
+e_vx        = data["e_vx"]
+e_vy        = data["e_vy"]
+e_psiDot  	= data["e_psiDot"]
 e_ey		= e_ey[1:num_sps:end]
 e_epsi		= e_epsi[1:num_sps:end]
+e_vx        = e_vx[1:num_sps:end]
+e_vy        = e_vy[1:num_sps:end]
+e_psiDot    = e_psiDot[1:num_sps:end]
 feature_GP_z= data["z"]
 feature_GP_u= data["u"]
 feature_GP_z= feature_GP_z[1:num_sps:end,:]
 feature_GP_u= feature_GP_u[1:num_sps:end,:]
 feature_GP  = hcat(feature_GP_z,feature_GP_u)
-prep_ey 	= gpPrepKin(e_ey,feature_GP)
-prep_epsi 	= gpPrepKin(e_epsi,feature_GP)
+prep_vx     = gpPrepKin(e_vx,feature_GP)
+# prep_vx     = gpPrepDyn(e_vx,feature_GP)
+# prep_vy     = gpPrepDyn(e_epsi,feature_GP)
+# prep_psiDot = gpPrepDyn(e_epsi,feature_GP)
 
-GP_ey_check 	= zeros(size(z,1))
-GP_epsi_check 	= zeros(size(z,1))
+GP_vx_check = zeros(size(z,1))
+GP_vy_check = zeros(size(z,1))
+GP_psiDot_check = zeros(size(z,1))
 for i = 1:size(z,1)
-	GP_ey_check[i] 	 = gpFullKin(z[i,:],u[i,:],feature_GP,prep_ey)
-	GP_epsi_check[i] = gpFullKin(z[i,:],u[i,:],feature_GP,prep_epsi)
+   GP_vx_check[i]      = gpFullKin(z[i,:],u[i,:],feature_GP,prep_vx)
+   # GP_vx_check[i]      = gpFullDyn(z[i,:],u[i,:],feature_GP,prep_vx)
+   # GP_vy_check[i]      = gpFullDyn(z[i,:],u[i,:],feature_GP,prep_vy)
+   # GP_psiDot_check[i]  = gpFullDyn(z[i,:],u[i,:],feature_GP,prep_psiDot)
 end
 
 figure("GPR play back: $(file_name)")
 subplot(3,2,1); plot(erro_s_his,     "-",alpha=0.5) 
-subplot(3,2,2); plot(erro_ey_his,    "-",alpha=0.5); plot(GP_ey_his[:,1],  "o",alpha=0.3); plot(GP_ey_check[:,1],  "o",alpha=0.6)
-subplot(3,2,3); plot(erro_epsi_his,  "-",alpha=0.5); plot(GP_epsi_his[:,1],"o",alpha=0.3); plot(GP_epsi_check[:,1],"o",alpha=0.6)
-subplot(3,2,4); plot(erro_vx_his,    "-",alpha=0.5)
-subplot(3,2,5); plot(erro_vy_his,    "-",alpha=0.5)
-subplot(3,2,6); plot(erro_psiDot_his,"-",alpha=0.5)
+subplot(3,2,2); plot(erro_ey_his,    "-",alpha=0.5); plot(GP_ey_his[:,1],  "o",alpha=0.3);   plot(GP_ey_check[:,1],  "o",alpha=0.6)
+subplot(3,2,3); plot(erro_epsi_his,  "-",alpha=0.5); plot(GP_epsi_his[:,1],"o",alpha=0.3);   plot(GP_epsi_check[:,1],"o",alpha=0.6)
+subplot(3,2,4); plot(erro_vx_his,    "-",alpha=0.5); plot(GP_vx_his[:,1],  "o",alpha=0.3);   plot(GP_vx_check[:,1],  "o",alpha=0.6)
+subplot(3,2,5); plot(erro_vy_his,    "-",alpha=0.5); plot(GP_vy_his[:,1],  "o",alpha=0.3);   plot(GP_vy_check[:,1],  "o",alpha=0.6)
+subplot(3,2,6); plot(erro_psiDot_his,"-",alpha=0.5); plot(GP_psiDot_his[:,1],"o",alpha=0.3); plot(GP_psiDot_check[:,1],"o",alpha=0.6)
 show()

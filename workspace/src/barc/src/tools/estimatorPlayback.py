@@ -1,3 +1,9 @@
+"""
+    File name: estimatorPlayBack.py
+    Author: Shuqi Xu
+    Email: shuqixu@berkeley.edu (xushuqi8787@gmail.com)
+    Python Version: 2.7.12
+"""
 import os
 import sys
 homedir = os.path.expanduser("~")
@@ -11,166 +17,209 @@ from numpy import eye, zeros, diag, tan, cos, sin, vstack, linalg, pi
 from numpy import ones, polyval, size, dot, add
 from scipy.linalg import inv, cholesky
 from tf import transformations
+import matplotlib.pyplot as plt
 import math
 import numpy as np
 import pdb
 
 def main():
-    # node initialization
-    a_delay     = 0.2
-    df_delay    = 0.0
-    loop_rate   = 50.0
-   
-    Q = eye(8)
-    Q[0,0] = 0.01 # x
-    Q[1,1] = 0.01 # y
-    Q[2,2] = 0.01 # vx
-    Q[3,3] = 0.01 # vy
-    Q[4,4] = 1.0 # ax
-    Q[5,5] = 1.0 # ay
-    Q[6,6] = 0.0001 # psi
-    Q[7,7] = 1.0 # psidot
-    R = eye(6)
-    R[0,0] = 1.0    # x
-    R[1,1] = 1.0    # y
-    R[2,2] = 0.1    # vx
-    R[3,3] = 10.0   # ax
-    R[4,4] = 10.0   # ay
-    R[5,5] = 0.001  # psiDot
+    playBack = PlayBack("06-18-16:06-sim")
+    fig     = plt.figure("yaw")
+    ax_yaw  = fig.add_subplot(1,1,1,ylabel="yaw_estimation")
+    fig     = plt.figure("ax")
+    ax_ax   = fig.add_subplot(1,1,1,ylabel="ax")
+    fig     = plt.figure("ay")
+    ax_ay   = fig.add_subplot(1,1,1,ylabel="ay")
+    fig     = plt.figure("vx")
+    ax_vx   = fig.add_subplot(1,1,1,ylabel="vx")
+    fig     = plt.figure("vy")
+    ax_vy   = fig.add_subplot(1,1,1,ylabel="vy")
+    fig     = plt.figure("psiDot")
+    ax_psiDot  = fig.add_subplot(1,1,1,ylabel="psiDot")
+    fig = plt.figure("track x-y plot")
+    ax_traj = fig.add_subplot(1,1,1,ylabel="track x-y plot")
+    for i in [0,1,2,3,4]:
+        playBack.replay(i)
+        playBack.yawPlot(ax_yaw,i)
+        playBack.axPlot(ax_ax,i)
+        playBack.ayPlot(ax_ay,i)
+        playBack.vxPlot(ax_vx,i)
+        playBack.vyPlot(ax_vy,i)
+        playBack.psiDotPlot(ax_psiDot,i)
+        playBack.trajectoryPlot(ax_traj,i)
+        playBack.playBackClean()
+    plt.show()
 
-    imu = ImuClass(0.0)
-    gps = GpsClass(0.0)
-    enc = EncClass(0.0)
-    ecu = EcuClass(0.0)
-    est = Estimator(0.0,loop_rate,a_delay,df_delay,Q,R)
-    
-    # track = Track(0.01,1.0)
-    # track.createRaceTrack()
+class PlayBack(object):
+    def __init__(self,folder_name):
+        self.idx_min = 200
+        self.idx_max = 250
+        self.track = Track(0.01,1.0)
+        self.track.createRaceTrack("MSC_lab")
+        homedir = os.path.expanduser("~")
+        pathSave = os.path.join(homedir,"barc_debugging/",folder_name,"estimator_output.npz")
+        npz_output = np.load(pathSave)
+        self.x_est_his           = npz_output["x_est_his"]
+        self.y_est_his           = npz_output["y_est_his"]
+        self.vx_est_his          = npz_output["vx_est_his"] 
+        self.vy_est_his          = npz_output["vy_est_his"] 
+        self.ax_est_his          = npz_output["ax_est_his"] 
+        self.ay_est_his          = npz_output["ay_est_his"] 
+        self.psiDot_est_his      = npz_output["psiDot_est_his"]  
+        self.yaw_est_his         = npz_output["yaw_est_his"]
+        self.KF_x_his            = npz_output["KF_x_his"]
+        self.KF_y_his            = npz_output["KF_y_his"]
+        self.KF_v_meas_his       = npz_output["KF_v_meas_his"]
+        self.KF_ax_his           = npz_output["KF_ax_his"]
+        self.KF_ay_his           = npz_output["KF_ay_his"]
+        self.KF_psiDot_his       = npz_output["KF_psiDot_his"]
+        self.KF_a_his            = npz_output["KF_a_his"]
+        self.KF_df_his           = npz_output["KF_df_his"]
+        self.estimator_time      = npz_output["estimator_time"]
+        self.Q                   = npz_output["Q"]
+        print "Q:", diag(self.Q)
+        self.R                   = npz_output["R"]
+        print "R:", diag(self.R)
+        print "Finish loading data from", pathSave
 
-    estMsg = pos_info()
-    
-    homedir = os.path.expanduser("~")
-    folder_name = ARGS[0]
-    pathSave = os.path.join(homedir,"barc_debugging/",folder_name,"estimator_output.npz")
-    npz_output = np.load(pathSave)
-    KF_x_his            = npz_output["KF_x_his"]
-    KF_y_his            = npz_output["KF_y_his"]
-    KF_v_meas_his       = npz_output["KF_v_meas_his"]
-    KF_ax_his           = npz_output["KF_ax_his"]
-    KF_ay_his           = npz_output["KF_ay_his"]
-    KF_psiDot_his       = npz_output["KF_psiDot_his"]
-    KF_a_his            = npz_output["KF_a_his"]
-    KF_df_his           = npz_output["KF_df_his"]
-    estimator_time      = npz_output["estimator_time"]
-    print "Finish loading data from", pathSave
+        self.imu = ImuClass(0.0)
+        self.gps = GpsClass(0.0)
+        self.enc = EncClass(0.0)
+        self.ecu = EcuClass(0.0)
+        self.est = Estimator(0.0,50.0,0.0,0.0,self.Q,self.R)
 
-    pathSave = os.path.join(homedir,"barc_debugging/",folder_name,"estimator_imu.npz")
-    npz_imu = np.load(pathSave)
-    psiDot_his      = npz_imu["psiDot_his"]
-    roll_his        = npz_imu["roll_his"]
-    pitch_his       = npz_imu["pitch_his"]
-    yaw_his         = npz_imu["yaw_his"]
-    ax_his          = npz_imu["ax_his"]
-    ay_his          = npz_imu["ay_his"]
-    imu_time        = npz_imu["imu_time"]
-    print "Finish loading data from", pathSave
+    def replay(self,indicator):
+        for i in range(len(self.KF_a_his)):
+            # READ SENSOR DATA
+            self.gps.x       = self.KF_x_his[i]
+            self.gps.y       = self.KF_y_his[i]
+            self.imu.ax      = self.KF_ax_his[i]
+            self.imu.ay      = self.KF_ay_his[i]
+            self.imu.psiDot  = self.KF_psiDot_his[i]
+            self.enc.v_meas  = self.KF_v_meas_his[i]
+            self.ecu.a       = self.KF_a_his[i]
+            self.ecu.df      = self.KF_df_his[i]
+            if indicator == 1:
+                self.est.estimateState(self.imu,self.gps,self.enc,self.ecu,self.est.ekfSwitchVy)
+            elif indicator == 2:
+                self.est.estimateState(self.imu,self.gps,self.enc,self.ecu,self.est.ekfWithoutVy)
+            elif indicator ==3:
+                self.est.estimateState(self.imu,self.gps,self.enc,self.ecu,self.est.ekfWithVy)
+            self.est.saveHistory()
 
-    pathSave = os.path.join(homedir,"barc_debugging/",folder_name,"estimator_gps.npz")
-    npz_gps = np.load(pathSave)
-    x_his       = npz_gps["x_his"]
-    y_his       = npz_gps["y_his"]
-    x_ply_his   = npz_gps["x_ply_his"]
-    y_ply_his   = npz_gps["y_ply_his"]
-    gps_time    = npz_gps["gps_time"]
-    gps_ply_time= npz_gps["gps_ply_time"]
-    print "Finish loading data from", pathSave
+    def yawPlot(self,ax,indicator):
+        if indicator == 1:
+            ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.est.yaw_est_his[self.idx_min:self.idx_max],"o--",label="Switch vy",    alpha=0.7)
+        elif indicator == 2:
+            ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.est.yaw_est_his[self.idx_min:self.idx_max],"s--",label="Without vy",   alpha=0.7)
+        elif indicator == 3:
+            ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.est.yaw_est_his[self.idx_min:self.idx_max],"v--",label="With vy",      alpha=0.7)
+        elif indicator == 0:
+            ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.yaw_est_his[self.idx_min:self.idx_max],    "p--",label="exp",          alpha=0.7)
+        ax.legend()
 
-    pathSave = os.path.join(homedir,"barc_debugging/",folder_name,"estimator_enc.npz")
-    npz_enc = np.load(pathSave)
-    v_fl_his    = npz_enc["v_fl_his"]
-    v_fr_his    = npz_enc["v_fr_his"]
-    v_rl_his    = npz_enc["v_rl_his"]
-    v_rr_his    = npz_enc["v_rr_his"]
-    v_meas_his  = npz_enc["v_meas_his"]
-    enc_time    = npz_enc["enc_time"]
-    print "Finish loading data from", pathSave
+    def axPlot(self,ax,indicator):
+        if indicator == 1:
+            ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.est.ax_est_his[self.idx_min:self.idx_max],"o--",label="Switch vy",    alpha=0.7)
+        elif indicator == 2:
+            ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.est.ax_est_his[self.idx_min:self.idx_max],"s--",label="Without vy",   alpha=0.7)
+        elif indicator == 3:
+            ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.est.ax_est_his[self.idx_min:self.idx_max],"v--",label="With vy",      alpha=0.7)
+        elif indicator == 0:
+            ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.ax_est_his[self.idx_min:self.idx_max],    "p--",label="exp",          alpha=0.7)
+        else:
+            ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.KF_ax_his[self.idx_min:self.idx_max],     "^--",label="raw",          alpha=0.7)
+        ax.legend()
 
-    pathSave = os.path.join(homedir,"barc_debugging/",folder_name,"estimator_ecu.npz")
-    npz_ecu = np.load(pathSave)
-    a_his       = npz_ecu["a_his"]
-    df_his      = npz_ecu["df_his"]
-    ecu_time    = npz_ecu["ecu_time"]
-    print "Finish loading data from", pathSave
+    def ayPlot(self,ax,indicator):
+        if indicator == 1:
+            ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.est.ay_est_his[self.idx_min:self.idx_max],"o--",label="Switch vy",    alpha=0.7)
+        elif indicator == 2:
+            ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.est.ay_est_his[self.idx_min:self.idx_max],"s--",label="Without vy",   alpha=0.7)
+        elif indicator == 3:
+            ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.est.ay_est_his[self.idx_min:self.idx_max],"v--",label="With vy",      alpha=0.7)
+        elif indicator == 0:
+            ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.ay_est_his[self.idx_min:self.idx_max],    "p--",label="exp",          alpha=0.7)
+        else:
+            ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.KF_ay_his[self.idx_min:self.idx_max],     "^--",label="raw",          alpha=0.7)
+        ax.legend()
 
-    for i in range(len(KF_a_his)):
-        # READ SENSOR DATA
-        gps.x       = KF_x_his[i]
-        gps.y       = KF_y_his[i]
-        imu.ax      = KF_ax_his[i]
-        imu.ay      = KF_ay_his[i]
-        imu.psiDot  = KF_psiDot_his[i]
-        enc.v_meas  = KF_v_meas_his[i]
-        ecu.a       = KF_a_his[i]
-        ecu.df      = KF_df_his[i]
+    def vxPlot(self,ax,indicator):
+        if indicator == 1:
+            ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.est.vx_est_his[self.idx_min:self.idx_max],"o--",label="Switch vy",    alpha=0.7)
+        elif indicator == 2:
+            ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.est.vx_est_his[self.idx_min:self.idx_max],"s--",label="Without vy",   alpha=0.7)
+        elif indicator == 3:
+            ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.est.vx_est_his[self.idx_min:self.idx_max],"v--",label="With vy",      alpha=0.7)
+        elif indicator == 0:
+            ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.vx_est_his[self.idx_min:self.idx_max],    "p--",label="exp",          alpha=0.7)
+        else:
+            ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.KF_v_meas_his[self.idx_min:self.idx_max], "^--",label="raw",          alpha=0.7)
+        ax.legend()
 
-        est.estimateState(imu,gps,enc,ecu,est.ekf)
-        est.saveHistory()
-    
-    homedir = os.path.expanduser("~")
-    if not os.path.isdir(os.path.join(homedir,"barc_debugging2/",folder_name)):
-        os.mkdir()
-    pathSave = os.path.join(homedir,"barc_debugging2/",folder_name,"estimator_output.npz")
-    np.savez(pathSave,yaw_est_his       = est.yaw_est_his,
-                      psiDot_est_his    = est.psiDot_est_his,
-                      x_est_his         = est.x_est_his,
-                      y_est_his         = est.y_est_his,
-                      vx_est_his        = est.vx_est_his,
-                      vy_est_his        = est.vy_est_his,
-                      ax_est_his        = est.ax_est_his,
-                      ay_est_his        = est.ay_est_his,
-                      KF_x_his          = KF_x_his,
-                      KF_y_his          = KF_y_his,
-                      KF_v_meas_his     = KF_v_meas_his,
-                      KF_ax_his         = KF_ax_his,
-                      KF_ay_his         = KF_ay_his,
-                      KF_psiDot_his     = KF_psiDot_his,
-                      KF_a_his          = KF_a_his,
-                      KF_df_his         = KF_df_his,
-                      estimator_time    = estimator_time)
+    def vyPlot(self,ax,indicator):
+        if indicator == 1:
+            ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.est.vy_est_his[self.idx_min:self.idx_max],"o--",label="Switch vy",    alpha=0.7)
+        elif indicator == 2:
+            ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.est.vy_est_his[self.idx_min:self.idx_max],"s--",label="Without vy",   alpha=0.7)
+        elif indicator == 3:
+            ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.est.vy_est_his[self.idx_min:self.idx_max],"v--",label="With vy",      alpha=0.7)
+        elif indicator == 0:
+            ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.vy_est_his[self.idx_min:self.idx_max],    "p--",label="exp",          alpha=0.7)
+        ax.legend()
 
-    pathSave = os.path.join(homedir,"barc_debugging2/",folder_name,"estimator_imu.npz")
-    np.savez(pathSave,psiDot_his    = psiDot_his,
-                      roll_his      = roll_his,
-                      pitch_his     = pitch_his,
-                      yaw_his       = yaw_his,
-                      ax_his        = ax_his,
-                      ay_his        = ay_his,
-                      imu_time      = imu_time)
+    def psiDotPlot(self,ax,indicator):
+        if indicator == 1:
+            ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.est.psiDot_est_his[self.idx_min:self.idx_max],"o--",label="Switch vy",    alpha=0.7)
+        elif indicator == 2:
+            ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.est.psiDot_est_his[self.idx_min:self.idx_max],"s--",label="Without vy",   alpha=0.7)
+        elif indicator == 3:
+            ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.est.psiDot_est_his[self.idx_min:self.idx_max],"v--",label="With vy",      alpha=0.7)
+        elif indicator == 0:
+            ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.psiDot_est_his[self.idx_min:self.idx_max],    "p--",label="exp",          alpha=0.7)
+        else:
+            ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.KF_psiDot_his[self.idx_min:self.idx_max],     "^--",label="raw",          alpha=0.7)
+        ax.legend()
 
-    pathSave = os.path.join(homedir,"barc_debugging2/",folder_name,"estimator_gps.npz")
-    np.savez(pathSave,x_his         = x_his,
-                      y_his         = y_his,
-                      x_ply_his     = x_ply_his,
-                      y_ply_his     = y_ply_his,
-                      gps_t         = gps_t,
-                      gps_yaw       = gps_yaw,
-                      gps_time      = gps_time,
-                      gps_ply_time  = gps_ply_time)
+    def trajectoryPlot(self,ax,indicator):
+        if indicator == 1:
+            ax.plot(self.est.x_est_his[self.idx_min:self.idx_max], self.est.y_est_his[self.idx_min:self.idx_max],     "o--",label="Switch vy",    alpha=0.7)
+        elif indicator == 2:
+            ax.plot(self.est.x_est_his[self.idx_min:self.idx_max], self.est.y_est_his[self.idx_min:self.idx_max],     "s--",label="Without vy",   alpha=0.7)
+        elif indicator == 3:
+            ax.plot(self.est.x_est_his[self.idx_min:self.idx_max], self.est.y_est_his[self.idx_min:self.idx_max],     "v--",label="With vy",      alpha=0.7)
+        elif indicator == 0:
+            ax.plot(self.x_est_his[self.idx_min:self.idx_max],     self.y_est_his[self.idx_min:self.idx_max],         "p--",label="exp",          alpha=0.7)
+        else:
+            ax.plot(self.KF_x_his[self.idx_min:self.idx_max],self.KF_y_his[self.idx_min:self.idx_max],                "^--",label="raw",          alpha=0.7)
+            ax.plot(self.track.nodes[0],        self.track.nodes[1],        color="grey",linestyle="--",    alpha=0.3)
+            ax.plot(self.track.nodes_bound1[0], self.track.nodes_bound1[1], color="red",                    alpha=0.3)
+            ax.plot(self.track.nodes_bound2[0], self.track.nodes_bound2[1], color="red",                    alpha=0.3)
+        ax.axis("equal")
+        ax.legend()
 
-    pathSave = os.path.join(homedir,"barc_debugging2/",folder_name,"estimator_enc.npz")
-    np.savez(pathSave,v_fl_his          = v_fl_his,
-                      v_fr_his          = v_fr_his,
-                      v_rl_his          = v_rl_his,
-                      v_rr_his          = v_rr_his,
-                      v_meas_his        = v_meas_his,
-                      enc_time          = enc_time)
-
-    pathSave = os.path.join(homedir,"barc_debugging2/",folder_name,"estimator_ecu.npz")
-    np.savez(pathSave,a_his         = a_his,
-                      df_his        = df_his,
-                      ecu_time      = ecu_time)
-
-    print "Finishing saveing state estimation data"
+    def playBackClean(self):
+        self.est.x_est              = 0.0
+        self.est.y_est              = 0.0
+        self.est.vx_est             = 0.0
+        self.est.vy_est             = 0.0
+        self.est.v_est              = 0.0
+        self.est.ax_est             = 0.0
+        self.est.ay_est             = 0.0
+        self.est.yaw_est            = 0.0
+        self.est.psiDot_est         = 0.0
+        self.est.psiDot_drift_est   = 0.0
+        self.est.x_est_his          = []
+        self.est.y_est_his          = []
+        self.est.vx_est_his         = []
+        self.est.vy_est_his         = []
+        self.est.v_est_his          = []
+        self.est.ax_est_his         = []
+        self.est.ay_est_his         = []
+        self.est.yaw_est_his        = []
+        self.est.psiDot_est_his     = []
+        self.est.P              = np.eye(np.size(self.est.Q,0))
+        self.est.z              = np.zeros(np.size(self.est.Q,0))
 
 class Estimator(object):
 
@@ -191,8 +240,8 @@ class Estimator(object):
         self.dt     = dt
         self.a_delay        = a_delay
         self.df_delay       = df_delay
-        self.a_his          = [0.0]*int(a_delay/dt)
-        self.df_his         = [0.0]*int(df_delay/dt)
+        self.motor_his      = [0.0]*int(a_delay/dt)
+        self.servo_his      = [0.0]*int(df_delay/dt)
 
         self.t0             = t0
 
@@ -232,11 +281,12 @@ class Estimator(object):
     def estimateState(self,imu,gps,enc,ecu,KF):
         """Do extended Kalman filter to estimate states"""
 
-        self.a_his.append(ecu.a)
-        self.df_his.append(ecu.df)
-        u = [self.a_his.pop(0), self.df_his.pop(0)]
+        self.motor_his.append(ecu.a)
+        self.servo_his.append(ecu.df)
+        u = [self.motor_his.pop(0), self.servo_his.pop(0)]
         
-        y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot])
+        # y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot])
+        y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot, 0.5*u[1]*enc.v_meas])
         # y = np.array([gps.x_ply, gps.y_ply, enc.v_meas, imu.ax, imu.ay, imu.psiDot])
         KF(y,u)
 
@@ -250,7 +300,33 @@ class Estimator(object):
         self.a_his.append(u[0])
         self.df_his.append(u[1])
 
-    def ekf(self, y, u):
+    def ekfSwitchVy(self, y, u):
+        idx = []
+        if y[2] > 1.8 or y[5] > 1.0: # vx and psiDot criterion for Vy switch
+            idx.append(6)
+            self.Q[6,6] = 10.0  # Q_psi
+        else:
+            self.Q[6,6] = 0.1   # Q_psi
+
+        xDim    = self.z.size                               # dimension of the state
+        mx_kp1  = self.f(self.z, u)                         # predict next state
+        A       = self.numerical_jac(self.f, self.z, u)     # linearize process model about current state
+        P_kp1   = dot(dot(A,self.P),A.T) + self.Q           # proprogate variance
+        my_kp1  = self.h(mx_kp1, u)                         # predict future output
+        H       = self.numerical_jac(self.h, mx_kp1, u)     # linearize measurement model about predicted next state
+
+        H      = np.delete(H,(idx),axis=0)
+        R      = np.delete(self.R,(idx),axis=0)
+        R      = np.delete(R,(idx),axis=1)
+        y      = np.delete(y,(idx),axis=0)
+        my_kp1 = np.delete(my_kp1,(idx),axis=0)
+        P12    = dot(P_kp1, H.T)                      # cross covariance
+        K      = dot(P12, inv( dot(H,P12) + R))       # Kalman filter gain
+        self.z = mx_kp1 + dot(K,(y - my_kp1))
+        self.P = dot(dot(K,R),K.T) + dot( dot( (eye(xDim) - dot(K,H)) , P_kp1)  ,  (eye(xDim) - dot(K,H)).T )
+        (self.x_est, self.y_est, self.vx_est, self.vy_est, self.ax_est, self.ay_est, self.yaw_est, self.psiDot_est) = self.z
+
+    def ekfWithVy(self, y, u):
         xDim    = self.z.size                           # dimension of the state
         mx_kp1  = self.f(self.z, u)                     # predict next state
         A       = self.numerical_jac(self.f, self.z, u) # linearize process model about current state
@@ -263,6 +339,26 @@ class Estimator(object):
         self.z  = mx_kp1 + dot(K,(y - my_kp1))
         self.P  = dot(dot(K,self.R),K.T) + dot( dot( (eye(xDim) - dot(K,H)) , P_kp1)  ,  (eye(xDim) - dot(K,H)).T )
 
+        (self.x_est, self.y_est, self.vx_est, self.vy_est, self.ax_est, self.ay_est, self.yaw_est, self.psiDot_est) = self.z
+
+    def ekfWithoutVy(self, y, u):
+        xDim    = self.z.size                               # dimension of the state
+        mx_kp1  = self.f(self.z, u)                         # predict next state
+        A       = self.numerical_jac(self.f, self.z, u)     # linearize process model about current state
+        P_kp1   = dot(dot(A,self.P),A.T) + self.Q           # proprogate variance
+        my_kp1  = self.h(mx_kp1, u)                         # predict future output
+        H       = self.numerical_jac(self.h, mx_kp1, u)     # linearize measurement model about predicted next state
+
+        idx = [6]
+        H      = np.delete(H,(idx),axis=0)
+        R      = np.delete(self.R,(idx),axis=0)
+        R      = np.delete(R,(idx),axis=1)
+        y      = np.delete(y,(idx),axis=0)
+        my_kp1 = np.delete(my_kp1,(idx),axis=0)
+        P12    = dot(P_kp1, H.T)                      # cross covariance
+        K      = dot(P12, inv( dot(H,P12) + R))       # Kalman filter gain
+        self.z = mx_kp1 + dot(K,(y - my_kp1))
+        self.P = dot(dot(K,R),K.T) + dot( dot( (eye(xDim) - dot(K,H)) , P_kp1)  ,  (eye(xDim) - dot(K,H)).T )
         (self.x_est, self.y_est, self.vx_est, self.vy_est, self.ax_est, self.ay_est, self.yaw_est, self.psiDot_est) = self.z
 
     def ekfMultiRate(self, y, u):
@@ -365,14 +461,14 @@ class Estimator(object):
 
     def h(self, x, u):
         """ This is the measurement model to the kinematic<->sensor model above """
-        y = [0]*6
+        y = [0]*7
         y[0] = x[0]      # x
         y[1] = x[1]      # y
         y[2] = x[2]      # vx
         y[3] = x[4]      # a_x
         y[4] = x[5]      # a_y
         y[5] = x[7]      # psiDot
-        # y[6] = x[3]      # vy
+        y[6] = x[3]      # vy
         return np.array(y)
 
     def saveHistory(self):
