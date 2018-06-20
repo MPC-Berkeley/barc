@@ -5,7 +5,7 @@
     <param name="LMPC_LAP" type="int" value="30" />
     <!-- flags -->
     <param name="sim_flag"      type="bool" value="true" />
-    <param name="PF_flag"       type="bool" value="false" />
+    <param name="PF_flag"       type="bool" value="true" />
     <param name="feature_flag"  type="bool" value="false" />
     <param name="race_track"    type="str"  value="MSC_lab" />
     <!-- vehicle parameters -->
@@ -34,7 +34,7 @@
         <param name="N"         type="int" value="10" />
         <param name="n_state"   type="int" value="4" />
         <!-- Safe set parameters -->
-        <param name="Nl"        type="int" value="2" />
+        <param name="Nl"        type="int" value="10" />
         <param name="Np"        type="int" value="10" />
         <!-- SYS ID parameters -->
         <param name="feature_Nl"    type="int" value="2" />
@@ -68,7 +68,7 @@
         <param name="v_std"         type="double" value="0.0" />    
         <param name="ax_std"        type="double" value="1.0" />
         <param name="ay_std"        type="double" value="1.0" />
-        <param name="psiDot_std"    type="double" value="0.0" />
+        <param name="psiDot_std"    type="double" value="0.1" />
     </node>
 
     <!--DYNAMIC OBSERVER-->

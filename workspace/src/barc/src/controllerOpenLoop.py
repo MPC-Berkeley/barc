@@ -27,8 +27,8 @@ class Controller(object):
         self.rate   = rospy.Rate(loop_rate)
         self.ecuPub = rospy.Publisher('ecu', ECU, queue_size=1)
         # input publishing
-        self.a      = 0.5
-        self.df     = 0.2
+        self.a      = 0.4
+        self.df     = 0.0
 
 if __name__ == '__main__':
     try:

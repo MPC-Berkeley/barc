@@ -136,7 +136,7 @@ class low_level_control(object):
         #     # self.servo_pwm = 90.8 + 78.9*float(msg.servo)
         #     self.servo_pwm = 90.0 + 89.0*float(msg.servo)
         # self.servo_pwm = 83.3 + 103.1*float(msg.servo)
-        self.servo_pwm = 83.3 + 108.1*float(msg.servo)
+        self.servo_pwm = 82.3 + 108.1*float(msg.servo)
 
         # compute motor command
         FxR = float(msg.motor)

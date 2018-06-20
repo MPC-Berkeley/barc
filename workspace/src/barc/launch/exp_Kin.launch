@@ -19,7 +19,7 @@
     <param name="ey_tighten"    type="double" value="1.0" />
 
     <!-- Machines -->
-    <machine name="odroid" address="192.168.10.101" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid.sh"/>
+    <machine name="odroid" address="192.168.10.213" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid.sh"/>
 
     <machine name="this-pc" address="192.168.10.147" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc_shuqi.sh"/>
 
@@ -34,7 +34,7 @@
         <!-- Controller parameters -->
         <param name="dt"        type="double" value="0.1" />
         <param name="c_f"       type="double" value="0.5" />
-        <param name="delay_df"  type="int" value="1" />
+        <param name="delay_df"  type="int" value="3" />
         <param name="delay_a"   type="int" value="1" />
         <param name="N"         type="int" value="10" />
         <param name="n_state"   type="int" value="4" />
@@ -50,7 +50,7 @@
     <node machine="this-pc" pkg="barc" type="visualizeCar.py" name="visualization" output="screen"/>
 
     <!--DYNAMIC OBSERVER-->
-    <node machine="this-pc" pkg="barc" type="stateEstimator.py" name="state_estimator" output="screen">
+    <node machine="odroid" pkg="barc" type="stateEstimator.py" name="state_estimator" output="screen">
         <!-- delay in state estuiamtor -->
         <param name="dt"  type="double" value="0.0" />
         <param name="delay_df"  type="double" value="0.0" />

@@ -125,6 +125,7 @@ class Simulator(object):
 	def f(self,u):
 		a_F = 0.0
 		a_R = 0.0
+		u[1] *=0.6
 
 		if abs(self.vx) > 0.2:
 			a_F = arctan((self.vy + self.L_f*self.psiDot)/abs(self.vx)) - u[1]

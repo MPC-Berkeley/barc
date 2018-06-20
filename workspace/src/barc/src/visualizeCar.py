@@ -67,7 +67,7 @@ class Plotter(object):
         self.gps_h, = self.ax.plot(self.gps_x,self.gps_y,"g.-",alpha=0.2)
         self.hedge_x = []
         self.hedge_y = []
-        self.hedge_h, = self.ax.plot(self.hedge_x,self.hedge_y,"r")
+        self.hedge_h, = self.ax.plot(self.hedge_x,self.hedge_y,"r.-",alpha=0.2)
         self.pre_x = zeros(rospy.get_param("controller/N"))
         self.pre_y = zeros(rospy.get_param("controller/N"))
         self.pre_h, = self.ax.plot(self.pre_x,self.pre_y,"b.-")
@@ -113,7 +113,7 @@ class Plotter(object):
         rospy.init_node("visualizeCar")
         rospy.Subscriber("pos_info",         pos_info,         self.posInfo_callback, queue_size=1)
         # rospy.Subscriber("hedge_imu_fusion", hedge_imu_fusion, self.gps_callback,     queue_size=1)
-        # rospy.Subscriber("hedge_pos",        hedge_pos,        self.hedge_callback,   queue_size=1)
+        rospy.Subscriber("hedge_pos",        hedge_pos,        self.hedge_callback,   queue_size=1)
         rospy.Subscriber("mpc_visual",       mpc_visual,       self.mpcVis_callback,  queue_size=1)
         # rospy.Subscriber('imu/data',         Imu,              self.imu_callback,     queue_size=1)
         # rospy.Subscriber('vel_est',          Vel_est,          self.enc_callback,     queue_size=1)
@@ -131,8 +131,8 @@ class Plotter(object):
         # self.gps_h.set_data(self.gps_x[:num],self.gps_y[:num])
 
         # hedge_pos trajectory (16hz)
-        # num = min(len(self.hedge_x),len(self.hedge_y))
-        # self.hedge_h.set_data(self.hedge_x[:num],self.hedge_y[:num])
+        num = min(len(self.hedge_x),len(self.hedge_y))
+        self.hedge_h.set_data(self.hedge_x[:num],self.hedge_y[:num])
 
         # mpc related stuff update
         self.pre_h.set_data(self.pre_x,self.pre_y)

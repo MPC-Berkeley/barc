@@ -44,22 +44,24 @@ def main():
     loop_rate   = 50.0
    	
     Q = eye(8)
-    Q[0,0] = 0.01 	# Q_x
-    Q[1,1] = 0.01 	# Q_y
-    Q[2,2] = 0.01 	# Q_vx
-    Q[3,3] = 0.01 	# Q_vy
-    Q[4,4] = 1.0 	# Q_ax
-    Q[5,5] = 1.0 	# Q_ay
-    Q[6,6] = 0.01 	# Q_psi
-    Q[7,7] = 1.0 	# Q_psiDot
+    Q[0,0] = 0.1 	# Q_x
+    Q[1,1] = 0.1 	# Q_y
+    Q[2,2] = 0.1 	# Q_vx
+    Q[3,3] = 0.1 	# Q_vy
+    Q[4,4] = 5.0 	# Q_ax
+    Q[5,5] = 5.0 	# Q_ay
+    Q[6,6] = 1.1    # Q_psi
+    Q[7,7] = 5.0 	# Q_psiDot
+    # Q[8,8] = 1e-5    # psiDot_drift
     R = eye(7)
-    R[0,0] = 10.0 	# R_x
-    R[1,1] = 10.0 	# R_y
-    R[2,2] = 0.1 	# R_vx
-    R[3,3] = 10.0 	# R_ax
-    R[4,4] = 10.0 	# R_ay
-    R[5,5] = 0.1 	# R_psiDot
-    R[6,6] = 0.1 	# R_vy
+    R[0,0] = 0.01 	# R_x
+    R[1,1] = 0.01 	# R_y
+    R[2,2] = 0.05 	# R_vx
+    R[3,3] = 1.0 	# R_ax
+    R[4,4] = 1.0 	# R_ay
+    R[5,5] = 0.005 	# R_psiDot
+    R[6,6] = 0.005   # R_vy
+    # R[7,7] = 0.001 	# R_psidrift
 
     t0 = rospy.get_rostime().to_sec()
     imu = ImuClass(t0)
@@ -77,9 +79,9 @@ def main():
     estMsg = pos_info()
     
     while not rospy.is_shutdown():
-        if ecu.a != 0:
-          est.estimateState(imu,gps,enc,ecu,est.ekfVySwitch)
-          est.saveHistory()
+        # if ecu.a != 0:
+        est.estimateState(imu,gps,enc,ecu,est.ekfVySwitch)
+        est.saveHistory()
 
         estMsg.s, estMsg.ey, estMsg.epsi = track.Localize(est.x_est, est.y_est, est.yaw_est)
         estMsg.header.stamp = rospy.get_rostime()
@@ -105,7 +107,7 @@ def main():
     print "imu psiDot package lost:", float(est.psiDot_count)/float(est.pkg_count)
 
     homedir = os.path.expanduser("~")
-    folder_name = datetime.now().strftime("%m-%d-%H:%m")
+    folder_name = datetime.now().strftime("%m-%d-%H:%M")
     if rospy.get_param("sim_flag"):
         folder_name+="-sim/"
     else:
@@ -164,7 +166,7 @@ def main():
                       df_his        = ecu.df_his,
                       ecu_time      = ecu.time_his)
 
-    print "Finishing saveing state estimation data"
+    print "Finishing saveing state estimation data to: ", folder_name
 
 
 class Estimator(object):
@@ -273,10 +275,13 @@ class Estimator(object):
         self.motor_his.append(ecu.a)
         self.servo_his.append(ecu.df)
         u = [self.motor_his.pop(0), self.servo_his.pop(0)]
-        
-        # y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot])
+        # if u[0]==0:
+        #     y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot, 0.5*u[1]*enc.v_meas])
+        # else:
+            # print u
+            # y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot])
         y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot, 0.5*u[1]*enc.v_meas])
-        # y = np.array([gps.x_ply, gps.y_ply, enc.v_meas, imu.ax, imu.ay, imu.psiDot])
+            # y = np.array([gps.x_ply, gps.y_ply, enc.v_meas, imu.ax, imu.ay, imu.psiDot])
         KF(y,u)
 
         # SAVE THE measurement/input SEQUENCE USED BY KF
@@ -312,19 +317,20 @@ class Estimator(object):
         Notation: mx_k = E[x_k] and my_k = E[y_k], where m stands for "mean of"
         """
         # pkg lost counting
-        if self.x_his[-1] == y[0]:
-            self.x_count += 1
-        if self.y_his[-1] == y[1]:
-            self.y_count += 1
-        if self.v_meas_his[-1] == y[2]:
-            self.v_meas_count += 1
-        if self.ax_his[-1] == y[3]:
-            self.ax_count += 1
-        if self.ay_his[-1] == y[4]:
-            self.ay_count += 1
-        if self.psiDot_his[-1] == y[5]:
-            self.psiDot_count += 1
-        self.pkg_count += 1
+        if u[0]!=0: # start the package loss counting when the car start moving
+            if self.x_his[-1] == y[0]:
+                self.x_count += 1
+            if self.y_his[-1] == y[1]:
+                self.y_count += 1
+            if self.v_meas_his[-1] == y[2]:
+                self.v_meas_count += 1
+            if self.ax_his[-1] == y[3]:
+                self.ax_count += 1
+            if self.ay_his[-1] == y[4]:
+                self.ay_count += 1
+            if self.psiDot_his[-1] == y[5]:
+                self.psiDot_count += 1
+            self.pkg_count += 1
 
         xDim    = self.z.size                               # dimension of the state
         mx_kp1  = self.f(self.z, u)                         # predict next state
@@ -392,32 +398,38 @@ class Estimator(object):
         P_kp1   = dot(dot(A,self.P),A.T) + self.Q           # proprogate variance
         my_kp1  = self.h(mx_kp1, u)                         # predict future output
         H       = self.numerical_jac(self.h, mx_kp1, u)     # linearize measurement model about predicted next state
-
-        if self.x_his[-1] == y[0]:
-            self.x_count += 1
-        if self.y_his[-1] == y[1]:
-            self.y_count += 1
-        if self.v_meas_his[-1] == y[2]:
-            self.v_meas_count += 1
-        if self.ax_his[-1] == y[3]:
-            self.ax_count += 1
-        if self.ay_his[-1] == y[4]:
-            self.ay_count += 1
-        if self.psiDot_his[-1] == y[5]:
-            self.psiDot_count += 1
-        self.pkg_count += 1
-
+        
         idx = []
-        if y[2] > 1.8 or y[5] > 2.0: # vx and psiDot criterion for Vy switch
+        if u[0]!=0: # start the package loss counting when the car start moving
+            if self.x_his[-1] == y[0] and self.y_his[-1] == y[1]:
+                idx.append(0)
+                idx.append(1)
+                self.x_count += 1
+                self.y_count += 1
+            if self.v_meas_his[-1] == y[2]:
+                self.v_meas_count += 1
+            if self.ax_his[-1] == y[3]:
+                self.ax_count += 1
+            if self.ay_his[-1] == y[4]:
+                self.ay_count += 1
+            if self.psiDot_his[-1] == y[5]:
+                self.psiDot_count += 1
+            self.pkg_count += 1
+
+        if y[2] > 1.5 or y[5] > 1.5: # vx and psiDot criterion for Vy switch
+            # high speed
             idx.append(6)
-            self.Q[6,6] = 1  # Q_psi
-        else:
-            self.Q[6,6] = 0.1 # Q_psi
+            # self.Q[6,6] = 1.0   # Q_psi
+            # self.R[5,5] = 10.0  # R_psiDot
+        # else:
+            # low speed
+            # self.Q[6,6] = 1e-4  # Q_psi
+            # self.R[5,5] = 0.1   # R_psiDot
 
         H      = np.delete(H,(idx),axis=0)
         R      = np.delete(self.R,(idx),axis=0)
         R      = np.delete(R,(idx),axis=1)
-        y      = np.delete(y,(idx),axis=0)
+        y      = np.delete(y,(idx),axis=0)      
         my_kp1 = np.delete(my_kp1,(idx),axis=0)
         P12    = dot(P_kp1, H.T)                      # cross covariance
         K      = dot(P12, inv( dot(H,P12) + R))       # Kalman filter gain
@@ -495,7 +507,7 @@ class Estimator(object):
     def f(self, z, u):
         """ This Sensor model contains a pure Sensor-Model and a Kinematic model. They're independent from each other."""
         dt = self.dt
-        zNext = [0]*8
+        zNext = [0]*len(z)
         zNext[0] = z[0] + dt*(cos(z[6])*z[2] - sin(z[6])*z[3])  # x
         zNext[1] = z[1] + dt*(sin(z[6])*z[2] + cos(z[6])*z[3])  # y
         zNext[2] = z[2] + dt*(z[4]+z[7]*z[3])                   # v_x
@@ -504,6 +516,7 @@ class Estimator(object):
         zNext[5] = z[5]                                         # a_y
         zNext[6] = z[6] + dt*(z[7])                             # psi
         zNext[7] = z[7]                                         # psidot
+        # zNext[8] = z[8] # psidrift_drfit
         return np.array(zNext)
 
     def h(self, x, u):
@@ -514,8 +527,9 @@ class Estimator(object):
         y[2] = x[2]      # vx
         y[3] = x[4]      # a_x
         y[4] = x[5]      # a_y
-        y[5] = x[7]      # psiDot
+        y[5] = x[7]     # psiDot
         y[6] = x[3]      # vy
+        # y[7] = x[6]+x[8] # psi_meas
         return np.array(y)
 
     def saveHistory(self):
@@ -588,7 +602,7 @@ class ImuClass(object):
         (roll_raw, pitch_raw, yaw_raw) = transformations.euler_from_quaternion(quaternion)
         self.roll   = roll_raw
         self.pitch  = pitch_raw
-        self.yaw_raw= np.unwrap([self.yaw_raw_his[-1],yaw_raw])[1]
+        self.yaw_raw = np.unwrap([self.yaw_raw_his[-1],yaw_raw])[1]            
 
         w_z = data.angular_velocity.z
         a_x = data.linear_acceleration.x
@@ -601,7 +615,7 @@ class ImuClass(object):
         self.ay = cos(-roll_raw)*a_y + sin(-roll_raw)*a_z
 
         self.saveHistory()
-
+        self.yaw_raw -= self.yaw_raw_his[1]       
 
     def saveHistory(self):
         """ Save measurement data into history array"""
@@ -632,8 +646,8 @@ class GpsClass(object):
             t0: starting measurement time
         """
 
-        rospy.Subscriber('hedge_imu_fusion', hedge_imu_fusion, self.gps_callback, queue_size=1)
-        # rospy.Subscriber('hedge_pos', hedge_pos, self.gps_callback, queue_size=1)
+        # rospy.Subscriber('hedge_imu_fusion', hedge_imu_fusion, self.gps_callback, queue_size=1)
+        rospy.Subscriber('hedge_pos', hedge_pos, self.gps_callback, queue_size=1)
 
         # GPS measurement
         self.angle  = 0.0

@@ -23,37 +23,41 @@ import numpy as np
 import pdb
 
 def main():
-    playBack = PlayBack("06-18-16:06-sim")
-    fig     = plt.figure("yaw")
-    ax_yaw  = fig.add_subplot(1,1,1,ylabel="yaw_estimation")
-    fig     = plt.figure("ax")
-    ax_ax   = fig.add_subplot(1,1,1,ylabel="ax")
-    fig     = plt.figure("ay")
-    ax_ay   = fig.add_subplot(1,1,1,ylabel="ay")
-    fig     = plt.figure("vx")
-    ax_vx   = fig.add_subplot(1,1,1,ylabel="vx")
-    fig     = plt.figure("vy")
-    ax_vy   = fig.add_subplot(1,1,1,ylabel="vy")
+    playBack = PlayBack("06-19-13:59-exp")
+    # fig     = plt.figure("yaw")
+    # ax_yaw  = fig.add_subplot(1,1,1,ylabel="yaw_estimation")
+    # fig     = plt.figure("ax")
+    # ax_ax   = fig.add_subplot(1,1,1,ylabel="ax")
+    # fig     = plt.figure("ay")
+    # ax_ay   = fig.add_subplot(1,1,1,ylabel="ay")
+    # fig     = plt.figure("vx")
+    # ax_vx   = fig.add_subplot(1,1,1,ylabel="vx")
+    # fig     = plt.figure("vy")
+    # ax_vy   = fig.add_subplot(1,1,1,ylabel="vy")
     fig     = plt.figure("psiDot")
     ax_psiDot  = fig.add_subplot(1,1,1,ylabel="psiDot")
-    fig = plt.figure("track x-y plot")
-    ax_traj = fig.add_subplot(1,1,1,ylabel="track x-y plot")
-    for i in [0,1,2,3,4]:
+    # fig = plt.figure("track x-y plot")
+    # ax_traj = fig.add_subplot(1,1,1,ylabel="track x-y plot")
+    # fig     = plt.figure("input")
+    # ax_input  = fig.add_subplot(1,1,1,ylabel="input")
+    # playBack.inputPlot(ax_input)
+    # fig     = plt.figure("estimator_time")
+    # ax_time  = fig.add_subplot(1,1,1,ylabel="time")
+    # ax_time.plot(np.diff(playBack.estimator_time)) # [playBack.idx_min:playBack.idx_max]
+    for i in [4,0]: # 0:exp, 4:raw
         playBack.replay(i)
-        playBack.yawPlot(ax_yaw,i)
-        playBack.axPlot(ax_ax,i)
-        playBack.ayPlot(ax_ay,i)
-        playBack.vxPlot(ax_vx,i)
-        playBack.vyPlot(ax_vy,i)
+        # playBack.yawPlot(ax_yaw,i)
+        # playBack.axPlot(ax_ax,i)
+        # playBack.ayPlot(ax_ay,i)
+        # playBack.vxPlot(ax_vx,i)
+        # playBack.vyPlot(ax_vy,i)
         playBack.psiDotPlot(ax_psiDot,i)
-        playBack.trajectoryPlot(ax_traj,i)
+        # playBack.trajectoryPlot(ax_traj,i)
         playBack.playBackClean()
     plt.show()
 
 class PlayBack(object):
     def __init__(self,folder_name):
-        self.idx_min = 200
-        self.idx_max = 250
         self.track = Track(0.01,1.0)
         self.track.createRaceTrack("MSC_lab")
         homedir = os.path.expanduser("~")
@@ -76,9 +80,28 @@ class PlayBack(object):
         self.KF_a_his            = npz_output["KF_a_his"]
         self.KF_df_his           = npz_output["KF_df_his"]
         self.estimator_time      = npz_output["estimator_time"]
+        self.idx_min = int(37*50)
+        self.idx_max = int(40*50)
+        self.idx_min = 1
+        self.idx_max = len(self.estimator_time)
         self.Q                   = npz_output["Q"]
         print "Q:", diag(self.Q)
-        self.R                   = npz_output["R"]
+        self.R                   = npz_output["R"]  
+        self.Q[0,0] = 0.0    # Q_x
+        self.Q[1,1] = 0.0    # Q_y
+        self.Q[2,2] = 0.0    # Q_vx
+        self.Q[3,3] = 0.0    # Q_vy
+        self.Q[4,4] = 1.0    # Q_ax
+        self.Q[5,5] = 1.0    # Q_ay
+        self.Q[6,6] = 0.0    # Q_psi
+        self.Q[7,7] = 1.0    # Q_psiDot
+        self.R[0,0] = 10.0   # R_x
+        self.R[1,1] = 10.0   # R_y
+        self.R[2,2] = 0.1    # R_vx
+        self.R[3,3] = 10.0   # R_ax
+        self.R[4,4] = 10.0   # R_ay
+        self.R[5,5] = 1.0    # R_psiDot
+        self.R[6,6] = 0.01   # R_vy
         print "R:", diag(self.R)
         print "Finish loading data from", pathSave
 
@@ -116,6 +139,7 @@ class PlayBack(object):
             ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.est.yaw_est_his[self.idx_min:self.idx_max],"v--",label="With vy",      alpha=0.7)
         elif indicator == 0:
             ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.yaw_est_his[self.idx_min:self.idx_max],    "p--",label="exp",          alpha=0.7)
+        ax.grid()
         ax.legend()
 
     def axPlot(self,ax,indicator):
@@ -129,6 +153,7 @@ class PlayBack(object):
             ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.ax_est_his[self.idx_min:self.idx_max],    "p--",label="exp",          alpha=0.7)
         else:
             ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.KF_ax_his[self.idx_min:self.idx_max],     "^--",label="raw",          alpha=0.7)
+        ax.grid()
         ax.legend()
 
     def ayPlot(self,ax,indicator):
@@ -142,6 +167,7 @@ class PlayBack(object):
             ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.ay_est_his[self.idx_min:self.idx_max],    "p--",label="exp",          alpha=0.7)
         else:
             ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.KF_ay_his[self.idx_min:self.idx_max],     "^--",label="raw",          alpha=0.7)
+        ax.grid()
         ax.legend()
 
     def vxPlot(self,ax,indicator):
@@ -155,6 +181,7 @@ class PlayBack(object):
             ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.vx_est_his[self.idx_min:self.idx_max],    "p--",label="exp",          alpha=0.7)
         else:
             ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.KF_v_meas_his[self.idx_min:self.idx_max], "^--",label="raw",          alpha=0.7)
+        ax.grid()
         ax.legend()
 
     def vyPlot(self,ax,indicator):
@@ -166,6 +193,7 @@ class PlayBack(object):
             ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.est.vy_est_his[self.idx_min:self.idx_max],"v--",label="With vy",      alpha=0.7)
         elif indicator == 0:
             ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.vy_est_his[self.idx_min:self.idx_max],    "p--",label="exp",          alpha=0.7)
+        ax.grid()
         ax.legend()
 
     def psiDotPlot(self,ax,indicator):
@@ -179,6 +207,7 @@ class PlayBack(object):
             ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.psiDot_est_his[self.idx_min:self.idx_max],    "p--",label="exp",          alpha=0.7)
         else:
             ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.KF_psiDot_his[self.idx_min:self.idx_max],     "^--",label="raw",          alpha=0.7)
+        ax.grid()
         ax.legend()
 
     def trajectoryPlot(self,ax,indicator):
@@ -197,6 +226,9 @@ class PlayBack(object):
             ax.plot(self.track.nodes_bound2[0], self.track.nodes_bound2[1], color="red",                    alpha=0.3)
         ax.axis("equal")
         ax.legend()
+
+    def inputPlot(self,ax):
+        ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.KF_df_his[self.idx_min:self.idx_max],     "^--",label="raw",          alpha=0.7)
 
     def playBackClean(self):
         self.est.x_est              = 0.0

@@ -256,7 +256,7 @@ export SafeSet,SysID,FeatureData,MpcSol,MpcParams,ModelParams,GPData
             else
                 mpcParams.Q             = [0.0,40.0,2.0,5.0]
                 mpcParams.R             = 0*[10.0,10.0]
-                mpcParams.QderivU       = 1*[50.0,10.0]
+                mpcParams.QderivU       = 1*[200.0,50.0]
                 mpcParams.Q_term_cost   = 0.4
                 mpcParams.Q_lane        = 16
                 if mpcParams.n_state == 6
