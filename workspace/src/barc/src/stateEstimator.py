@@ -44,24 +44,22 @@ def main():
     loop_rate   = 50.0
    	
     Q = eye(8)
-    Q[0,0] = 0.1 	# Q_x
-    Q[1,1] = 0.1 	# Q_y
-    Q[2,2] = 0.1 	# Q_vx
-    Q[3,3] = 0.1 	# Q_vy
-    Q[4,4] = 5.0 	# Q_ax
-    Q[5,5] = 5.0 	# Q_ay
-    Q[6,6] = 1.1    # Q_psi
-    Q[7,7] = 5.0 	# Q_psiDot
-    # Q[8,8] = 1e-5    # psiDot_drift
+    Q[0,0] = 0.001**2 	# Q_x
+    Q[1,1] = 0.001**2 	# Q_y
+    Q[2,2] = 0.01**2 	# Q_vx
+    Q[3,3] = 0.001**2 	# Q_vy
+    Q[4,4] = 0.1**2 	# Q_ax
+    Q[5,5] = 0.1**2 	# Q_ay
+    Q[6,6] = 0.001**2    # Q_psi
+    Q[7,7] = 0.001**2   # Q_psiDot
     R = eye(7)
-    R[0,0] = 0.01 	# R_x
-    R[1,1] = 0.01 	# R_y
-    R[2,2] = 0.05 	# R_vx
-    R[3,3] = 1.0 	# R_ax
-    R[4,4] = 1.0 	# R_ay
-    R[5,5] = 0.005 	# R_psiDot
-    R[6,6] = 0.005   # R_vy
-    # R[7,7] = 0.001 	# R_psidrift
+    R[0,0] = 0.01**2 	# R_x
+    R[1,1] = 0.01**2 	# R_y
+    R[2,2] = 0.01**2    # R_vx
+    R[3,3] = 0.016 	    # R_ax
+    R[4,4] = 0.024 	    # R_ay
+    R[5,5] = 2.475e-6 	# R_psiDot
+    R[6,6] = 0.001**2  # R_vy
 
     t0 = rospy.get_rostime().to_sec()
     imu = ImuClass(t0)
@@ -126,6 +124,7 @@ def main():
                       KF_x_his          = est.x_his,
                       KF_y_his          = est.y_his,
                       KF_v_meas_his     = est.v_meas_his,
+                      KF_vy_meas_his    = est.vy_meas_his,
                       KF_ax_his         = est.ax_his,
                       KF_ay_his         = est.ay_his,
                       KF_psiDot_his     = est.psiDot_his,
@@ -253,6 +252,7 @@ class Estimator(object):
         self.x_his      = [0.0]
         self.y_his      = [0.0]
         self.v_meas_his = [0.0]
+        self.vy_meas_his= [0.0]
         self.ax_his     = [0.0]
         self.ay_his     = [0.0]
         self.psiDot_his = [0.0]
@@ -291,6 +291,7 @@ class Estimator(object):
         self.ax_his.append(y[3])
         self.ay_his.append(y[4])
         self.psiDot_his.append(y[5])
+        self.vy_meas_his.append(y[6])
         self.a_his.append(u[0])
         self.df_his.append(u[1])
 
@@ -402,12 +403,16 @@ class Estimator(object):
         idx = []
         if u[0]!=0: # start the package loss counting when the car start moving
             if self.x_his[-1] == y[0] and self.y_his[-1] == y[1]:
+                # MultiRate for gps
                 idx.append(0)
                 idx.append(1)
                 self.x_count += 1
                 self.y_count += 1
             if self.v_meas_his[-1] == y[2]:
+                # MultiRate for encoder
                 self.v_meas_count += 1
+                # idx.append(2)
+                # idx.append(6)
             if self.ax_his[-1] == y[3]:
                 self.ax_count += 1
             if self.ay_his[-1] == y[4]:
@@ -416,15 +421,18 @@ class Estimator(object):
                 self.psiDot_count += 1
             self.pkg_count += 1
 
-        if y[2] > 1.5 or y[5] > 1.5: # vx and psiDot criterion for Vy switch
-            # high speed
+        if abs(y[5]) > 0.3: 
+            # Let x-y to correct more on psi on the straight part (small psiDot)
+            self.Q[6,6] = 0.001**2      # Q_psi
+        else:
+            self.Q[6,6] = 0.1*0.001**2  # Q_psi
+
+        if abs(y[5]) > 0.4: # Vy reset 
             idx.append(6)
-            # self.Q[6,6] = 1.0   # Q_psi
-            # self.R[5,5] = 10.0  # R_psiDot
-        # else:
-            # low speed
-            # self.Q[6,6] = 1e-4  # Q_psi
-            # self.R[5,5] = 0.1   # R_psiDot
+        #     self.vy_est = 0.0
+        #     self.z[3]   = 0.0
+
+        # No vy for measurement    
 
         H      = np.delete(H,(idx),axis=0)
         R      = np.delete(self.R,(idx),axis=0)
@@ -780,8 +788,8 @@ class EncClass(object):
             self.v_count = 0
         else:
             self.v_count += 1
-            if self.v_count > 10:     # if 10 times in a row the same measurement
-                self.v_meas = 0       # set velocity measurement to zero
+            if self.v_count > 40:
+                self.v_meas = 0       
 
         self.saveHistory()
 

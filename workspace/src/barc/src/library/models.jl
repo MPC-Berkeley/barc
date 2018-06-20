@@ -22,7 +22,8 @@ export MdlPf,MdlKin,MdlId,MdlIdLin,MdlDynLin,MdlKinLin
         function MdlPf(agent::Agent)
             m = new()
             # Model parameters
-            dt   = get_param("controller/dt")
+            # dt   = get_param("controller/dt")
+            dt   = 0.1
             L_a  = get_param("L_a")
             L_b  = get_param("L_b")
             
@@ -80,10 +81,17 @@ export MdlPf,MdlKin,MdlId,MdlIdLin,MdlDynLin,MdlKinLin
                 # @NLexpression(mdl, bta[i],atan( L_a / (L_a + L_b) * tan(u_Ol[i,2])))
                 @NLexpression(mdl, bta[i],  L_a/(L_a + L_b)*u_Ol[i,2])
                 @NLexpression(mdl, dsdt[i], z_Ol[i,4]*cos(z_Ol[i,3]+bta[i])/(1-z_Ol[i,2]*c[i]))
-                @NLconstraint(mdl, z_Ol[i+1,1] == z_Ol[i,1] + dt*dsdt[i]  ) 
-                @NLconstraint(mdl, z_Ol[i+1,2] == z_Ol[i,2] + dt*z_Ol[i,4]*sin(z_Ol[i,3]+bta[i])  )
-                @NLconstraint(mdl, z_Ol[i+1,3] == z_Ol[i,3] + dt*(z_Ol[i,4]/L_a*sin(bta[i])-dsdt[i]*c[i])  )
-                @NLconstraint(mdl, z_Ol[i+1,4] == z_Ol[i,4] + dt*(u_Ol[i,1] - c_f*z_Ol[i,4]))
+                if i == 1
+                    @NLconstraint(mdl, z_Ol[i+1,1] == z_Ol[i,1] + agent.mpcParams.dt*dsdt[i]  ) 
+                    @NLconstraint(mdl, z_Ol[i+1,2] == z_Ol[i,2] + agent.mpcParams.dt*z_Ol[i,4]*sin(z_Ol[i,3]+bta[i])  )
+                    @NLconstraint(mdl, z_Ol[i+1,3] == z_Ol[i,3] + agent.mpcParams.dt*(z_Ol[i,4]/L_a*sin(bta[i])-dsdt[i]*c[i])  )
+                    @NLconstraint(mdl, z_Ol[i+1,4] == z_Ol[i,4] + agent.mpcParams.dt*(u_Ol[i,1] - c_f*z_Ol[i,4]))
+                else
+                    @NLconstraint(mdl, z_Ol[i+1,1] == z_Ol[i,1] + dt*dsdt[i]  ) 
+                    @NLconstraint(mdl, z_Ol[i+1,2] == z_Ol[i,2] + dt*z_Ol[i,4]*sin(z_Ol[i,3]+bta[i])  )
+                    @NLconstraint(mdl, z_Ol[i+1,3] == z_Ol[i,3] + dt*(z_Ol[i,4]/L_a*sin(bta[i])-dsdt[i]*c[i])  )
+                    @NLconstraint(mdl, z_Ol[i+1,4] == z_Ol[i,4] + dt*(u_Ol[i,1] - c_f*z_Ol[i,4]))
+                end
             end
             @NLexpression(mdl, derivCost, sum{QderivZ[j]*sum{(z_Ol[i,j]-z_Ol[i+1,j])^2,i=1:N},j=1:4} +
                                               QderivU[1]*sum{(u_Ol[i,1]-u_Ol[i+1,1])^2,i=delay_a+1:N-1} + 

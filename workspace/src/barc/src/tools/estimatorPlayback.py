@@ -23,7 +23,11 @@ import numpy as np
 import pdb
 
 def main():
-    playBack = PlayBack("06-19-13:59-exp")
+    playBack = PlayBack("06-20-18:30-exp")
+    # fig     = plt.figure("x")
+    # ax_x   = fig.add_subplot(1,1,1,ylabel="x")
+    # fig     = plt.figure("y")
+    # ax_y   = fig.add_subplot(1,1,1,ylabel="y")
     # fig     = plt.figure("yaw")
     # ax_yaw  = fig.add_subplot(1,1,1,ylabel="yaw_estimation")
     # fig     = plt.figure("ax")
@@ -32,26 +36,25 @@ def main():
     # ax_ay   = fig.add_subplot(1,1,1,ylabel="ay")
     # fig     = plt.figure("vx")
     # ax_vx   = fig.add_subplot(1,1,1,ylabel="vx")
-    # fig     = plt.figure("vy")
-    # ax_vy   = fig.add_subplot(1,1,1,ylabel="vy")
-    fig     = plt.figure("psiDot")
-    ax_psiDot  = fig.add_subplot(1,1,1,ylabel="psiDot")
+    fig     = plt.figure("vy")
+    ax_vy   = fig.add_subplot(1,1,1,ylabel="vy")
+    # fig     = plt.figure("psiDot")
+    # ax_psiDot  = fig.add_subplot(1,1,1,ylabel="psiDot")
     # fig = plt.figure("track x-y plot")
     # ax_traj = fig.add_subplot(1,1,1,ylabel="track x-y plot")
     # fig     = plt.figure("input")
     # ax_input  = fig.add_subplot(1,1,1,ylabel="input")
     # playBack.inputPlot(ax_input)
-    # fig     = plt.figure("estimator_time")
-    # ax_time  = fig.add_subplot(1,1,1,ylabel="time")
-    # ax_time.plot(np.diff(playBack.estimator_time)) # [playBack.idx_min:playBack.idx_max]
     for i in [4,0]: # 0:exp, 4:raw
         playBack.replay(i)
+        # playBack.xPlot(ax_x,i)
+        # playBack.yPlot(ax_y,i)
         # playBack.yawPlot(ax_yaw,i)
         # playBack.axPlot(ax_ax,i)
         # playBack.ayPlot(ax_ay,i)
         # playBack.vxPlot(ax_vx,i)
-        # playBack.vyPlot(ax_vy,i)
-        playBack.psiDotPlot(ax_psiDot,i)
+        playBack.vyPlot(ax_vy,i)
+        # playBack.psiDotPlot(ax_psiDot,i)
         # playBack.trajectoryPlot(ax_traj,i)
         playBack.playBackClean()
     plt.show()
@@ -74,34 +77,42 @@ class PlayBack(object):
         self.KF_x_his            = npz_output["KF_x_his"]
         self.KF_y_his            = npz_output["KF_y_his"]
         self.KF_v_meas_his       = npz_output["KF_v_meas_his"]
+        self.KF_vy_meas_his      = npz_output["KF_vy_meas_his"]
         self.KF_ax_his           = npz_output["KF_ax_his"]
         self.KF_ay_his           = npz_output["KF_ay_his"]
         self.KF_psiDot_his       = npz_output["KF_psiDot_his"]
         self.KF_a_his            = npz_output["KF_a_his"]
         self.KF_df_his           = npz_output["KF_df_his"]
         self.estimator_time      = npz_output["estimator_time"]
-        self.idx_min = int(37*50)
-        self.idx_max = int(40*50)
+        self.idx_min = int(2.5*50)
+        self.idx_max = int(20.5*50)
         self.idx_min = 1
         self.idx_max = len(self.estimator_time)
+        print "Variance x:      ", np.var(self.KF_x_his[self.idx_min:self.idx_max])
+        print "Variance y:      ", np.var(self.KF_y_his[self.idx_min:self.idx_max])
+        print "Variance ax:     ", np.var(self.KF_ax_his[self.idx_min:self.idx_max])
+        print "Variance ay:     ", np.var(self.KF_ay_his[self.idx_min:self.idx_max])
+        print "Variance psiDot: ", np.var(self.KF_psiDot_his[self.idx_min:self.idx_max])
+        print "Mean psiDot:     ", np.mean(self.KF_psiDot_his[self.idx_min:self.idx_max])
+        print "Variance vx:     ", np.var(self.KF_v_meas_his[self.idx_min:self.idx_max])
         self.Q                   = npz_output["Q"]
         print "Q:", diag(self.Q)
         self.R                   = npz_output["R"]  
-        self.Q[0,0] = 0.0    # Q_x
-        self.Q[1,1] = 0.0    # Q_y
-        self.Q[2,2] = 0.0    # Q_vx
-        self.Q[3,3] = 0.0    # Q_vy
-        self.Q[4,4] = 1.0    # Q_ax
-        self.Q[5,5] = 1.0    # Q_ay
-        self.Q[6,6] = 0.0    # Q_psi
-        self.Q[7,7] = 1.0    # Q_psiDot
-        self.R[0,0] = 10.0   # R_x
-        self.R[1,1] = 10.0   # R_y
-        self.R[2,2] = 0.1    # R_vx
-        self.R[3,3] = 10.0   # R_ax
-        self.R[4,4] = 10.0   # R_ay
-        self.R[5,5] = 1.0    # R_psiDot
-        self.R[6,6] = 0.01   # R_vy
+        self.Q[0,0] = 0.001**2   # Q_x
+        self.Q[1,1] = 0.001**2   # Q_y
+        self.Q[2,2] = 0.01**2    # Q_vx
+        self.Q[3,3] = 0.001**2   # Q_vy
+        self.Q[4,4] = 0.1**2     # Q_ax
+        self.Q[5,5] = 0.1**2     # Q_ay
+        self.Q[6,6] = 0.001**2    # Q_psi
+        self.Q[7,7] = 0.001**2   # Q_psiDot
+        self.R[0,0] = 0.01**2    # R_x
+        self.R[1,1] = 0.01**2    # R_y
+        self.R[2,2] = 0.01**2    # R_vx
+        self.R[3,3] = 0.016      # R_ax
+        self.R[4,4] = 0.024      # R_ay
+        self.R[5,5] = 2.475e-6   # R_psiDot
+        self.R[6,6] = 0.001**2  # R_vy
         print "R:", diag(self.R)
         print "Finish loading data from", pathSave
 
@@ -129,6 +140,34 @@ class PlayBack(object):
             elif indicator ==3:
                 self.est.estimateState(self.imu,self.gps,self.enc,self.ecu,self.est.ekfWithVy)
             self.est.saveHistory()
+
+    def xPlot(self,ax,indicator):
+        if indicator == 1:
+            ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.est.x_est_his[self.idx_min:self.idx_max],"o--",label="Switch vy",    alpha=0.7)
+        elif indicator == 2:
+            ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.est.x_est_his[self.idx_min:self.idx_max],"s--",label="Without vy",   alpha=0.7)
+        elif indicator == 3:
+            ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.est.x_est_his[self.idx_min:self.idx_max],"v--",label="With vy",      alpha=0.7)
+        elif indicator == 0:
+            ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.x_est_his[self.idx_min:self.idx_max],    "p--",label="exp",          alpha=0.7)
+        else:
+            ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.KF_x_his[self.idx_min:self.idx_max],     "^--",label="raw",          alpha=0.7)
+        ax.grid()
+        ax.legend()
+
+    def yPlot(self,ax,indicator):
+        if indicator == 1:
+            ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.est.y_est_his[self.idx_min:self.idx_max],"o--",label="Switch vy",    alpha=0.7)
+        elif indicator == 2:
+            ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.est.y_est_his[self.idx_min:self.idx_max],"s--",label="Without vy",   alpha=0.7)
+        elif indicator == 3:
+            ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.est.y_est_his[self.idx_min:self.idx_max],"v--",label="With vy",      alpha=0.7)
+        elif indicator == 0:
+            ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.y_est_his[self.idx_min:self.idx_max],    "p--",label="exp",          alpha=0.7)
+        else:
+            ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.KF_y_his[self.idx_min:self.idx_max],     "^--",label="raw",          alpha=0.7)
+        ax.grid()
+        ax.legend()
 
     def yawPlot(self,ax,indicator):
         if indicator == 1:
@@ -193,6 +232,8 @@ class PlayBack(object):
             ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.est.vy_est_his[self.idx_min:self.idx_max],"v--",label="With vy",      alpha=0.7)
         elif indicator == 0:
             ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.vy_est_his[self.idx_min:self.idx_max],    "p--",label="exp",          alpha=0.7)
+        else:
+            ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.KF_vy_meas_his[self.idx_min:self.idx_max], "^--",label="raw",          alpha=0.7)
         ax.grid()
         ax.legend()
 

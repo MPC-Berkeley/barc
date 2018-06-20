@@ -126,12 +126,12 @@ function main()
         # println("$(agent.mpcSol.sol_status): Lap:",lapStatus.lap,", It:",lapStatus.it," v:$(round(posInfo.v,2))")
         
         # ITERATION UPDATE
-        # if counter == 1
-        historyCollect(agent)
-        #     counter = 0
-        # else
-        #     counter += 1
-        # end
+        if counter == 1
+            historyCollect(agent)
+            counter = 0
+        else
+            counter += 1
+        end
         rossleep(loop_rate)
     end
 
