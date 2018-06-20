@@ -27,7 +27,7 @@
         <param name="delay_df" type="double" value="0.0" />
         <param name="delay_a" type="double" value="0.0" />
         <!-- ekf properties -->
-         <param name="thReset" type="double" value="0.8" />
+         <param name="thReset" type="double" value="0.1" />
          <param name="vSwitch" type="double" value="1.3" />
          <param name="psiSwitch" type="double" value="1.2" />
 

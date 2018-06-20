@@ -50,15 +50,59 @@ def main():
     R_noVy[5,5] = 0.1    # psiDot
     thReset_noVy = 0.8
 
-    Q_noVyEstNew = eye(8)
-    Q_noVyEstNew[0,0] = 0.01 # x
-    Q_noVyEstNew[1,1] = 0.01 # y
-    Q_noVyEstNew[2,2] = 0.01 # vx
-    Q_noVyEstNew[3,3] = 0.01 # vy
-    Q_noVyEstNew[4,4] = 1.0 # ax
-    Q_noVyEstNew[5,5] = 1.0 # ay
-    Q_noVyEstNew[6,6] = 2 * 10.0 # psi
-    Q_noVyEstNew[7,7] = 0.1 * 10.0 # psidot
+    Q_hs = eye(8)
+    Q_ls = eye(8)
+    Q_hs[0,0]  =  0.01 # 0.5     # x
+    Q_ls[0,0]  =  0.01 # 0.5     # x
+    
+    Q_hs[1,1]  =  0.01 # 0.5     # y
+    Q_ls[1,1]  =  0.01 # 0.5     # y
+    
+    Q_hs[2,2]  =  0.5 #10.0     # vx
+    Q_ls[2,2]  =  0.5 #10.0     # vx
+    
+    Q_hs[3,3]  =  0.5 #10.0     # vy
+    Q_ls[3,3]  =  0.5 #10.0     # vy
+    
+    Q_hs[4,4]  =  1.0 #1.0      # ax
+    Q_ls[4,4]  =  1.0 #1.0      # ax
+    
+    Q_hs[5,5]  =  1.0 #1.0      # ay 
+    Q_ls[5,5]  =  1.0 #1.0      # ay 
+    
+    Q_hs[6,6]  =  20.0 #10 + 80.0      # psi
+    Q_ls[6,6]  =  1.0 #10 + 80.0      # psi
+    
+    Q_hs[7,7]  =  1.0 # psiDot
+    Q_ls[7,7]  =  1.0 # psiDot
+    
+    R_hs = eye(7)
+    R_ls = eye(7)
+    R_hs[0,0]  = 10.0 # 10 + 40.0      # x
+    R_ls[0,0]  = 10.0 # 10 + 40.0      # x
+
+    R_hs[1,1]  = 10.0 #10 + 40.0      # y
+    R_ls[1,1]  = 10.0 #10 + 40.0      # y
+
+    R_hs[2,2]  = 0.1 # 0.1      # vx
+    R_ls[2,2]  = 0.1 # 0.1      # vx
+
+    R_hs[3,3]  = 10.0 #30 + 10.0      # ax 
+    R_ls[3,3]  = 10.0 #30 + 10.0      # ax 
+
+    R_hs[4,4]  = 30.0 #40.0      # ay 
+    R_ls[4,4]  = 30.0 #40.0      # ay 
+
+    R_hs[5,5]  = 0.1 #5 * 5 * 2 * 10 * 0.1      # psiDot
+    R_ls[5,5]  = 0.1 #5 * 5 * 2 * 10 * 0.1      # psiDot
+
+    R_hs[6,6]  = 0.01 # 0.01    # vy
+    R_ls[6,6]  = 0.01 # 0.01    # vy
+
+    thReset_hs      = 0.1      # 0.4
+    vSwitch_hs      = 1.3      # 1.0
+    psiSwitch_hs    = 1.2      # 0.5 * 2.0
+
     # Q[8,8] = 0.0 # psiDot in the model
     R_noVyEstNew = eye(7)
     R_noVyEstNew[0,0] = 20.0   # x
@@ -120,7 +164,7 @@ def main():
 
     est = EstimatorNoVy(0.0,loop_rate,a_delay,df_delay,Q_noVy,R_noVy, thReset_noVy)  # red
     # est_new = Estimator(0.0,loop_rate,a_delay,df_delay,Q,R, thReset)
-    est_new = EstimatorClean(0.0,loop_rate,a_delay,df_delay,Q_noVyEstNew,R_noVyEstNew, thReset_noVy) # blue
+    est_new = EstimatorClean(0.0,loop_rate,a_delay,df_delay,Q_hs,R_hs, thReset_hs) # blue
     est_new1 = Estimator(0.0,loop_rate,a_delay,df_delay, Q, R, thReset) # green
     
     onVec = [1, 1, 1]
@@ -221,10 +265,18 @@ def main():
         ecu.df      = inp_df_his[i]
 
         est.estimateState(imu,gps,enc,ecu,est.ekf)
-        if (est.vx_est + 0.0 * np.abs(est.psiDot_est) ) > vSwitch or (np.abs(est.psiDot_est) > psiSwith):
-            flagVy      = True
-        else:
+
+        if (est_new.vx_est > vSwitch_hs or np.abs(est_new.psiDot_est) > psiSwitch_hs):
             flagVy      = False
+            est_new.Q = Q_hs
+            est_new.R = R_hs
+            # print "================ Not using vy! =============="
+        else:
+            est_new.Q = Q_ls
+            est_new.R = R_ls
+            flagVy      = True
+            # print "================ Using vy! =============="
+
         est_new.estimateState(imu,gps,enc,ecu,est_new.ekf, flagVy)
 
         est_new1.estimateState(imu,gps,enc,ecu,est_new1.ekf)
@@ -377,10 +429,10 @@ def main():
 
     plt.show()
 
-    xmin = 5580 #2000 #0
-    xmax = 5680 #2660 #len(est.vx_est_his)
-    xmin = 0
-    xmax = len(est.vx_est_his)
+    xmin = 2370 #2000 #0
+    xmax = 2500 #2660 #len(est.vx_est_his)
+    # xmin = 0
+    # xmax = len(est.vx_est_his)
 
     fig = plotTrack(map)
     # plt.plot(x_est_his[xmin:xmax],y_est_his[xmin:xmax],"--ob")

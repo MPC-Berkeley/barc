@@ -81,7 +81,7 @@ def main():
 
     thReset      = rospy.get_param("/state_estimator/thReset")       # 0.4
     vSwitch      = rospy.get_param("/state_estimator/vSwitch")       # 1.0
-    psiSwitch    = rospy.get_param("/state_estimator/vSwitch")       # 0.5 * 2.0
+    psiSwitch    = rospy.get_param("/state_estimator/psiSwitch")       # 0.5 * 2.0
 
     # Q = eye(8)
     # Q[0,0]  =  0.5     # x
