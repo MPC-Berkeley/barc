@@ -23,7 +23,7 @@ import numpy as np
 import pdb
 
 def main():
-    playBack = PlayBack("06-20-18:30-exp")
+    playBack = PlayBack("06-20-21:21-exp")
     # fig     = plt.figure("x")
     # ax_x   = fig.add_subplot(1,1,1,ylabel="x")
     # fig     = plt.figure("y")
@@ -34,14 +34,14 @@ def main():
     # ax_ax   = fig.add_subplot(1,1,1,ylabel="ax")
     # fig     = plt.figure("ay")
     # ax_ay   = fig.add_subplot(1,1,1,ylabel="ay")
-    # fig     = plt.figure("vx")
-    # ax_vx   = fig.add_subplot(1,1,1,ylabel="vx")
+    fig     = plt.figure("vx")
+    ax_vx   = fig.add_subplot(1,1,1,ylabel="vx")
     fig     = plt.figure("vy")
     ax_vy   = fig.add_subplot(1,1,1,ylabel="vy")
-    # fig     = plt.figure("psiDot")
-    # ax_psiDot  = fig.add_subplot(1,1,1,ylabel="psiDot")
-    # fig = plt.figure("track x-y plot")
-    # ax_traj = fig.add_subplot(1,1,1,ylabel="track x-y plot")
+    fig     = plt.figure("psiDot")
+    ax_psiDot  = fig.add_subplot(1,1,1,ylabel="psiDot")
+    fig = plt.figure("track x-y plot")
+    ax_traj = fig.add_subplot(1,1,1,ylabel="track x-y plot")
     # fig     = plt.figure("input")
     # ax_input  = fig.add_subplot(1,1,1,ylabel="input")
     # playBack.inputPlot(ax_input)
@@ -52,10 +52,10 @@ def main():
         # playBack.yawPlot(ax_yaw,i)
         # playBack.axPlot(ax_ax,i)
         # playBack.ayPlot(ax_ay,i)
-        # playBack.vxPlot(ax_vx,i)
+        playBack.vxPlot(ax_vx,i)
         playBack.vyPlot(ax_vy,i)
-        # playBack.psiDotPlot(ax_psiDot,i)
-        # playBack.trajectoryPlot(ax_traj,i)
+        playBack.psiDotPlot(ax_psiDot,i)
+        playBack.trajectoryPlot(ax_traj,i)
         playBack.playBackClean()
     plt.show()
 
@@ -84,10 +84,10 @@ class PlayBack(object):
         self.KF_a_his            = npz_output["KF_a_his"]
         self.KF_df_his           = npz_output["KF_df_his"]
         self.estimator_time      = npz_output["estimator_time"]
-        self.idx_min = int(2.5*50)
-        self.idx_max = int(20.5*50)
-        self.idx_min = 1
-        self.idx_max = len(self.estimator_time)
+        self.idx_min = int(152*50)
+        self.idx_max = int(196*50)
+        # self.idx_min = 1
+        # self.idx_max = len(self.estimator_time)
         print "Variance x:      ", np.var(self.KF_x_his[self.idx_min:self.idx_max])
         print "Variance y:      ", np.var(self.KF_y_his[self.idx_min:self.idx_max])
         print "Variance ax:     ", np.var(self.KF_ax_his[self.idx_min:self.idx_max])

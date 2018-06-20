@@ -256,15 +256,15 @@ export SafeSet,SysID,FeatureData,MpcSol,MpcParams,ModelParams,GPData
             else
                 mpcParams.Q             = [0.0,40.0,2.0,5.0]
                 mpcParams.R             = 0*[10.0,10.0]
-                mpcParams.QderivU       = 1*[200.0,50.0]
-                mpcParams.Q_term_cost   = 0.4
+                mpcParams.QderivU       = 1*[10.0,40.0] # motor, servo
+                mpcParams.Q_term_cost   = 1.0
                 mpcParams.Q_lane        = 16
                 if mpcParams.n_state == 6
                     mpcParams.QderivZ = 1.0*[0,0.1,0.1,2,0.1,0.0]
-                    mpcParams.Q_slack = 50.0*[1.0,5.0,5.0,1.0,1.0,1.0]
+                    mpcParams.Q_slack = 10.0*[1.0,5.0,5.0,1.0,1.0,1.0]
                 elseif mpcParams.n_state == 4
                     mpcParams.QderivZ = 1.0*[0,1.0,1.0,2.0]
-                    mpcParams.Q_slack = 30.0*[1,1,1,1]
+                    mpcParams.Q_slack = 10.0*[1,1,1,1]
                 end
             end
             return mpcParams

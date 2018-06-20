@@ -427,10 +427,12 @@ class Estimator(object):
         else:
             self.Q[6,6] = 0.1*0.001**2  # Q_psi
 
-        if abs(y[5]) > 0.4: # Vy reset 
+        if (abs(y[5]) < 1.8 and abs(y[5]) > 0.4) or (abs(y[5]) > 0.0 and abs(y[2]>1.8)): # Vy reset 
             idx.append(6)
-        #     self.vy_est = 0.0
-        #     self.z[3]   = 0.0
+
+        if abs(y[5]) < 0.4:
+            self.vy_est = 0.0
+            self.z[3]   = 0.0
 
         # No vy for measurement    
 
