@@ -43,6 +43,12 @@ class Map():
                              [2.0, 0],
                              [4.5, 4.5 / np.pi],
                              [1.0, 0]])
+        elif selectedTrack == "circle":
+            self.halfWidth = 2.0
+            self.slack     = 0.5
+            spec = np.array([[4.5, 4.5 / np.pi],
+                             # Note s = 1 * np.pi / 2 and r = -1 ---> Angle spanned = np.pi / 2
+                             [4.5, 4.5 / np.pi]])
 
         # Now given the above segments we compute the (x, y) points of the track and the angle of the tangent vector (psi) at
         # these points. For each segment we compute the (x, y, psi) coordinate at the last point of the segment. Furthermore,

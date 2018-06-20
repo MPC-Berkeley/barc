@@ -125,8 +125,8 @@ def main():
             rec_sim.set_xy(np.array([car_sim_x, car_sim_y]).T)
 
         maxVx = np.maximum(maxVx, estimatedStates[0])
-
-        StringValue = "vx: "+str(estimatedStates[0])+" max vx: "+str(maxVx)+" psiDot: "+str(estimatedStates[2])+" No vy: "+str(estimatedStates[0] > vSwitch or np.abs(estimatedStates[2]) > psiSwitch)
+        flagVy = (estimatedStates[0] > vSwitch or np.abs(estimatedStates[2]) > psiSwitch) == False
+        StringValue = "vx: "+str(estimatedStates[0])+" max vx: "+str(maxVx)+" psiDot: "+str(estimatedStates[2])+" Use vy: "+str(flagVy)
         axtr.set_title(StringValue)
         
         if insideMap == 1:
@@ -155,7 +155,7 @@ class EstimationAndMesuredData():
             rospy.Subscriber("simulatorStates", simulatorStates, self.simState_callback)
 
         if plotGPS == True:
-            rospy.Subscriber("hedge_imu_fusion", hedge_imu_fusion, self.gps_callback)
+            rospy.Subscriber("hedge_pos", hedge_pos, self.gps_callback)
         rospy.Subscriber("pos_info", pos_info, self.pos_info_callback)
         rospy.Subscriber("OL_predictions", prediction, self.prediction_callback)
         rospy.Subscriber('SS', SafeSetGlob, self.SS_callback)

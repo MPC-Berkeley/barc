@@ -26,7 +26,7 @@ import geometry_msgs.msg
 from barc.msg import ECU, pos_info, Vel_est, simulatorStates
 from geometry_msgs.msg import Vector3
 from sensor_msgs.msg import Imu
-from marvelmind_nav.msg import hedge_imu_fusion
+from marvelmind_nav.msg import hedge_imu_fusion, hedge_pos
 from numpy import tan, arctan, cos, sin, pi
 from numpy.random import randn
 from tf import transformations
@@ -226,14 +226,15 @@ class ImuClass(object):
 
 class GpsClass(object):
 	def __init__(self):
-		self.pub  = rospy.Publisher("hedge_imu_fusion", hedge_imu_fusion, queue_size=1)
+		self.pub  = rospy.Publisher("hedge_pos", hedge_pos, queue_size=1)
 		self.x = 0.0
 		self.y = 0.0
 		self.x_std 	 = rospy.get_param("simulator/x_std")
 		self.y_std 	 = rospy.get_param("simulator/y_std")
 		self.n_bound = rospy.get_param("simulator/n_bound")
 
-		self.msg = hedge_imu_fusion()
+		self.msg = hedge_pos()
+		self.counter = 0
 
 	def update(self,sim):
 		n = self.x_std*randn()
@@ -247,6 +248,7 @@ class GpsClass(object):
 		self.y = sim.y + n
 
 	def gps_pub(self):
+		self.counter = 0
 		self.msg.x_m = self.x
 		self.msg.y_m = self.y
 		self.pub.publish(self.msg)

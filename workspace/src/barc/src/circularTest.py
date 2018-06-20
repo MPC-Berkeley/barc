@@ -56,15 +56,16 @@ def main():
     # Choose Controller and Number of Laps
     InputDelay = 1 # 0 for no delay, 1 for 1 step delay, 2 for 2 steps delay
 
-    PickController = "LMPC"
     NumberOfLaps   = 30
-    vt = 1.1
+    vt = 1.2
     PathFollowingLaps = 2
     
     if mode == "simulations":
         PIDnoise = np.array([1.0, 1.0]) # noise on [Steering, Acceleration] 
     else:
-        PIDnoise = np.array([1.0, 1.0]) # noise on [Steering, Acceleration] 
+        PIDnoise = np.array([0.2, 1.0]) # noise on [Steering, Acceleration] 
+    
+    PickController = "PID"
 
     ControllerLap0, Controller,  OpenLoopData   = ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PIDnoise)
                  
@@ -128,87 +129,42 @@ def main():
         # If inside the track publish input
         if (insideTrack == 1):
             startTimer = datetime.datetime.now()
-            if LapNumber < PathFollowingLaps :        # First path following lap
+            if LapNumber < 2 :        # First path following lap
+                ControllerLap0.vt = 1
                 ControllerLap0.solve(LocalState)
-                cmd.servo = ControllerLap0.uPred[0,0]
+                cmd.servo = 1.5*0.15 #ControllerLap0.uPred[0,0]
                 cmd.motor = ControllerLap0.uPred[0,1]
-                # cmd.servo = 0.0 #ControllerLap0.uPred[0,0]
-                # cmd.motor = 0.3 #ControllerLap0.uPred[0,1]
-
 
                 uApplied = np.array([cmd.servo, cmd.motor])
                 # Publish input
                 input_commands.publish(cmd)
-
-            elif PickController == "PID":
+            elif LapNumber < 4:
+                Controller.vt = 2.0
                 Controller.solve(LocalState)
-                cmd.servo = Controller.uPred[0,0]
+                cmd.servo = 1.5*0.15 #ControllerLap0.uPred[0,0]
                 cmd.motor = Controller.uPred[0,1]
                 uApplied = np.array([cmd.servo, cmd.motor])
                 # Publish input
                 input_commands.publish(cmd)
+            elif LapNumber < 8:
+                Controller.vt = 3.0
+                Controller.solve(LocalState)
+                cmd.servo = 1.5*0.15 #ControllerLap0.uPred[0,0]
+                cmd.motor = Controller.uPred[0,1]
+                uApplied = np.array([cmd.servo, cmd.motor])
+                # Publish input
+                input_commands.publish(cmd)
+            elif LapNumber == 8:
+                break
                 
-            else:                                     # Else use the selected controller
-                oldU = uApplied
-                uApplied = np.array([cmd.servo, cmd.motor])
-                # Publish input
-                input_commands.publish(cmd)
-
-                oneStepPredictionError = LocalState - oneStepPrediction # Subtract the local measurement to the previously predicted one step
-
-                if InputDelay == 0:
-                    startTimerDummy = datetime.datetime.now()
-                    oneStepPrediction = LocalState
-                    endTimerDummy = datetime.datetime.now()
-                    deltaTimerDummy = endTimerDummy - startTimerDummy
-                    oneStepPredictionTime = deltaTimerDummy
-                elif InputDelay == 1:
-                    oneStepPrediction, oneStepPredictionTime = Controller.oneStepPrediction(LocalState, uApplied, 1)
-                elif InputDelay == 2:
-                    oneStepPrediction, oneStepPredictionTime = Controller.oneStepPrediction(LocalState, oldU, 1)
-                    oneStepPrediction, oneStepPredictionTime = Controller.oneStepPrediction(oneStepPrediction, uApplied, 1)
-
-                # print "LocalState: ", LocalState
-                # print "oneStepPrediction: ", oneStepPrediction
-
-                Controller.solve(oneStepPrediction)
-                cmd.servo = Controller.uPred[0,0]
-                cmd.motor = Controller.uPred[0,1]
-                if (Controller.solverTime.total_seconds() + Controller.linearizationTime.total_seconds() + oneStepPredictionTime.total_seconds() > dt):
-                    print "NOT REAL-TIME FEASIBLE!!!"
-                    print "Solver time: ", Controller.solverTime.total_seconds(), " Linearization Time: ", Controller.linearizationTime.total_seconds() + oneStepPredictionTime.total_seconds()
-            
             endTimer = datetime.datetime.now(); deltaTimer = endTimer - startTimer
             #print "Tot Solver Time: ", deltaTimer.total_seconds()
 
             
 
             # Record data
-            if (PickController != "LMPC") and (LapNumber >= 1):
-                LocalState[4] = LocalState[4] + (LapNumber - 1)*map.TrackLength
-                ClosedLoopData.addMeasurement(GlobalState, LocalState, uApplied)
-            elif LapNumber >= 1:
-                ClosedLoopData.addMeasurement(GlobalState, LocalState, uApplied)
-
-            # Add data to SS and Record Prediction
-            if (PickController == "LMPC") and (LapNumber >= PathFollowingLaps):
-
-                OL_predictions.s    = Controller.xPred[:, 4]
-                OL_predictions.ey   = Controller.xPred[:, 5]
-                OL_predictions.epsi = Controller.xPred[:, 3]
-                pred_treajecto.publish(OL_predictions)
-
-                SS_glob_sel.SSx       = Controller.SS_glob_PointSelectedTot[4, :]
-                SS_glob_sel.SSy       = Controller.SS_glob_PointSelectedTot[5, :]
-                sel_safe_set.publish(SS_glob_sel)
-
-                OpenLoopData.oneStepPredictionError[:,TimeCounter, Controller.it]   = oneStepPredictionError               
-                OpenLoopData.PredictedStates[:,:,TimeCounter, Controller.it]        = Controller.xPred
-                OpenLoopData.PredictedInputs[:, :, TimeCounter, Controller.it]      = Controller.uPred
-                OpenLoopData.SSused[:, :, TimeCounter, Controller.it]               = Controller.SS_PointSelectedTot
-                OpenLoopData.Qfunused[:, TimeCounter, Controller.it]                = Controller.Qfun_SelectedTot
-
-                Controller.addPoint(LocalState, GlobalState, uApplied, TimeCounter)
+            ClosedLoopData.addMeasurement(GlobalState, LocalState, uApplied)
+            
         else:                                        # If car out of the track
             cmd.servo = 0
             cmd.motor = 0
@@ -220,13 +176,11 @@ def main():
 
         # Increase time counter and ROS sleep()
         TimeCounter = TimeCounter + 1
-        if PickController == "LMPC":
-            Controller.setTime(TimeCounter)
         rate.sleep()
 
     # Save Data
     if saveData == True:
-        file_data = open(homedir+'/barc_data/'+'/ClosedLoopData'+PickController+'.obj', 'wb')
+        file_data = open(homedir+'/barc_data/ClosedLoopDataCircularTest.obj', 'wb')
         pickle.dump(ClosedLoopData, file_data)
         pickle.dump(Controller, file_data)
         pickle.dump(OpenLoopData, file_data)    
@@ -240,20 +194,14 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
     OpenLoopData = 0.0
 
     # TI MPC tuning
-    if mode == "simulations":
-        Q = 1*np.diag([500.0, 1.0, 10.0, 1.0, 0.0, 10 * 2 * 5 * 50.0]) # vx, vy, wz, epsi, s, ey
-        R = np.diag([1.0, 1.0]) # delta, a
-        N = 12
-        TI_Qlane   =  1 * np.array([100, 0]) # Quadratic and linear slack lane cost
-    else:
-        Q = 1*np.diag([500.0, 1.0, 10.0, 10 * 5.0, 0.0, 2 * 250.0]) # vx, vy, wz, epsi, s, ey
-        R = np.diag([1.0, 1.0]) # delta, a
-        N = 12
-        TI_Qlane   =  1 * np.array([100, 0]) # Quadratic and linear slack lane cost
+    Q = 1*np.diag([500.0, 1.0, 10.0, 1.0, 0.0, 2 * 5 * 50.0]) # vx, vy, wz, epsi, s, ey
+    R = np.diag([1.0, 1.0]) # delta, a
+    N = 12
+    TI_Qlane   =  1 * np.array([100, 0]) # Quadratic and linear slack lane cost
 
 
     if PickController == 'PID':
-        ControllerLap0 = PID(vt, PIDnoise, mode) 
+        ControllerLap0 = PID(vt, PIDnoise) 
     else:
         file_data = open(homedir+'/barc_data/'+'/ClosedLoopDataPID.obj', 'rb')
         ClosedLoopDataPID = pickle.load(file_data)
@@ -266,7 +214,7 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
         # ControllerLap0 = PID(vt, PIDnoise)
 
     if PickController == 'PID':
-        Controller = PID(vt, PIDnoise, mode)
+        Controller = PID(1.5*vt, PIDnoise)
                                         # PID controller
     elif PickController == "TI_MPC":
         file_data = open(homedir+'/barc_data/'+'/ClosedLoopDataPID.obj', 'rb')
@@ -298,7 +246,7 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
         numSS_Points = 42 + N         # Number of points to select from each trajectory to build the safe set
         shift = N / 2                     # Given the closed point, x_t^j, to the x(t) select the SS points from x_{t+shift}^j
         # Tuning Parameters
-        Qslack  = 0.1 * 5 * np.diag([10, 1, 1, 1, 10, 1])          # Cost on the slack variable for the terminal constraint
+        Qslack  =  5 * np.diag([10, 1, 1, 1, 10, 1])          # Cost on the slack variable for the terminal constraint
         Qlane   = 0.5 * 10 * np.array([50, 0]) # Quadratic and linear slack lane cost
         Q_LMPC  =  0 * np.diag([0.0, 0.0, 10.0, 0.0, 0.0, 0.0])  # State cost x = [vx, vy, wz, epsi, s, ey]
         R_LMPC  =  0 * np.diag([1.0, 1.0])                      # Input cost u = [delta, a]
@@ -317,7 +265,7 @@ class PID:
     Attributes:
         solve: given x0 computes the control action
     """
-    def __init__(self, vt, noise, mode):
+    def __init__(self, vt, noise):
         """Initialization
         Arguments:
             vt: target velocity
@@ -332,7 +280,6 @@ class PID:
         self.feasible = 1
         self.integral = np.array([0.0, 0.0])
         self.noise = noise
-        self.mode = mode
 
     def solve(self, x0):
         """Computes control action
@@ -340,12 +287,8 @@ class PID:
             x0: current state position
         """
         vt = self.vt
-        if self.mode == "simulations":
-            Steering = - 0.5 * 2.0 * x0[5] - 2 * 0.5 * x0[3] - 0.001 * self.integral[0]
-            Accelera = 0.5 * 1.5 * (vt - x0[0]) + 0.1 * self.integral[1]
-        else:
-            Steering = - 0.5 * x0[5] - x0[3] - 0.01 * self.integral[0]
-            Accelera = 1.5 * (vt - x0[0]) + 0.01 * self.integral[1]
+        Steering = - 0.5 * 2.0 * x0[5] - 2 * 0.5 * x0[3] - 0.001 * self.integral[0]
+        Accelera = 0.5 * 1.5 * (vt - x0[0]) + 0.1 * self.integral[1]
 
         self.integral[0] = self.integral[0] +  0.1 * x0[5] + 0.1 * x0[3]
         self.integral[1] = self.integral[1] +  (vt - x0[0])

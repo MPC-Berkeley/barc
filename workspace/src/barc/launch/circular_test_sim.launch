@@ -8,12 +8,12 @@
     <param name="I_z" type="double" value="0.03" />
         
     <!-- Track parameters -->
-    <param name="trackShape" type="str" value="oval" />
+    <param name="trackShape" type="str" value="circle" />
 
    
     <!-- VISUALIZATION -->
     <node pkg="barc" type="plotCarTrajectory.py" name="visualization" output="screen">
-        <param name="plotGPS" type="bool" value="true" />
+        <param name="plotGPS" type="bool" value="false" />
     </node>
 
 
@@ -100,9 +100,9 @@
     <!--<node pkg="barc" type="controller_low_level.py" name="low_level_controller" /> -->
 
      <!-- CONTROL -->
-    <node pkg="barc" type="controllerMain.py" name="control" output="screen">
+    <node pkg="barc" type="circularTest.py" name="control" output="screen">
         <param name="mode" type="str" value="simulations" />
-        <param name="saveData" type="bool" value="true" />
+        <param name="saveData" type="bool" value="True" />
     </node>
 
 

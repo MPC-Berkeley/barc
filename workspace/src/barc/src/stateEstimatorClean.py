@@ -148,14 +148,14 @@ def main():
     while not rospy.is_shutdown():
 
         if (est.vx_est > vSwitch or np.abs(est.psiDot_est) > psiSwitch):
-            flagVy      = True
+            flagVy      = False
             est.Q = Q_hs
             est.R = R_hs
             # print "================ Not using vy! =============="
         else:
             est.Q = Q_ls
             est.R = R_ls
-            flagVy      = False
+            flagVy      = True
             # print "================ Using vy! =============="
 
         est.estimateState(imu,gps,enc,ecu,est.ekf,flagVy)
@@ -348,15 +348,27 @@ class Estimator(object):
         bta = 0.5 * u[1]
         dist   = np.sqrt(( self.x_est - gps.x )**2 + ( self.y_est - gps.y )**2)
 
-        if flagVy == False:
-            y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot, bta * enc.v_meas])
+        if self.oldGPS_x == gps.x and self.oldGPS_y == gps.y:
+            gpsUpdate = False
+            print "No gps update"
         else:
-            y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot])
+            gpsUpdate = True
+
+        if flagVy == True:
+            if gpsUpdate == True:
+                y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot, bta * enc.v_meas])
+            else:
+                y = np.array([enc.v_meas, imu.ax, imu.ay, imu.psiDot, bta * enc.v_meas])
+        else:
+            if gpsUpdate == True:
+                y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot])
+            else:
+                y = np.array([enc.v_meas, imu.ax, imu.ay, imu.psiDot])
 
         if np.abs(imu.psiDot) < self.thReset:
             self.z[3] = 0.0
 
-        KF(y,u, flagVy)
+        KF(y,u, flagVy, gpsUpdate)
 
 
         # SAVE THE measurement/input SEQUENCE USED BY KF
@@ -376,7 +388,7 @@ class Estimator(object):
         # Save the output of the KF
         self.saveHistory()
 
-    def ekf(self, y, u, flagVy):
+    def ekf(self, y, u, flagVy, gpsUpdate):
         """
         EKF   Extended Kalman Filter for nonlinear dynamic systems
         ekf(f,mx,P,h,z,Q,R) returns state estimate, x and state covariance, P 
@@ -398,16 +410,16 @@ class Estimator(object):
                    
         Notation: mx_k = E[x_k] and my_k = E[y_k], where m stands for "mean of"
         """
-        numericalDiffActive = False
+        numericalDiffActive = True
         
         xDim    = self.z.size                           # dimension of the state
 
-        mx_kp1, Aa  = self.f(self.z, u)                               # predict next state
-        An          = self.numerical_jac(self.f, self.z, u, flagVy)  # linearize process model about current state
+        mx_kp1, Aa  = self.f(self.z, u, gpsUpdate)                               # predict next state
+        An          = self.numerical_jac(self.f, self.z, u, flagVy, gpsUpdate)  # linearize process model about current state
 
-        if np.max(np.abs(An-Aa)) > 0.001:
-            print An
-            print Aa
+        # if np.max(np.abs(An-Aa)) > 0.001:
+        #     print An
+        #     print Aa
 
         if numericalDiffActive == True:
             A = An
@@ -416,41 +428,53 @@ class Estimator(object):
 
         P_kp1   = dot(dot(A,self.P),A.T) + self.Q                 # proprogate variance
 
-        my_kp1, Ha   = self.h(mx_kp1, u, flagVy)                      # predict future output
-        Hn           = self.numerical_jac(self.h, mx_kp1, u, flagVy)  # linearize measurement model about predicted next state
+        my_kp1, Ha   = self.h(mx_kp1, u, flagVy, gpsUpdate)                      # predict future output
+        Hn           = self.numerical_jac(self.h, mx_kp1, u, flagVy, gpsUpdate)  # linearize measurement model about predicted next state
 
         if numericalDiffActive == True:    
             H = Hn
         else:
             H = Ha
 
-        if np.max(np.abs(Hn-Ha)) > 0.001:
-            print Hn
-            print Ha
+        # if np.max(np.abs(Hn-Ha)) > 0.001:
+        #     print Hn
+        #     print Ha
 
         P12     = dot(P_kp1, H.T)                                 # cross covariance
 
-        if flagVy == False:
-            K       = dot(P12, inv( dot(H,P12) + self.R))       # Kalman filter gain
+        if flagVy == True:
+            if gpsUpdate == True:
+                K = dot(P12, inv( dot(H,P12) + self.R))       # Kalman filter gain
+            else:
+                K = dot(P12, inv( dot(H,P12) + self.R[2:,2:])) 
         else:
-            K       = dot(P12, inv( dot(H,P12) + self.R[:-1,:-1]))       # Kalman filter gain
-            
+            if gpsUpdate == True:
+                K       = dot(P12, inv( dot(H,P12) + self.R[:-1,:-1]))       # Kalman filter gain
+            else:
+                K       = dot(P12, inv( dot(H,P12) + self.R[2:-1,2:-1]))       # Kalman filter gain
+        
         self.z  = mx_kp1 + dot(K,(y - my_kp1))
 
-        if flagVy == False:
-            self.P  = dot(dot(K,self.R),K.T) + dot( dot( (eye(xDim) - dot(K,H)) , P_kp1)  ,  (eye(xDim) - dot(K,H)).T )
+        if flagVy == True:
+            if gpsUpdate == True:
+                self.P  = dot(dot(K,self.R),K.T) + dot( dot( (eye(xDim) - dot(K,H)) , P_kp1)  ,  (eye(xDim) - dot(K,H)).T )
+            else:
+                self.P  = dot(dot(K,self.R[2:,2:]),K.T) + dot( dot( (eye(xDim) - dot(K,H)) , P_kp1)  ,  (eye(xDim) - dot(K,H)).T )
         else:
-            self.P  = dot(dot(K,self.R[:-1,:-1]),K.T) + dot( dot( (eye(xDim) - dot(K,H)) , P_kp1)  ,  (eye(xDim) - dot(K,H)).T )
+            if gpsUpdate == True:
+                self.P  = dot(dot(K,self.R[:-1,:-1]),K.T) + dot( dot( (eye(xDim) - dot(K,H)) , P_kp1)  ,  (eye(xDim) - dot(K,H)).T )
+            else:
+                self.P  = dot(dot(K,self.R[2:-1,2:-1]),K.T) + dot( dot( (eye(xDim) - dot(K,H)) , P_kp1)  ,  (eye(xDim) - dot(K,H)).T )
 
         (self.x_est, self.y_est, self.vx_est, self.vy_est, self.ax_est, self.ay_est, self.yaw_est, self.psiDot_est) = self.z
 
-    def numerical_jac(self,func,x,u, flagVy):
+    def numerical_jac(self,func,x,u, flagVy, gpsUpdate):
         """
         Function to compute the numerical jacobian of a vector valued function 
         using final differences
         """
         # numerical gradient and diagonal hessian
-        y, _ = func(x,u, flagVy)
+        y, _ = func(x,u, flagVy, gpsUpdate)
         
         jac = zeros( (y.size,x.size) )
         eps = 1e-5
@@ -458,14 +482,14 @@ class Estimator(object):
         
         for i in range(x.size):
             xp[i] = x[i] + eps/2.0
-            yhi, _ = func(xp, u, flagVy)
+            yhi, _ = func(xp, u, flagVy, gpsUpdate)
             xp[i] = x[i] - eps/2.0
-            ylo, _ = func(xp, u, flagVy)
+            ylo, _ = func(xp, u, flagVy, gpsUpdate)
             xp[i] = x[i]
             jac[:,i] = (yhi - ylo) / eps
         return jac
 
-    def f(self, z, u, flagVy=True):
+    def f(self, z, u, flagVy=True, gpsUpdate=True):
         """ This Sensor model contains a pure Sensor-Model and a Kinematic model. They're independent from each other."""
         dt = self.dt
         zNext = [0]*8
@@ -489,40 +513,60 @@ class Estimator(object):
 
         return np.array(zNext), jac
 
-    def h(self, x, u, flagVy):
+    def h(self, x, u, flagVy, gpsUpdate):
         """ This is the measurement model to the kinematic<->sensor model above """
-        if flagVy == False:
-            y = [0]*7
-            y[0] = x[0]   # x
-            y[1] = x[1]   # y
-            y[2] = x[2]   # vx
-            y[3] = x[4]   # a_x
-            y[4] = x[5]   # a_y
-            y[5] = x[7]   # psiDot
-            y[6] = x[3]   # vy
+        if flagVy == True:
+            if gpsUpdate == True:
+                y = [0]*7
+                y[0] = x[0]   # x
+                y[1] = x[1]   # y
+                y[2] = x[2]   # vx
+                y[3] = x[4]   # a_x
+                y[4] = x[5]   # a_y
+                y[5] = x[7]   # psiDot
+                y[6] = x[3]   # vy
 
-            jac = np.array([[1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,],
-                            [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,],
-                            [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0,],
-                            [0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0,],
-                            [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0,],
-                            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0,],
-                            [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0,]])
+                jac = np.array([[1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,],
+                                [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0,],
+                                [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0,],
+                                [0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0,],
+                                [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0,],
+                                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0,],
+                                [0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0,]])
+            else:
+                y = [0]*5
+                y[0] = x[2]   # vx
+                y[1] = x[4]   # a_x
+                y[2] = x[5]   # a_y
+                y[3] = x[7]   # psiDot
+                y[4] = x[3]   # vy
+
+                jac = 0
         else:
-            y = [0]*6
-            y[0] = x[0]   # x
-            y[1] = x[1]   # y
-            y[2] = x[2]   # vx
-            y[3] = x[4]   # a_x
-            y[4] = x[5]   # a_y
-            y[5] = x[7]   # psiDot
+            if gpsUpdate == True:
+                y = [0]*6
+                y[0] = x[0]   # x
+                y[1] = x[1]   # y
+                y[2] = x[2]   # vx
+                y[3] = x[4]   # a_x
+                y[4] = x[5]   # a_y
+                y[5] = x[7]   # psiDot
 
-            jac = np.array([[1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                            [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                            [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
-                            [0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0],
-                            [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
-                            [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]])
+                jac = np.array([[1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                                [0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                                [0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+                                [0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0],
+                                [0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0],
+                                [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]])
+            else:                
+                y = [0]*4
+                y[0] = x[2]   # vx
+                y[1] = x[4]   # a_x
+                y[2] = x[5]   # a_y
+                y[3] = x[7]   # psiDot
+
+                jac = 0
+
         
         return np.array(y), jac
 
@@ -643,8 +687,8 @@ class GpsClass(object):
         Arguments:
             t0: starting measurement time
         """
-        # rospy.Subscriber('hedge_pos', hedge_pos, self.gps_callback, queue_size=1)
-        rospy.Subscriber('hedge_imu_fusion', hedge_imu_fusion, self.gps_callback, queue_size=1)
+        rospy.Subscriber('hedge_pos', hedge_pos, self.gps_callback, queue_size=1)
+        # rospy.Subscriber('hedge_imu_fusion', hedge_imu_fusion, self.gps_callback, queue_size=1)
 
         # GPS measurement
         self.x      = 0.0
