@@ -46,7 +46,7 @@
          <param name="Qax_hs" type="double" value="1.0" />
          <param name="Qax_ls" type="double" value="1.0" />
 
-         <param name="Qay_hs" type="double" value="1.0" />
+         <param name="Qay_hs" type="double" value="10.0" />
          <param name="Qay_ls" type="double" value="1.0" />
 
          <param name="Qpsi_hs" type="double" value="10.0" />
@@ -55,10 +55,10 @@
          <param name="QpsiDot_hs" type="double" value="1.0" />
          <param name="QpsiDot_ls" type="double" value="0.01" />
 
-         <param name="Rx_hs" type="double" value="40.0" />
+         <param name="Rx_hs" type="double" value="1.0" />
          <param name="Rx_ls" type="double" value="40.0" />
 
-         <param name="Ry_hs" type="double" value="40.0" />
+         <param name="Ry_hs" type="double" value="1.0" />
          <param name="Ry_ls" type="double" value="40.0" />
 
          <param name="Rvx_hs" type="double" value="0.1" />
@@ -88,7 +88,7 @@
 
     <!-- VISUALIZATION -->
     <node machine="this-pc" pkg="barc" type="plotCarTrajectory.py" name="visualization" >
-        <param name="plotGPS" type="bool" value="true" />
+        <param name="plotGPS" type="bool" value="false" />
     </node>
 
     <!-- IMU -->
