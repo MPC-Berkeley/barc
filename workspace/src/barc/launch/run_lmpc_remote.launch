@@ -22,12 +22,12 @@
     <!-- START NODES -->
 
     <!-- Estimator -->
-    <node machine="odroid" pkg="barc" type="stateEstimatorClean.py" name="state_estimator" output="screen">
+    <node machine="odroid" pkg="barc" type="stateEstimatorPsiInput.py" name="state_estimator" output="screen">
     <!-- delay in state estuiamtor -->
         <param name="delay_df" type="double" value="0.0" />
         <param name="delay_a" type="double" value="0.0" />
         <!-- ekf properties -->
-         <param name="thReset" type="double" value="0.1" />
+         <param name="thReset" type="double" value="0.5" />
          <param name="vSwitch" type="double" value="1.3" />
          <param name="psiSwitch" type="double" value="1.2" />
 
@@ -46,10 +46,10 @@
          <param name="Qax_hs" type="double" value="1.0" />
          <param name="Qax_ls" type="double" value="1.0" />
 
-         <param name="Qay_hs" type="double" value="10.0" />
+         <param name="Qay_hs" type="double" value="1.0" />
          <param name="Qay_ls" type="double" value="1.0" />
 
-         <param name="Qpsi_hs" type="double" value="10.0" />
+         <param name="Qpsi_hs" type="double" value="50.0" />
          <param name="Qpsi_ls" type="double" value="10.0" />
 
          <param name="QpsiDot_hs" type="double" value="1.0" />
@@ -84,7 +84,7 @@
     </node>
 
     <!-- LOW LEVEL CONTROLLER -->
-    <node machine="this-pc" pkg="barc" type="controllerLowLevel.py" name="low_level_controller" />
+    <node machine="odroid" pkg="barc" type="controllerLowLevel.py" name="low_level_controller" />
 
     <!-- VISUALIZATION -->
     <node machine="this-pc" pkg="barc" type="plotCarTrajectory.py" name="visualization" >

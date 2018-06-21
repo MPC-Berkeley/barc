@@ -37,61 +37,63 @@
         <param name="v_std" type="double" value="0.0" />    
         <param name="ax_std" type="double" value="1.0" />
         <param name="ay_std" type="double" value="1.0" />
-        <param name="psiDot_std" type="double" value="0.0" />
+        <param name="psiDot_std" type="double" value="0.0001" />
     </node>
     
     <!--DYNAMIC OBSERVER-->  
-    <node pkg="barc" type="stateEstimatorClean.py" name="state_estimator" output="screen">
+    <!--<node pkg="barc" type="stateEstimatorClean.py" name="state_estimator" output="screen">-->
+    <!--<node pkg="barc" type="stateEstimatorMultiRate.py" name="state_estimator" output="screen">-->
+    <node pkg="barc" type="stateEstimatorPsiInput.py" name="state_estimator" output="screen">
     <!-- delay in state estuiamtor -->
         <param name="delay_df" type="double" value="0.0" />
         <param name="delay_a" type="double" value="0.0" />
         <!-- ekf properties -->
-         <param name="thReset" type="double" value="0.4" />
+         <param name="thReset" type="double" value="0.5" />
          <param name="vSwitch" type="double" value="1.3" />
-         <param name="psiSwitch" type="double" value="1.0" />
+         <param name="psiSwitch" type="double" value="1.2" />
 
          <param name="Qx_hs" type="double" value="0.01" />
          <param name="Qx_ls" type="double" value="0.01" />
-
+     
          <param name="Qy_hs" type="double" value="0.01" />
          <param name="Qy_ls" type="double" value="0.01" />
-
-         <param name="Qvx_hs" type="double" value="0.01" />
-         <param name="Qvx_ls" type="double" value="0.01" />
-
-         <param name="Qvy_hs" type="double" value="0.01" />
-         <param name="Qvy_ls" type="double" value="0.01" />
-
+     
+         <param name="Qvx_hs" type="double" value="0.5" />
+         <param name="Qvx_ls" type="double" value="0.5" />
+     
+         <param name="Qvy_hs" type="double" value="0.5" />
+         <param name="Qvy_ls" type="double" value="0.5" />
+     
          <param name="Qax_hs" type="double" value="1.0" />
          <param name="Qax_ls" type="double" value="1.0" />
-
-         <param name="Qay_hs" type="double" value="1.0" />
+     
+         <param name="Qay_hs" type="double" value="10.0" />
          <param name="Qay_ls" type="double" value="1.0" />
-
-         <param name="Qpsi_hs" type="double" value="50.0" />
+     
+         <param name="Qpsi_hs" type="double" value="10.0" />
          <param name="Qpsi_ls" type="double" value="10.0" />
-
-         <param name="QpsiDot_hs" type="double" value="10.0" />
-         <param name="QpsiDot_ls" type="double" value="10.0" />
-
-         <param name="Rx_hs" type="double" value="20.0" />
-         <param name="Rx_ls" type="double" value="20.0" />
-
-         <param name="Ry_hs" type="double" value="20.0" />
-         <param name="Ry_ls" type="double" value="20.0" />
-
+     
+         <param name="QpsiDot_hs" type="double" value="1.0" />
+         <param name="QpsiDot_ls" type="double" value="0.01" />
+     
+         <param name="Rx_hs" type="double" value="1.0" />
+         <param name="Rx_ls" type="double" value="40.0" />
+     
+         <param name="Ry_hs" type="double" value="1.0" />
+         <param name="Ry_ls" type="double" value="40.0" />
+     
          <param name="Rvx_hs" type="double" value="0.1" />
          <param name="Rvx_ls" type="double" value="0.1" />
-
+     
          <param name="Rax_hs" type="double" value="10.0" />
          <param name="Rax_ls" type="double" value="10.0" />
-
-         <param name="Ray_hs" type="double" value="10.0" />
+     
+         <param name="Ray_hs" type="double" value="30.0" />
          <param name="Ray_ls" type="double" value="10.0" />
-
-         <param name="RpsiDot_hs" type="double" value="10.0" />
+    
+         <param name="RpsiDot_hs" type="double" value="0.1" />
          <param name="RpsiDot_ls" type="double" value="0.1" />
-
+    
          <param name="Rvy_hs" type="double" value="0.01" />
          <param name="Rvy_ls" type="double" value="0.01" />
     </node>
