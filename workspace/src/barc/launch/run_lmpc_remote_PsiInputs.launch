@@ -20,6 +20,10 @@
     <machine name="this-pc" address="192.168.10.157" user="ugo" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc.sh"/>
     
     <!-- START NODES -->
+    <!-- LOW LEVEL CONTROLLER -->
+    <node machine="odroid" pkg="barc" type="controllerLowLevel.py" name="low_level_controller" >
+        <param name="car" type="str" value="NewBARC" />
+    </node>
 
     <!-- Estimator -->
     <node machine="odroid" pkg="barc" type="stateEstimatorPsiInput.py" name="state_estimator" output="screen">
@@ -83,12 +87,9 @@
         <param name="saveData" type="bool" value="true" />
     </node>
 
-    <!-- LOW LEVEL CONTROLLER -->
-    <node machine="odroid" pkg="barc" type="controllerLowLevel.py" name="low_level_controller" />
-
     <!-- VISUALIZATION -->
     <node machine="this-pc" pkg="barc" type="plotCarTrajectory.py" name="visualization" >
-        <param name="plotGPS" type="bool" value="false" />
+        <param name="plotGPS" type="bool" value="true" />
     </node>
 
     <!-- IMU -->

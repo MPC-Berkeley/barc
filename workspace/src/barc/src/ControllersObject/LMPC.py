@@ -114,11 +114,14 @@ class ControllerLMPC():
         map = self.map
 
         # Select Points from SS
+#        print self.Qfun[0, 0:it], np.argsort(self.Qfun[0, 0:it])[0:self.numSS_it]
+        sortedLapTime = np.argsort(self.Qfun[0, 0:it])
+
         SS_PointSelectedTot      = np.empty((n, 0))
         SS_glob_PointSelectedTot = np.empty((n, 0))
         Qfun_SelectedTot         = np.empty((0))
-        for jj in range(0, self.numSS_it):
-            SS_PointSelected, SS_glob_PointSelected, Qfun_Selected = _SelectPoints(self, it - jj - 1, x0, numSS_Points / self.numSS_it, shift)
+        for jj in sortedLapTime[0:self.numSS_it]:
+            SS_PointSelected, SS_glob_PointSelected, Qfun_Selected = _SelectPoints(self, jj, x0, numSS_Points / self.numSS_it, shift)
             SS_PointSelectedTot      =  np.append(SS_PointSelectedTot, SS_PointSelected, axis=1)
             SS_glob_PointSelectedTot =  np.append(SS_glob_PointSelectedTot, SS_glob_PointSelected, axis=1)
             Qfun_SelectedTot         =  np.append(Qfun_SelectedTot, Qfun_Selected, axis=0)
@@ -128,7 +131,7 @@ class ControllerLMPC():
         self.Qfun_SelectedTot         = Qfun_SelectedTot
         # Run System ID
         startTimer = datetime.datetime.now()
-        self.A, self.B, self.C, indexUsed_list = _LMPC_EstimateABC(self)
+        self.A, self.B, self.C, indexUsed_list = _LMPC_EstimateABC(self, sortedLapTime)
         endTimer = datetime.datetime.now(); deltaTimer = endTimer - startTimer
         L, npG, npE = _LMPC_BuildMatEqConst(self, self.A, self.B, self.C, N, n, d)
         self.linearizationTime = deltaTimer
@@ -363,9 +366,7 @@ def _LMPC_BuildMatCost(LMPC, Sel_Qfun, numSS_Points, N, Qslack, Q, R, dR, uOld):
     q0[n*(N+1):n*(N+1)+2] = -2 * np.dot( uOld, np.diag(dR) )
 
     # np.savetxt('q0.csv', q0, delimiter=',', fmt='%f')
-    linLaneSlack = Qlane[1] * np.ones(2*LMPC.N)
-
-    q = np.append(np.append(np.append(q0, Sel_Qfun), np.zeros(Q.shape[0])), linLaneSlack)
+    q = np.append(np.append(np.append(q0, Sel_Qfun), np.zeros(Q.shape[0])), np.zeros(2*LMPC.N))
 
     # np.savetxt('q.csv', q, delimiter=',', fmt='%f')
 
@@ -445,7 +446,7 @@ def _LMPC_BuildMatIneqConst(LMPC):
     LaneSlack[rowIndexNegative, rowIndexNegative] = -1.0
 
     F = np.hstack((F_hard, LaneSlack))
-    np.savetxt('F.csv', F, delimiter=',', fmt='%f')
+    # np.savetxt('F.csv', F, delimiter=',', fmt='%f')
     # pdb.set_trace()
 
 
@@ -622,7 +623,7 @@ def _LMPC_GetPred(Solution,n,d,N, np):
 # ========================= Internal functions for Local Regression and Linearization ==================================
 # ======================================================================================================================
 # ======================================================================================================================
-def _LMPC_EstimateABC(ControllerLMPC):
+def _LMPC_EstimateABC(ControllerLMPC, sortedLapTime):
     LinPoints       = ControllerLMPC.LinPoints
     LinInput        = ControllerLMPC.LinInput
     N               = ControllerLMPC.N
@@ -641,7 +642,7 @@ def _LMPC_EstimateABC(ControllerLMPC):
     ParallelComputation = 0
     Atv = []; Btv = []; Ctv = []; indexUsed_list = []
 
-    usedIt = range(ControllerLMPC.it-ControllerLMPC.itUsedSysID, ControllerLMPC.it)
+    usedIt = sortedLapTime[0:ControllerLMPC.itUsedSysID] # range(ControllerLMPC.it-ControllerLMPC.itUsedSysID, ControllerLMPC.it)
 
     for i in range(0, N):
         if (i > 0) and (flag_LTV == False):

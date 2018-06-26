@@ -20,9 +20,13 @@
     <machine name="this-pc" address="192.168.10.157" user="ugo" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc.sh"/>
     
     <!-- START NODES -->
+    <!-- LOW LEVEL CONTROLLER -->
+    <node machine="odroid" pkg="barc" type="controllerLowLevel.py" name="low_level_controller" >
+        <param name="car" type="str" value="NewBARC" />
+    </node>
 
     <!-- Estimator -->
-    <node machine="odroid" pkg="barc" type="stateEstimatorPsiInput.py" name="state_estimator" output="screen">
+    <node machine="odroid" pkg="barc" type="stateEstimatorMultiRate.py" name="state_estimator" output="screen">
     <!-- delay in state estuiamtor -->
         <param name="delay_df" type="double" value="0.0" />
         <param name="delay_a" type="double" value="0.0" />
@@ -37,11 +41,11 @@
          <param name="Qy_hs" type="double" value="0.01" />
          <param name="Qy_ls" type="double" value="0.01" />
 
-         <param name="Qvx_hs" type="double" value="0.5" />
-         <param name="Qvx_ls" type="double" value="0.5" />
+         <param name="Qvx_hs" type="double" value="5.0" />
+         <param name="Qvx_ls" type="double" value="5.0" />
 
-         <param name="Qvy_hs" type="double" value="0.5" />
-         <param name="Qvy_ls" type="double" value="0.5" />
+         <param name="Qvy_hs" type="double" value="5.0" />
+         <param name="Qvy_ls" type="double" value="5.0" />
 
          <param name="Qax_hs" type="double" value="1.0" />
          <param name="Qax_ls" type="double" value="1.0" />
@@ -82,9 +86,6 @@
         <param name="mode" type="str" value="experiments" />
         <param name="saveData" type="bool" value="true" />
     </node>
-
-    <!-- LOW LEVEL CONTROLLER -->
-    <node machine="odroid" pkg="barc" type="controllerLowLevel.py" name="low_level_controller" />
 
     <!-- VISUALIZATION -->
     <node machine="this-pc" pkg="barc" type="plotCarTrajectory.py" name="visualization" >

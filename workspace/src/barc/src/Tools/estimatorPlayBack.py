@@ -58,11 +58,11 @@ def main():
     Q_hs[1,1]  =  0.01 # 0.5     # y
     Q_ls[1,1]  =  0.01 # 0.5     # y
     
-    Q_hs[2,2]  =  0.5 #10.0     # vx
-    Q_ls[2,2]  =  0.5 #10.0     # vx
+    Q_hs[2,2]  =  5.0 #10.0     # vx
+    Q_ls[2,2]  =  5.0 #10.0     # vx
     
-    Q_hs[3,3]  =  0.5 #10.0     # vy
-    Q_ls[3,3]  =  0.5 #10.0     # vy
+    Q_hs[3,3]  =  5.0 #10.0     # vy
+    Q_ls[3,3]  =  5.0 #10.0     # vy
     
     Q_hs[4,4]  =  1.0 #1.0      # ax
     Q_ls[4,4]  =  1.0 #1.0      # ax
@@ -70,22 +70,22 @@ def main():
     Q_hs[5,5]  =  1.0 #1.0      # ay 
     Q_ls[5,5]  =  1.0 #1.0      # ay 
     
-    Q_hs[6,6]  =  10.0 #10 + 80.0      # psi
-    Q_ls[6,6]  =  1.0 #10 + 80.0      # psi
+    Q_hs[6,6]  =  50.0 #10 + 80.0      # psi
+    Q_ls[6,6]  =  10.0 #10 + 80.0      # psi
     
     Q_hs[7,7]  =  1.0 # psiDot
     Q_ls[7,7]  =  0.01 # psiDot
     
     R_hs = eye(7)
     R_ls = eye(7)
-    R_hs[0,0]  = 10.0 # 10 + 40.0      # x
-    R_ls[0,0]  = 40.0 # 10 + 40.0      # x
+    R_hs[0,0]  = 1.0 # 10 + 40.0      # x
+    R_ls[0,0]  = 1.0 # 10 + 40.0      # x
 
-    R_hs[1,1]  = 10.0 #10 + 40.0      # y
-    R_ls[1,1]  = 40.0 #10 + 40.0      # y
+    R_hs[1,1]  = 1.0 #10 + 40.0      # y
+    R_ls[1,1]  = 1.0 #10 + 40.0      # y
 
-    R_hs[2,2]  = 1.0 # 0.1      # vx
-    R_ls[2,2]  = 0.1 # 0.1      # vx
+    R_hs[2,2]  = 0.01 # 0.1      # vx
+    R_ls[2,2]  = 0.01 # 0.1      # vx
 
     R_hs[3,3]  = 10.0 #30 + 10.0      # ax 
     R_ls[3,3]  = 10.0 #30 + 10.0      # ax 
@@ -99,9 +99,28 @@ def main():
     R_hs[6,6]  = 0.01 # 0.01    # vy
     R_ls[6,6]  = 0.01 # 0.01    # vy
 
-    thReset_hs      = 0.1      # 0.4
-    vSwitch_hs      = 1.3      # 1.0
-    psiSwitch_hs    = 1.2      # 0.5 * 2.0
+    thReset_hs      = 0.5      # 0.4
+    vSwitch_hs      = 5.3      # 1.0
+    psiSwitch_hs    = 1.0      # 0.5 * 2.0
+
+    # # Original Shuqi's tuning
+    # Q_ls = eye(8)
+    # Q_ls[0,0] = 0.001**2     # Q_x
+    # Q_ls[1,1] = 0.001**2     # Q_y
+    # Q_ls[2,2] = 0.01**2  # Q_vx
+    # Q_ls[3,3] = 0.001**2     # Q_vy
+    # Q_ls[4,4] = 0.1**2   # Q_ax
+    # Q_ls[5,5] = 0.1**2   # Q_ay
+    # Q_ls[6,6] = 0.001**2    # Q_psi
+    # Q_ls[7,7] = 0.001**2   # Q_psiDot
+    # R_ls = eye(7)
+    # R_ls[0,0] = 0.01**2  # R_x
+    # R_ls[1,1] = 0.01**2  # R_y
+    # R_ls[2,2] = 0.01**2    # R_vx
+    # R_ls[3,3] = 0.016        # R_ax
+    # R_ls[4,4] = 0.024        # R_ay
+    # R_ls[5,5] = 2.475e-6     # R_psiDot
+    # R_ls[6,6] = 0.001**2  # R_vy
 
     # Q[8,8] = 0.0 # psiDot in the model
     R_noVyEstNew = eye(7)
@@ -163,17 +182,18 @@ def main():
 
 
     # est = EstimatorNoVy(0.0,loop_rate,a_delay,df_delay,Q_noVy,R_noVy, thReset_noVy)  # red
+
+    # pdb.set_trace()
+    Qindex = [0, 1, 2, 3, 6]
+    Rindex = [0, 1, 2, 6]
+
+    est = EstimatorInputs(0.0,loop_rate,a_delay,df_delay,
+                            Q_hs[np.ix_(Qindex,Qindex)],Q_ls[np.ix_(Qindex,Qindex)],
+                            R_hs[np.ix_(Rindex,Rindex)],R_ls[np.ix_(Rindex,Rindex)],
+                            thReset_hs,vSwitch_hs,psiSwitch_hs)
+
     Qindex = [0, 1, 2, 3, 4, 5, 6]
     Rindex = [0, 1, 2, 3, 4, 6]
-
-    print Q_hs[Qindex,Qindex]
-    print R_ls[Rindex,Rindex]
-
-    pdb.set_trace()
-    est = EstimatorMultiRate(0.0,loop_rate,a_delay,df_delay,
-                            Q_hs,Q_ls,
-                            R_hs,R_ls,
-                            thReset_hs,vSwitch_hs,psiSwitch_hs)
 
     est_new1 = EstimatorPsiInput(0.0,loop_rate,a_delay,df_delay,
                             Q_hs[np.ix_(Qindex,Qindex)],Q_ls[np.ix_(Qindex,Qindex)],
@@ -254,7 +274,7 @@ def main():
     plt.show()
 
     flagHalfLap = False
-    plotDebug = False
+    plotDebug = True
 
 
     if plotDebug == True:
@@ -452,12 +472,10 @@ def main():
     plt.plot(range(0,len(est_new.psiDot_est_his)), est_new.psiDot_est_his, '-ob')
     plt.plot(range(0,len(est_new1.psiDot_est_his)), est_new1.psiDot_est_his, '--og')
 
-    plt.show()
-
-    xmin = 2600 #2000 #0
-    xmax = 2700 #2660 #len(est.vx_est_his)
-    # xmin = 0
-    # xmax = len(est.vx_est_his)
+    xmin = 10100 #2000 #0
+    xmax = 10300 #2660 #len(est.vx_est_his)
+    xmin = 0
+    xmax = len(est.vx_est_his)
 
     fig = plotTrack(map)
     # plt.plot(x_est_his[xmin:xmax],y_est_his[xmin:xmax],"--ob")
@@ -503,11 +521,11 @@ def main():
     plt.figure(12)
     axes = plt.gca()
     if onVec[0] == 1:
-        plt.plot(range(xmin,xmax), est.psiDot_est_his[xmin:xmax], '-sr', label="New Est")
+        plt.plot(range(xmin,xmax), est.psiDot_est_his[xmin:xmax], '-sr', label="Est")
     if onVec[1] == 1:
-        plt.plot(range(xmin,xmax), est_new.psiDot_est_his[xmin:xmax], '-sb', label="Clean")
+        plt.plot(range(xmin,xmax), est_new.psiDot_est_his[xmin:xmax], '-sb', label="Est_new")
     if onVec[2] == 1:
-        plt.plot(range(xmin,xmax), est_new1.psiDot_est_his[xmin:xmax], '-sg', label="With vy")
+        plt.plot(range(xmin,xmax), est_new1.psiDot_est_his[xmin:xmax], '-sg', label="Est_new1")
     plt.plot(range(xmin,xmax), psiDot_est_his[xmin:xmax], '--sk', label="Est")
     plt.plot(range(xmin,xmax), inp_psiDot_his[xmin:xmax], '--sy', label="Meas")
     axes.set_xlim([xmin,xmax])
@@ -517,11 +535,11 @@ def main():
     plt.figure(13)
     axes = plt.gca()
     if onVec[0] == 1:
-        plt.plot(range(xmin,xmax), est.yaw_est_his[xmin:xmax], '-or', label="New Est")
+        plt.plot(range(xmin,xmax), est.yaw_est_his[xmin:xmax], '-or', label="Est")
     if onVec[1] == 1:
-        plt.plot(range(xmin,xmax), est_new.yaw_est_his[xmin:xmax], '-sb', label="Clean")
+        plt.plot(range(xmin,xmax), est_new.yaw_est_his[xmin:xmax], '-sb', label="Est_new")
     if onVec[2] == 1:
-        plt.plot(range(xmin,xmax), est_new1.yaw_est_his[xmin:xmax], '--og', label="With vy")
+        plt.plot(range(xmin,xmax), est_new1.yaw_est_his[xmin:xmax], '--og', label="Est_new1")
     plt.plot(range(xmin,xmax), yaw_est_his[xmin:xmax], '--sk')
     axes.set_xlim([xmin,xmax])
     axes.legend()
@@ -634,6 +652,253 @@ def _initializeFigure_xy(map, onVec):
 
     return fig, axtr, line_tr, line_tr_new, line_tr_new1, line_pred, line_SS, line_cl, line_cl_new, line_cl_new1, line_gps_cl, rec, rec_new, rec_new1, recEst
 
+class EstimatorInputs(object):
+    """ Object collecting  estimated state data
+    Attributes:
+        Estimated states:
+            1.x_est     2.y_est
+            3.vx_est    4.vy_est        5.v_est
+            6.ax_est    7.ay_est
+            8.yaw_est   9.psiDot_est    10.psiDrift_est
+        Estimated states history:
+            1.x_est_his     2.y_est_his
+            3.vx_est_his    4.vy_est_his        5.v_est_his
+            6.ax_est_his    7.ay_est_his
+            8.yaw_est_his   9.psiDot_est_his    10.psiDrift_est_his
+        Time stamp
+            1.t0 2.time_his 3.curr_time
+    Methods:
+        stateEstimate(imu,gps,enc,ecu):
+            Estimate current state from sensor data
+        ekf(y,u):
+            Extended Kalman filter
+        ukf(y,u):
+            Unscented Kalman filter
+        numerical_jac(func,x,u):
+            Calculate jacobian numerically
+        f(x,u):
+            System prediction model
+        h(x,u):
+            System measurement model
+    """
+    def __init__(self,t0,loop_rate,a_delay,df_delay,Q_hs,Q_ls,R_hs,R_ls,thReset,vSwitch,psiSwitch):
+        """ Initialization
+        Arguments:
+            t0: starting measurement time
+        """
+        dt             = 1.0 / loop_rate
+        self.Q_hs      = Q_hs
+        self.Q_ls      = Q_ls
+        self.R_hs      = R_hs
+        self.R_ls      = R_ls
+        self.thReset   = thReset
+        self.vSwitch   = vSwitch
+        self.psiSwitch = psiSwitch
+        self.P         = np.eye(np.size(Q_hs,0)) # initializationtial covariance matrix
+        self.z         = np.zeros(np.size(Q_hs,0)) # initial state mean
+        self.dt        = dt
+        self.a_delay        = a_delay
+        self.df_delay       = df_delay
+        self.motor_his      = [0.0]*int(a_delay/dt)
+        self.servo_his      = [0.0]*int(df_delay/dt)
+
+        self.t0             = t0
+
+        self.x_est          = 0.0
+        self.y_est          = 0.0
+        self.vx_est         = 0.0
+        self.vy_est         = 0.0
+        self.v_est          = 0.0
+        self.ax_est         = 0.0
+        self.ay_est         = 0.0
+        self.yaw_est        = 0.0
+        self.psiDot_est     = 0.0
+        self.psiDot_drift_est = 0.0
+        self.curr_time      = 0.0- self.t0
+
+        self.x_est_his          = []
+        self.y_est_his          = []
+        self.vx_est_his         = []
+        self.vy_est_his         = []
+        self.v_est_his          = []
+        self.ax_est_his         = []
+        self.ay_est_his         = []
+        self.yaw_est_his        = []
+        self.psiDot_est_his     = []
+        self.time_his           = []
+
+        # SAVE THE measurement/input SEQUENCE USED BY KF
+        self.x_his      = []
+        self.y_his      = []
+        self.v_meas_his = []
+        self.vy_meas_his= []
+        self.ax_his     = []
+        self.ay_his     = []
+        self.psiDot_his = []
+        self.inp_a_his      = []
+        self.inp_df_his     = []
+        # COUNTERS FOR PACKAGE LOST
+        self.pkg_count    = 0
+        self.x_count      = 0
+        self.y_count      = 0
+        self.v_meas_count = 0
+        self.ax_count     = 0
+        self.ay_count     = 0
+        self.psiDot_count = 0
+
+        self.gps_time = []
+        self.enc_time = []
+        self.imu_time = []
+
+    # ecu command update
+    def estimateState(self,imu,gps,enc,ecu,KF):
+        """Do extended Kalman filter to estimate states"""
+        self.curr_time = 0.0 - self.t0
+
+        self.motor_his.append(ecu.a)
+        self.servo_his.append(ecu.df)
+        u = [self.motor_his.pop(0), self.servo_his.pop(0), imu.psiDot, imu.ax, imu.ay]
+        
+        y = np.array([gps.x, gps.y, enc.v_meas, 0.5*u[1]*enc.v_meas])
+        
+        KF(y,u)
+
+        # SAVE THE measurement/input SEQUENCE USED BY KF
+        self.x_his.append(y[0])
+        self.y_his.append(y[1])
+        self.v_meas_his.append(y[2])
+        self.vy_meas_his.append(y[3])
+        self.inp_a_his.append(u[0])
+        self.inp_df_his.append(u[1])
+        self.psiDot_his.append(u[2])
+        self.ax_his.append(u[3])
+        self.ay_his.append(u[4])
+
+    def ekf(self, y, u):
+        
+        idx = []
+        if u[0]!=0: # start the package loss counting when the car start moving
+            if self.x_his[-1] == y[0] and self.y_his[-1] == y[1]:
+                # MultiRate for gps
+                idx.append(0)
+                idx.append(1)
+                self.x_count += 1
+                self.y_count += 1
+            if self.v_meas_his[-1] == y[2]:
+                # MultiRate for encoder
+                self.v_meas_count += 1
+                idx.append(2)
+                idx.append(3)
+            if self.ax_his[-1] == u[3]:
+                self.ax_count += 1
+            if self.ay_his[-1] == u[4]:
+                self.ay_count += 1
+            if self.psiDot_his[-1] == u[2]:
+                self.psiDot_count += 1
+            self.pkg_count += 1
+
+        # Decide is vy is used in the filter
+        if (abs(y[2]) > self.vSwitch or abs(u[2]) > self.psiSwitch): # Vy reset 
+            idx.append(3)
+            Q = self.Q_hs
+            R = self.R_hs
+            self.flagVy = False
+        else:
+            Q = self.Q_ls
+            R = self.R_ls
+            self.flagVy = True
+
+        # Decide if vy has to be set to zero
+        if abs(u[2]) < self.thReset: # was 0.4
+            self.vy_est = 0.0
+            self.z[3]   = 0.0
+
+        # Now do multirate KF
+        # Prediction Step
+        xDim    = self.z.size                               # dimension of the state
+        mx_kp1  = self.f(self.z, u)                         # predict next state
+        A       = self.numerical_jac(self.f, self.z, u)     # linearize process model about current state
+        P_kp1   = dot(dot(A,self.P),A.T) + Q                # proprogate variance
+        my_kp1  = self.h(mx_kp1, u)                         # predict future output
+        H       = self.numerical_jac(self.h, mx_kp1, u)     # linearize measurement model about predicted next state
+
+        # Measurement Update   
+        H      = np.delete(H,(idx),axis=0)
+        R      = np.delete(R,(idx),axis=0)
+        R      = np.delete(R,(idx),axis=1)
+        y      = np.delete(y,(idx),axis=0)
+        my_kp1 = np.delete(my_kp1,(idx),axis=0)
+
+        if y != []:      
+            P12    = dot(P_kp1, H.T)                      # cross covariance
+            K      = dot(P12, inv( dot(H,P12) + R))       # Kalman filter gain
+            
+            self.z = mx_kp1 + dot(K,(y - my_kp1))
+            self.P = dot(dot(K,R),K.T) + dot( dot( (eye(xDim) - dot(K,H)) , P_kp1)  ,  (eye(xDim) - dot(K,H)).T )
+        else:
+            self.z = mx_kp1
+            self.P = P_kp1
+
+        (self.x_est, self.y_est, self.vx_est, self.vy_est, self.yaw_est) = self.z
+        self.psiDot_est     = u[2]
+        self.ax_est         = u[3]
+        self.ay_est         = u[4]
+
+
+    def numerical_jac(self,func,x,u):
+        """
+        Function to compute the numerical jacobian of a vector valued function 
+        using final differences
+        """
+        # numerical gradient and diagonal hessian
+        y = func(x,u)
+        
+        jac = zeros( (y.size,x.size) )
+        eps = 1e-5
+        xp = np.copy(x)
+        
+        for i in range(x.size):
+            xp[i] = x[i] + eps/2.0
+            yhi = func(xp, u)
+            xp[i] = x[i] - eps/2.0
+            ylo = func(xp, u)
+            xp[i] = x[i]
+            jac[:,i] = (yhi - ylo) / eps
+        return jac
+
+    def f(self, z, u):
+        """ This Sensor model contains a pure Sensor-Model and a Kinematic model. They're independent from each other."""
+        dt = self.dt
+        zNext = [0]*5
+        zNext[0] = z[0] + dt*(cos(z[4])*z[2] - sin(z[4])*z[3])  # x
+        zNext[1] = z[1] + dt*(sin(z[4])*z[2] + cos(z[4])*z[3])  # y
+        zNext[2] = z[2] + dt*(u[3]+u[2]*z[3])                   # v_x
+        zNext[3] = z[3] + dt*(u[4]-u[2]*z[2])                   # v_y
+        zNext[4] = z[4] + dt*(u[2])                             # psi
+        return np.array(zNext)
+
+    def h(self, x, u):
+        """ This is the measurement model to the kinematic<->sensor model above """
+        y = [0]*4
+        y[0] = x[0]      # x
+        y[1] = x[1]      # y
+        y[2] = x[2]      # vx
+        y[3] = x[3]      # vy
+        # y[7] = x[6]+x[8] # psi_meas
+        return np.array(y)
+
+    def saveHistory(self):
+        self.time_his.append(self.curr_time)
+
+        self.x_est_his.append(self.x_est)
+        self.y_est_his.append(self.y_est)
+        self.vx_est_his.append(self.vx_est)
+        self.vy_est_his.append(self.vy_est)
+        self.v_est_his.append(self.v_est)
+        self.ax_est_his.append(self.ax_est)
+        self.ay_est_his.append(self.ay_est)
+        self.yaw_est_his.append(self.yaw_est)
+        self.psiDot_est_his.append(self.psiDot_est)
 
 class EstimatorMultiRate(object):
     """ Object collecting  estimated state data
@@ -1018,7 +1283,7 @@ class EstimatorPsiInput(object):
                 # MultiRate for encoder
                 self.v_meas_count += 1
                 idx.append(2)
-                idx.append(6)
+                idx.append(5)
             if self.ax_his[-1] == y[3]:
                 self.ax_count += 1
             if self.ay_his[-1] == y[4]:
@@ -1029,7 +1294,7 @@ class EstimatorPsiInput(object):
 
         # Decide is vy is used in the filter
         if (abs(y[2]) > self.vSwitch or abs(u[2]) > self.psiSwitch): # Vy reset 
-            idx.append(6)
+            idx.append(5)
             Q = self.Q_hs
             R = self.R_hs
             self.flagVy = False

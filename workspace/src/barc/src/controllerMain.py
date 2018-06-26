@@ -52,13 +52,15 @@ def main():
     ClosedLoopData = ClosedLoopDataObj(0.1, 6000, 0)         # Closed-Loop Data
     estimatorData  = EstimatorData()
     map = Map()                                              # Map
+
+    print "Track Length: ", map.TrackLength 
     
     # Choose Controller and Number of Laps
     InputDelay = 1 # 0 for no delay, 1 for 1 step delay, 2 for 2 steps delay
 
     PickController = "LMPC"
     NumberOfLaps   = 30
-    vt = 1.1
+    vt = 1.2
     PathFollowingLaps = 2
     
     if mode == "simulations":
@@ -298,11 +300,19 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
         numSS_Points = 42 + N         # Number of points to select from each trajectory to build the safe set
         shift = N / 2                     # Given the closed point, x_t^j, to the x(t) select the SS points from x_{t+shift}^j
         # Tuning Parameters
-        Qslack  = 0.1 * 5 * np.diag([10, 0.1, 1, 0.1, 10, 1])          # Cost on the slack variable for the terminal constraint
-        Qlane   = 0.5 * 10 * np.array([50, 0]) # Quadratic and linear slack lane cost
-        Q_LMPC  =  0 * np.diag([0.0, 0.0, 10.0, 0.0, 0.0, 0.0])  # State cost x = [vx, vy, wz, epsi, s, ey]
-        R_LMPC  =  0 * np.diag([1.0, 1.0])                      # Input cost u = [delta, a]
-        dR_LMPC =  1 * np.array([ 5 * 0.5 * 10.0, 8 * 20.0])                     # Input rate cost u
+        if mode == "simulations":
+            Qslack  = 5 * np.diag([10, 0.1, 1, 0.1, 10, 1])          # Cost on the slack variable for the terminal constraint
+            Qlane   = 0.1 * 0.5 * 10 * np.array([50]) # Quadratic slack lane cost
+            Q_LMPC  =  0 * np.diag([0.0, 0.0, 10.0, 0.0, 0.0, 0.0])  # State cost x = [vx, vy, wz, epsi, s, ey]
+            R_LMPC  =  0 * np.diag([1.0, 1.0])                      # Input cost u = [delta, a]
+            dR_LMPC =  1 * np.array([ 5 * 0.5 * 10.0, 8 * 20.0])                     # Input rate cost u
+        else:
+            Qslack  = 0.1 * 5 * np.diag([10, 0.1, 1, 0.1, 10, 1])          # Cost on the slack variable for the terminal constraint
+            Qlane   = 0.5 * 10 * np.array([50]) # Quadratic slack lane cost
+            Q_LMPC  =  0 * np.diag([0.0, 0.0, 10.0, 0.0, 0.0, 0.0])  # State cost x = [vx, vy, wz, epsi, s, ey]
+            R_LMPC  =  0 * np.diag([1.0, 1.0])                      # Input cost u = [delta, a]
+            dR_LMPC =  1 * np.array([ 5 * 0.5 * 10.0, 8 * 20.0])                     # Input rate cost u
+        
         Controller = ControllerLMPC(numSS_Points, numSS_it, N, Qslack, Qlane, Q_LMPC, R_LMPC, dR_LMPC, 6, 2, shift, 
                                         dt, map, Laps, TimeLMPC, LMPC_Solver, SysID_Solver, flag_LTV)
         # Controller.addTrajectory(ClosedLoopDataPID)

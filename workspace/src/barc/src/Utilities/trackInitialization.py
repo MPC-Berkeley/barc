@@ -38,10 +38,10 @@ class Map():
             self.halfWidth = 0.7 
             self.slack     = 0.45
             spec = np.array([[1.0, 0],
-                             [5.5, 5.5 / np.pi],
+                             [4.5, 4.5 / np.pi],
                              # Note s = 1 * np.pi / 2 and r = -1 ---> Angle spanned = np.pi / 2
                              [2.0, 0],
-                             [5.5, 5.5 / np.pi],
+                             [4.5, 4.5 / np.pi],
                              [1.0, 0]])
         elif selectedTrack == "circle":
             self.halfWidth = 2.0

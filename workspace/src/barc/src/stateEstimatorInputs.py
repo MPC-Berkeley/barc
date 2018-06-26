@@ -43,59 +43,48 @@ def main():
     loop_rate   = 50.0
    	
     # Tuning for estimator at high speed
-    Q_hs = eye(7)
+    Q_hs = eye(5)
     Q_hs[0,0]  =  rospy.get_param("/state_estimator/Qx_hs") # 0.5     # x
     Q_hs[1,1]  =  rospy.get_param("/state_estimator/Qy_hs") # 0.5     # y
     Q_hs[2,2]  =  rospy.get_param("/state_estimator/Qvx_hs") #10.0     # vx
     Q_hs[3,3]  =  rospy.get_param("/state_estimator/Qvy_hs") #10.0     # vy
-    Q_hs[4,4]  =  rospy.get_param("/state_estimator/Qax_hs") #1.0      # ax
-    Q_hs[5,5]  =  rospy.get_param("/state_estimator/Qay_hs") #1.0      # ay 
-    Q_hs[6,6]  =  rospy.get_param("/state_estimator/Qpsi_hs") #10 + 80.0      # psi
-    R_hs = eye(6)
+    Q_hs[4,4]  =  rospy.get_param("/state_estimator/Qpsi_hs") #10 + 80.0      # psi
+    R_hs = eye(4)
     R_hs[0,0]  = rospy.get_param("/state_estimator/Rx_hs")      # 10 + 40.0      # x
     R_hs[1,1]  = rospy.get_param("/state_estimator/Ry_hs")      #10 + 40.0      # y
     R_hs[2,2]  = rospy.get_param("/state_estimator/Rvx_hs")     # 0.1      # vx
-    R_hs[3,3]  = rospy.get_param("/state_estimator/Rax_hs")     #30 + 10.0      # ax 
-    R_hs[4,4]  = rospy.get_param("/state_estimator/Ray_hs")     #40.0      # ay 
-    R_hs[5,5]  = rospy.get_param("/state_estimator/Rvy_hs")     # 0.01    # vy
+    R_hs[3,3]  = rospy.get_param("/state_estimator/Rvy_hs")     # 0.01    # vy
 
     # Tuning for estimator at low speed
-    Q_ls = eye(7)
+    Q_ls = eye(5)
     Q_ls[0,0]  =  rospy.get_param("/state_estimator/Qx_ls") # 0.5     # x
     Q_ls[1,1]  =  rospy.get_param("/state_estimator/Qy_ls") #0.5     # y
     Q_ls[2,2]  =  rospy.get_param("/state_estimator/Qvx_ls") #10.0     # vx
     Q_ls[3,3]  =  rospy.get_param("/state_estimator/Qvy_ls") #10.0     # vy
-    Q_ls[4,4]  =  rospy.get_param("/state_estimator/Qax_ls") #1.0      # ax
-    Q_ls[5,5]  =  rospy.get_param("/state_estimator/Qay_ls") #1.0      # ay 
-    Q_ls[6,6]  =  rospy.get_param("/state_estimator/Qpsi_ls") #10 + 80.0      # psi
-    R_ls = eye(6)
+    Q_ls[4,4]  =  rospy.get_param("/state_estimator/Qpsi_ls") #10 + 80.0      # psi
+    R_ls = eye(4)
     R_ls[0,0]  = rospy.get_param("/state_estimator/Rx_ls")       # 10 + 40.0      # x
     R_ls[1,1]  = rospy.get_param("/state_estimator/Ry_ls")       # 10 + 40.0      # y
     R_ls[2,2]  = rospy.get_param("/state_estimator/Rvx_ls")      # 0.1      # vx
-    R_ls[3,3]  = rospy.get_param("/state_estimator/Rax_ls")      # 30 + 10.0      # ax 
-    R_ls[4,4]  = rospy.get_param("/state_estimator/Ray_ls")      # 40.0      # ay 
-    R_ls[5,5]  = rospy.get_param("/state_estimator/Rvy_ls")      #  0.01    # vy    
+    R_ls[3,3]  = rospy.get_param("/state_estimator/Rvy_ls")      #  0.01    # vy    
 
     thReset      = rospy.get_param("/state_estimator/thReset")       # 0.4
     vSwitch      = rospy.get_param("/state_estimator/vSwitch")       # 1.0
     psiSwitch    = rospy.get_param("/state_estimator/psiSwitch")       # 0.5 * 2.0
 
 
-    # Q = eye(7)
+    # Q = eye(5)
     # Q[0,0] = 0.001**2 	# Q_x
     # Q[1,1] = 0.001**2 	# Q_y
     # Q[2,2] = 0.01**2 	# Q_vx
     # Q[3,3] = 0.001**2 	# Q_vy
-    # Q[4,4] = 0.1**2 	# Q_ax
-    # Q[5,5] = 0.1**2 	# Q_ay
-    # Q[6,6] = 0.001**2   # Q_psi
-    # R = eye(6)
-    # R[0,0] = 10.0#**2 	# R_x
-    # R[1,1] = 10.0#**2 	# R_y
+    # Q[4,4] = 0.001**2   # Q_psi
+    # R = eye(4)
+    # R[0,0] = 0.01**2 	# R_x
+    # R[1,1] = 0.01**2 	# R_y
     # R[2,2] = 0.01**2    # R_vx
-    # R[3,3] = 0.016 	    # R_ax
-    # R[4,4] = 0.024 	    # R_ay
-    # R[5,5] = 0.001**2   # R_vy
+    # R[3,3] = 0.001**2   # R_vy
+
 
     # Q_hs = Q
     # R_ls = R
@@ -284,27 +273,27 @@ class Estimator(object):
         self.psiDot_drift_est = 0.0
         self.curr_time      = rospy.get_rostime().to_sec() - self.t0
 
-        self.x_est_his          = []
-        self.y_est_his          = []
-        self.vx_est_his         = []
-        self.vy_est_his         = []
-        self.v_est_his          = []
-        self.ax_est_his         = []
-        self.ay_est_his         = []
-        self.yaw_est_his        = []
-        self.psiDot_est_his     = []
-        self.time_his           = []
+        self.x_est_his          = [0.0]
+        self.y_est_his          = [0.0]
+        self.vx_est_his         = [0.0]
+        self.vy_est_his         = [0.0]
+        self.v_est_his          = [0.0]
+        self.ax_est_his         = [0.0]
+        self.ay_est_his         = [0.0]
+        self.yaw_est_his        = [0.0]
+        self.psiDot_est_his     = [0.0]
+        self.time_his           = [0.0]
 
         # SAVE THE measurement/input SEQUENCE USED BY KF
-        self.x_his      = []
-        self.y_his      = []
-        self.v_meas_his = []
-        self.vy_meas_his= []
-        self.ax_his     = []
-        self.ay_his     = []
-        self.psiDot_his = []
-        self.inp_a_his      = []
-        self.inp_df_his     = []
+        self.x_his      = [0.0]
+        self.y_his      = [0.0]
+        self.v_meas_his = [0.0]
+        self.vy_meas_his= [0.0]
+        self.ax_his     = [0.0]
+        self.ay_his     = [0.0]
+        self.psiDot_his = [0.0]
+        self.inp_a_his      = [0.0]
+        self.inp_df_his     = [0.0]
         # COUNTERS FOR PACKAGE LOST
         self.pkg_count    = 0
         self.x_count      = 0
@@ -325,9 +314,9 @@ class Estimator(object):
 
         self.motor_his.append(ecu.a)
         self.servo_his.append(ecu.df)
-        u = [self.motor_his.pop(0), self.servo_his.pop(0), imu.psiDot]
+        u = [self.motor_his.pop(0), self.servo_his.pop(0), imu.psiDot, imu.ax, imu.ay]
         
-        y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, 0.5*u[1]*enc.v_meas])
+        y = np.array([gps.x, gps.y, enc.v_meas, 0.5*u[1]*enc.v_meas])
         
         KF(y,u)
 
@@ -335,12 +324,12 @@ class Estimator(object):
         self.x_his.append(y[0])
         self.y_his.append(y[1])
         self.v_meas_his.append(y[2])
-        self.ax_his.append(y[3])
-        self.ay_his.append(y[4])
-        self.vy_meas_his.append(y[5])
+        self.vy_meas_his.append(y[3])
         self.inp_a_his.append(u[0])
         self.inp_df_his.append(u[1])
         self.psiDot_his.append(u[2])
+        self.ax_his.append(u[3])
+        self.ay_his.append(u[4])
 
     def ekf(self, y, u):
         
@@ -356,10 +345,10 @@ class Estimator(object):
                 # MultiRate for encoder
                 self.v_meas_count += 1
                 idx.append(2)
-                idx.append(5)
-            if self.ax_his[-1] == y[3]:
+                idx.append(3)
+            if self.ax_his[-1] == u[3]:
                 self.ax_count += 1
-            if self.ay_his[-1] == y[4]:
+            if self.ay_his[-1] == u[4]:
                 self.ay_count += 1
             if self.psiDot_his[-1] == u[2]:
                 self.psiDot_count += 1
@@ -367,7 +356,7 @@ class Estimator(object):
 
         # Decide is vy is used in the filter
         if (abs(y[2]) > self.vSwitch or abs(u[2]) > self.psiSwitch): # Vy reset 
-            idx.append(5)
+            idx.append(3)
             Q = self.Q_hs
             R = self.R_hs
             self.flagVy = False
@@ -394,15 +383,24 @@ class Estimator(object):
         H      = np.delete(H,(idx),axis=0)
         R      = np.delete(R,(idx),axis=0)
         R      = np.delete(R,(idx),axis=1)
-        y      = np.delete(y,(idx),axis=0)      
+        y      = np.delete(y,(idx),axis=0)
         my_kp1 = np.delete(my_kp1,(idx),axis=0)
-        P12    = dot(P_kp1, H.T)                      # cross covariance
-        K      = dot(P12, inv( dot(H,P12) + R))       # Kalman filter gain
-        self.z = mx_kp1 + dot(K,(y - my_kp1))
 
-        self.P = dot(dot(K,R),K.T) + dot( dot( (eye(xDim) - dot(K,H)) , P_kp1)  ,  (eye(xDim) - dot(K,H)).T )
-        (self.x_est, self.y_est, self.vx_est, self.vy_est, self.ax_est, self.ay_est, self.yaw_est) = self.z
+        if y != []:      
+            P12    = dot(P_kp1, H.T)                      # cross covariance
+            K      = dot(P12, inv( dot(H,P12) + R))       # Kalman filter gain
+            
+            self.z = mx_kp1 + dot(K,(y - my_kp1))
+            self.P = dot(dot(K,R),K.T) + dot( dot( (eye(xDim) - dot(K,H)) , P_kp1)  ,  (eye(xDim) - dot(K,H)).T )
+        else:
+            self.z = mx_kp1
+            self.P = P_kp1
+
+        (self.x_est, self.y_est, self.vx_est, self.vy_est, self.yaw_est) = self.z
         self.psiDot_est     = u[2]
+        self.ax_est         = u[3]
+        self.ay_est         = u[4]
+
 
     def numerical_jac(self,func,x,u):
         """
@@ -428,25 +426,21 @@ class Estimator(object):
     def f(self, z, u):
         """ This Sensor model contains a pure Sensor-Model and a Kinematic model. They're independent from each other."""
         dt = self.dt
-        zNext = [0]*7
-        zNext[0] = z[0] + dt*(cos(z[6])*z[2] - sin(z[6])*z[3])  # x
-        zNext[1] = z[1] + dt*(sin(z[6])*z[2] + cos(z[6])*z[3])  # y
-        zNext[2] = z[2] + dt*(z[4]+u[2]*z[3])                   # v_x
-        zNext[3] = z[3] + dt*(z[5]-u[2]*z[2])                   # v_y
-        zNext[4] = z[4]                                         # a_x
-        zNext[5] = z[5]                                         # a_y
-        zNext[6] = z[6] + dt*(u[2])                             # psi
+        zNext = [0]*5
+        zNext[0] = z[0] + dt*(cos(z[4])*z[2] - sin(z[4])*z[3])  # x
+        zNext[1] = z[1] + dt*(sin(z[4])*z[2] + cos(z[4])*z[3])  # y
+        zNext[2] = z[2] + dt*(u[3]+u[2]*z[3])                   # v_x
+        zNext[3] = z[3] + dt*(u[4]-u[2]*z[2])                   # v_y
+        zNext[4] = z[4] + dt*(u[2])                             # psi
         return np.array(zNext)
 
     def h(self, x, u):
         """ This is the measurement model to the kinematic<->sensor model above """
-        y = [0]*6
+        y = [0]*4
         y[0] = x[0]      # x
         y[1] = x[1]      # y
         y[2] = x[2]      # vx
-        y[3] = x[4]      # a_x
-        y[4] = x[5]      # a_y
-        y[5] = x[3]      # vy
+        y[3] = x[3]      # vy
         # y[7] = x[6]+x[8] # psi_meas
         return np.array(y)
 

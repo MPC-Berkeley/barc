@@ -30,6 +30,8 @@ class low_level_control(object):
     str_ang_min = -35
     ecu_pub = 0
     ecu_cmd = ECU()
+    sel_car = rospy.get_param("/low_level_controller/car")
+
     def pwm_converter_callback(self, msg):
         # translate from SI units in vehicle model
         # to pwm angle units (i.e. to send command signal to actuators)
@@ -42,7 +44,10 @@ class low_level_control(object):
         #     self.servo_pwm = 95.5 + 118.8*float(msg.servo)
         # elif msg.servo > 0.0:       # left curve
         #     self.servo_pwm = 90.8 + 78.9*float(msg.servo)
-        self.servo_pwm = 83.3 + 103.1*float(msg.servo)
+        if self.sel_car == "OldBARC":
+            self.servo_pwm = 81.4 + 89.1*float(msg.servo)
+        elif self.sel_car == "NewBARC":
+            self.servo_pwm = 83.3 + 103.1*float(msg.servo)
 
         # compute motor command
         FxR = float(msg.motor)

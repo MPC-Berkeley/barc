@@ -43,8 +43,8 @@
     <!--DYNAMIC OBSERVER-->  
     <!--<node pkg="barc" type="stateEstimatorClean.py" name="state_estimator" output="screen">-->
     <!--<node pkg="barc" type="stateEstimatorMultiRate.py" name="state_estimator" output="screen">-->
-    <!--<node pkg="barc" type="stateEstimatorPsiInput.py" name="state_estimator" output="screen">-->
-    <node pkg="barc" type="stateEstimatorInputs.py" name="state_estimator" output="screen">
+    <node pkg="barc" type="stateEstimatorPsiInput.py" name="state_estimator" output="screen">
+    <!--<node pkg="barc" type="stateEstimatorInputs.py" name="state_estimator" output="screen">-->
     <!-- delay in state estuiamtor -->
         <param name="delay_df" type="double" value="0.0" />
         <param name="delay_a" type="double" value="0.0" />
