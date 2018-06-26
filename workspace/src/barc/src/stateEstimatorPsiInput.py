@@ -341,7 +341,10 @@ class Estimator(object):
         self.inp_a_his.append(u[0])
         self.inp_df_his.append(u[1])
         self.psiDot_his.append(u[2])
-
+        
+        self.gps_time.append(gps.curr_time)
+        self.imu_time.append(imu.curr_time)
+        self.enc_time.append(enc.curr_time)
     def ekf(self, y, u):
         
         idx = []
