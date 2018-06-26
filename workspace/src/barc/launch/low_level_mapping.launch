@@ -18,8 +18,8 @@
 
     <!-- LOW LEVEL CONTROLLER -->
     <node machine="ubuntu-pc" pkg="barc" type="controller_low_level_lukas.py" name="low_level_controller" output="screen" >
-        <param name="mode" type="str" value="corner_stiffness" />
-        <!-- <param name="mode" type="str" value="steering" /> -->
+        <!-- <param name="mode" type="str" value="corner_stiffness" /> -->
+        <param name="mode" type="str" value="steering" />
 
         <param name="acceleration" type="double" value="2.0" />
         <param name="steering" type="double" value="0.15" />

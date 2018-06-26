@@ -52,7 +52,7 @@
         <param name="index" type="int" value="2" />
         <param name="color" type="str" value="blue" />
         <param name="mass" type="double" value="1.98" />
-        <param name="time_offset" type="double" value="3.0" />
+        <param name="time_offset" type="double" value="7.5" />
         <param name="delay_a" type="int" value="1" />
         <param name="delay_df" type="int" value="1" />
         <param name="sim" type="str" value="simulation" />

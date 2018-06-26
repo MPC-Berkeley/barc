@@ -96,9 +96,14 @@ function main()
     # modelParams.m   = copy(get_param("m"))
     # modelParams.I_z = copy(get_param("I_z"))
 
+    node_name = get_name()
+    if node_name[end] == "2"
+        modelParams.m   = 1.75
+    else
+        modelParams.m   = 1.98
+    end
     modelParams.l_A = 0.125
     modelParams.l_B = 0.125
-    modelParams.m   = 1.98
     modelParams.I_z = 0.03#0.24             # using homogenous distributed mass over a cuboid
 
     println("Publishing sensor information. Simulator running.")

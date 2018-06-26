@@ -257,7 +257,7 @@ type MpcModel_convhull
 
         ey_max      = track.width / 2           # bound for the state ey (distance from the center track). It is set as half of the width of the track for obvious reasons
         # n_poly_curv = trackCoeff.nPolyCurvature    # polynomial degree for curvature approximation
-        v_max       = 1.7                            # maximum allowed velocity
+        # v_max       = 1.7                            # maximum allowed velocity
 
         delay_a = agent.delay_a
         delay_df = agent.delay_df
@@ -592,7 +592,12 @@ type MpcModel_obstacle
 
         ey_max      = track.width / 2           # bound for the state ey (distance from the center track). It is set as half of the width of the track for obvious reasons
         # n_poly_curv = trackCoeff.nPolyCurvature    # polynomial degree for curvature approximation
-        v_max       = 1.5                            # maximum allowed velocity
+        if agent.index == 2
+            v_max       = 1.5                            # maximum allowed velocity
+        else 
+            v_max = 100.0
+        end
+
         delay_a = agent.delay_a
         delay_df = agent.delay_df
 
@@ -686,7 +691,7 @@ type MpcModel_obstacle
 
         @NLconstraint(mdl, [i = 2 : N + 1], z_Ol[i, 5] <= ey_max + eps_lane[i])
         @NLconstraint(mdl, [i = 2 : N + 1], z_Ol[i, 5] >= - ey_max - eps_lane[i])
-        @NLconstraint(mdl,[i = 1:(N+1)], z_Ol[i,4] <= v_max + eps_vel[i] )  # soft constraint on maximum velocity
+        @NLconstraint(mdl,[i = 1:(N+1)], z_Ol[i,1] <= v_max + eps_vel[i] )  # soft constraint on maximum velocity
         @NLconstraint(mdl, sum{alpha[i], i = 1 : num_considered_states} == 1)  # constraint on the coefficients of the convex hull
 
         

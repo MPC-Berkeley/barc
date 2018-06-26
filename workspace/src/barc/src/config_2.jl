@@ -30,14 +30,14 @@ if MODE == "path_following"
 elseif MODE == "learning"
 	const NUM_PF_LAPS = 1
 	const LEARNING = true
-	const NUM_LAPS = 10 # 30
+	const NUM_LAPS = 30
 	const NUM_LOADED_LAPS = 5
 elseif MODE == "racing"
 	const NUM_PF_LAPS = 1
 	const LEARNING = true
-	const NUM_LAPS = 10
-	const NUM_LOADED_LAPS = 5 + 10
-	# const NUM_LOADED_LAPS = 5 + 30 + 30 + 30
+	const NUM_LAPS = 30
+	# const NUM_LOADED_LAPS = 5 + 10
+	const NUM_LOADED_LAPS = 5 + 30 + 30 + 30
 
 	# const NUM_LOADED_LAPS = 5
 end
@@ -60,8 +60,8 @@ const INIT_STATES = [0.0 0.0 0.0 0.0 0.0 0.0]
 const V_MAX = [2.0; 2.5]
 const COLOR = ["red"; "blue"]
 # const TRACK_NAME = "track_3"
-const TRACK_NAME = "oval"
-# const TRACK_NAME = "l_shape"
+# const TRACK_NAME = "oval"
+const TRACK_NAME = "l_shape"
 const TRACK_WIDTH = 1.2
 const TRACK_DIR = "/home/lukas/tracks/"
 const POLYNOMIAL_CURVATURE = false

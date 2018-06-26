@@ -262,6 +262,8 @@ function race_lap!(agent::Agent, optimizer::Optimizer,
 			agent.states_s[current_iteration, 1] = - (track.total_length - agent.states_s[current_iteration, 1])
 		end
 
+		println("Velocity: ", agent.states_s[current_iteration, 5])
+
 		publish_inputs(optimizer, input_pub, agent)
 		# Convert and send the calculated steering commands
 		pwm_converter!(low_level_controller, agent.current_input[1], 

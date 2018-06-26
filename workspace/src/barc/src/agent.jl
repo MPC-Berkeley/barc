@@ -209,17 +209,17 @@ function init!(agent::Agent, index::Int64, track::Track,
 								   INITIALIZATION_TYPE))
 		filename_center = ascii(get_most_recent(node_name[2 : end], "lmpc", 
 								   		  "center"))
-		# filename_inner = ascii(get_most_recent(node_name[2 : end], "lmpc", 
-		# 						   		 "inner"))
-		# filename_outer = ascii(get_most_recent(node_name[2 : end], "lmpc", 
-		# 						   		 "outer"))
+		filename_inner = ascii(get_most_recent(node_name[2 : end], "lmpc", 
+								   		 "inner"))
+		filename_outer = ascii(get_most_recent(node_name[2 : end], "lmpc", 
+								   		 "outer"))
 		println("LOADING: ", filename)
 		println("LOADING: ", filename_center)
-		# println("LOADING: ", filename_inner)
-		# println("LOADING: ", filename_outer)
+		println("LOADING: ", filename_inner)
+		println("LOADING: ", filename_outer)
 
-        files = [filename; filename_center]
-		# files = [filename; filename_center; filename_inner; filename_outer]
+        # files = [filename; filename_center]
+		files = [filename; filename_center; filename_inner; filename_outer]
 		load_trajectories!(agent, files)
 	end
 
@@ -425,8 +425,6 @@ function load_trajectories!(agent::Agent, filenames::Array{ASCIIString})
 	println(agent.not_for_dynamics)
 	# NUM_LOADED_LAPS = num_previously_loaded
 	agent.num_loaded_laps = num_previously_loaded
-
-    exit()
  end
 
 
@@ -492,7 +490,7 @@ function select_states(agent::Agent, track::Track)
 			needed_iteration_array[i] = needed_iterations + Int64(ceil(2 * agent.dt * agent.v_max))
 		end
 
-        println("needed_iterations: ", needed_iterations)
+        # println("needed_iterations: ", needed_iterations)
         if needed_iterations == 0
             continue
         end
@@ -516,12 +514,13 @@ function select_states(agent::Agent, track::Track)
 		recorded_vel_ahead = sqrt(agent.trajectories_s[i, index_closest_state + horizon, 5]^2 +
 								  agent.trajectories_s[i, index_closest_state + horizon, 6]^2)
 		
-        if MODE == "racing"
-            v_max = 1.5
-            if any(agent.trajectories_s[i, index_closest_state + (0 : horizon - 1), 5] .> v_max)
-                continue
-            end
-        end
+		
+        # if MODE == "racing"
+        #     v_max = 1.5
+        #     if any(agent.trajectories_s[i, index_closest_state + (0 : horizon - 1), 5] .> v_max)
+        #         continue
+        #     end
+        # end
 
 		if current_vel - max_diff_vel <= recorded_vel_ahead && current_vel + 
 			max_diff_vel >= recorded_vel_ahead
@@ -769,10 +768,10 @@ function select_states_smartly(agent::Agent, adv_e_y::Float64, adv_s::Array{Floa
 		recorded_vel_ahead = sqrt(agent.trajectories_s[i, index_closest_state + horizon, 5]^2 +
 								  agent.trajectories_s[i, index_closest_state + horizon, 6]^2)
 
-        v_max = 1.5
-        if any(agent.trajectories_s[i, index_closest_state + (0 : horizon - 1), 5] .> v_max)
-            continue
-        end
+        # v_max = 1.5
+        # if any(agent.trajectories_s[i, index_closest_state + (0 : horizon - 1), 5] .> v_max)
+        #     continue
+        # end
 
 		if current_vel - max_diff_vel <= recorded_vel_ahead && current_vel + 
 			max_diff_vel >= recorded_vel_ahead
@@ -1106,7 +1105,6 @@ function determine_needed_iterations!(agent::Agent, indeces)
     println(agent.iterations_needed)
 
 	for i = indeces
-        println(sumabs(agent.trajectories_s[i, :, :], 1))
 		agent.iterations_needed[i] = findmin(sumabs(agent.trajectories_s[i, :, :], (1, 3)))[2] - 1 - 2 * num_buffer
 		# No data has been appended to the last lap yet.
 		if i == indeces[end]
@@ -1120,9 +1118,6 @@ function determine_needed_iterations!(agent::Agent, indeces)
 			end
 		end
 	end
-
-    println(agent.iterations_needed)
-    exit()
 end
 
 function determine_needed_iterations!(agent::Agent)
