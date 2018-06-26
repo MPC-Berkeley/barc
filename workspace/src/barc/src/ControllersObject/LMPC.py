@@ -63,6 +63,8 @@ class ControllerLMPC():
         self.MaxNumPoint = 40
         self.itUsedSysID = 2
 
+        self.lapSelected = []
+
         # Initialize the following quantities to avoid dynamic allocation
         NumPoints = int(TimeLMPC / dt) + 1
         self.TimeSS      = -10000 * np.ones(Laps).astype(int)        # Time at which each j-th iteration is completed
@@ -116,7 +118,7 @@ class ControllerLMPC():
         # Select Points from SS
 #        print self.Qfun[0, 0:it], np.argsort(self.Qfun[0, 0:it])[0:self.numSS_it]
         sortedLapTime = np.argsort(self.Qfun[0, 0:it])
-
+        self.lapSelected = sortedLapTime
         SS_PointSelectedTot      = np.empty((n, 0))
         SS_glob_PointSelectedTot = np.empty((n, 0))
         Qfun_SelectedTot         = np.empty((0))
@@ -366,8 +368,9 @@ def _LMPC_BuildMatCost(LMPC, Sel_Qfun, numSS_Points, N, Qslack, Q, R, dR, uOld):
     q0[n*(N+1):n*(N+1)+2] = -2 * np.dot( uOld, np.diag(dR) )
 
     # np.savetxt('q0.csv', q0, delimiter=',', fmt='%f')
-    q = np.append(np.append(np.append(q0, Sel_Qfun), np.zeros(Q.shape[0])), np.zeros(2*LMPC.N))
+    linLaneSlack = Qlane[1] * np.ones(2*LMPC.N)
 
+    q = np.append(np.append(np.append(q0, Sel_Qfun), np.zeros(Q.shape[0])), linLaneSlack)
     # np.savetxt('q.csv', q, delimiter=',', fmt='%f')
 
     M = 2 * M0  # Need to multiply by two because CVX considers 1/2 in front of quadratic cost
@@ -439,20 +442,28 @@ def _LMPC_BuildMatIneqConst(LMPC):
         colIndexPositive.append( i*2 + 0 )
         colIndexNegative.append( i*2 + 1 )
 
-        rowIndexPositive.append(i*Fx.shape[0] + 0) # Slack on second element of Fx
-        rowIndexNegative.append(i*Fx.shape[0] + 1) # Slack on third element of Fx
+        rowIndexPositive.append(i*Fx.shape[0] + 0) # Slack on first element of Fx
+        rowIndexNegative.append(i*Fx.shape[0] + 1) # Slack on second element of Fx
     
-    LaneSlack[rowIndexPositive, colIndexPositive] =  1.0
+    LaneSlack[rowIndexPositive, colIndexPositive] = -1.0
     LaneSlack[rowIndexNegative, rowIndexNegative] = -1.0
 
-    F = np.hstack((F_hard, LaneSlack))
+    F_1 = np.hstack((F_hard, LaneSlack))
+
+    I = - np.eye(2*N)
+    Zeros = np.zeros((2*N, F_hard.shape[1]))
+    Positivity = np.hstack((Zeros, I))
+
+    F = np.vstack((F_1, Positivity))
+
     # np.savetxt('F.csv', F, delimiter=',', fmt='%f')
     # pdb.set_trace()
 
 
 
-    # np.savetxt('F.csv', F, delimiter=',', fmt='%f')
-    b = np.hstack((bxtot, butot, np.zeros(numSS_Points)))
+    b_1 = np.hstack((bxtot, butot, np.zeros(numSS_Points)))
+    b = np.hstack((b_1, np.zeros(2*N)))
+
     if LMPC.Solver == "CVX":
         F_sparse = spmatrix(F[np.nonzero(F)], np.nonzero(F)[0].astype(int), np.nonzero(F)[1].astype(int), F.shape)
         F_return = F_sparse
@@ -615,7 +626,12 @@ def _LMPC_GetPred(Solution,n,d,N, np):
     xPred = np.squeeze(np.transpose(np.reshape((Solution[np.arange(n*(N+1))]),(N+1,n))))
     uPred = np.squeeze(np.transpose(np.reshape((Solution[n*(N+1)+np.arange(d*N)]),(N, d))))
     lambd = Solution[n*(N+1)+d*N:Solution.shape[0]-n]
-    slack = Solution[Solution.shape[0]-n:]
+    slack = Solution[Solution.shape[0]-n-2*N:]
+    laneSlack = Solution[Solution.shape[0]-2*N:]
+    # if np.sum(np.abs(laneSlack))>0.5:
+    #     print laneSlack
+    #     print xPred
+
     return xPred, uPred, lambd, slack
 
 # ======================================================================================================================

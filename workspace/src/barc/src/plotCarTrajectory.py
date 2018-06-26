@@ -33,7 +33,7 @@ def main():
     mode = rospy.get_param("/control/mode")
     plotGPS = rospy.get_param("/visualization/plotGPS")
     vSwitch      = rospy.get_param("/state_estimator/vSwitch")       # 1.0
-    psiSwitch    = rospy.get_param("/state_estimator/vSwitch")       # 0.5 * 2.0
+    psiSwitch    = rospy.get_param("/state_estimator/psiSwitch")       # 0.5 * 2.0
 
     data = EstimationAndMesuredData(mode, plotGPS)        
 

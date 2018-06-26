@@ -118,6 +118,9 @@ def main():
 
             print "Lap completed starting lap:", LapNumber, ". Lap time: ", float(TimeCounter)/loop_rate
             if PickController == "LMPC":
+                # if Controller.lapSelected != []:
+                #     print "Lap Ordered: ", Controller.Qfun[0, Controller.lapSelected]
+    
                 print "Lap completed starting lap:", LapNumber, ". Lap time: ", float(Controller.LapTime)/loop_rate
                 Controller.resetTime()
 
@@ -302,16 +305,16 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
         # Tuning Parameters
         if mode == "simulations":
             Qslack  = 5 * np.diag([10, 0.1, 1, 0.1, 10, 1])          # Cost on the slack variable for the terminal constraint
-            Qlane   = 0.1 * 0.5 * 10 * np.array([50]) # Quadratic slack lane cost
+            Qlane   = 0.1 * 0.1 * 0.5 * 10 * np.array([50, 10]) # Quadratic slack lane cost
             Q_LMPC  =  0 * np.diag([0.0, 0.0, 10.0, 0.0, 0.0, 0.0])  # State cost x = [vx, vy, wz, epsi, s, ey]
             R_LMPC  =  0 * np.diag([1.0, 1.0])                      # Input cost u = [delta, a]
             dR_LMPC =  1 * np.array([ 5 * 0.5 * 10.0, 8 * 20.0])                     # Input rate cost u
         else:
             Qslack  = 0.1 * 5 * np.diag([10, 0.1, 1, 0.1, 10, 1])          # Cost on the slack variable for the terminal constraint
-            Qlane   = 0.5 * 10 * np.array([50]) # Quadratic slack lane cost
+            Qlane   = 0.1 * 0.5 * 10 * np.array([50, 10]) # Quadratic slack lane cost
             Q_LMPC  =  0 * np.diag([0.0, 0.0, 10.0, 0.0, 0.0, 0.0])  # State cost x = [vx, vy, wz, epsi, s, ey]
             R_LMPC  =  0 * np.diag([1.0, 1.0])                      # Input cost u = [delta, a]
-            dR_LMPC =  1 * np.array([ 5 * 0.5 * 10.0, 8 * 20.0])                     # Input rate cost u
+            dR_LMPC =  1 * np.array([ 2 * 5 * 0.5 * 10.0, 2 * 8 * 20.0])                     # Input rate cost u
         
         Controller = ControllerLMPC(numSS_Points, numSS_it, N, Qslack, Qlane, Q_LMPC, R_LMPC, dR_LMPC, 6, 2, shift, 
                                         dt, map, Laps, TimeLMPC, LMPC_Solver, SysID_Solver, flag_LTV)
