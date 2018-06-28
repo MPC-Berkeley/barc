@@ -40,7 +40,7 @@ def main():
     rospy.init_node("state_estimation")
     a_delay     = 0.0
     df_delay    = 0.0
-    loop_rate   = 50.0
+    loop_rate   = 100.0
    	
     # Tuning for estimator at high speed
     Q_hs = eye(7)
@@ -184,7 +184,16 @@ def main():
                       inp_psiDot_his    = est.psiDot_his,
                       inp_a_his         = est.inp_a_his,
                       inp_df_his        = est.inp_df_his,
-                      flagVy            = saved_switch)
+                      flagVy            = saved_switch,
+                      roll_his          = est.roll_his,
+                      pitch_his         = est.pitch_his,
+                      wx_his            = est.wx_his,
+                      wy_his            = est.wy_his,
+                      wz_his            = est.wz_his,
+                      v_rl_his          = est.v_rl_his,
+                      v_rr_his          = est.v_rr_his,
+                      v_fl_his          = est.v_fl_his,
+                      v_fr_his          = est.v_fr_his)
 
     pathSave = os.path.join(homedir,"barc_data/estimator_imu.npz")
     np.savez(pathSave,psiDot_his    = imu.psiDot_his,
@@ -305,6 +314,22 @@ class Estimator(object):
         self.psiDot_his = []
         self.inp_a_his      = []
         self.inp_df_his     = []
+
+        # Angular Velocities
+        self.wx_his     = []
+        self.wy_his     = []
+        self.wz_his     = []
+        
+        # Roll an pitch
+        self.roll_his   = []
+        self.pitch_his  = []
+
+        # Encored Readinds
+        self.v_rl_his   =[]
+        self.v_rr_his   =[]
+        self.v_fl_his   =[]
+        self.v_fr_his   =[]
+
         # COUNTERS FOR PACKAGE LOST
         self.pkg_count    = 0
         self.x_count      = 0
@@ -328,7 +353,19 @@ class Estimator(object):
         u = [self.motor_his.pop(0), self.servo_his.pop(0), imu.psiDot]
         
         y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, 0.5*u[1]*enc.v_meas])
+
+        # Read Measurements which are not used but must be saved
+        wx_imu    = imu.w_x
+        wy_imu    = imu.w_y
+        wz_imu    = imu.w_z
+        roll_imu  = imu.roll
+        pitch_imu = imu.pitch
         
+        v_rl_enc = enc.v_rl
+        v_rr_enc = enc.v_rr
+        v_fl_enc = enc.v_fl
+        v_fr_enc = enc.v_fr
+
         KF(y,u)
 
         # SAVE THE measurement/input SEQUENCE USED BY KF
@@ -341,6 +378,21 @@ class Estimator(object):
         self.inp_a_his.append(u[0])
         self.inp_df_his.append(u[1])
         self.psiDot_his.append(u[2])
+
+        # Angular Velocities
+        self.wx_his.append(wx_imu)
+        self.wy_his.append(wy_imu)
+        self.wz_his.append(wz_imu)
+        
+        # Roll an pitch
+        self.roll_his.append(roll_imu)
+        self.pitch_his.append(pitch_imu)
+
+        # Encored Readinds
+        self.v_rl_his.append(v_rl_enc)
+        self.v_rr_his.append(v_rr_enc)
+        self.v_fl_his.append(v_fl_enc)
+        self.v_fr_his.append(v_fr_enc)
         
         self.gps_time.append(gps.curr_time)
         self.imu_time.append(imu.curr_time)
@@ -381,7 +433,6 @@ class Estimator(object):
 
         # Decide if vy has to be set to zero
         if abs(u[2]) < self.thReset: # was 0.4
-            self.vy_est = 0.0
             self.z[3]   = 0.0
 
         # Now do multirate KF
@@ -497,6 +548,9 @@ class ImuClass(object):
         self.roll    = 0.0
         self.pitch   = 0.0
         self.yaw_raw = 0.0
+        self.w_x     = 0.0
+        self.w_y     = 0.0
+        self.w_z     = 0.0
         
         # Imu measurement history
         self.yaw_his     = [0.0]
@@ -531,14 +585,28 @@ class ImuClass(object):
         self.yaw_raw = np.unwrap([self.yaw_raw_his[-1],yaw_raw])[1]            
 
         w_z = data.angular_velocity.z
+        w_x = data.angular_velocity.x
+        w_y = data.angular_velocity.y
         a_x = data.linear_acceleration.x
         a_y = data.linear_acceleration.y
         a_z = data.linear_acceleration.z
 
-        self.psiDot = w_z
-        # Transformation from imu frame to vehicle frame (negative roll/pitch and reversed matrix multiplication to go back)
-        self.ax = cos(-pitch_raw)*a_x + sin(-pitch_raw)*sin(-roll_raw)*a_y - sin(-pitch_raw)*cos(-roll_raw)*a_z
-        self.ay = cos(-roll_raw)*a_y + sin(-roll_raw)*a_z
+        self.w_x = w_x
+        self.w_y = w_y
+        self.w_z = w_z
+
+
+        # Ask Ugo's notes for transformation 
+
+        # self.psiDot = w_z
+        self.psiDot = sin(roll_raw) / cos(pitch_raw) * w_y + cos(roll_raw) / cos(pitch_raw) * w_z
+
+        # self.ax = cos(-pitch_raw)*a_x + sin(-pitch_raw)*sin(-roll_raw)*a_y - sin(-pitch_raw)*cos(-roll_raw)*a_z
+        self.ax = cos(pitch_raw)*a_x + sin(pitch_raw)*sin(roll_raw)*a_y + sin(pitch_raw)*cos(roll_raw)*a_z
+
+        # self.ay = cos(-roll_raw)*a_y + sin(-roll_raw)*a_z
+        self.ay = cos(roll_raw)*a_y - sin(roll_raw)*a_z
+
 
         self.saveHistory()
         self.yaw_raw -= self.yaw_raw_his[1]       

@@ -314,7 +314,7 @@ class Estimator(object):
 
         self.motor_his.append(ecu.a)
         self.servo_his.append(ecu.df)
-        u = [self.motor_his.pop(0), self.servo_his.pop(0), imu.psiDot, imu.ax, imu.ay]
+        u = [ecu.a, ecu.df, imu.psiDot, imu.ax, imu.ay]
         
         y = np.array([gps.x, gps.y, enc.v_meas, 0.5*u[1]*enc.v_meas])
         
@@ -345,7 +345,7 @@ class Estimator(object):
                 # MultiRate for encoder
                 self.v_meas_count += 1
                 idx.append(2)
-                idx.append(3)
+                # idx.append(3)
             if self.ax_his[-1] == u[3]:
                 self.ax_count += 1
             if self.ay_his[-1] == u[4]:

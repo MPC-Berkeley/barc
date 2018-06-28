@@ -60,13 +60,13 @@ def main():
 
     PickController = "LMPC"
     NumberOfLaps   = 30
-    vt = 1.2
+    vt = 1.3
     PathFollowingLaps = 2
     
     if mode == "simulations":
         PIDnoise = np.array([1.0, 1.0]) # noise on [Steering, Acceleration] 
     else:
-        PIDnoise = np.array([1.0, 1.0]) # noise on [Steering, Acceleration] 
+        PIDnoise = np.array([0.1, 10.0]) # noise on [Steering, Acceleration] 
 
     ControllerLap0, Controller,  OpenLoopData   = ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PIDnoise)
                  
@@ -231,7 +231,7 @@ def main():
 
     # Save Data
     if saveData == True:
-        file_data = open(homedir+'/barc_data/'+'/ClosedLoopData'+PickController+'.obj', 'wb')
+        file_data = open(homedir+'/barc_data'+'/ClosedLoopData'+PickController+'.obj', 'wb')
         pickle.dump(ClosedLoopData, file_data)
         pickle.dump(Controller, file_data)
         pickle.dump(OpenLoopData, file_data)    
@@ -263,7 +263,10 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
         file_data = open(homedir+'/barc_data/'+'/ClosedLoopDataPID.obj', 'rb')
         ClosedLoopDataPID = pickle.load(file_data)
         file_data.close()
-        lamb = 0.0000001
+        if mode == "simulations":
+            lamb = 0.0000001
+        else:
+            lamb = 0.0000001    
         A, B, Error = Regression(ClosedLoopDataPID.x, ClosedLoopDataPID.u, lamb)
         print "A matrix: \n", A
         print "B matrix: \n", B      
@@ -357,8 +360,8 @@ class PID:
             Steering = - 0.5 * 2.0 * x0[5] - 2 * 0.5 * x0[3] - 0.001 * self.integral[0]
             Accelera = 0.5 * 1.5 * (vt - x0[0]) + 0.1 * self.integral[1]
         else:
-            Steering = - 0.5 * x0[5] - x0[3] - 0.01 * self.integral[0]
-            Accelera = 1.5 * (vt - x0[0]) + 0.01 * self.integral[1]
+            Steering = - 0.5 * x0[5] - x0[3] - 0.1 * self.integral[0]
+            Accelera = 1.5 * (vt - x0[0]) + 0.1 * self.integral[1]
 
         self.integral[0] = self.integral[0] +  0.1 * x0[5] + 0.1 * x0[3]
         self.integral[1] = self.integral[1] +  (vt - x0[0])

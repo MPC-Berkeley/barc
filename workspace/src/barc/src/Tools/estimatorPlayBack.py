@@ -28,7 +28,7 @@ def main():
     # node initialization
     a_delay     = 0.0
     df_delay    = 0.0
-    loop_rate   = 50.0
+    loop_rate   = 100.0
    
     # Red
     Q_noVy = eye(8)
@@ -67,8 +67,8 @@ def main():
     Q_hs[4,4]  =  1.0 #1.0      # ax
     Q_ls[4,4]  =  1.0 #1.0      # ax
     
-    Q_hs[5,5]  =  1.0 #1.0      # ay 
-    Q_ls[5,5]  =  1.0 #1.0      # ay 
+    Q_hs[5,5]  =  100.0 #1.0      # ay 
+    Q_ls[5,5]  =  100.0 #1.0      # ay 
     
     Q_hs[6,6]  =  50.0 #10 + 80.0      # psi
     Q_ls[6,6]  =  10.0 #10 + 80.0      # psi
@@ -90,7 +90,7 @@ def main():
     R_hs[3,3]  = 10.0 #30 + 10.0      # ax 
     R_ls[3,3]  = 10.0 #30 + 10.0      # ax 
 
-    R_hs[4,4]  = 30.0 #40.0      # ay 
+    R_hs[4,4]  = 1.0 #40.0      # ay 
     R_ls[4,4]  = 10.0 #40.0      # ay 
 
     R_hs[5,5]  = 0.1 #5 * 5 * 2 * 10 * 0.1      # psiDot
@@ -235,46 +235,51 @@ def main():
     inp_psiDot_his      = npz_output["inp_psiDot_his"]
     inp_a_his           = npz_output["inp_a_his"]
     inp_df_his          = npz_output["inp_df_his"]
-
-
-    pathSave = os.path.join(homedir,"barc_data/estimator_imu.npz")
-    npz_imu = np.load(pathSave)
-    psiDot_his        = npz_imu["psiDot_his"]
-    roll_his          = npz_imu["roll_his"]
-    pitch_his         = npz_imu["pitch_his"]
-    yaw_his          = npz_imu["yaw_his"]
-    ax_his          = npz_imu["ax_his"]
-    ay_his          = npz_imu["ay_his"]
-
-    pathSave = os.path.join(homedir,"barc_data/estimator_gps.npz")
-    npz_gps = np.load(pathSave)
-    x_his         = npz_gps["x_his"]
-    y_his         = npz_gps["y_his"]
-
-    pathSave = os.path.join(homedir,"barc_data/estimator_enc.npz")
-    npz_enc = np.load(pathSave)
-    v_fl_his     = npz_enc["v_fl_his"]
-    v_fr_his     = npz_enc["v_fr_his"]
-    v_rl_his     = npz_enc["v_rl_his"]
-    v_rr_his     = npz_enc["v_rr_his"]
-
-    pathSave = os.path.join(homedir,"barc_data/estimator_ecu.npz")
-    npz_ecu = np.load(pathSave)
-    a_his         = npz_ecu["a_his"]
-    df_his        = npz_ecu["df_his"]
+    roll_his            = npz_output["roll_his"]
+    pitch_his           = npz_output["pitch_his"]
+    wx_his              = npz_output["wx_his"]
+    wy_his              = npz_output["wy_his"]
+    wz_his              = npz_output["wz_his"]
+    v_rl_his            = npz_output["v_rl_his"]
+    v_rr_his            = npz_output["v_rr_his"]
+    v_fl_his            = npz_output["v_fl_his"]
+    v_fr_his            = npz_output["v_fr_his"]
+    
 
     fig = plotTrack(map)
     plt.axis("equal")
-    plt.plot(x_his,y_his,color="blue")
-
-    plt.show()
+    plt.plot(inp_x_his,inp_y_his,color="blue")
 
     plt.figure("Encoder Input")
-    plt.plot(inp_v_meas_his, 'o-')
+    axes = plt.gca()
+    plt.plot(v_rl_his,'--sb', label="v_rl")
+    plt.plot(v_rr_his,'--ob', label="v_rr")
+    plt.plot(v_fl_his,'--sk', label="v_fl")
+    plt.plot(v_fr_his,'--ok', label="v_fr")
+    plt.plot(inp_v_meas_his,'--or', label="v_x")
+    axes.legend()
+    
+    plt.figure("IMU")
+    plt.subplot(211)
+    axes = plt.gca()
+    plt.plot(wx_his, '-o', label="wx")
+    plt.plot(wy_his, '-s', label="wy")
+    plt.plot(wz_his, '-*', label="wz")
+    plt.plot(inp_psiDot_his, '--o', label="psiDot")
+    plt.legend()
+
+    plt.subplot(212)
+    axes = plt.gca()
+    plt.plot(pitch_his, '-o', label="pitch")
+    plt.plot(roll_his, '-s', label="roll")
+    axes.legend()
+
     plt.show()
 
+
+
     flagHalfLap = False
-    plotDebug = True
+    plotDebug = False
 
 
     if plotDebug == True:

@@ -14,15 +14,14 @@
     <param name="trackShape" type="str" value="oval" />
 
     <!-- Machines -->
-    <machine name="odroid" address="192.168.10.101" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid_ugo.sh"/>
+    <machine name="odroid" address="192.168.10.213" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid_ugo.sh"/>
 
-    <!-- <machine name="this-pc" address="10.0.0.72" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc.sh"/> -->
     <machine name="this-pc" address="192.168.10.157" user="ugo" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc.sh"/>
     
     <!-- START NODES -->
     <!-- LOW LEVEL CONTROLLER -->
     <node machine="odroid" pkg="barc" type="controllerLowLevel.py" name="low_level_controller" >
-        <param name="car" type="str" value="NewBARC" />
+        <param name="car" type="str" value="OldBARC" />
     </node>
 
     <!-- Estimator -->

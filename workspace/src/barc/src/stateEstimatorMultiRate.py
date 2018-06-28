@@ -382,13 +382,16 @@ class Estimator(object):
                 # MultiRate for encoder
                 self.v_meas_count += 1
                 idx.append(2)
-                idx.append(6)
+                # idx.append(6)
             if self.ax_his[-1] == y[3]:
+                idx.append(3)
                 self.ax_count += 1
             if self.ay_his[-1] == y[4]:
+                idx.append(5)
                 self.ay_count += 1
             if self.psiDot_his[-1] == y[5]:
                 self.psiDot_count += 1
+                idx.append(5)
             self.pkg_count += 1
 
         # Decide is vy is used in the filter
