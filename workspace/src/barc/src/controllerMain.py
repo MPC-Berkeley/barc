@@ -56,7 +56,7 @@ def main():
     print "Track Length: ", map.TrackLength 
     
     # Choose Controller and Number of Laps
-    InputDelay = 1 # 0 for no delay, 1 for 1 step delay, 2 for 2 steps delay
+    InputDelay = 2 # 0 for no delay, 1 for 1 step delay, 2 for 2 steps delay
 
     PickController = "LMPC"
     NumberOfLaps   = 30
