@@ -33,25 +33,44 @@ from tf import transformations
 
 def main():
     rospy.init_node("simulator")
+    gps_freq_update = rospy.get_param("simulator/gps_freq_update")
+    simulator_dt    = rospy.get_param("simulator/dt")
+    
     sim = Simulator()
     imu = ImuClass()
-    gps = GpsClass()
+    gps = GpsClass(gps_freq_update, simulator_dt)
     enc = EncClass()
     ecu = EcuClass()
 
     counter = 0
+
     a_his 	= [0.0]*int(rospy.get_param("simulator/delay_a")/rospy.get_param("simulator/dt"))
     df_his 	= [0.0]*int(rospy.get_param("simulator/delay_df")/rospy.get_param("simulator/dt"))
 
+    print rospy.get_param("simulator/delay_df")
+    print rospy.get_param("simulator/dt")
+    print int(rospy.get_param("simulator/delay_df")/rospy.get_param("simulator/dt"))
+
+    print "a_his is: ", df_his
     pub_simulatorStates = rospy.Publisher('simulatorStates', simulatorStates, queue_size=1)
     simStates = simulatorStates()
 
     print "The simulator is running!"
     
+    servo_inp = 0.0
+    T  = simulator_dt
+    Tf = 0.07
+
     while not rospy.is_shutdown():
     	# Simulator delay
+
 		a_his.append(ecu.u[0])
 		df_his.append(ecu.u[1])
+
+
+		# servo_inp = (1 - T / Tf) * servo_inp + ( T / Tf )*df_his.pop(0)
+		# u = [a_his.pop(0), servo_inp]
+
 		u = [a_his.pop(0), df_his.pop(0)]
 
 		sim.f(u)
@@ -225,7 +244,7 @@ class ImuClass(object):
 		self.pub.publish(self.msg)
 
 class GpsClass(object):
-	def __init__(self):
+	def __init__(self, gps_freq_update, simulator_dt):
 		self.pub  = rospy.Publisher("hedge_pos", hedge_pos, queue_size=1)
 		self.x = 0.0
 		self.y = 0.0
@@ -234,7 +253,8 @@ class GpsClass(object):
 		self.n_bound = rospy.get_param("simulator/n_bound")
 
 		self.msg = hedge_pos()
-		self.counter = 0
+		self.counter  = 0
+		self.thUpdate = (1.0 /  gps_freq_update) / simulator_dt
 
 	def update(self,sim):
 		n = self.x_std*randn()
@@ -248,10 +268,15 @@ class GpsClass(object):
 		self.y = sim.y + n
 
 	def gps_pub(self):
-		self.counter = 0
-		self.msg.x_m = self.x
-		self.msg.y_m = self.y
-		self.pub.publish(self.msg)
+		if self.counter > self.thUpdate:
+			self.counter = 0
+			self.msg.x_m = self.x
+			self.msg.y_m = self.y
+			self.pub.publish(self.msg)
+			# print "Update GPS"
+		else:
+			# print "Not update GPS"
+			self.counter = self.counter + 1
 
 class EncClass(object):
 	def __init__(self):
@@ -269,7 +294,7 @@ class EncClass(object):
 		self.v = (sim.vx**2+sim.vy**2)**0.5 + n
 
 	def enc_pub(self):
-		self.msg.vel_fl  = self.v
+		self.msg.vel_fl  = self.v  
 		self.msg.vel_fr  = self.v
 		self.msg.vel_bl  = self.v
 		self.msg.vel_br  = self.v

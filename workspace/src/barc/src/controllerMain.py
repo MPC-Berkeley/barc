@@ -127,7 +127,7 @@ def main():
             if LapNumber >= NumberOfLaps:
                 RunController = 0
 
-            HalfTrack = 0
+            HalfTrack = 7
             TimeCounter = 0
 
         # If inside the track publish input
@@ -155,6 +155,8 @@ def main():
                 
             else:                                     # Else use the selected controller
                 oldU = uApplied
+                if LocalState[0] < 0.5 and cmd.motor < 0.5:
+                    cmd.motor = 0.5
                 uApplied = np.array([cmd.servo, cmd.motor])
                 # Publish input
                 input_commands.publish(cmd)
@@ -196,12 +198,20 @@ def main():
                 ClosedLoopData.addMeasurement(GlobalState, LocalState, uApplied)
 
             # Add data to SS and Record Prediction
-            if (PickController == "LMPC") and (LapNumber >= PathFollowingLaps):
 
-                OL_predictions.s    = Controller.xPred[:, 4]
-                OL_predictions.ey   = Controller.xPred[:, 5]
-                OL_predictions.epsi = Controller.xPred[:, 3]
-                pred_treajecto.publish(OL_predictions)
+            if (PickController == "LMPC" or PickController == "TI_MPC"):
+                if LapNumber >= PathFollowingLaps and Controller.xPred != []:
+                    OL_predictions.s    = Controller.xPred[:, 4]
+                    OL_predictions.ey   = Controller.xPred[:, 5]
+                    OL_predictions.epsi = Controller.xPred[:, 3]
+                    pred_treajecto.publish(OL_predictions)
+                # elif LapNumber < PathFollowingLaps and ControllerLap0.xPred != [] and ControllerLap0.xPred[0, 0] > 0.5:
+                #     OL_predictions.s    = ControllerLap0.xPred[:, 4]
+                #     OL_predictions.ey   = ControllerLap0.xPred[:, 5]
+                #     OL_predictions.epsi = ControllerLap0.xPred[:, 3]
+                #     pred_treajecto.publish(OL_predictions)
+
+            if (PickController == "LMPC") and (LapNumber >= PathFollowingLaps):
 
                 SS_glob_sel.SSx       = Controller.SS_glob_PointSelectedTot[4, :]
                 SS_glob_sel.SSy       = Controller.SS_glob_PointSelectedTot[5, :]

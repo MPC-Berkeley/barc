@@ -426,6 +426,9 @@ class Estimator(object):
             Q = self.Q_hs
             R = self.R_hs
             self.flagVy = False
+
+            # if abs(u[2]) < 0.9:
+            #     Q[6] = 500 * self.Q_hs
         else:
             Q = self.Q_ls
             R = self.R_ls

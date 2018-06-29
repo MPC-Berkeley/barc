@@ -70,7 +70,7 @@ def main():
     Q_hs[5,5]  =  100.0 #1.0      # ay 
     Q_ls[5,5]  =  100.0 #1.0      # ay 
     
-    Q_hs[6,6]  =  50.0 #10 + 80.0      # psi
+    Q_hs[6,6]  =  0.1 #10 + 80.0      # psi
     Q_ls[6,6]  =  10.0 #10 + 80.0      # psi
     
     Q_hs[7,7]  =  1.0 # psiDot
@@ -477,10 +477,10 @@ def main():
     plt.plot(range(0,len(est_new.psiDot_est_his)), est_new.psiDot_est_his, '-ob')
     plt.plot(range(0,len(est_new1.psiDot_est_his)), est_new1.psiDot_est_his, '--og')
 
-    xmin = 10100 #2000 #0
-    xmax = 10300 #2660 #len(est.vx_est_his)
-    xmin = 0
-    xmax = len(est.vx_est_his)
+    xmin = 6320 #2000 #0
+    xmax = 6400 #2660 #len(est.vx_est_his)
+    # xmin = 0
+    # xmax = len(est.vx_est_his)
 
     fig = plotTrack(map)
     # plt.plot(x_est_his[xmin:xmax],y_est_his[xmin:xmax],"--ob")
