@@ -118,11 +118,15 @@ class ControllerLMPC():
         # Select Points from SS
 #        print self.Qfun[0, 0:it], np.argsort(self.Qfun[0, 0:it])[0:self.numSS_it]
         sortedLapTime = np.argsort(self.Qfun[0, 0:it])
-        self.lapSelected = sortedLapTime
+        if sortedLapTime[0] != it-1:
+            self.lapSelected = np.hstack((it-1, sortedLapTime))
+        else:
+            self.lapSelected = sortedLapTime
+        
         SS_PointSelectedTot      = np.empty((n, 0))
         SS_glob_PointSelectedTot = np.empty((n, 0))
         Qfun_SelectedTot         = np.empty((0))
-        for jj in sortedLapTime[0:self.numSS_it]:
+        for jj in self.lapSelected[0:self.numSS_it]:
             SS_PointSelected, SS_glob_PointSelected, Qfun_Selected = _SelectPoints(self, jj, x0, numSS_Points / self.numSS_it, shift)
             SS_PointSelectedTot      =  np.append(SS_PointSelectedTot, SS_PointSelected, axis=1)
             SS_glob_PointSelectedTot =  np.append(SS_glob_PointSelectedTot, SS_glob_PointSelected, axis=1)
@@ -133,7 +137,7 @@ class ControllerLMPC():
         self.Qfun_SelectedTot         = Qfun_SelectedTot
         # Run System ID
         startTimer = datetime.datetime.now()
-        self.A, self.B, self.C, indexUsed_list = _LMPC_EstimateABC(self, sortedLapTime)
+        self.A, self.B, self.C, indexUsed_list = _LMPC_EstimateABC(self)
         endTimer = datetime.datetime.now(); deltaTimer = endTimer - startTimer
         L, npG, npE = _LMPC_BuildMatEqConst(self, self.A, self.B, self.C, N, n, d)
         self.linearizationTime = deltaTimer
@@ -639,7 +643,7 @@ def _LMPC_GetPred(Solution,n,d,N, np):
 # ========================= Internal functions for Local Regression and Linearization ==================================
 # ======================================================================================================================
 # ======================================================================================================================
-def _LMPC_EstimateABC(ControllerLMPC, sortedLapTime):
+def _LMPC_EstimateABC(ControllerLMPC):
     LinPoints       = ControllerLMPC.LinPoints
     LinInput        = ControllerLMPC.LinInput
     N               = ControllerLMPC.N
@@ -654,6 +658,7 @@ def _LMPC_EstimateABC(ControllerLMPC, sortedLapTime):
     SysID_Solver    = ControllerLMPC.SysID_Solver
     flag_LTV        = ControllerLMPC.flag_LTV
     MaxNumPoint     = ControllerLMPC.MaxNumPoint  # Need to reason on how these points are selected
+    sortedLapTime   = ControllerLMPC.lapSelected
 
     ParallelComputation = 0
     Atv = []; Btv = []; Ctv = []; indexUsed_list = []

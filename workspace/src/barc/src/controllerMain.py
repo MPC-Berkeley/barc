@@ -154,9 +154,10 @@ def main():
                 input_commands.publish(cmd)
                 
             else:                                     # Else use the selected controller
-                oldU = uApplied
                 if LocalState[0] < 0.5 and cmd.motor < 0.5:
                     cmd.motor = 0.5
+
+                oldU = uApplied
                 uApplied = np.array([cmd.servo, cmd.motor])
                 # Publish input
                 input_commands.publish(cmd)
@@ -261,7 +262,7 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
         N = 12
         TI_Qlane   =  1 * np.array([100, 0]) # Quadratic and linear slack lane cost
     else:
-        Q = 1*np.diag([500.0, 1.0, 10.0, 10 * 5.0, 0.0, 2 * 250.0]) # vx, vy, wz, epsi, s, ey
+        Q = 1*np.diag([500.0, 1.0, 10.0, 10 * 5.0, 0.0, 250.0]) # vx, vy, wz, epsi, s, ey
         R = np.diag([1.0, 1.0]) # delta, a
         N = 12
         TI_Qlane   =  1 * np.array([100, 0]) # Quadratic and linear slack lane cost

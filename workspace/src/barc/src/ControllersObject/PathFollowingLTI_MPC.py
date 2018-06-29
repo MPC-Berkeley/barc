@@ -234,7 +234,7 @@ def _buildMatCost(Controller):
     Mx = linalg.block_diag(*b)
     Qlane = Controller.Qlane
 
-    dR = np.array([2 * 40, 0])
+    dR = np.array([2 * 2 * 2 * 40, 2* 10])
     c = [R + 2 * np.diag(dR)] * (N) # Need to add dR for the derivative input cost
 
     Mu = linalg.block_diag(*c)
