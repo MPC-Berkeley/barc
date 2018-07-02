@@ -56,7 +56,7 @@ def main():
     print "Track Length: ", map.TrackLength 
     
     # Choose Controller and Number of Laps
-    InputDelay = 2 # 0 for no delay, 1 for 1 step delay, 2 for 2 steps delay
+    InputDelay = 1 # 0 for no delay, 1 for 1 step delay, 2 for 2 steps delay
 
     PickController = "LMPC"
     NumberOfLaps   = 30
@@ -66,7 +66,7 @@ def main():
     if mode == "simulations":
         PIDnoise = np.array([1.0, 1.0]) # noise on [Steering, Acceleration] 
     else:
-        PIDnoise = np.array([0.1, 10.0]) # noise on [Steering, Acceleration] 
+        PIDnoise = np.array([1.0, 10.0]) # noise on [Steering, Acceleration] 
 
     ControllerLap0, Controller,  OpenLoopData   = ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PIDnoise)
                  
@@ -82,21 +82,23 @@ def main():
     TimeCounter = 0
     KeyInput = raw_input("Press enter to start the controller... \n")
     oneStepPrediction = np.zeros(6)
+    uApplied = np.array([0.0, 0.0])
     oldU = np.array([0.0, 0.0])
     oldX = np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0])
 
 
     firtLap = True
     while (not rospy.is_shutdown()) and RunController == 1:    
-        # Read Measurements
+        # == Start: Read Measurements
         GlobalState[:] = estimatorData.CurrentState
         if (GlobalState == oldX).all():
             print "================ Package Loss! The state as not been updated! ==============="
         oldX[:] = GlobalState
         LocalState[:]  = estimatorData.CurrentState
         LocalState[4], LocalState[5], LocalState[3], insideTrack = map.getLocalPosition(GlobalState[4], GlobalState[5], GlobalState[3])
+        # == End: Read Measurements
 
-        # Check if the lap has finisched
+        # == Start: Check if the lap has finisched
         if LocalState[4] >= 3*map.TrackLength/4:
             HalfTrack = 1
 
@@ -129,10 +131,13 @@ def main():
 
             HalfTrack = 7
             TimeCounter = 0
+        # == End: Check if the lap has finisched
 
         # If inside the track publish input
         if (insideTrack == 1):
             startTimer = datetime.datetime.now()
+
+            # == Start: Computing Input
             if LapNumber < PathFollowingLaps :        # First path following lap
                 ControllerLap0.solve(LocalState)
                 cmd.servo = ControllerLap0.uPred[0,0]
@@ -140,7 +145,7 @@ def main():
                 # cmd.servo = 0.0 #ControllerLap0.uPred[0,0]
                 # cmd.motor = 0.3 #ControllerLap0.uPred[0,1]
 
-
+                oldU = uApplied
                 uApplied = np.array([cmd.servo, cmd.motor])
                 # Publish input
                 input_commands.publish(cmd)
@@ -149,6 +154,7 @@ def main():
                 Controller.solve(LocalState)
                 cmd.servo = Controller.uPred[0,0]
                 cmd.motor = Controller.uPred[0,1]
+                oldU = uApplied
                 uApplied = np.array([cmd.servo, cmd.motor])
                 # Publish input
                 input_commands.publish(cmd)
@@ -159,18 +165,13 @@ def main():
 
                 oldU = uApplied
                 uApplied = np.array([cmd.servo, cmd.motor])
+
                 # Publish input
                 input_commands.publish(cmd)
 
                 oneStepPredictionError = LocalState - oneStepPrediction # Subtract the local measurement to the previously predicted one step
 
-                if InputDelay == 0:
-                    startTimerDummy = datetime.datetime.now()
-                    oneStepPrediction = LocalState
-                    endTimerDummy = datetime.datetime.now()
-                    deltaTimerDummy = endTimerDummy - startTimerDummy
-                    oneStepPredictionTime = deltaTimerDummy
-                elif InputDelay == 1:
+                if InputDelay == 1:
                     oneStepPrediction, oneStepPredictionTime = Controller.oneStepPrediction(LocalState, uApplied, 1)
                 elif InputDelay == 2:
                     oneStepPrediction, oneStepPredictionTime = Controller.oneStepPrediction(LocalState, oldU, 1)
@@ -188,29 +189,31 @@ def main():
             
             endTimer = datetime.datetime.now(); deltaTimer = endTimer - startTimer
             #print "Tot Solver Time: ", deltaTimer.total_seconds()
+            
+            # == End: Computing Input
 
             
 
-            # Record data
+            # == Start: Record data
             if (PickController != "LMPC") and (LapNumber >= 1):
                 LocalState[4] = LocalState[4] + (LapNumber - 1)*map.TrackLength
-                ClosedLoopData.addMeasurement(GlobalState, LocalState, uApplied)
+                if InputDelay == 1:
+                    ClosedLoopData.addMeasurement(GlobalState, LocalState, uApplied)
+                elif InputDelay ==2:
+                    ClosedLoopData.addMeasurement(GlobalState, LocalState, oldU)
             elif LapNumber >= 1:
-                ClosedLoopData.addMeasurement(GlobalState, LocalState, uApplied)
-
+                if InputDelay == 1:
+                    ClosedLoopData.addMeasurement(GlobalState, LocalState, uApplied)
+                elif InputDelay ==2:
+                    ClosedLoopData.addMeasurement(GlobalState, LocalState, oldU)
             # Add data to SS and Record Prediction
 
-            if (PickController == "LMPC" or PickController == "TI_MPC"):
+            if (PickController == "LMPC"):
                 if LapNumber >= PathFollowingLaps and Controller.xPred != []:
                     OL_predictions.s    = Controller.xPred[:, 4]
                     OL_predictions.ey   = Controller.xPred[:, 5]
                     OL_predictions.epsi = Controller.xPred[:, 3]
                     pred_treajecto.publish(OL_predictions)
-                # elif LapNumber < PathFollowingLaps and ControllerLap0.xPred != [] and ControllerLap0.xPred[0, 0] > 0.5:
-                #     OL_predictions.s    = ControllerLap0.xPred[:, 4]
-                #     OL_predictions.ey   = ControllerLap0.xPred[:, 5]
-                #     OL_predictions.epsi = ControllerLap0.xPred[:, 3]
-                #     pred_treajecto.publish(OL_predictions)
 
             if (PickController == "LMPC") and (LapNumber >= PathFollowingLaps):
 
@@ -224,7 +227,12 @@ def main():
                 OpenLoopData.SSused[:, :, TimeCounter, Controller.it]               = Controller.SS_PointSelectedTot
                 OpenLoopData.Qfunused[:, TimeCounter, Controller.it]                = Controller.Qfun_SelectedTot
 
-                Controller.addPoint(LocalState, GlobalState, uApplied, TimeCounter)
+                if InputDelay == 1:
+                    Controller.addPoint(LocalState, GlobalState, uApplied, TimeCounter)
+                elif InputDelay ==2:
+                    Controller.addPoint(LocalState, GlobalState, oldU, TimeCounter)
+
+            # == End: Record data
         else:                                        # If car out of the track
             cmd.servo = 0
             cmd.motor = 0
@@ -240,7 +248,7 @@ def main():
             Controller.setTime(TimeCounter)
         rate.sleep()
 
-    # Save Data
+    # == Start: Save Data
     if saveData == True:
         file_data = open(homedir+'/barc_data'+'/ClosedLoopData'+PickController+'.obj', 'wb')
         pickle.dump(ClosedLoopData, file_data)
@@ -248,6 +256,7 @@ def main():
         pickle.dump(OpenLoopData, file_data)    
 
         file_data.close()
+    # == End: Save Data
 
 # ===============================================================================================================================
 # ==================================================== END OF MAIN ==============================================================

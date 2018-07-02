@@ -22,8 +22,8 @@
         <!-- sensor freq update -->
         <param name="gps_freq_update" type="double" value="4.0" />
         <!-- delay in the simulator -->
-        <param name="delay_df" type="double" value="0.0" />
-        <param name="delay_a" type="double" value="0.0" />
+        <param name="delay_df" type="double" value="0.1" />
+        <param name="delay_a" type="double" value="0.1" />
         <!-- simulator model parameters -->
         <param name="c_f" type="double" value="0.05" />
         <param name="dt" type="double" value="0.01" />

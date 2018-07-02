@@ -83,19 +83,18 @@ def main():
         l = 0.4; w = 0.2
 
 
-        if data.s != []:
-            xPredicted = np.zeros((len(data.s), 1))
-            yPredicted = np.zeros((len(data.s), 1))
-            for j in range(0, len(data.s)):
-                sPred    = data.s[j]
-                eyPred   = data.ey[j]
-                epsiPred = data.epsi[j]
-
-                xPredicted[j], yPredicted[j] = map.getGlobalPosition(sPred, eyPred)
-            # print "sPred is: ", sPred
-            # print "eyPred is: ", eyPred
-            
-            line_pred.set_data(xPredicted, yPredicted)
+        if (data.s != []):
+            if (data.s > 0) :
+                xPredicted = np.zeros((len(data.s), 1))
+                yPredicted = np.zeros((len(data.s), 1))
+                for j in range(0, len(data.s)):
+                    sPred    = data.s[j]
+                    eyPred   = data.ey[j]
+                    epsiPred = data.epsi[j]
+                    xPredicted[j], yPredicted[j] = map.getGlobalPosition(sPred, eyPred)
+                # print "sPred is: ", sPred
+                # print "eyPred is: ", eyPred
+                line_pred.set_data(xPredicted, yPredicted)
 
         if data.SSx != []:            
             line_SS.set_data(data.SSx, data.SSy)

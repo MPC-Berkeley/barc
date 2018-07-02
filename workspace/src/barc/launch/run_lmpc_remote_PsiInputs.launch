@@ -54,7 +54,7 @@
          <param name="Qay_ls" type="double" value="100.0" />
 
          <param name="Qpsi_hs" type="double" value="0.1" />
-         <param name="Qpsi_ls" type="double" value="50.0" />
+         <param name="Qpsi_ls" type="double" value="1.0" />
 
          <param name="QpsiDot_hs" type="double" value="1.0" />
          <param name="QpsiDot_ls" type="double" value="0.01" />
