@@ -64,14 +64,14 @@ def main():
     Q_hs[3,3]  =  5.0 #10.0     # vy
     Q_ls[3,3]  =  5.0 #10.0     # vy
     
-    Q_hs[4,4]  =  1.0 #1.0      # ax
-    Q_ls[4,4]  =  1.0 #1.0      # ax
+    Q_hs[4,4]  =  100.0 #1.0      # ax
+    Q_ls[4,4]  =  100.0 #1.0      # ax
     
     Q_hs[5,5]  =  100.0 #1.0      # ay 
     Q_ls[5,5]  =  100.0 #1.0      # ay 
     
     Q_hs[6,6]  =  0.1 #10 + 80.0      # psi
-    Q_ls[6,6]  =  10.0 #10 + 80.0      # psi
+    Q_ls[6,6]  =  0.1 #10 + 80.0      # psi
     
     Q_hs[7,7]  =  1.0 # psiDot
     Q_ls[7,7]  =  0.01 # psiDot
@@ -103,6 +103,59 @@ def main():
     vSwitch_hs      = 5.3      # 1.0
     psiSwitch_hs    = 1.0      # 0.5 * 2.0
 
+
+    Q_hs_1 = eye(8)
+    Q_ls_1 = eye(8)
+    Q_hs_1[0,0]  =  0.01 # 0.5     # x
+    Q_ls_1[0,0]  =  0.01 # 0.5     # x
+    
+    Q_hs_1[1,1]  =  0.01 # 0.5     # y
+    Q_ls_1[1,1]  =  0.01 # 0.5     # y
+    
+    Q_hs_1[2,2]  =  5.0 #10.0     # vx
+    Q_ls_1[2,2]  =  5.0 #10.0     # vx
+    
+    Q_hs_1[3,3]  =  5.0 #10.0     # vy
+    Q_ls_1[3,3]  =  5.0 #10.0     # vy
+    
+    Q_hs_1[4,4]  =  1.0 #1.0      # ax
+    Q_ls_1[4,4]  =  1.0 #1.0      # ax
+    
+    Q_hs_1[5,5]  =  100.0 #1.0      # ay 
+    Q_ls_1[5,5]  =  100.0 #1.0      # ay 
+    
+    Q_hs_1[6,6]  =  0.01 #10 + 80.0      # psi
+    Q_ls_1[6,6]  =  0.01 #10 + 80.0      # psi
+    
+    Q_hs_1[7,7]  =  1.0 # psiDot
+    Q_ls_1[7,7]  =  0.01 # psiDot
+    
+    R_hs_1 = eye(7)
+    R_ls_1 = eye(7)
+    R_hs_1[0,0]  = 1.0 # 10 + 40.0      # x
+    R_ls_1[0,0]  = 1.0 # 10 + 40.0      # x
+
+    R_hs_1[1,1]  = 1.0 #10 + 40.0      # y
+    R_ls_1[1,1]  = 1.0 #10 + 40.0      # y
+
+    R_hs_1[2,2]  = 0.01 # 0.1      # vx
+    R_ls_1[2,2]  = 0.01 # 0.1      # vx
+
+    R_hs_1[3,3]  = 10.0 #30 + 10.0      # ax 
+    R_ls_1[3,3]  = 10.0 #30 + 10.0      # ax 
+
+    R_hs_1[4,4]  = 1.0 #40.0      # ay 
+    R_ls_1[4,4]  = 10.0 #40.0      # ay 
+
+    R_hs_1[5,5]  = 0.1 #5 * 5 * 2 * 10 * 0.1      # psiDot
+    R_ls_1[5,5]  = 0.1 #5 * 5 * 2 * 10 * 0.1      # psiDot
+
+    R_hs_1[6,6]  = 0.01 # 0.01    # vy
+    R_ls_1[6,6]  = 0.01 # 0.01    # vy
+
+    thReset_hs_1      = 0.1      # 0.4
+    vSwitch_hs_1      = 5.3      # 1.0
+    psiSwitch_hs_1    = 1.1      # 0.5 * 2.0
     # # Original Shuqi's tuning
     # Q_ls = eye(8)
     # Q_ls[0,0] = 0.001**2     # Q_x
@@ -194,6 +247,10 @@ def main():
 
     Qindex = [0, 1, 2, 3, 4, 5, 6]
     Rindex = [0, 1, 2, 3, 4, 6]
+    est = EstimatorPsiInput(0.0,loop_rate,a_delay,df_delay,
+                            Q_hs_1[np.ix_(Qindex,Qindex)],Q_ls_1[np.ix_(Qindex,Qindex)],
+                            R_hs_1[np.ix_(Rindex,Rindex)],R_ls_1[np.ix_(Rindex,Rindex)],
+                            thReset_hs_1,vSwitch_hs_1,psiSwitch_hs_1)
 
     est_new1 = EstimatorPsiInput(0.0,loop_rate,a_delay,df_delay,
                             Q_hs[np.ix_(Qindex,Qindex)],Q_ls[np.ix_(Qindex,Qindex)],
@@ -208,7 +265,7 @@ def main():
     
     onVec = [1, 0, 1]
 
-    map = Map("oval")
+    map = Map("3110")
 
     estMsg = pos_info()
     
@@ -488,13 +545,14 @@ def main():
     # fig = plotTrack(map)
     axes = plt.gca()
     if onVec[0] == 1:
-        plt.plot(est.x_est_his[xmin:xmax], est.y_est_his[xmin:xmax], '-sr')
+        plt.plot(est.x_est_his[xmin:xmax], est.y_est_his[xmin:xmax], '-sr', label="Est")
     if onVec[1] == 1:
         plt.plot(est_new.x_est_his[xmin:xmax], est_new.y_est_his[xmin:xmax], '-sb')
     if onVec[2] == 1:
-        plt.plot(est_new1.x_est_his[xmin:xmax], est_new1.y_est_his[xmin:xmax], '-sg')
+        plt.plot(est_new1.x_est_his[xmin:xmax], est_new1.y_est_his[xmin:xmax], '-sg', label="Est_new")
     plt.plot(x_est_his[xmin:xmax], y_est_his[xmin:xmax], '--ok')
-    plt.plot(x_est_his[xmin:xmax], inp_y_his[xmin:xmax], '--oy')
+    plt.plot(inp_x_his[xmin:xmax], inp_y_his[xmin:xmax], '--oy')
+    axes.legend()
     # axes.set_xlim([xmin,xmax])
     # plt.ylabel('y')    
 

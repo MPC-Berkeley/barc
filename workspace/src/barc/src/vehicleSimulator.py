@@ -239,7 +239,7 @@ class ImuClass(object):
 	def imu_pub(self):
 		self.msg.linear_acceleration.x = self.ax
 		self.msg.linear_acceleration.y = self.ay
-		self.msg.angular_velocity = Vector3(0,0,self.psiDot)
+		self.msg.angular_velocity = Vector3(0,0,self.psiDot * 1.05)
 		self.orientation = geometry_msgs.msg.Quaternion(0, 0, sin(self.yaw/2), cos(self.yaw/2))
 		self.pub.publish(self.msg)
 

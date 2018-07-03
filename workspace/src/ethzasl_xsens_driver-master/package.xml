@@ -1,0 +1,28 @@
+<package>
+  <name>xsens_driver</name>
+  <version>2.1.0</version>
+  <description>
+  ROS Driver for XSens MT/MTi/MTi-G devices.
+  </description>
+  <maintainer email="francis.colas@mavt.ethz.ch">Francis Colas</maintainer>
+  <license>BSD</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <build_depend>rospy</build_depend>
+  <build_depend>std_msgs</build_depend>
+  <build_depend>tf</build_depend>
+  <build_depend>sensor_msgs</build_depend>
+  <build_depend>geometry_msgs</build_depend>
+  <build_depend>diagnostic_msgs</build_depend>
+
+  <run_depend>rospy</run_depend>
+  <run_depend>std_msgs</run_depend>
+  <run_depend>tf</run_depend>
+  <run_depend>sensor_msgs</run_depend>
+  <run_depend>geometry_msgs</run_depend>
+  <run_depend>diagnostic_msgs</run_depend>
+  <run_depend>python-serial</run_depend>
+</package>
+
+

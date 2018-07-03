@@ -51,28 +51,28 @@ def plotOneStepPreditionError(LMPController, LMPCOpenLoopData):
 
     plt.figure(10)
     plt.subplot(611)
-    for i in range(2, TotNumberIt):
+    for i in range(3, TotNumberIt):
         plt.plot(SS[1:TimeSS[i], 4, i], oneStepPredictionError[0, 1:TimeSS[i], i], '-o', label=i)
         plt.legend()
     plt.ylabel('vx')
     plt.subplot(612)
-    for i in range(2, TotNumberIt):
+    for i in range(3, TotNumberIt):
         plt.plot(SS[1:TimeSS[i], 4, i], oneStepPredictionError[1, 1:TimeSS[i], i], '-o')
     plt.ylabel('vy')
     plt.subplot(613)
-    for i in range(2, TotNumberIt):
+    for i in range(3, TotNumberIt):
         plt.plot(SS[1:TimeSS[i], 4, i], oneStepPredictionError[2, 1:TimeSS[i], i], '-o')
     plt.ylabel('wz')
     plt.subplot(614)
-    for i in range(2, TotNumberIt):
+    for i in range(3, TotNumberIt):
         plt.plot(SS[1:TimeSS[i], 4, i], oneStepPredictionError[3, 1:TimeSS[i], i], '-o')
     plt.ylabel('epsi')
     plt.subplot(615)
-    for i in range(2, TotNumberIt):
+    for i in range(3, TotNumberIt):
         plt.plot(SS[1:TimeSS[i], 4, i], oneStepPredictionError[4, 1:TimeSS[i], i], '-o')
     plt.ylabel('s')
     plt.subplot(616)
-    for i in range(2, TotNumberIt):
+    for i in range(3, TotNumberIt):
         plt.plot(SS[1:TimeSS[i], 4, i], oneStepPredictionError[5, 1:TimeSS[i], i], '-o')
     plt.ylabel('ey')
 

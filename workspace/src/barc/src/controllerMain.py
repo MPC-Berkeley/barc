@@ -60,7 +60,7 @@ def main():
 
     PickController = "LMPC"
     NumberOfLaps   = 30
-    vt = 1.3
+    vt = 1.2
     PathFollowingLaps = 2
     
     if mode == "simulations":
@@ -303,7 +303,7 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
         Controller = PathFollowingLTI_MPC(A, B, Q, R, N, vt, TI_Qlane)
 
     elif PickController == "TV_MPC":
-        file_data = open(homedir+'/barc_data/'+'/ClosedLoopDataPID.obj', 'rb')
+        file_data = open(homedir+'/barc_data/'+'/ClosedLoopDataTI_MPC.obj', 'rb')
         ClosedLoopDataPID = pickle.load(file_data)
         file_data.close()
         Q = 1*np.diag([10.0, 1.0, 1, 10.0, 0.0, 10.0]) # vx, vy, wz, epsi, s, ey
@@ -334,7 +334,7 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
             dR_LMPC =  1 * np.array([ 5 * 0.5 * 10.0, 8 * 20.0])                     # Input rate cost u
         else:
             Qslack  = 0.1 * 5 * np.diag([10, 0.1, 1, 0.1, 10, 1])          # Cost on the slack variable for the terminal constraint
-            Qlane   = 0.1 * 0.5 * 10 * np.array([50, 10]) # Quadratic slack lane cost
+            Qlane   = 0.1 * 0.1 * 0.5 * 10 * np.array([50, 10]) # Quadratic slack lane cost
             Q_LMPC  =  0 * np.diag([0.0, 0.0, 10.0, 0.0, 0.0, 0.0])  # State cost x = [vx, vy, wz, epsi, s, ey]
             R_LMPC  =  0 * np.diag([1.0, 1.0])                      # Input cost u = [delta, a]
             dR_LMPC =  1 * np.array([ 2 * 5 * 0.5 * 10.0, 2 * 8 * 20.0])                     # Input rate cost u

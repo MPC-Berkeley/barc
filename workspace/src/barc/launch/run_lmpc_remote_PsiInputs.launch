@@ -1,5 +1,16 @@
 <launch>
     <!-- SYSTEM MODEL -->
+    <!-- parameters -->
+    <arg name="device" default="/dev/ttyUSB1" doc="device file of the IMU"/>
+    <arg name="baudrate" default="115200" doc="baudrate of the IMU"/>
+    <arg name="timeout" default="0.002" doc="timeout for the IMU communication"/>
+    <arg name="frame_id" default="/imu" doc="frame id of the IMU"/>
+    <arg name="frame_local" default="ENU" doc="desired frame orientation (ENU, NED or NWU)"/>
+    <arg name="no_rotation_duration" default="0" doc="duration (int in seconds) of the no-rotation calibration procedure"/>
+    <arg name="angular_velocity_covariance_diagonal" default="[0.0004, 0.0004, 0.0004]" doc="Diagonal elements of angular velocity covariance matrix"/>
+    <arg name="linear_acceleration_covariance_diagonal" default="[0.0004, 0.0004, 0.0004]" doc="Diagonal elements of linear acceleration covariance matrix"/>
+    <arg name="orientation_covariance_diagonal" default="[0.01745, 0.01745, 0.15708]" doc="Diagonal elements of the orientation covariance matrix"/>
+
     <!-- vehicle parameters -->
     <param name="L_a" type="double" value="0.125" />
     <param name="L_b" type="double" value="0.125" />
@@ -11,10 +22,10 @@
     <param name="feature_flag" type="bool" value="false" />
 
     <!-- Track parameters -->
-    <param name="trackShape" type="str" value="oval" />
+    <param name="trackShape" type="str" value="3110" />
 
     <!-- Machines -->
-    <machine name="odroid" address="192.168.10.213" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid_ugo.sh"/>
+    <machine name="odroid" address="192.168.10.101" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid_ugo.sh"/>
 
     <!-- <machine name="this-pc" address="10.0.0.72" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc.sh"/> -->
     <machine name="this-pc" address="192.168.10.157" user="ugo" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc.sh"/>
@@ -22,7 +33,7 @@
     <!-- START NODES -->
     <!-- LOW LEVEL CONTROLLER -->
     <node machine="odroid" pkg="barc" type="controllerLowLevel.py" name="low_level_controller" >
-        <param name="car" type="str" value="OldBARC" />
+        <param name="car" type="str" value="NewBARC" />
     </node>
 
     <!-- Estimator -->
@@ -33,7 +44,7 @@
         <!-- ekf properties -->
          <param name="thReset" type="double" value="0.1" />
          <param name="vSwitch" type="double" value="5.5" />
-         <param name="psiSwitch" type="double" value="1.2" />
+         <param name="psiSwitch" type="double" value="1.1" />
 
          <param name="Qx_hs" type="double" value="0.01" />
          <param name="Qx_ls" type="double" value="0.01" />
@@ -47,14 +58,14 @@
          <param name="Qvy_hs" type="double" value="5.0" />
          <param name="Qvy_ls" type="double" value="5.0" />
 
-         <param name="Qax_hs" type="double" value="1.0" />
-         <param name="Qax_ls" type="double" value="1.0" />
+         <param name="Qax_hs" type="double" value="100.0" />
+         <param name="Qax_ls" type="double" value="100.0" />
 
          <param name="Qay_hs" type="double" value="100.0" />
          <param name="Qay_ls" type="double" value="100.0" />
 
          <param name="Qpsi_hs" type="double" value="0.1" />
-         <param name="Qpsi_ls" type="double" value="1.0" />
+         <param name="Qpsi_ls" type="double" value="0.1" />
 
          <param name="QpsiDot_hs" type="double" value="1.0" />
          <param name="QpsiDot_ls" type="double" value="0.01" />
@@ -93,13 +104,24 @@
     </node>
 
     <!-- IMU -->
-    <node machine="odroid" pkg="myahrs_driver" type="myahrs_driver" name="myahrs_driver">
+    <!--<node machine="odroid" pkg="myahrs_driver" type="myahrs_driver" name="myahrs_driver">
         <param name="port" value="/dev/ttyACM0" />
         <param name="baud_rate" value="115200" />
+    </node>-->
+    <node machine="odroid" pkg="xsens_driver" type="mtnode.py" name="xsens_driver" output="screen" >
+        <param name="device" value="$(arg device)"/>
+        <param name="baudrate" value="$(arg baudrate)"/>
+        <param name="timeout" value="$(arg timeout)"/>
+        <param name="frame_id" value="$(arg frame_id)"/>
+        <param name="frame_local" value="$(arg frame_local)"/>
+        <param name="no_rotation_duration" value="$(arg no_rotation_duration)"/>
+        <rosparam param="angular_velocity_covariance_diagonal" subst_value="True">$(arg angular_velocity_covariance_diagonal)</rosparam>
+        <rosparam param="linear_acceleration_covariance_diagonal" subst_value="True">$(arg linear_acceleration_covariance_diagonal)</rosparam>
+        <rosparam param="orientation_covariance_diagonal" subst_value="True">$(arg orientation_covariance_diagonal)</rosparam>
     </node>
 
     <!-- GPS -->
-    <node machine="odroid" pkg="marvelmind_nav" type="hedge_rcv_bin" name="indoor_gps" args="/dev/ttyACM1"/>
+    <node machine="odroid" pkg="marvelmind_nav" type="hedge_rcv_bin" name="indoor_gps" args="/dev/ttyACM0"/>
     
     <!-- ARDUINO -->
     <!--  * encoders and ultrasound sensors -->

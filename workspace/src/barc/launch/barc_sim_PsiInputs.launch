@@ -20,7 +20,7 @@
     <!-- SIMULATOR -->
     <node pkg="barc" type="vehicleSimulator.py" name="simulator" output="screen">
         <!-- sensor freq update -->
-        <param name="gps_freq_update" type="double" value="4.0" />
+        <param name="gps_freq_update" type="double" value="12.0" />
         <!-- delay in the simulator -->
         <param name="delay_df" type="double" value="0.1" />
         <param name="delay_a" type="double" value="0.1" />
