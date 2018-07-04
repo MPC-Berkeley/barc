@@ -60,7 +60,7 @@ def main():
 
     PickController = "LMPC"
     NumberOfLaps   = 30
-    vt = 1.2
+    vt = 1.3
     PathFollowingLaps = 2
     
     if mode == "simulations":

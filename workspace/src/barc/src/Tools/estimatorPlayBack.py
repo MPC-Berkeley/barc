@@ -31,24 +31,24 @@ def main():
     loop_rate   = 100.0
    
     # Red
-    Q_noVy = eye(8)
-    Q_noVy[0,0] = 0.01 # x
-    Q_noVy[1,1] = 0.01 # y
-    Q_noVy[2,2] = 0.01 # vx
-    Q_noVy[3,3] = 0.01 # vy
-    Q_noVy[4,4] = 1.0 # ax
-    Q_noVy[5,5] = 1.0 # ay
-    Q_noVy[6,6] = 10.0 # psi
-    Q_noVy[7,7] = 10.0 # psidot
-    # Q[8,8] = 0.0 # psiDot in the model
-    R_noVy = eye(6)
-    R_noVy[0,0] = 20.0   # x
-    R_noVy[1,1] = 20.0   # y
-    R_noVy[2,2] = 0.1   # vx
-    R_noVy[3,3] = 10.0   # ax
-    R_noVy[4,4] = 30.0   # ay
-    R_noVy[5,5] = 0.1    # psiDot
-    thReset_noVy = 0.8
+    # Q_noVy = eye(8)
+    # Q_noVy[0,0] = 0.01 # x
+    # Q_noVy[1,1] = 0.01 # y
+    # Q_noVy[2,2] = 0.01 # vx
+    # Q_noVy[3,3] = 0.01 # vy
+    # Q_noVy[4,4] = 1.0 # ax
+    # Q_noVy[5,5] = 1.0 # ay
+    # Q_noVy[6,6] = 10.0 # psi
+    # Q_noVy[7,7] = 10.0 # psidot
+    # # Q[8,8] = 0.0 # psiDot in the model
+    # R_noVy = eye(6)
+    # R_noVy[0,0] = 20.0   # x
+    # R_noVy[1,1] = 20.0   # y
+    # R_noVy[2,2] = 0.1   # vx
+    # R_noVy[3,3] = 10.0   # ax
+    # R_noVy[4,4] = 30.0   # ay
+    # R_noVy[5,5] = 0.1    # psiDot
+    # thReset_noVy = 0.8
 
     Q_hs = eye(8)
     Q_ls = eye(8)
@@ -58,11 +58,11 @@ def main():
     Q_hs[1,1]  =  0.01 # 0.5     # y
     Q_ls[1,1]  =  0.01 # 0.5     # y
     
-    Q_hs[2,2]  =  5.0 #10.0     # vx
-    Q_ls[2,2]  =  5.0 #10.0     # vx
+    Q_hs[2,2]  =  50.0 #10.0     # vx
+    Q_ls[2,2]  =  50.0 #10.0     # vx
     
-    Q_hs[3,3]  =  5.0 #10.0     # vy
-    Q_ls[3,3]  =  5.0 #10.0     # vy
+    Q_hs[3,3]  =  50.0 #10.0     # vy
+    Q_ls[3,3]  =  50.0 #10.0     # vy
     
     Q_hs[4,4]  =  100.0 #1.0      # ax
     Q_ls[4,4]  =  100.0 #1.0      # ax
@@ -84,24 +84,24 @@ def main():
     R_hs[1,1]  = 1.0 #10 + 40.0      # y
     R_ls[1,1]  = 1.0 #10 + 40.0      # y
 
-    R_hs[2,2]  = 0.01 # 0.1      # vx
-    R_ls[2,2]  = 0.01 # 0.1      # vx
+    R_hs[2,2]  = 100.0 # 0.1      # vx
+    R_ls[2,2]  = 100.0 # 0.1      # vx
 
-    R_hs[3,3]  = 10.0 #30 + 10.0      # ax 
-    R_ls[3,3]  = 10.0 #30 + 10.0      # ax 
+    R_hs[3,3]  = 1.0 #30 + 10.0      # ax 
+    R_ls[3,3]  = 1.0 #30 + 10.0      # ax 
 
     R_hs[4,4]  = 1.0 #40.0      # ay 
-    R_ls[4,4]  = 10.0 #40.0      # ay 
+    R_ls[4,4]  = 1.0 #40.0      # ay 
 
     R_hs[5,5]  = 0.1 #5 * 5 * 2 * 10 * 0.1      # psiDot
     R_ls[5,5]  = 0.1 #5 * 5 * 2 * 10 * 0.1      # psiDot
 
-    R_hs[6,6]  = 0.01 # 0.01    # vy
-    R_ls[6,6]  = 0.01 # 0.01    # vy
+    R_hs[6,6]  = 100.01 # 0.01    # vy
+    R_ls[6,6]  = 100.01 # 0.01    # vy
 
-    thReset_hs      = 0.5      # 0.4
+    thReset_hs      = 0.1      # 0.4
     vSwitch_hs      = 5.3      # 1.0
-    psiSwitch_hs    = 1.0      # 0.5 * 2.0
+    psiSwitch_hs    = 0.5      # 0.5 * 2.0
 
 
     Q_hs_1 = eye(8)
@@ -118,8 +118,8 @@ def main():
     Q_hs_1[3,3]  =  5.0 #10.0     # vy
     Q_ls_1[3,3]  =  5.0 #10.0     # vy
     
-    Q_hs_1[4,4]  =  1.0 #1.0      # ax
-    Q_ls_1[4,4]  =  1.0 #1.0      # ax
+    Q_hs_1[4,4]  =  100.0 #1.0      # ax
+    Q_ls_1[4,4]  =  100.0 #1.0      # ax
     
     Q_hs_1[5,5]  =  100.0 #1.0      # ay 
     Q_ls_1[5,5]  =  100.0 #1.0      # ay 
@@ -138,24 +138,24 @@ def main():
     R_hs_1[1,1]  = 1.0 #10 + 40.0      # y
     R_ls_1[1,1]  = 1.0 #10 + 40.0      # y
 
-    R_hs_1[2,2]  = 0.01 # 0.1      # vx
-    R_ls_1[2,2]  = 0.01 # 0.1      # vx
+    R_hs_1[2,2]  = 10.01 # 0.1      # vx
+    R_ls_1[2,2]  = 10.01 # 0.1      # vx
 
-    R_hs_1[3,3]  = 10.0 #30 + 10.0      # ax 
-    R_ls_1[3,3]  = 10.0 #30 + 10.0      # ax 
+    R_hs_1[3,3]  = 1.0 #30 + 10.0      # ax 
+    R_ls_1[3,3]  = 1.0 #30 + 10.0      # ax 
 
     R_hs_1[4,4]  = 1.0 #40.0      # ay 
-    R_ls_1[4,4]  = 10.0 #40.0      # ay 
+    R_ls_1[4,4]  = 1.0 #40.0      # ay 
 
     R_hs_1[5,5]  = 0.1 #5 * 5 * 2 * 10 * 0.1      # psiDot
     R_ls_1[5,5]  = 0.1 #5 * 5 * 2 * 10 * 0.1      # psiDot
 
-    R_hs_1[6,6]  = 0.01 # 0.01    # vy
-    R_ls_1[6,6]  = 0.01 # 0.01    # vy
+    R_hs_1[6,6]  = 10.01 # 0.01    # vy
+    R_ls_1[6,6]  = 10.01 # 0.01    # vy
 
     thReset_hs_1      = 0.1      # 0.4
     vSwitch_hs_1      = 5.3      # 1.0
-    psiSwitch_hs_1    = 1.1      # 0.5 * 2.0
+    psiSwitch_hs_1    = 0.5      # 0.5 * 2.0
     # # Original Shuqi's tuning
     # Q_ls = eye(8)
     # Q_ls[0,0] = 0.001**2     # Q_x
@@ -176,57 +176,57 @@ def main():
     # R_ls[6,6] = 0.001**2  # R_vy
 
     # Q[8,8] = 0.0 # psiDot in the model
-    R_noVyEstNew = eye(7)
-    R_noVyEstNew[0,0] = 20.0   # x
-    R_noVyEstNew[1,1] = 20.0   # y
-    R_noVyEstNew[2,2] = 0.1    # vx
-    R_noVyEstNew[3,3] = 10.0   # ax
-    R_noVyEstNew[4,4] = 30.0   # ay
-    R_noVyEstNew[5,5] = 0.1    # psiDot
-    R_noVyEstNew[6,6] = 0.01  # vy
-    thReset_noVy = 0.8
+    # R_noVyEstNew = eye(7)
+    # R_noVyEstNew[0,0] = 20.0   # x
+    # R_noVyEstNew[1,1] = 20.0   # y
+    # R_noVyEstNew[2,2] = 0.1    # vx
+    # R_noVyEstNew[3,3] = 10.0   # ax
+    # R_noVyEstNew[4,4] = 30.0   # ay
+    # R_noVyEstNew[5,5] = 0.1    # psiDot
+    # R_noVyEstNew[6,6] = 0.01  # vy
+    # thReset_noVy = 0.8
 
-    # Blue
-    Q = eye(8)
-    Q[0,0] = 0.01     # x
-    Q[1,1] = 0.01     # y
-    Q[2,2] = 0.5      # vx
-    Q[3,3] = 0.5      # vy
-    Q[4,4] = 1.0      # ax
-    Q[5,5] = 1.0      # ay
-    Q[6,6] = 0.01     # psi
-    Q[7,7] = 10.0     # psiDot
-    R = eye(7)
-    R[0,0] = 0.0005   # x
-    R[1,1] = 0.0005   # y
-    R[2,2] = 0.1      # vx
-    R[3,3] = 0.01     # ax
-    R[4,4] = 10.0     # ay
-    R[5,5] = 20.0     # psiDot
-    R[6,6] = 0.001    # vy
-    thReset = 1.4
-    vSwitch = 1.3
-    psiSwith = 1.0
+    # # Blue
+    # Q = eye(8)
+    # Q[0,0] = 0.01     # x
+    # Q[1,1] = 0.01     # y
+    # Q[2,2] = 0.5      # vx
+    # Q[3,3] = 0.5      # vy
+    # Q[4,4] = 1.0      # ax
+    # Q[5,5] = 1.0      # ay
+    # Q[6,6] = 0.01     # psi
+    # Q[7,7] = 10.0     # psiDot
+    # R = eye(7)
+    # R[0,0] = 0.0005   # x
+    # R[1,1] = 0.0005   # y
+    # R[2,2] = 0.1      # vx
+    # R[3,3] = 0.01     # ax
+    # R[4,4] = 10.0     # ay
+    # R[5,5] = 20.0     # psiDot
+    # R[6,6] = 0.001    # vy
+    # thReset = 1.4
+    # vSwitch = 1.3
+    # psiSwith = 0.4
 
-    # Green
-    Q_1 = eye(8)
-    Q_1[0,0] = 0.01     # x
-    Q_1[1,1] = 0.01     # y
-    Q_1[2,2] = 0.5      # vx
-    Q_1[3,3] = 0.5      # vy
-    Q_1[4,4] = 1.0      # ax
-    Q_1[5,5] = 1.0      # ay
-    Q_1[6,6] = 0.01     # psi
-    Q_1[7,7] = 10.0     # psiDot
-    R_1 = eye(7)
-    R_1[0,0] = 5.0      # x
-    R_1[1,1] = 5.0      # y
-    R_1[2,2] = 1.0      # vx
-    R_1[3,3] = 0.0001   # ax
-    R_1[4,4] = 10.0     # ay
-    R_1[5,5] = 20.0     # psiDot
-    R_1[6,6] = 0.001    # vy
-    thReset_1 = 0.4
+    # # Green
+    # Q_1 = eye(8)
+    # Q_1[0,0] = 0.01     # x
+    # Q_1[1,1] = 0.01     # y
+    # Q_1[2,2] = 0.5      # vx
+    # Q_1[3,3] = 0.5      # vy
+    # Q_1[4,4] = 1.0      # ax
+    # Q_1[5,5] = 1.0      # ay
+    # Q_1[6,6] = 0.01     # psi
+    # Q_1[7,7] = 10.0     # psiDot
+    # R_1 = eye(7)
+    # R_1[0,0] = 5.0      # x
+    # R_1[1,1] = 5.0      # y
+    # R_1[2,2] = 1.0      # vx
+    # R_1[3,3] = 0.0001   # ax
+    # R_1[4,4] = 10.0     # ay
+    # R_1[5,5] = 20.0     # psiDot
+    # R_1[6,6] = 0.001    # vy
+    # thReset_1 = 0.4
 
     imu = ImuClass(0.0)
     gps = GpsClass(0.0)
@@ -247,6 +247,7 @@ def main():
 
     Qindex = [0, 1, 2, 3, 4, 5, 6]
     Rindex = [0, 1, 2, 3, 4, 6]
+    # Red
     est = EstimatorPsiInput(0.0,loop_rate,a_delay,df_delay,
                             Q_hs_1[np.ix_(Qindex,Qindex)],Q_ls_1[np.ix_(Qindex,Qindex)],
                             R_hs_1[np.ix_(Rindex,Rindex)],R_ls_1[np.ix_(Rindex,Rindex)],
@@ -257,6 +258,7 @@ def main():
                             R_hs[np.ix_(Rindex,Rindex)],R_ls[np.ix_(Rindex,Rindex)],
                             thReset_hs,vSwitch_hs,psiSwitch_hs)
 
+    # Green
     # est_new = Estimator(0.0,loop_rate,a_delay,df_delay,Q,R, thReset)
     est_new = EstimatorClean(0.0,loop_rate,a_delay,df_delay,Q_hs,R_hs, thReset_hs) # blue
     # est_new1 = Estimator(0.0,loop_rate,a_delay,df_delay, Q, R, thReset) # green
@@ -301,7 +303,8 @@ def main():
     v_rr_his            = npz_output["v_rr_his"]
     v_fl_his            = npz_output["v_fl_his"]
     v_fr_his            = npz_output["v_fr_his"]
-    
+    yaw_his             = npz_output["psi_raw_his"]
+    # yaw_raw_his     = npz_imu["yaw_raw_his"]
 
     fig = plotTrack(map)
     plt.axis("equal")
@@ -332,7 +335,6 @@ def main():
     axes.legend()
 
     plt.show()
-
 
 
     flagHalfLap = False
@@ -509,8 +511,13 @@ def main():
 
     print "Finishing saveing state estimation data"
     pdb.set_trace()
+    plt.figure(220)
+    axes = plt.gca()
+    plt.plot(yaw_his, '-o', label="yaw_raw_his")
+    axes.legend()
 
     # Acc 
+    plt.figure(221)
     plt.subplot(311)
     axes = plt.gca()
     plt.plot(range(0,len(inp_ax_his)), inp_ax_his, '-o')
@@ -604,6 +611,8 @@ def main():
     if onVec[2] == 1:
         plt.plot(range(xmin,xmax), est_new1.yaw_est_his[xmin:xmax], '--og', label="Est_new1")
     plt.plot(range(xmin,xmax), yaw_est_his[xmin:xmax], '--sk')
+    plt.plot(yaw_his+(est.yaw_est_his[-1]-yaw_his[-1]), '--r', label="yaw_raw_his")
+    plt.plot(yaw_his+(est_new1.yaw_est_his[-1]-yaw_his[-1]), '--g', label="yaw_raw_his")
     axes.set_xlim([xmin,xmax])
     axes.legend()
     plt.ylabel('psi')
