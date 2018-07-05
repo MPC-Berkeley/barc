@@ -38,7 +38,7 @@ def main():
 
     pdb.set_trace()
 
-    animation_states(map, LMPCOpenLoopData, LMPController, 2)
+    animation_states(map, LMPCOpenLoopData, LMPController, 10)
 
     plt.show()
     

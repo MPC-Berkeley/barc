@@ -50,6 +50,12 @@ def main():
     # R_noVy[5,5] = 0.1    # psiDot
     # thReset_noVy = 0.8
 
+    # Things to Try are: 
+    #   1) Q_psi = 0.01 or 0.1
+    #   2) R_vx and R_vy = 100 or 10
+    #   3) Q_vx and Q_vy = 50 or 5
+
+    # Est_new1 = Green
     Q_hs = eye(8)
     Q_ls = eye(8)
     Q_hs[0,0]  =  0.01 # 0.5     # x
@@ -87,8 +93,8 @@ def main():
     R_hs[2,2]  = 100.0 # 0.1      # vx
     R_ls[2,2]  = 100.0 # 0.1      # vx
 
-    R_hs[3,3]  = 1.0 #30 + 10.0      # ax 
-    R_ls[3,3]  = 1.0 #30 + 10.0      # ax 
+    R_hs[3,3]  = 10.0 #30 + 10.0      # ax 
+    R_ls[3,3]  = 10.0 #30 + 10.0      # ax 
 
     R_hs[4,4]  = 1.0 #40.0      # ay 
     R_ls[4,4]  = 1.0 #40.0      # ay 
@@ -104,6 +110,7 @@ def main():
     psiSwitch_hs    = 0.5      # 0.5 * 2.0
 
 
+    # Est = Red
     Q_hs_1 = eye(8)
     Q_ls_1 = eye(8)
     Q_hs_1[0,0]  =  0.01 # 0.5     # x
@@ -112,20 +119,20 @@ def main():
     Q_hs_1[1,1]  =  0.01 # 0.5     # y
     Q_ls_1[1,1]  =  0.01 # 0.5     # y
     
-    Q_hs_1[2,2]  =  5.0 #10.0     # vx
-    Q_ls_1[2,2]  =  5.0 #10.0     # vx
+    Q_hs_1[2,2]  =  50.0 #10.0     # vx
+    Q_ls_1[2,2]  =  50.0 #10.0     # vx
     
-    Q_hs_1[3,3]  =  5.0 #10.0     # vy
-    Q_ls_1[3,3]  =  5.0 #10.0     # vy
+    Q_hs_1[3,3]  =  50.0 #10.0     # vy
+    Q_ls_1[3,3]  =  50.0 #10.0     # vy
     
-    Q_hs_1[4,4]  =  100.0 #1.0      # ax
-    Q_ls_1[4,4]  =  100.0 #1.0      # ax
+    Q_hs_1[4,4]  =  1.0 #1.0      # ax
+    Q_ls_1[4,4]  =  1.0 #1.0      # ax
     
     Q_hs_1[5,5]  =  100.0 #1.0      # ay 
     Q_ls_1[5,5]  =  100.0 #1.0      # ay 
     
-    Q_hs_1[6,6]  =  0.01 #10 + 80.0      # psi
-    Q_ls_1[6,6]  =  0.01 #10 + 80.0      # psi
+    Q_hs_1[6,6]  =  0.1 #10 + 80.0      # psi
+    Q_ls_1[6,6]  =  0.1 #10 + 80.0      # psi
     
     Q_hs_1[7,7]  =  1.0 # psiDot
     Q_ls_1[7,7]  =  0.01 # psiDot
@@ -138,11 +145,11 @@ def main():
     R_hs_1[1,1]  = 1.0 #10 + 40.0      # y
     R_ls_1[1,1]  = 1.0 #10 + 40.0      # y
 
-    R_hs_1[2,2]  = 10.01 # 0.1      # vx
-    R_ls_1[2,2]  = 10.01 # 0.1      # vx
+    R_hs_1[2,2]  = 100.01 # 0.1      # vx
+    R_ls_1[2,2]  = 100.01 # 0.1      # vx
 
-    R_hs_1[3,3]  = 1.0 #30 + 10.0      # ax 
-    R_ls_1[3,3]  = 1.0 #30 + 10.0      # ax 
+    R_ls_1[3,3]  = 100.0 #30 + 10.0      # ax 
+    R_hs_1[3,3]  = 100.0 #30 + 10.0      # ax 
 
     R_hs_1[4,4]  = 1.0 #40.0      # ay 
     R_ls_1[4,4]  = 1.0 #40.0      # ay 
@@ -150,8 +157,8 @@ def main():
     R_hs_1[5,5]  = 0.1 #5 * 5 * 2 * 10 * 0.1      # psiDot
     R_ls_1[5,5]  = 0.1 #5 * 5 * 2 * 10 * 0.1      # psiDot
 
-    R_hs_1[6,6]  = 10.01 # 0.01    # vy
-    R_ls_1[6,6]  = 10.01 # 0.01    # vy
+    R_hs_1[6,6]  = 100.01 # 0.01    # vy
+    R_ls_1[6,6]  = 100.01 # 0.01    # vy
 
     thReset_hs_1      = 0.1      # 0.4
     vSwitch_hs_1      = 5.3      # 1.0
@@ -541,10 +548,10 @@ def main():
     plt.plot(range(0,len(est_new.psiDot_est_his)), est_new.psiDot_est_his, '-ob')
     plt.plot(range(0,len(est_new1.psiDot_est_his)), est_new1.psiDot_est_his, '--og')
 
-    xmin = 6320 #2000 #0
-    xmax = 6400 #2660 #len(est.vx_est_his)
-    xmin = 0
-    xmax = len(est.vx_est_his)
+    xmin = 5100 #2000 #0
+    xmax = 5300 #2660 #len(est.vx_est_his)
+    # xmin = 0
+    # xmax = len(est.vx_est_his)
 
     fig = plotTrack(map)
     # plt.plot(x_est_his[xmin:xmax],y_est_his[xmin:xmax],"--ob")

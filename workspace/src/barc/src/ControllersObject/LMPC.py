@@ -406,7 +406,7 @@ def _LMPC_BuildMatIneqConst(LMPC):
 
     bu = np.array([[0.3],  # Max Steering
                    [0.3],  # Max Steering
-                   [1.8],  # Max Acceleration
+                   [2.0],  # Max Acceleration
                    [0.7]])  # Min Acceleration
 
 

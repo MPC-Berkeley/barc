@@ -3,6 +3,8 @@
     File name: stateEstimator.py
     Author: Shuqi Xu
     Email: shuqixu@berkeley.edu (xushuqi8787@gmail.com)
+    Modified: Ugo Rosolia
+    Email: ugo.rosolia@berkeley.edu
     Python Version: 2.7.12
 """
 # ---------------------------------------------------------------------------
