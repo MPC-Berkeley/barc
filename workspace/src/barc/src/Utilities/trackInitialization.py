@@ -20,7 +20,7 @@ class Map():
             selectedTrack = flagTrackShape
 
         if selectedTrack == "3110":
-            self.halfWidth = 0.45
+            self.halfWidth = 0.7
             self.slack     = 0.45
             spec = np.array([[60 * 0.03, 0],
                              [60 * 0.03, +60 * 0.03 * 2 / np.pi],

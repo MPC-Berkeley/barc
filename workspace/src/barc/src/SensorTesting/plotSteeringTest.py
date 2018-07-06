@@ -13,19 +13,20 @@ import matplotlib.patches as patches
 import numpy as np
 from numpy import sin, cos
 import pickle
-
+from barc.msg import pos_info, ECU, prediction, SafeSetGlob
 
 def main():
     rospy.init_node("imuPlotting")
 
     carSel = rospy.get_param("/IMUplot/car")
+    input_commands = rospy.Publisher('ecu', ECU, queue_size=1)
 
     t0 = rospy.get_rostime().to_sec()
     imu = ImuClass(t0)
 
     loop_rate = 100
     rate = rospy.Rate(loop_rate)
-    
+    cmd = ECU()
 
     fig, ax1, ax2, ax3, ax4, yawRatePlot, yawMeaPlot, yawIntPlot, rollPlot, pitchPlot, axPlot, ayPlot, azPlot = _initializeFigureIMU()
 
@@ -36,7 +37,8 @@ def main():
     yaw_int   = []
     yawRate   = []
     roll_raw  = []
-    pitch_raw =[]
+    pitch_raw = []
+    steer_raw = []
     time      = []
     
     counter = 0
@@ -56,6 +58,17 @@ def main():
         a_y = imu.ay
         a_z = imu.az
         # a_z = imu.linear_acceleration.z
+        
+        if counter > 100:
+            print "input_commands"
+            cmd.servo = -0.0
+            steer_raw.append(cmd.servo)
+            cmd.motor = -0.1
+            input_commands.publish(cmd)
+        else:
+            steer_raw.append(0.0)
+
+
 
         yaw_raw.append(imu.yaw) 
         yaw_int.append(imu.yawInt)
@@ -97,7 +110,7 @@ def main():
         rate.sleep()
 
     # Save Data
-    file_data = open(sys.path[0]+'/../data/sensorTesting/IMU_'+carSel+'BARC'+'.obj', 'wb')
+    file_data = open(sys.path[0]+'/../data/sensorTesting/Steering_'+carSel+'BARC'+'.obj', 'wb')
     pickle.dump(time, file_data)
     pickle.dump(yawRate, file_data)
     pickle.dump(yaw_raw, file_data)   
@@ -107,6 +120,7 @@ def main():
     pickle.dump(ax_raw, file_data)   
     pickle.dump(ay_raw, file_data)
     pickle.dump(az_raw, file_data)
+    pickle.dump(steer_raw, file_data)
 
 class ImuClass(object):
     """ Object collecting GPS measurement data
@@ -125,6 +139,7 @@ class ImuClass(object):
         """
 
         rospy.Subscriber('imu/data', Imu, self.imu_callback, queue_size=1)
+        input_commands = rospy.Publisher('ecu', ECU, queue_size=1)
 
         # Imu measurement
         self.running = False

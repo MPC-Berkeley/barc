@@ -359,14 +359,12 @@ def _LMPC_BuildMatCost(LMPC, Sel_Qfun, numSS_Points, N, Qslack, Q, R, dR, uOld):
 
     M00 = linalg.block_diag(Mx, P, Mu)
     quadLaneSlack = Qlane[0] * np.eye(2*LMPC.N)
+    # Opt variables: [x, u, lambda, slackTermConstr, slackLane]
     M0 = linalg.block_diag(M00, np.zeros((numSS_Points, numSS_Points)), Qslack, quadLaneSlack)
     # np.savetxt('M0.csv', M0, delimiter=',', fmt='%f')
 
     xtrack = np.array([vt, 0, 0, 0, 0, 0])
     q0 = - 2 * np.dot(np.append(np.tile(xtrack, N + 1), np.zeros(R.shape[0] * N)), M00)
-
-
-
 
     # Derivative Input
     q0[n*(N+1):n*(N+1)+2] = -2 * np.dot( uOld, np.diag(dR) )
@@ -374,6 +372,7 @@ def _LMPC_BuildMatCost(LMPC, Sel_Qfun, numSS_Points, N, Qslack, Q, R, dR, uOld):
     # np.savetxt('q0.csv', q0, delimiter=',', fmt='%f')
     linLaneSlack = Qlane[1] * np.ones(2*LMPC.N)
 
+    # Add cost on lambda, slackTermConstr and slackLane
     q = np.append(np.append(np.append(q0, Sel_Qfun), np.zeros(Q.shape[0])), linLaneSlack)
     # np.savetxt('q.csv', q, delimiter=',', fmt='%f')
 
@@ -430,13 +429,21 @@ def _LMPC_BuildMatIneqConst(LMPC):
     Dummy1 = np.hstack((Fxtot, np.zeros((rFxtot, cFutot))))
     Dummy2 = np.hstack((np.zeros((rFutot, cFxtot)), Futot))
 
-    FDummy = np.vstack((Dummy1, Dummy2))
-    I = -np.eye(numSS_Points)                 # Lambda related with the safe set
-    FDummy2 = linalg.block_diag(FDummy, I)
-    Fslack = np.zeros((FDummy2.shape[0], n))
-    
-    F_hard = np.hstack((FDummy2, Fslack))     # This has hard constraints on the lane boundaries
+    # State and inpit Constraints
+    F_StateInput = np.vstack((Dummy1, Dummy2))
 
+    # Lambda related with the safe set.
+    I = -np.eye(numSS_Points)                
+    F_StateInputSS = linalg.block_diag(F_StateInput, I)
+
+    
+    # This has hard constraints on the lane boundaries
+    # Opt Variables: [x, u, lambda, slackTermConstr]
+    FslackSS = np.zeros((F_StateInputSS.shape[0], n))
+    F_hard = np.hstack((F_StateInputSS, FslackSS))     
+    b_hard = np.hstack((bxtot, butot, np.zeros(numSS_Points)))
+
+    # KEEP CLEAN UP
     LaneSlack = np.zeros((F_hard.shape[0], 2*N))
     colIndexPositive = []
     rowIndexPositive = []
@@ -464,9 +471,8 @@ def _LMPC_BuildMatIneqConst(LMPC):
     # pdb.set_trace()
 
 
-
-    b_1 = np.hstack((bxtot, butot, np.zeros(numSS_Points)))
-    b = np.hstack((b_1, np.zeros(2*N)))
+    # b vector
+    b = np.hstack((b_hard, np.zeros(2*N)))
 
     if LMPC.Solver == "CVX":
         F_sparse = spmatrix(F[np.nonzero(F)], np.nonzero(F)[0].astype(int), np.nonzero(F)[1].astype(int), F.shape)

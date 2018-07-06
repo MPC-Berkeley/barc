@@ -56,7 +56,6 @@ def main():
     print "Track Length: ", map.TrackLength 
     
     # Choose Controller and Number of Laps
-    InputDelay = 1 # 0 for no delay, 1 for 1 step delay, 2 for 2 steps delay
 
     PickController = "LMPC"
     NumberOfLaps   = 30
@@ -142,8 +141,6 @@ def main():
                 ControllerLap0.solve(LocalState)
                 cmd.servo = ControllerLap0.uPred[0,0]
                 cmd.motor = ControllerLap0.uPred[0,1]
-                # cmd.servo = 0.0 #ControllerLap0.uPred[0,0]
-                # cmd.motor = 0.3 #ControllerLap0.uPred[0,1]
 
                 oldU = uApplied
                 uApplied = np.array([cmd.servo, cmd.motor])
@@ -170,16 +167,8 @@ def main():
                 input_commands.publish(cmd)
 
                 oneStepPredictionError = LocalState - oneStepPrediction # Subtract the local measurement to the previously predicted one step
-
-                if InputDelay == 1:
-                    oneStepPrediction, oneStepPredictionTime = Controller.oneStepPrediction(LocalState, uApplied, 1)
-                elif InputDelay == 2:
-                    oneStepPrediction, oneStepPredictionTime = Controller.oneStepPrediction(LocalState, oldU, 1)
-                    oneStepPrediction, oneStepPredictionTime = Controller.oneStepPrediction(oneStepPrediction, uApplied, 1)
-
-                # print "LocalState: ", LocalState
-                # print "oneStepPrediction: ", oneStepPrediction
-
+                oneStepPrediction, oneStepPredictionTime = Controller.oneStepPrediction(LocalState, uApplied, 1)
+                
                 Controller.solve(oneStepPrediction)
                 cmd.servo = Controller.uPred[0,0]
                 cmd.motor = Controller.uPred[0,1]
@@ -197,25 +186,17 @@ def main():
             # == Start: Record data
             if (PickController != "LMPC") and (LapNumber >= 1):
                 LocalState[4] = LocalState[4] + (LapNumber - 1)*map.TrackLength
-                if InputDelay == 1:
-                    ClosedLoopData.addMeasurement(GlobalState, LocalState, uApplied)
-                elif InputDelay ==2:
-                    ClosedLoopData.addMeasurement(GlobalState, LocalState, oldU)
+                ClosedLoopData.addMeasurement(GlobalState, LocalState, uApplied)
             elif LapNumber >= 1:
-                if InputDelay == 1:
-                    ClosedLoopData.addMeasurement(GlobalState, LocalState, uApplied)
-                elif InputDelay ==2:
-                    ClosedLoopData.addMeasurement(GlobalState, LocalState, oldU)
-            # Add data to SS and Record Prediction
+                ClosedLoopData.addMeasurement(GlobalState, LocalState, uApplied)
 
-            if (PickController == "LMPC"):
-                if LapNumber >= PathFollowingLaps and Controller.xPred != []:
-                    OL_predictions.s    = Controller.xPred[:, 4]
-                    OL_predictions.ey   = Controller.xPred[:, 5]
-                    OL_predictions.epsi = Controller.xPred[:, 3]
-                    pred_treajecto.publish(OL_predictions)
+            # Add data to SS and Record Prediction                    
 
             if (PickController == "LMPC") and (LapNumber >= PathFollowingLaps):
+                OL_predictions.s    = Controller.xPred[:, 4]
+                OL_predictions.ey   = Controller.xPred[:, 5]
+                OL_predictions.epsi = Controller.xPred[:, 3]
+                pred_treajecto.publish(OL_predictions)
 
                 SS_glob_sel.SSx       = Controller.SS_glob_PointSelectedTot[4, :]
                 SS_glob_sel.SSy       = Controller.SS_glob_PointSelectedTot[5, :]
@@ -227,10 +208,7 @@ def main():
                 OpenLoopData.SSused[:, :, TimeCounter, Controller.it]               = Controller.SS_PointSelectedTot
                 OpenLoopData.Qfunused[:, TimeCounter, Controller.it]                = Controller.Qfun_SelectedTot
 
-                if InputDelay == 1:
-                    Controller.addPoint(LocalState, GlobalState, uApplied, TimeCounter)
-                elif InputDelay ==2:
-                    Controller.addPoint(LocalState, GlobalState, oldU, TimeCounter)
+                Controller.addPoint(LocalState, GlobalState, uApplied, TimeCounter)
 
             # == End: Record data
         else:                                        # If car out of the track
@@ -327,13 +305,13 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
         shift = N / 2                     # Given the closed point, x_t^j, to the x(t) select the SS points from x_{t+shift}^j
         # Tuning Parameters
         if mode == "simulations":
-            Qslack  = 5 * np.diag([10, 0.1, 1, 0.1, 10, 1])          # Cost on the slack variable for the terminal constraint
-            Qlane   = 0.1 * 0.1 * 0.5 * 10 * np.array([50, 10]) # Quadratic slack lane cost
+            Qslack  =  2 * 5 * np.diag([10, 0.1, 1, 0.1, 10, 1])          # Cost on the slack variable for the terminal constraint
+            Qlane   = 0.1 * 0.5 * 10 * np.array([50, 10]) # Quadratic slack lane cost
             Q_LMPC  =  0 * np.diag([0.0, 0.0, 10.0, 0.0, 0.0, 0.0])  # State cost x = [vx, vy, wz, epsi, s, ey]
             R_LMPC  =  0 * np.diag([1.0, 1.0])                      # Input cost u = [delta, a]
-            dR_LMPC =  1 * np.array([ 5 * 0.5 * 10.0, 8 * 20.0])                     # Input rate cost u
+            dR_LMPC =  2* 1 * np.array([ 5 * 0.5 * 10.0, 8 * 20.0]) # Input rate cost u
         else:
-            Qslack  = 0.1 * 5 * np.diag([10, 0.1, 1, 0.1, 10, 1])          # Cost on the slack variable for the terminal constraint
+            Qslack  = 5 * 0.1 * 5 * np.diag([10, 0.1, 1, 0.1, 10, 1])          # Cost on the slack variable for the terminal constraint
             Qlane   = 0.1 * 0.5 * 10 * np.array([50, 10]) # Quadratic slack lane cost
             Q_LMPC  =  0 * np.diag([0.0, 0.0, 10.0, 0.0, 0.0, 0.0])  # State cost x = [vx, vy, wz, epsi, s, ey]
             R_LMPC  =  0 * np.diag([1.0, 1.0])                      # Input cost u = [delta, a]
