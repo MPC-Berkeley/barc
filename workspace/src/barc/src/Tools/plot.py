@@ -26,7 +26,7 @@ def main():
     file_data.close()
     map = Map("oval")
 
-    # pdb.set_trace()
+    pdb.set_trace()
     print "Track length is: ", map.TrackLength
     plotOneStepPreditionError(LMPController, LMPCOpenLoopData)
 

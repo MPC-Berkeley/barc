@@ -550,8 +550,8 @@ def main():
 
     xmin = 5100 #2000 #0
     xmax = 5300 #2660 #len(est.vx_est_his)
-    # xmin = 0
-    # xmax = len(est.vx_est_his)
+    xmin = 0
+    xmax = len(est.vx_est_his)
 
     fig = plotTrack(map)
     # plt.plot(x_est_his[xmin:xmax],y_est_his[xmin:xmax],"--ob")

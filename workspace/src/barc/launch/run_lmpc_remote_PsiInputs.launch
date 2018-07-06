@@ -32,7 +32,7 @@
     
     <!-- START NODES -->
     <!-- LOW LEVEL CONTROLLER -->
-    <node machine="odroid" pkg="barc" type="controllerLowLevel.py" name="low_level_controller" >
+    <node machine="odroid" pkg="barc" type="controllerLowLevelNew.py" name="low_level_controller" >
         <param name="car" type="str" value="NewBARC" />
     </node>
 
