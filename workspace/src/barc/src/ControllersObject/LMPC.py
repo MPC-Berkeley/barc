@@ -67,8 +67,8 @@ class ControllerLMPC():
 
         # Initialize the following quantities to avoid dynamic allocation
         NumPoints = int(TimeLMPC / dt) + 1
-        self.TimeSS      = -10000 * np.ones(Laps).astype(int)        # Time at which each j-th iteration is completed
-        self.LapCounter  = -10000 * np.ones(Laps).astype(int)        # Number of points in j-th iterations (counts also points after finisch line)
+        self.TimeSS      = -10000 * np.ones(Laps).astype(int)        # Number of points in j-th iterations (counts also points after finisch line)
+        self.LapCounter  = -10000 * np.ones(Laps).astype(int)        # Time at which each j-th iteration is completed
         self.SS          = -10000 * np.ones((NumPoints, 6, Laps))    # Sampled Safe SS
         self.uSS         = -10000 * np.ones((NumPoints, 2, Laps))    # Input associated with the points in SS
         self.Qfun        =      0 * np.ones((NumPoints, Laps))       # Qfun: cost-to-go from each point in SS
@@ -99,30 +99,29 @@ class ControllerLMPC():
         Arguments:
             x0: current state position
         """
-        n = self.n;        d = self.d
-        F = self.F;        b = self.b
-        SS = self.SS;      Qfun = self.Qfun; SS_glob = self.SS_glob
-        uSS = self.uSS;    TimeSS = self.TimeSS
-        Q = self.Q;        R = self.R
-        dR =self.dR;       OldInput = self.OldInput
-        N = self.N; dt = self.dt
+        n            = self.n;     d        = self.d
+        F            = self.F;     b        = self.b
+        SS           = self.SS;    Qfun     = self.Qfun; SS_glob = self.SS_glob
+        uSS          = self.uSS;   TimeSS   = self.TimeSS
+        Q            = self.Q;     R        = self.R
+        dR           = self.dR;    OldInput = self.OldInput
+        N            = self.N;     dt       = self.dt
         it           = self.it
         numSS_Points = self.numSS_Points
-        shift       = self.shift
+        shift        = self.shift
         Qslack       = self.Qslack
+        LinPoints    = self.LinPoints
+        LinInput     = self.LinInput
+        map          = self.map
 
-        LinPoints = self.LinPoints
-        LinInput  = self.LinInput
-        map = self.map
-
-        # Select Points from SS
-#        print self.Qfun[0, 0:it], np.argsort(self.Qfun[0, 0:it])[0:self.numSS_it]
+        # Select laps from SS based on LapTime, always keep the last lap
         sortedLapTime = np.argsort(self.Qfun[0, 0:it])
         if sortedLapTime[0] != it-1:
             self.lapSelected = np.hstack((it-1, sortedLapTime))
         else:
             self.lapSelected = sortedLapTime
-        
+
+        # Select points to be used in LMPC as Terminal Constraint
         SS_PointSelectedTot      = np.empty((n, 0))
         SS_glob_PointSelectedTot = np.empty((n, 0))
         Qfun_SelectedTot         = np.empty((0))
@@ -135,6 +134,7 @@ class ControllerLMPC():
         self.SS_PointSelectedTot      = SS_PointSelectedTot
         self.SS_glob_PointSelectedTot = SS_glob_PointSelectedTot
         self.Qfun_SelectedTot         = Qfun_SelectedTot
+
         # Run System ID
         startTimer = datetime.datetime.now()
         self.A, self.B, self.C, indexUsed_list = _LMPC_EstimateABC(self)
@@ -193,7 +193,7 @@ class ControllerLMPC():
         self.LapCounter[it] = ClosedLoopData.SimTime
         self.SS[0:(self.TimeSS[it] + 1), :, it] = ClosedLoopData.x[0:(self.TimeSS[it] + 1), :]
         self.SS_glob[0:(self.TimeSS[it] + 1), :, it] = ClosedLoopData.x_glob[0:(self.TimeSS[it] + 1), :]
-        self.uSS[0:self.TimeSS[it]+ 1, :, it]      = ClosedLoopData.u[0:(self.TimeSS[it] + 1), :]
+        self.uSS[0:(self.TimeSS[it]+ 1), :, it]      = ClosedLoopData.u[0:(self.TimeSS[it] + 1), :]
         self.Qfun[0:(self.TimeSS[it] + 1), it]  = _ComputeCost(ClosedLoopData.x[0:(self.TimeSS[it] + 1), :],
                                                                ClosedLoopData.u[0:(self.TimeSS[it]), :], self.map.TrackLength)
         for i in np.arange(0, self.Qfun.shape[0]):
@@ -367,7 +367,7 @@ def _LMPC_BuildMatCost(LMPC, Sel_Qfun, numSS_Points, N, Qslack, Q, R, dR, uOld):
     q0 = - 2 * np.dot(np.append(np.tile(xtrack, N + 1), np.zeros(R.shape[0] * N)), M00)
 
     # Derivative Input
-    q0[n*(N+1):n*(N+1)+2] = -2 * np.dot( uOld, np.diag(dR) )
+    q0[(n*(N+1)):(n*(N+1)+2)] = -2 * np.dot( uOld, np.diag(dR) )
 
     # np.savetxt('q0.csv', q0, delimiter=',', fmt='%f')
     linLaneSlack = Qlane[1] * np.ones(2*LMPC.N)
@@ -491,9 +491,9 @@ def _SelectPoints(LMPC, it, x0, numSS_Points, shift):
     map         = LMPC.map
     TrackLength = map.TrackLength
     currIt      = LMPC.it
-    
-    x = SS[:, :, it]
-    x_glob = SS_glob[:, :, it]
+    LapCounter  = LMPC.LapCounter
+
+    x = SS[0:(LapCounter[it]+1), :, it]
     oneVec = np.ones((x.shape[0], 1))
     x0Vec = (np.dot(np.array([x0]).T, oneVec.T)).T
     diff = x - x0Vec
@@ -511,37 +511,23 @@ def _SelectPoints(LMPC, it, x0, numSS_Points, shift):
         # SS_glob_Points = x_glob[MinNorm:MinNorm + numSS_Points, :].T
         # Sel_Qfun = Qfun[MinNorm:MinNorm + numSS_Points, it]
 
-    SS_Points = x[indexSSandQfun, :].T
-    SS_glob_Points = x_glob[indexSSandQfun, :].T
+    SS_Points = SS[indexSSandQfun, :, it].T
+    SS_glob_Points = SS_glob[indexSSandQfun, :, it].T
     Sel_Qfun = Qfun[indexSSandQfun, it]
 
-    # if xPred != []:
-    #     sPred = xPred[:, 4]
-    #     print sPred
-    #     print sPred > TrackLength, sum(sPred > TrackLength)
-    #     print (np.all((xPred[:, 4] > TrackLength) == False))
 
+    # Modify the cost if the predicion has crossed the finisch line
     if xPred == []:
-        # print "Here "
         Sel_Qfun = Qfun[indexSSandQfun, it]
     elif (np.all((xPred[:, 4] > TrackLength) == False)):
-        # print "Here 1"
         Sel_Qfun = Qfun[indexSSandQfun, it]
     elif  it < currIt - 1:
-        # print "Here 2"
         Sel_Qfun = Qfun[indexSSandQfun, it] + Qfun[0, it + 1]
     else:
         sPred = xPred[:, 4]
-        # print "Here 3", sum(sPred > TrackLength)
         predCurrLap = LMPC.N - sum(sPred > TrackLength)
         currLapTime = LMPC.LapTime
         Sel_Qfun = Qfun[indexSSandQfun, it] + currLapTime + predCurrLap
-
-    # if xPred != []:
-    #     sPred = xPred[:, 4]
-    #     # print sPred
-        # print sPred > TrackLength
-        # print LMPC.N - sum(sPred > TrackLength)
 
     return SS_Points, SS_glob_Points, Sel_Qfun
 
@@ -565,27 +551,33 @@ def _LMPC_TermConstr(LMPC, G, E, N ,n ,d , SS_Points):
     # The equality constraint has now the form: G_LMPC*z = E_LMPC*x0 + TermPoint.
     # Note that the vector TermPoint is updated to constraint the predicted trajectory into a point in SS. This is done in the FTOCP_LMPC function
 
+    # This considers the last point of the horizon
     TermCons = np.zeros((n, (N + 1) * n + N * d))
     TermCons[:, N * n:(N + 1) * n] = np.eye(n)
 
-    G_enlarged = np.vstack((G, TermCons))
+    G_enlarged = np.vstack((G, TermCons)) 
 
+    # Now add the points in SS and the slack variables
     G_lambda = np.zeros(( G_enlarged.shape[0], SS_Points.shape[1] + n))
     G_lambda[G_enlarged.shape[0] - n:G_enlarged.shape[0], :] = np.hstack((-SS_Points, np.eye(n)))
 
+    # Now put together Constraints for last point of the Horizon, SS and Slack
     G_LMPC0 = np.hstack((G_enlarged, G_lambda))
+
+    # Fianlly add Constraints for lambda: sum to one
     G_ConHull = np.zeros((1, G_LMPC0.shape[1]))
     G_ConHull[-1, G_ConHull.shape[1]-SS_Points.shape[1]-n:G_ConHull.shape[1]-n] = np.ones((1,SS_Points.shape[1]))
 
+    # This is the final matrix for the terminal constraints + Slack
     G_LMPC_hard = np.vstack((G_LMPC0, G_ConHull))
 
+    # Add slack variables on the lanes as Opt variables: [x, u, lambda, slackSS, slackLane]
+    # Note that slackLane where not added to the original equalirty constraint
     SlackLane = np.zeros((G_LMPC_hard.shape[0], 2*N))
     G_LMPC = np.hstack((G_LMPC_hard, SlackLane))
 
+    # Add the added constraints on the E vector (n constraints from Terminal SS and 1 for summation to 1)
     E_LMPC = np.vstack((E, np.zeros((n + 1, n))))
-
-    # np.savetxt('G.csv', G_LMPC, delimiter=',', fmt='%f')
-    # np.savetxt('E.csv', E_LMPC, delimiter=',', fmt='%f')
 
     if LMPC.Solver == "CVX":
         G_LMPC_sparse = spmatrix(G_LMPC[np.nonzero(G_LMPC)], np.nonzero(G_LMPC)[0].astype(int), np.nonzero(G_LMPC)[1].astype(int), G_LMPC.shape)
@@ -603,6 +595,7 @@ def _LMPC_BuildMatEqConst(LMPC, A, B, C, N, n, d):
     # We are going to build our optimization vector z \in \mathbb{R}^((N+1) \dot n \dot N \dot d), note that this vector
     # stucks the predicted trajectory x_{k|t} \forall k = t, \ldots, t+N+1 over the horizon and
     # the predicte input u_{k|t} \forall k = t, \ldots, t+N over the horizon
+    # G * z = L + E * x(t)
     Gx = np.eye(n * (N + 1))
     Gu = np.zeros((n * (N + 1), d * (N)))
 
@@ -638,9 +631,6 @@ def _LMPC_GetPred(Solution,n,d,N, np):
     lambd = Solution[n*(N+1)+d*N:Solution.shape[0]-n]
     slack = Solution[Solution.shape[0]-n-2*N:]
     laneSlack = Solution[Solution.shape[0]-2*N:]
-    # if np.sum(np.abs(laneSlack))>0.5:
-    #     print laneSlack
-    #     print xPred
 
     return xPred, uPred, lambd, slack
 
@@ -669,6 +659,7 @@ def _LMPC_EstimateABC(ControllerLMPC):
     ParallelComputation = 0
     Atv = []; Btv = []; Ctv = []; indexUsed_list = []
 
+    # Index of the laps used in the System ID
     usedIt = sortedLapTime[0:ControllerLMPC.itUsedSysID] # range(ControllerLMPC.it-ControllerLMPC.itUsedSysID, ControllerLMPC.it)
 
     for i in range(0, N):
@@ -712,7 +703,6 @@ def RegressionAndLinearization(LinPoints, LinInput, usedIt, SS, uSS, LapCounter,
                             [0.0, 0.0, 1.0]])
         xLin = LinPoints[i, stateFeatures] 
 
-    # startTimer = datetime.datetime.now()
     indexSelected = []
     K = []
     for i in usedIt:
@@ -720,27 +710,17 @@ def RegressionAndLinearization(LinPoints, LinInput, usedIt, SS, uSS, LapCounter,
                                             ConsiderInput)
         indexSelected.append(indexSelected_i)
         K.append(K_i)
-    # endTimer = datetime.datetime.now(); deltaTimer = endTimer - startTimer
-    # print "Time Select Indeces: ", deltaTimer.total_seconds()
+
     # =========================
     # ====== Identify vx ======
     inputFeatures = [1]
-    # startTimer = datetime.datetime.now()
     Q_vx, M_vx = Compute_Q_M(SS, uSS, indexSelected, stateFeatures, inputFeatures, usedIt, np, matrix, lamb, K, SysID_Solver)
-    # endTimer = datetime.datetime.now(); deltaTimer = endTimer - startTimer
-    # print "Compute Q: ", deltaTimer.total_seconds()
 
     yIndex = 0
-    # startTimer = datetime.datetime.now()
     b = Compute_b(SS, yIndex, usedIt, matrix, M_vx, indexSelected, K, np, SysID_Solver)
-    # endTimer = datetime.datetime.now(); deltaTimer = endTimer - startTimer
-    # print "Compute b: ", deltaTimer.total_seconds()
 
-    # startTimer = datetime.datetime.now()
     Ai[yIndex, stateFeatures], Bi[yIndex, inputFeatures], Ci[yIndex] = LMPC_LocLinReg(Q_vx, b, stateFeatures,
                                                                                       inputFeatures, qp, SysID_Solver)
-    # endTimer = datetime.datetime.now(); deltaTimer = endTimer - startTimer
-    # print "Solve QP: ", deltaTimer.total_seconds()
 
     # =======================================
     # ====== Identify Lateral Dynamics ======
@@ -875,18 +855,18 @@ def Linearization(LinPoints, PointAndTangent, dt, i, Ai, Bi, Ci):
 
 def Compute_Q_M(SS, uSS, indexSelected, stateFeatures, inputFeatures, usedIt, np, matrix, lamb, K, SysID_Solver):
     Counter = 0
-    it = 1
+
+    # Compute Matrices For Local Linear Regression
     X0   = np.empty((0,len(stateFeatures)+len(inputFeatures)))
     Ktot = np.empty((0))
-
     for it in usedIt:
         X0 = np.append( X0, np.hstack((np.squeeze(SS[np.ix_(indexSelected[Counter], stateFeatures, [it])]),
                             np.squeeze(uSS[np.ix_(indexSelected[Counter], inputFeatures, [it])], axis=2))), axis=0)
         Ktot = np.append(Ktot, K[Counter])
         Counter = Counter + 1
 
-    M = np.hstack((X0, np.ones((X0.shape[0], 1))))
-    Q0 = np.dot(np.dot(M.T, np.diag(Ktot)), M)
+    M = np.hstack((X0, np.ones((X0.shape[0], 1)))) # Matrix of States, Inputs and Constrant
+    Q0 = np.dot(np.dot(M.T, np.diag(Ktot)), M)     # Q matrix without regularization
     
     if SysID_Solver == "CVX":
         Q = matrix(Q0 + lamb * np.eye(Q0.shape[0]))

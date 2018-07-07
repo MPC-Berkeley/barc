@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pdb
 
-file_data = open(sys.path[0]+'/steeringMap_BARC_Total.obj', 'rb')
+file_data = open(sys.path[0]+'/steeringMap_BARC.obj', 'rb')
 PWMsteering_his = pickle.load(file_data)
 steering_his = pickle.load(file_data)
 
