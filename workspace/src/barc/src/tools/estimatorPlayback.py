@@ -23,39 +23,39 @@ import numpy as np
 import pdb
 
 def main():
-    playBack = PlayBack("06-20-21:21-exp")
+    playBack = PlayBack("07-04-09:46-exp")
     # fig     = plt.figure("x")
     # ax_x   = fig.add_subplot(1,1,1,ylabel="x")
     # fig     = plt.figure("y")
     # ax_y   = fig.add_subplot(1,1,1,ylabel="y")
     # fig     = plt.figure("yaw")
     # ax_yaw  = fig.add_subplot(1,1,1,ylabel="yaw_estimation")
-    # fig     = plt.figure("ax")
-    # ax_ax   = fig.add_subplot(1,1,1,ylabel="ax")
-    # fig     = plt.figure("ay")
-    # ax_ay   = fig.add_subplot(1,1,1,ylabel="ay")
-    fig     = plt.figure("vx")
-    ax_vx   = fig.add_subplot(1,1,1,ylabel="vx")
-    fig     = plt.figure("vy")
-    ax_vy   = fig.add_subplot(1,1,1,ylabel="vy")
-    fig     = plt.figure("psiDot")
-    ax_psiDot  = fig.add_subplot(1,1,1,ylabel="psiDot")
-    fig = plt.figure("track x-y plot")
-    ax_traj = fig.add_subplot(1,1,1,ylabel="track x-y plot")
+    fig     = plt.figure("ax")
+    ax_ax   = fig.add_subplot(1,1,1,ylabel="ax")
+    fig     = plt.figure("ay")
+    ax_ay   = fig.add_subplot(1,1,1,ylabel="ay")
+    # fig     = plt.figure("vx")
+    # ax_vx   = fig.add_subplot(1,1,1,ylabel="vx")
+    # fig     = plt.figure("vy")
+    # ax_vy   = fig.add_subplot(1,1,1,ylabel="vy")
+    # fig     = plt.figure("psiDot")
+    # ax_psiDot  = fig.add_subplot(1,1,1,ylabel="psiDot")
+    # fig = plt.figure("track x-y plot")
+    # ax_traj = fig.add_subplot(1,1,1,ylabel="track x-y plot")  
     # fig     = plt.figure("input")
     # ax_input  = fig.add_subplot(1,1,1,ylabel="input")
     # playBack.inputPlot(ax_input)
-    for i in [4,0]: # 0:exp, 4:raw
+    for i in [4]: # 0:exp, 4:raw
         playBack.replay(i)
         # playBack.xPlot(ax_x,i)
         # playBack.yPlot(ax_y,i)
         # playBack.yawPlot(ax_yaw,i)
-        # playBack.axPlot(ax_ax,i)
-        # playBack.ayPlot(ax_ay,i)
-        playBack.vxPlot(ax_vx,i)
-        playBack.vyPlot(ax_vy,i)
-        playBack.psiDotPlot(ax_psiDot,i)
-        playBack.trajectoryPlot(ax_traj,i)
+        playBack.axPlot(ax_ax,i)
+        playBack.ayPlot(ax_ay,i)
+        # playBack.vxPlot(ax_vx,i)
+        # playBack.vyPlot(ax_vy,i)
+        # playBack.psiDotPlot(ax_psiDot,i)
+        # playBack.trajectoryPlot(ax_traj,i)
         playBack.playBackClean()
     plt.show()
 
@@ -84,10 +84,12 @@ class PlayBack(object):
         self.KF_a_his            = npz_output["KF_a_his"]
         self.KF_df_his           = npz_output["KF_df_his"]
         self.estimator_time      = npz_output["estimator_time"]
-        self.idx_min = int(152*50)
-        self.idx_max = int(196*50)
-        # self.idx_min = 1
-        # self.idx_max = len(self.estimator_time)
+        self.idx_min = int(49.7*50)
+        self.idx_max = int(51*50)
+        self.idx_min = int(3.7*100)
+        self.idx_max = int(53.5*50)
+        self.idx_min = 1
+        self.idx_max = len(self.estimator_time)-1
         print "Variance x:      ", np.var(self.KF_x_his[self.idx_min:self.idx_max])
         print "Variance y:      ", np.var(self.KF_y_his[self.idx_min:self.idx_max])
         print "Variance ax:     ", np.var(self.KF_ax_his[self.idx_min:self.idx_max])
@@ -98,21 +100,17 @@ class PlayBack(object):
         self.Q                   = npz_output["Q"]
         print "Q:", diag(self.Q)
         self.R                   = npz_output["R"]  
-        self.Q[0,0] = 0.001**2   # Q_x
-        self.Q[1,1] = 0.001**2   # Q_y
+        self.Q[0,0] = 0.01**2   # Q_x
+        self.Q[1,1] = 0.01**2   # Q_y
         self.Q[2,2] = 0.01**2    # Q_vx
         self.Q[3,3] = 0.001**2   # Q_vy
         self.Q[4,4] = 0.1**2     # Q_ax
-        self.Q[5,5] = 0.1**2     # Q_ay
-        self.Q[6,6] = 0.001**2    # Q_psi
-        self.Q[7,7] = 0.001**2   # Q_psiDot
+        self.Q[5,5] = 0.001**2    # Q_psi
         self.R[0,0] = 0.01**2    # R_x
         self.R[1,1] = 0.01**2    # R_y
         self.R[2,2] = 0.01**2    # R_vx
         self.R[3,3] = 0.016      # R_ax
-        self.R[4,4] = 0.024      # R_ay
-        self.R[5,5] = 2.475e-6   # R_psiDot
-        self.R[6,6] = 0.001**2  # R_vy
+        self.R[4,4] = 0.07**2   # R_vy
         print "R:", diag(self.R)
         print "Finish loading data from", pathSave
 
@@ -220,6 +218,7 @@ class PlayBack(object):
             ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.vx_est_his[self.idx_min:self.idx_max],    "p--",label="exp",          alpha=0.7)
         else:
             ax.plot(self.estimator_time[self.idx_min:self.idx_max],self.KF_v_meas_his[self.idx_min:self.idx_max], "^--",label="raw",          alpha=0.7)
+        print sum(self.vx_est_his)
         ax.grid()
         ax.legend()
 
@@ -254,12 +253,18 @@ class PlayBack(object):
     def trajectoryPlot(self,ax,indicator):
         if indicator == 1:
             ax.plot(self.est.x_est_his[self.idx_min:self.idx_max], self.est.y_est_his[self.idx_min:self.idx_max],     "o--",label="Switch vy",    alpha=0.7)
+            for i in range(self.idx_max-self.idx_min+1):
+                ax.plot([self.est.x_est_his[self.idx_min+i],self.est.x_est_his[self.idx_min+i] + 0.05*np.cos(self.est.yaw_est_his[self.idx_min+i])],
+                        [self.est.y_est_his[self.idx_min+i],self.est.y_est_his[self.idx_min+i] + 0.05*np.sin(self.est.yaw_est_his[self.idx_min+i])], "k-", alpha=0.7)
         elif indicator == 2:
             ax.plot(self.est.x_est_his[self.idx_min:self.idx_max], self.est.y_est_his[self.idx_min:self.idx_max],     "s--",label="Without vy",   alpha=0.7)
         elif indicator == 3:
             ax.plot(self.est.x_est_his[self.idx_min:self.idx_max], self.est.y_est_his[self.idx_min:self.idx_max],     "v--",label="With vy",      alpha=0.7)
         elif indicator == 0:
             ax.plot(self.x_est_his[self.idx_min:self.idx_max],     self.y_est_his[self.idx_min:self.idx_max],         "p--",label="exp",          alpha=0.7)
+            # for i in range(self.idx_max-self.idx_min+1):
+            #     ax.plot([self.x_est_his[self.idx_min+i],self.x_est_his[self.idx_min+i] + 0.05*np.cos(self.yaw_est_his[self.idx_min+i])],
+            #             [self.y_est_his[self.idx_min+i],self.y_est_his[self.idx_min+i] + 0.05*np.sin(self.yaw_est_his[self.idx_min+i])], "k-", alpha=0.7)
         else:
             ax.plot(self.KF_x_his[self.idx_min:self.idx_max],self.KF_y_his[self.idx_min:self.idx_max],                "^--",label="raw",          alpha=0.7)
             ax.plot(self.track.nodes[0],        self.track.nodes[1],        color="grey",linestyle="--",    alpha=0.3)
@@ -352,15 +357,14 @@ class Estimator(object):
 
     # ecu command update
     def estimateState(self,imu,gps,enc,ecu,KF):
-        """Do extended Kalman filter to estimate states"""
-
         self.motor_his.append(ecu.a)
         self.servo_his.append(ecu.df)
-        u = [self.motor_his.pop(0), self.servo_his.pop(0)]
-        
-        # y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot])
-        y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot, 0.5*u[1]*enc.v_meas])
-        # y = np.array([gps.x_ply, gps.y_ply, enc.v_meas, imu.ax, imu.ay, imu.psiDot])
+
+        # u = [self.motor_his.pop(0), self.servo_his.pop(0)]
+        # y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot, 0.5*u[1]*enc.v_meas])
+        u = [self.motor_his.pop(0), self.servo_his.pop(0), imu.ay, imu.psiDot]
+        y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, 0.5*u[1]*enc.v_meas])
+
         KF(y,u)
 
         # SAVE THE measurement/input SEQUENCE USED BY KF
@@ -368,37 +372,44 @@ class Estimator(object):
         self.y_his.append(y[1])
         self.v_meas_his.append(y[2])
         self.ax_his.append(y[3])
-        self.ay_his.append(y[4])
-        self.psiDot_his.append(y[5])
+        self.ay_his.append(u[2])
+        self.psiDot_his.append(u[3])
         self.a_his.append(u[0])
         self.df_his.append(u[1])
 
     def ekfSwitchVy(self, y, u):
-        idx = []
-        if y[2] > 1.8 or y[5] > 1.0: # vx and psiDot criterion for Vy switch
-            idx.append(6)
-            self.Q[6,6] = 10.0  # Q_psi
-        else:
-            self.Q[6,6] = 0.1   # Q_psi
-
         xDim    = self.z.size                               # dimension of the state
         mx_kp1  = self.f(self.z, u)                         # predict next state
         A       = self.numerical_jac(self.f, self.z, u)     # linearize process model about current state
         P_kp1   = dot(dot(A,self.P),A.T) + self.Q           # proprogate variance
         my_kp1  = self.h(mx_kp1, u)                         # predict future output
         H       = self.numerical_jac(self.h, mx_kp1, u)     # linearize measurement model about predicted next state
+        
+        idx = []
+        if self.x_his[-1] == y[0] and self.y_his[-1] == y[1]:
+            # MultiRate for gps
+            idx.append(0)
+            idx.append(1)
+        # if self.v_meas_his[-1] == y[2]:
+            # MultiRate for encoder
+            # idx.append(2)
+            # idx.append(4)
+
+        if abs(u[3]) > 3.0: 
+            idx.append(4) # vy switch
 
         H      = np.delete(H,(idx),axis=0)
         R      = np.delete(self.R,(idx),axis=0)
         R      = np.delete(R,(idx),axis=1)
-        y      = np.delete(y,(idx),axis=0)
+        y      = np.delete(y,(idx),axis=0)      
         my_kp1 = np.delete(my_kp1,(idx),axis=0)
         P12    = dot(P_kp1, H.T)                      # cross covariance
         K      = dot(P12, inv( dot(H,P12) + R))       # Kalman filter gain
         self.z = mx_kp1 + dot(K,(y - my_kp1))
         self.P = dot(dot(K,R),K.T) + dot( dot( (eye(xDim) - dot(K,H)) , P_kp1)  ,  (eye(xDim) - dot(K,H)).T )
-        (self.x_est, self.y_est, self.vx_est, self.vy_est, self.ax_est, self.ay_est, self.yaw_est, self.psiDot_est) = self.z
-
+        (self.x_est, self.y_est, self.vx_est, self.vy_est, self.ax_est, self.yaw_est) = self.z
+        self.ay_est     = u[2]
+        self.psiDot_est = u[3]
     def ekfWithVy(self, y, u):
         xDim    = self.z.size                           # dimension of the state
         mx_kp1  = self.f(self.z, u)                     # predict next state
@@ -521,27 +532,23 @@ class Estimator(object):
     def f(self, z, u):
         """ This Sensor model contains a pure Sensor-Model and a Kinematic model. They're independent from each other."""
         dt = self.dt
-        zNext = [0]*8
-        zNext[0] = z[0] + dt*(cos(z[6])*z[2] - sin(z[6])*z[3])  # x
-        zNext[1] = z[1] + dt*(sin(z[6])*z[2] + cos(z[6])*z[3])  # y
-        zNext[2] = z[2] + dt*(z[4]+z[7]*z[3])                   # v_x
-        zNext[3] = z[3] + dt*(z[5]-z[7]*z[2])                   # v_y
+        zNext = [0]*len(z)
+        zNext[0] = z[0] + dt*(cos(z[5])*z[2] - sin(z[5])*z[3])  # x
+        zNext[1] = z[1] + dt*(sin(z[5])*z[2] + cos(z[5])*z[3])  # y
+        zNext[2] = z[2] + dt*(z[4]+u[3]*z[3])                   # v_x
+        zNext[3] = z[3] + dt*(u[2]-u[3]*z[2])                   # v_y
         zNext[4] = z[4]                                         # a_x
-        zNext[5] = z[5]                                         # a_y
-        zNext[6] = z[6] + dt*(z[7])                             # psi
-        zNext[7] = z[7]                                         # psidot
+        zNext[5] = z[5] + dt*(u[3])                             # psi
         return np.array(zNext)
 
     def h(self, x, u):
         """ This is the measurement model to the kinematic<->sensor model above """
-        y = [0]*7
+        y = [0]*5
         y[0] = x[0]      # x
         y[1] = x[1]      # y
         y[2] = x[2]      # vx
         y[3] = x[4]      # a_x
-        y[4] = x[5]      # a_y
-        y[5] = x[7]      # psiDot
-        y[6] = x[3]      # vy
+        y[4] = x[3]      # vy
         return np.array(y)
 
     def saveHistory(self):

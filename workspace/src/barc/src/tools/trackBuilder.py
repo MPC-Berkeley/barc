@@ -1,12 +1,12 @@
 """
-This module includes all functions that are necessary to convert the current absolute position
-(x, y, psi) and the given racetrack to the current relative position (s, eY, ePsi)
+Check track design before launching
 This file was created by Shuqi Xu (shuqixu@berkeley.edu)
 """
 
 from numpy import hstack, arange, array, transpose, pi, sin, cos
 from numpy import size,  argmin, ceil
-from numpy import ones, sqrt, sum
+from numpy import ones, sqrt
+import matplotlib.pyplot as plt
 
 class Track(object):
     """ Object collecting  estimated state data
@@ -72,65 +72,6 @@ class Track(object):
             self.theta      = hstack((self.theta,self.theta[-1] + d_theta))
             self.curvature  = hstack((self.curvature,d_theta/ds))
 
-    def createFeatureTrack(self):
-        """Track construction for feature data collecting"""
-
-        # TRACK PARAMETERS INITIALIZATION
-        ds      = self.ds
-        width   = self.width
-        self.theta      = array([pi/4])
-        self.curvature  = array([0])
-        
-        # X-Y TRACK/BOUND COORDINATE INITILIZATION 
-        x = array([0])
-        bound1_x = array([0])
-        bound2_x = array([0])
-        y = array([0])
-        bound1_y = array([0])
-        bound2_y = array([0])
-        bound1_x = x + width/2*cos(self.theta[0]+pi/2)
-        bound2_x = x - width/2*cos(self.theta[0]+pi/2)
-        bound1_y = y + width/2*sin(self.theta[0]+pi/2)
-        bound2_y = y - width/2*sin(self.theta[0]+pi/2)
-        
-        # TRACK DESIGN
-        v       = 2.5
-        max_a   = 7.6;
-        R       = v**2/max_a
-        max_c   = 1/R
-        angle   = (pi+pi/2)-0.105
-        R_kin   = 0.8
-        num_kin = int(round(angle/ ( ds/R_kin ) * 2))
-        num     = max(int(round(angle/ ( ds/R ) * 2)),num_kin)
-        num     = int(ceil(num*1.0))
-        
-        # TRACK CONSTRUCTION
-        self.addCurve(num,-angle)
-        self.addCurve(num,angle)
-        
-        for i in range(1,size(self.theta)):
-            x_next = x[-1] + cos(self.theta[i])*ds
-            y_next = y[-1] + sin(self.theta[i])*ds
-            bound1_x_next = x_next + width/2*cos(self.theta[i]+pi/2)
-            bound2_x_next = x_next - width/2*cos(self.theta[i]+pi/2)
-            bound1_y_next = y_next + width/2*sin(self.theta[i]+pi/2)
-            bound2_y_next = y_next - width/2*sin(self.theta[i]+pi/2)
-            x = hstack((x, x_next))
-            y = hstack((y, y_next))
-            bound1_x = hstack((bound1_x, x_next+ width/2*cos(self.theta[i]+pi/2)))
-            bound2_x = hstack((bound2_x, x_next- width/2*cos(self.theta[i]+pi/2)))
-            bound1_y = hstack((bound1_y, y_next+ width/2*sin(self.theta[i]+pi/2)))
-            bound2_y = hstack((bound2_y, y_next- width/2*sin(self.theta[i]+pi/2)))
-        
-        self.nodes          = array([x,y])
-        self.nodes_bound1   = array([bound1_x,bound1_y])
-        self.nodes_bound2   = array([bound2_x,bound2_y])
-        self.n = size(x)
-        self.track_s    = array([ds*i for i in range(self.n)])
-        self.track_idx  = array([i for i in range(self.n)])
-
-        print "Python: %f m"%((self.n-1)*ds), ", %i"%self.n
-
     def createRaceTrack(self, name):
         """Track construction for feature data collecting"""
 
@@ -168,7 +109,7 @@ class Track(object):
         
         elif name == "3110":
             # track for room 3110
-            num = 80 # 100
+            num = 80 # 60
             # track_data=[[int(ceil(2*80)) ,0],
             #             [int(ceil(2*num)), pi/2],
             #             [int(ceil(2*(80+47))) ,0],
@@ -220,9 +161,9 @@ class Track(object):
         elif name == "MSC_lab":
             # TRACK FOR MSC EXPERIMENT ROOM
             track_data = [[int(ceil(1.5*3*30)), 0],
-                          [int(ceil(1.5*3*100)), -pi],
+                          [int(ceil(1.5*3*100)), pi],
                           [int(ceil(1.5*3*60)), 0],
-                          [int(ceil(1.5*3*100)), -pi],
+                          [int(ceil(1.5*3*100)), pi],
                           [int(ceil(1.5*3*30)), 0]]
                       
         #   TRACK CONSTRUCTION
@@ -254,58 +195,12 @@ class Track(object):
 
         print "Python: %f m"%((self.n-1)*ds), ", %i"%self.n
 
-    def Localize(self,x,y,psi):
-        """ Localization on the constructed track
-        Arguements:
-            1. x    (global x-y)
-            2. y    (global x-y)
-            3. psi  (global x-y)
-        """
-
-        self.pos = array([x,y])
-        self.psi = psi
-        self.x = x
-        self.y = y
-
-        # 1. Localize s
-        l_ran = 1 # LOCALIZATION RANGE: useful when track is overlaping
-        if self.s > self.track_s[-1]-l_ran:
-            idx_candidate_1     = (self.track_s+l_ran>=self.track_s[-1])
-            idx_candidate_2     = (self.track_s<=l_ran)
-            x_candidate         = hstack((self.nodes[0,:][idx_candidate_1],self.nodes[0,:][idx_candidate_2]))
-            y_candidate         = hstack((self.nodes[1,:][idx_candidate_1],self.nodes[1,:][idx_candidate_2]))
-            nodes_candidate     = array([x_candidate,y_candidate])
-            s_candidate         = hstack((self.track_s[idx_candidate_1],self.track_s[idx_candidate_2]))
-            idx_curr_candidate  = hstack((self.track_idx[idx_candidate_1],self.track_idx[idx_candidate_2]))
-        else:
-            dist_s              = self.track_s - self.s
-            idx_candidate       = (dist_s>=0) & (dist_s<l_ran) # the car can travel 0.3m maximumly within 0.1s  
-            # idx_candidate       = dist_s>-10000
-            x_candidate         = self.nodes[0,:][idx_candidate]
-            y_candidate         = self.nodes[1,:][idx_candidate]
-            nodes_candidate     = array([x_candidate,y_candidate])
-            s_candidate         = self.track_s[idx_candidate]
-            idx_curr_candidate  = self.track_idx[idx_candidate]
-
-        dist            = sum((self.pos*ones([len(x_candidate),2])-nodes_candidate.transpose())**2,1)
-        idx_min         = argmin(dist)
-        self.s          = s_candidate[idx_min]
-        self.idx_curr   = idx_curr_candidate[idx_min]
-
-        dist_bound1 = (self.pos[0]-self.nodes_bound1[0,self.idx_curr])**2 + (self.pos[1]-self.nodes_bound1[1,self.idx_curr])**2
-        dist_bound2 = (self.pos[0]-self.nodes_bound2[0,self.idx_curr])**2 + (self.pos[1]-self.nodes_bound2[1,self.idx_curr])**2
-        
-        # 2. Localize ey
-        ey = dist[idx_min]**0.5
-        if dist_bound1>dist_bound2:
-            self.ey = -ey
-        else:
-            self.ey = ey
-
-        # 3. Localize epsi
-        self.epsi      = (self.psi - self.theta[self.idx_curr]+pi)%(2*pi)-pi
-
-        # 4. Localize curvature
-        self.curv_curr = self.curvature[self.idx_curr]
-
-        return self.s, self.ey, self.epsi
+if __name__ == '__main__':
+    track = Track(0.01,0.8)
+    track.createRaceTrack("3110")
+    fig = plt.figure("Race",figsize=(12,10))
+    ax  = fig.add_subplot(111)
+    ax.plot(track.nodes[0,:],       track.nodes[1,:],       "k--", alpha=0.4)
+    ax.plot(track.nodes_bound1[0,:],track.nodes_bound1[1,:],"r-")
+    ax.plot(track.nodes_bound2[0,:],track.nodes_bound2[1,:],"r-")
+    plt.show()

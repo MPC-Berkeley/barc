@@ -63,36 +63,18 @@
         <param name="g"     type="double" value="9.81" />
         <!-- simulator sensor noise -->
         <param name="n_bound"       type="double" value="1.5" />
-        <param name="x_std"         type="double" value="0.02" />
-        <param name="y_std"         type="double" value="0.02" />    
+        <param name="x_std"         type="double" value="0.0" />
+        <param name="y_std"         type="double" value="0.0" />    
         <param name="v_std"         type="double" value="0.0" />    
-        <param name="ax_std"        type="double" value="1.0" />
-        <param name="ay_std"        type="double" value="1.0" />
-        <param name="psiDot_std"    type="double" value="0.01" />
+        <param name="ax_std"        type="double" value="0.0" />
+        <param name="ay_std"        type="double" value="0.0" />
+        <param name="psiDot_std"    type="double" value="0.0" />
     </node>
 
     <!--DYNAMIC OBSERVER-->
     <node pkg="barc" type="stateEstimator.py" name="state_estimator" output="screen">
-        <!-- delay in state estuiamtor -->
-        <param name="dt"  type="double" value="0.0" />
         <param name="delay_df"  type="double" value="0.0" />
         <param name="delay_a"   type="double" value="0.0" />
-        <!-- ekf properties -->
-        <param name="Q_x"       type="double" value="0.0" />
-        <param name="Q_y"       type="double" value="0.0" />
-        <param name="Q_vx"      type="double" value="0.0" />
-        <param name="Q_vy"      type="double" value="0.0" />
-        <param name="Q_ax"      type="double" value="1.0" />
-        <param name="Q_ay"      type="double" value="1.0" />
-        <param name="Q_psi"     type="double" value="0.0" />
-        <param name="Q_psiDot"  type="double" value="1.0" />
-        <param name="R_x"       type="double" value="10.0" />
-        <param name="R_y"       type="double" value="10.0" />
-        <param name="R_vx"      type="double" value="0.1" />
-        <param name="R_vy"      type="double" value="0.01" />
-        <param name="R_ax"      type="double" value="10.0" />
-        <param name="R_ay"      type="double" value="10.0" />
-        <param name="R_psiDot"  type="double" value="0.1" />
     </node>
 
 </launch>

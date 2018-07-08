@@ -15,8 +15,8 @@ using JuMP
 using Ipopt
 using JLD
 
-include("Library/modules.jl")
-include("Library/models.jl")
+include("library/modules.jl")
+include("library/models.jl")
 import mpcModels: MdlPf, MdlKinLin
 import solveMpcProblem: solvePf, solveKinLin
 using Types
@@ -61,16 +61,16 @@ function main()
     solvePf(mdlPf,agent)
     if !raceSet.PF_FLAG
         mdlLMPC = MdlKinLin(agent)
-        gprDyn(agent)
+        gprKin(agent)
         findSS(agent)
         solveKinLin(mdlLMPC,agent)
 
         # DIFFERENT OPTIONS FOR SELECTING FEATURE DATA FOR SYS ID
-        buildFeatureSetFromHistory(agent)
-        # data = load("$(homedir())/$(raceSet.folder_name)/FD.jld")
-        # featureData = data["featureData"]
+        # buildFeatureSetFromHistory(agent)
+        data = load("$(homedir())/$(raceSet.folder_name)/FD.jld")
+        featureData = data["featureData"]
         # buildFeatureSetFromDataSet(agent,featureData)
-        # buildFeatureSetFromBoth(agent,featureData)
+        buildFeatureSetFromBoth(agent,featureData)
     end
     historyCollect(agent)
     gpResultCollect(agent)
@@ -99,9 +99,9 @@ function main()
                 setvalue(mdlPf.z_Ol[:,1],   mpcSol.z_prev[:,1]-track.s)
             else
                 # DIFFERENT OPTIONS FOR SELECTING FEATURE DATA FOR SYS ID
-                buildFeatureSetFromHistory(agent)
+                # buildFeatureSetFromHistory(agent)
                 # buildFeatureSetFromDataSet(agent,featureData)
-                # buildFeatureSetFromBoth(agent,featureData)
+                buildFeatureSetFromBoth(agent,featureData)
             end
 
             # DATA SAVING AFTER FINISHING ALL LAPS
@@ -127,7 +127,7 @@ function main()
             end
             # GAUSSIAN PROCESS
             if raceSet.GP_LOCAL_FLAG || raceSet.GP_FULL_FLAG
-                gprDyn(agent)
+                gprKin(agent)
                 gpResultCollect(agent)
                 findSS(agent)
                 solveKinLin(mdlLMPC,agent)

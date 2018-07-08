@@ -137,11 +137,11 @@ class Plotter(object):
         # mpc related stuff update
         self.pre_h.set_data(self.pre_x,self.pre_y)
         self.SS_h.set_data(self.SS_x,self.SS_y)
-        self.sysID_h.set_data(self.sysID_x,self.sysID_y)
+        # self.sysID_h.set_data(self.sysID_x,self.sysID_y)
         
         # history lap times update
         self.ax.set_xlabel("Lap: {}, vx: {} m/s, vy: {} m/s, ax: {} m/s2, ay: {} m/s2, psiDot: {} rad/s, a: {} m/s2, df: {} rad".format(int(self.state[7]), self.state[0], self.state[1], self.state[2], self.state[3], self.state[4], self.state[5], self.state[6]))
-        self.ax.set_title("x:{},y:{},vx:{},ax:{},ay:{},psiDot:{},".format(self.pkgLossRatio[0],self.pkgLossRatio[1],self.pkgLossRatio[2],self.pkgLossRatio[3],self.pkgLossRatio[4],self.pkgLossRatio[5]))
+        # self.ax.set_title("x:{},y:{},vx:{},ax:{},ay:{},psiDot:{},".format(self.pkgLossRatio[0],self.pkgLossRatio[1],self.pkgLossRatio[2],self.pkgLossRatio[3],self.pkgLossRatio[4],self.pkgLossRatio[5]))
 
         # UPDATE FOR RAW DATA MONITOR
         # self.ax_raw_h.set_ydata(self.ax_raw)

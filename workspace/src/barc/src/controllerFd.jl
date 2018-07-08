@@ -44,7 +44,7 @@ function main()
     agent       = Agent(track,posInfo,lapStatus,mpcSol,
                         mpcParams,modelParams,raceSet,cmd)
 
-    v_ref       = vcat(1.0,1.0:0.2:3.0)
+    v_ref       = vcat(0.8,0.8:0.1:1.8)
     Fd          = FeatureData(BUFFERSIZE,length(v_ref))
     
     # UPDATE THE NUMBER OF LAPS TO RACE

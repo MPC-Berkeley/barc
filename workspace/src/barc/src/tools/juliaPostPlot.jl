@@ -1,12 +1,12 @@
 # simple debugging
 # GP data plotting to check if they are biased
-# -> julia simple_debugging.jl GP SYS_ID_KIN_LIN_TI
+# -> julia juliaPostPlot.jl GP SYS_ID_KIN_LIN_TI
 # plot the newest recorded data
-# -> julia simple_debugging.jl record
+# -> julia juliaPostPlot.jl record
 # plot the newest trajectory data
-# -> julia simple_debugging.jl trajectory
+# -> julia juliaPostPlot.jl trajectory
 # plot the newest recorded data and trajectory
-# -> julia simple_debugging.jl both
+# -> julia juliaPostPlot.jl both
 
 using JLD
 using PyPlot
@@ -21,15 +21,21 @@ using QuickHull
 include("./library.jl")
 # FLAG FOR PLOTTING THE SELECTED POINTS
 const select_flag = false
-folder_name = "simulations"
+# folder_name = "simulations"
+folder_name = "experiments"
+FLAG = ["trajectory"]
+# FLAG = ["record"]
+# FLAG = ["both"]
 
 # find the newest experiment time until now
 file_names_all = readdir("$(homedir())/$(folder_name)/")
 file_names = []
 for i = 1:length(file_names_all)
-	if file_names_all[i][1:4] == "LMPC"
-		push!(file_names,file_names_all[i])
-	end
+    if length(file_names_all[i]) >= 4
+        if file_names_all[i][1:4] == "LMPC"
+            push!(file_names,file_names_all[i])
+    	end
+    end
 end
 file_times = zeros(length(file_names))
 for i = 1:length(file_names)
@@ -52,24 +58,24 @@ GP_psiDot	= data["GP_psiDot"]
 track		= data["track"]
 cost		= data["cost"]
 
-GP_file_name = string("GP",file_names[idx][5:end])
-data = load("$(homedir())/$(folder_name)/$(GP_file_name)")
-feature_GP_s_e      = data["feature_GP_s_e"]
-feature_GP_ey_e     = data["feature_GP_ey_e"]
-feature_GP_epsi_e   = data["feature_GP_epsi_e"]
-feature_GP_vx_e     = data["feature_GP_vx_e"]
-feature_GP_vy_e     = data["feature_GP_vy_e"]
-feature_GP_psiDot_e = data["feature_GP_psiDot_e"]
-figure("One step prediction error-$(file_names[idx])")
-subplot(3,2,1); plot(2*feature_GP_s_e,        "-",alpha=0.5); ylabel("GP_s");     grid("on")
-subplot(3,2,2); plot(2*feature_GP_ey_e,       "-",alpha=0.5); ylabel("GP_ey");    grid("on")
-subplot(3,2,3); plot(2*feature_GP_epsi_e,     "-",alpha=0.5); ylabel("GP_epsi");  grid("on")
-subplot(3,2,4); plot(2*feature_GP_vx_e,       "-",alpha=0.5); ylabel("GP_vx");    grid("on")
-subplot(3,2,5); plot(2*feature_GP_vy_e,       "-",alpha=0.5); ylabel("GP_vy");    grid("on")
-subplot(3,2,6); plot(2*feature_GP_psiDot_e,   "-",alpha=0.5); ylabel("GP_psiDot");grid("on")
+# GP_file_name = string("GP",file_names[idx][5:end])
+# data = load("$(homedir())/$(folder_name)/$(GP_file_name)")
+# feature_GP_s_e      = data["feature_GP_s_e"]
+# feature_GP_ey_e     = data["feature_GP_ey_e"]
+# feature_GP_epsi_e   = data["feature_GP_epsi_e"]
+# feature_GP_vx_e     = data["feature_GP_vx_e"]
+# feature_GP_vy_e     = data["feature_GP_vy_e"]
+# feature_GP_psiDot_e = data["feature_GP_psiDot_e"]
+# figure("One step prediction error-$(file_names[idx])")
+# subplot(3,2,1); plot(2*feature_GP_s_e,        "-",alpha=0.5); ylabel("GP_s");     grid("on")
+# subplot(3,2,2); plot(2*feature_GP_ey_e,       "-",alpha=0.5); ylabel("GP_ey");    grid("on")
+# subplot(3,2,3); plot(2*feature_GP_epsi_e,     "-",alpha=0.5); ylabel("GP_epsi");  grid("on")
+# subplot(3,2,4); plot(2*feature_GP_vx_e,       "-",alpha=0.5); ylabel("GP_vx");    grid("on")
+# subplot(3,2,5); plot(2*feature_GP_vy_e,       "-",alpha=0.5); ylabel("GP_vy");    grid("on")
+# subplot(3,2,6); plot(2*feature_GP_psiDot_e,   "-",alpha=0.5); ylabel("GP_psiDot");grid("on")
 
 # STATE AND SYS_ID PARAMETERS PLOT FOR LAPS DONE
-if ARGS[1] == "record" || ARGS[1]=="both"
+if FLAG[1] == "record" || FLAG[1]=="both"
     figure("Record-$(file_names[idx])") # PLOT OF STATE
     i = 1; plot_way = [3,2]
     for i in 1:length(cost)
@@ -95,28 +101,32 @@ if ARGS[1] == "record" || ARGS[1]=="both"
         # plot([current_x,current_x],[-3,3],color="grey",linestyle="--")
         # ylabel("psi_dot")
     end
+    
     # PLOT OF SYS_ID PARAMETERS
     # figure(figsize=(15,10))
+    println(size(log_cvx))
+    println(size(log_cvy))
+    println(size(log_cpsi))
     for i in 1:length(cost)
         i == 1 ? current_x = 0 : current_x = sum(cost[1:i-1])
         x_len = Int(cost[i])
         subplot(3,2,2)
-        for j=1:size(log_cvx,3)
+        for j=1:size(log_cvx,4)
             if i == 1
                 if j == 1
-                    plot(current_x+1:current_x+x_len,log_cvx[1:x_len,i,j],color="blue",label="cvx_$j")
+                    plot(current_x+1:current_x+x_len,log_cvx[1:x_len,i,1,j],color="blue",label="cvx_$j")
                 elseif j == 2
-                    plot(current_x+1:current_x+x_len,log_cvx[1:x_len,i,j],color="red",label="cvx_$j")
+                    plot(current_x+1:current_x+x_len,log_cvx[1:x_len,i,1,j],color="red",label="cvx_$j")
                 elseif j == 3
-                    plot(current_x+1:current_x+x_len,log_cvx[1:x_len,i,j],color="green",label="cvx_$j")
+                    plot(current_x+1:current_x+x_len,log_cvx[1:x_len,i,1,j],color="green",label="cvx_$j")
                 end
             else
                 if j == 1
-                    plot(current_x+1:current_x+x_len,log_cvx[1:x_len,i,j],color="blue")
+                    plot(current_x+1:current_x+x_len,log_cvx[1:x_len,i,1,j],color="blue")
                 elseif j == 2
-                    plot(current_x+1:current_x+x_len,log_cvx[1:x_len,i,j],color="red")
+                    plot(current_x+1:current_x+x_len,log_cvx[1:x_len,i,1,j],color="red")
                 elseif j == 3
-                    plot(current_x+1:current_x+x_len,log_cvx[1:x_len,i,j],color="green")
+                    plot(current_x+1:current_x+x_len,log_cvx[1:x_len,i,1,j],color="green")
                 end
             end
             plot([current_x,current_x],[-1,1],color="grey",linestyle="--")
@@ -124,26 +134,26 @@ if ARGS[1] == "record" || ARGS[1]=="both"
         legend(); ylabel("cvx")
 
         subplot(3,2,4)
-        for j=1:size(log_cvy,3)
+        for j=1:size(log_cvy,4)
             if i == 1
                 if j == 1
-                    plot(current_x+1:current_x+x_len,log_cvy[1:x_len,i,j],color="blue",label="cvy_$j")
+                    plot(current_x+1:current_x+x_len,log_cvy[1:x_len,i,1,j],color="blue",label="cvy_$j")
                 elseif j == 2
-                    plot(current_x+1:current_x+x_len,log_cvy[1:x_len,i,j],color="red",label="cvy_$j")
+                    plot(current_x+1:current_x+x_len,log_cvy[1:x_len,i,1,j],color="red",label="cvy_$j")
                 elseif j == 3
-                    plot(current_x+1:current_x+x_len,log_cvy[1:x_len,i,j],color="green",label="cvy_$j")
+                    plot(current_x+1:current_x+x_len,log_cvy[1:x_len,i,1,j],color="green",label="cvy_$j")
                 elseif j == 4
-                    plot(current_x+1:current_x+x_len,log_cvy[1:x_len,i,j],color="orange",label="cvy_$j")
+                    plot(current_x+1:current_x+x_len,log_cvy[1:x_len,i,1,j],color="orange",label="cvy_$j")
                 end
             else
                 if j == 1
-                    plot(current_x+1:current_x+x_len,log_cvy[1:x_len,i,j],color="blue")
+                    plot(current_x+1:current_x+x_len,log_cvy[1:x_len,i,1,j],color="blue")
                 elseif j == 2
-                    plot(current_x+1:current_x+x_len,log_cvy[1:x_len,i,j],color="red")
+                    plot(current_x+1:current_x+x_len,log_cvy[1:x_len,i,1,j],color="red")
                 elseif j == 3
-                    plot(current_x+1:current_x+x_len,log_cvy[1:x_len,i,j],color="green")
+                    plot(current_x+1:current_x+x_len,log_cvy[1:x_len,i,1,j],color="green")
                 elseif j == 4
-                    plot(current_x+1:current_x+x_len,log_cvy[1:x_len,i,j],color="orange")
+                    plot(current_x+1:current_x+x_len,log_cvy[1:x_len,i,1,j],color="orange")
                 end
             end
             plot([current_x,current_x],[-1,1],color="grey",linestyle="--")
@@ -151,32 +161,41 @@ if ARGS[1] == "record" || ARGS[1]=="both"
         legend(); ylabel("cvy")
 
         subplot(3,2,6)
-        for j=1:size(log_cpsi,3)
+        for j=1:size(log_cpsi,4)
             if i == 1
                 if j == 1
-                    plot(current_x+1:current_x+x_len,log_cpsi[1:x_len,i,j],color="blue",label="cpsi_$j")
+                    plot(current_x+1:current_x+x_len,log_cpsi[1:x_len,i,1,j],color="blue",label="cpsi_$j")
                 elseif j == 2
-                    plot(current_x+1:current_x+x_len,log_cpsi[1:x_len,i,j],color="red",label="cpsi_$j")
+                    plot(current_x+1:current_x+x_len,log_cpsi[1:x_len,i,1,j],color="red",label="cpsi_$j")
                 elseif j == 3
-                    plot(current_x+1:current_x+x_len,log_cpsi[1:x_len,i,j],color="green",label="cpsi_$j")
+                    plot(current_x+1:current_x+x_len,log_cpsi[1:x_len,i,1,j],color="green",label="cpsi_$j")
                 end
             else
                 if j == 1
-                    plot(current_x+1:current_x+x_len,log_cpsi[1:x_len,i,j],color="blue")
+                    plot(current_x+1:current_x+x_len,log_cpsi[1:x_len,i,1,j],color="blue")
                 elseif j == 2
-                    plot(current_x+1:current_x+x_len,log_cpsi[1:x_len,i,j],color="red")
+                    plot(current_x+1:current_x+x_len,log_cpsi[1:x_len,i,1,j],color="red")
                 elseif j == 3
-                    plot(current_x+1:current_x+x_len,log_cpsi[1:x_len,i,j],color="green")
+                    plot(current_x+1:current_x+x_len,log_cpsi[1:x_len,i,1,j],color="green")
                 end
             end
             plot([current_x,current_x],[-4,4],color="grey",linestyle="--")
         end
         legend(); ylabel("cpsi")
     end
+    # figure("Speed-$(file_names[idx])") # PLOT OF STATE
+    # i = 1; plot_way = [3,2]
+    # for i in 4:length(cost)
+    #     x_len = Int(cost[i])
+    #     subplot(111)
+    #     plot(z[1:x_len,i,1,4],label=i)
+    #     ylabel("vx")
+    # end
+    # legend()
 end
 
 # TRAJECTORY PLOT FOR ALL THE LAPS DONE
-if ARGS[1] == "trajectory" || ARGS[1]=="both"
+if FLAG[1] == "trajectory" || FLAG[1]=="both"
     i = 1
     fig = figure("Trajectory-$(file_names[idx])")
     axs = fig[:add_subplot](1, 1, 1); line = nothing

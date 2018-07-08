@@ -23,7 +23,7 @@ import geometry_msgs.msg
 from barc.msg import ECU, pos_info, Vel_est
 from geometry_msgs.msg import Vector3
 from sensor_msgs.msg import Imu
-from marvelmind_nav.msg import hedge_imu_fusion
+from marvelmind_nav.msg import hedge_imu_fusion, hedge_pos
 from numpy import tan, arctan, cos, sin, pi
 from numpy.random import randn
 from tf import transformations
@@ -37,6 +37,7 @@ def main():
     ecu = EcuClass()
 
     counter = 0
+    counter_gps = 0
     a_his 	= [0.0]*int(rospy.get_param("simulator/delay_a")/rospy.get_param("simulator/dt"))
     df_his 	= [0.0]*int(rospy.get_param("simulator/delay_df")/rospy.get_param("simulator/dt"))
     while not rospy.is_shutdown():
@@ -53,14 +54,18 @@ def main():
 
 		sim.saveHistory()
 
-		gps.gps_pub()
+		# gps.gps_pub()
 		imu.imu_pub()
 		sim.sim_pub()
 
 		counter += 1
+		counter_gps += 1
 		if counter == 5:
 			enc.enc_pub()
 			counter = 0
+		if counter_gps == 6:
+			gps.gps_pub()
+			counter_gps = 0
 		sim.rate.sleep()
 
 class Simulator(object):
@@ -125,7 +130,6 @@ class Simulator(object):
 	def f(self,u):
 		a_F = 0.0
 		a_R = 0.0
-		u[1] *=0.6
 
 		if abs(self.vx) > 0.2:
 			a_F = arctan((self.vy + self.L_f*self.psiDot)/abs(self.vx)) - u[1]
@@ -150,7 +154,7 @@ class Simulator(object):
 		self.y 		+= self.dt*(sin(yaw)*vx + cos(yaw)*vy)
 		self.vx 	+= self.dt*(ax + psiDot*vy)
 		self.vy 	+= self.dt*(ay - psiDot*vx)
-		self.ax 	 = u[0] - self.c_f*vx - FyF*sin(u[1])
+		self.ax 	 = u[0] - self.c_f*vx - FyF/self.m*sin(u[1])
 		self.ay 	 = 1.0/self.m*(FyF*cos(u[1])+FyR)
 		self.yaw 	+= self.dt*(psiDot)                                        
 		self.psiDot += self.dt*(1.0/self.I_z*(self.L_f*FyF*cos(u[1]) - self.L_r*FyR))
@@ -222,14 +226,14 @@ class ImuClass(object):
 
 class GpsClass(object):
 	def __init__(self):
-		self.pub  = rospy.Publisher("hedge_imu_fusion", hedge_imu_fusion, queue_size=1)
+		self.pub  = rospy.Publisher("hedge_pos", hedge_pos, queue_size=1)
 		self.x = 0.0
 		self.y = 0.0
 		self.x_std 	 = rospy.get_param("simulator/x_std")
 		self.y_std 	 = rospy.get_param("simulator/y_std")
 		self.n_bound = rospy.get_param("simulator/n_bound")
 
-		self.msg = hedge_imu_fusion()
+		self.msg = hedge_pos()
 
 	def update(self,sim):
 		n = self.x_std*randn()

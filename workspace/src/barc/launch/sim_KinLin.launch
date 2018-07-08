@@ -63,11 +63,11 @@
         <param name="g"     type="double" value="9.81" />
         <!-- simulator sensor noise -->
         <param name="n_bound"       type="double" value="1.5" />
-        <param name="x_std"         type="double" value="0.02" />
-        <param name="y_std"         type="double" value="0.02" />    
+        <param name="x_std"         type="double" value="0.0" />
+        <param name="y_std"         type="double" value="0.0" />    
         <param name="v_std"         type="double" value="0.0" />    
-        <param name="ax_std"        type="double" value="1.0" />
-        <param name="ay_std"        type="double" value="1.0" />
+        <param name="ax_std"        type="double" value="0.0" />
+        <param name="ay_std"        type="double" value="0.0" />
         <param name="psiDot_std"    type="double" value="0.0" />
     </node>
 

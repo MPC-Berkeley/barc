@@ -48,20 +48,30 @@ export createTrack, Track
                         211 0]
         elseif name == "3110"
             # EXPERIEMENT TRACK DATA
-            num = 100
-            track_data=[Int(ceil(2*80)) 0;
-                        Int(ceil(2*num)) pi/2;
-                        Int(ceil(2*(80+47))) 0;
-                        Int(ceil(2*num)) pi/2;
-                        Int(ceil(2*50)) 0;
-                        Int(ceil(2*num)) pi/2;
-                        Int(ceil(2*4)) 0;
-                        Int(ceil(2*num)) -pi/2;
-                        Int(ceil(2*30)) 0;
-                        Int(ceil(2*num)) pi/2;
-                        Int(ceil(2*4)) 0;
-                        Int(ceil(2*num)) pi/2;
-                        Int(ceil(2*(71+48))) 0]
+            num = 80 # 100
+            # track_data=[Int(ceil(2*80)) 0;
+            #             Int(ceil(2*num)) pi/2;
+            #             Int(ceil(2*(80+47))) 0;
+            #             Int(ceil(2*num)) pi/2;
+            #             Int(ceil(2*50)) 0;
+            #             Int(ceil(2*num)) pi/2;
+            #             Int(ceil(2*4)) 0;
+            #             Int(ceil(2*num)) -pi/2;
+            #             Int(ceil(2*30)) 0;
+            #             Int(ceil(2*num)) pi/2;
+            #             Int(ceil(2*4)) 0;
+            #             Int(ceil(2*num)) pi/2;
+            #             Int(ceil(2*(71+48))) 0]
+            track_data=[Int(ceil(2*60))   0;
+                        Int(ceil(2*num))  pi/2;
+                        Int(ceil(2*(80+67))) 0;
+                        Int(ceil(2*200))  pi;
+                        Int(ceil(2*20))   0;
+                        Int(ceil(2*num))  -pi/2;
+                        Int(ceil(2*44))    0;
+                        Int(ceil(2*200))  pi;
+                        Int(ceil(2*(110))) 0]  
+
         elseif name == "basic"
             # Basic experiment track
             track_data = [Int(ceil(3*60)) 0;
@@ -87,11 +97,17 @@ export createTrack, Track
                           Int(ceil(2.8*40)) 0]
         elseif name == "MSC_lab"    
             # TRACK TO USE IN THE SMALL EXPERIMENT ROOM
-            track_data = [Int(ceil(1.5*3*10)) 0;
-                          Int(ceil(1.5*3*120)) pi;
-                          Int(ceil(1.5*3*20)) 0;
-                          Int(ceil(1.5*3*120)) pi;
-                          Int(ceil(1.5*3*10)) 0]
+            # track_data = [Int(ceil(1.5*3*10)) 0;
+            #               Int(ceil(1.8*3*120)) pi;
+            #               Int(ceil(1.5*3*20)) 0;
+            #               Int(ceil(1.8*3*120)) pi;
+            #               Int(ceil(1.5*3*10)) 0]
+            track_data = [Int(ceil(1.5*3*30)) 0;
+                          Int(ceil(1.5*3*100)) -pi;
+                          Int(ceil(1.5*3*60)) 0;
+                          Int(ceil(1.5*3*100)) -pi;
+                          Int(ceil(1.5*3*30)) 0]
+
 
         elseif name == "feature"
             # FEATURE TRACK DATA
@@ -124,6 +140,7 @@ export createTrack, Track
             else
                 d_theta = d_theta - angle / curve
             end
+            d_theta = angle / num_point
             append!(theta,[theta[end]+d_theta])
             curv_curr = d_theta/ds
             append!(curvature,[curv_curr])
@@ -254,16 +271,22 @@ export SafeSet,SysID,FeatureData,MpcSol,MpcParams,ModelParams,GPData
                     mpcParams.Q_slack = 50.0*[1,1,1,1]
                 end
             else
-                mpcParams.Q             = [0.0,40.0,2.0,5.0]
+                mpcParams.Q             = [0.0,40.0,20.0,5.0]
                 mpcParams.R             = 0*[10.0,10.0]
-                mpcParams.QderivU       = 1*[10.0,40.0] # motor, servo
+                mpcParams.QderivU       = 1*[0.1*50.0, 0.2*320.0] # motor, servo
+                # slack only for dyn lin
+                # mpcParams.QderivU       = 1*[50.0,100.0] # motor, servo
                 mpcParams.Q_term_cost   = 1.0
-                mpcParams.Q_lane        = 16
+                mpcParams.Q_lane        = 2
                 if mpcParams.n_state == 6
                     mpcParams.QderivZ = 1.0*[0,0.1,0.1,2,0.1,0.0]
-                    mpcParams.Q_slack = 10.0*[1.0,5.0,5.0,1.0,1.0,1.0]
+                    mpcParams.Q_slack = 60*0.5*[10.0,1.0,2*10.0,10.0,0.1,1.0]
+                    # slack only for dyn lin model
+                    # mpcParams.Q_slack = 200*[10.0,1.0,10.0,10.0,0.1,1.0]
                 elseif mpcParams.n_state == 4
                     mpcParams.QderivZ = 1.0*[0,1.0,1.0,2.0]
+                    # mpcParams.Q_slack = 10.0*[1,1,1,1]
+                    # slack only for kin lin forecasting model
                     mpcParams.Q_slack = 10.0*[1,1,1,1]
                 end
             end
@@ -328,6 +351,7 @@ export SafeSet,SysID,FeatureData,MpcSol,MpcParams,ModelParams,GPData
         SS::Array{Float64}
         feature_z::Array{Float64}
         feature_u::Array{Float64}
+        GP_vx::Array{Float64}
         GP_vy::Array{Float64}
         GP_psiDot::Array{Float64}
         ax::Array{Float64,2}
@@ -337,17 +361,18 @@ export SafeSet,SysID,FeatureData,MpcSol,MpcParams,ModelParams,GPData
             N = get_param("controller/N")
             n_state = get_param("controller/n_state")
             if get_param("controller/SYS_ID_LIN_FLAG")
-                history.c_Vx    = zeros(BUFFERSIZE,lapNum,5)
-                history.c_Vy    = zeros(BUFFERSIZE,lapNum,4)
-                history.c_Psi   = zeros(BUFFERSIZE,lapNum,4)
+                history.c_Vx    = zeros(BUFFERSIZE,lapNum,N,4)
+                history.c_Vy    = zeros(BUFFERSIZE,lapNum,N,4)
+                history.c_Psi   = zeros(BUFFERSIZE,lapNum,N,4)
             else
-                history.c_Vx    = zeros(BUFFERSIZE,lapNum,3)
-                history.c_Vy    = zeros(BUFFERSIZE,lapNum,4)
-                history.c_Psi   = zeros(BUFFERSIZE,lapNum,3)
+                history.c_Vx    = zeros(BUFFERSIZE,lapNum,N,3)
+                history.c_Vy    = zeros(BUFFERSIZE,lapNum,N,4)
+                history.c_Psi   = zeros(BUFFERSIZE,lapNum,N,3)
             end
             history.SS          = zeros(BUFFERSIZE,lapNum,get_param("controller/Nl")*get_param("controller/Np"),n_state)
             history.feature_z   = zeros(BUFFERSIZE,lapNum,get_param("controller/feature_Np"),6)
             history.feature_u   = zeros(BUFFERSIZE,lapNum,get_param("controller/feature_Np"),2)
+            history.GP_vx       = zeros(BUFFERSIZE,lapNum,N)
             history.GP_vy       = zeros(BUFFERSIZE,lapNum,N)
             history.GP_psiDot   = zeros(BUFFERSIZE,lapNum,N)
             history.u       = zeros(BUFFERSIZE,lapNum,N,2)
@@ -458,8 +483,8 @@ export SafeSet,SysID,FeatureData,MpcSol,MpcParams,ModelParams,GPData
             sysID.select_u  = zeros(sysID.feature_Np,2)
             # SYS ID result 
             if get_param("controller/SYS_ID_LIN_FLAG")
-                sysID.c_Vx  = zeros(N,5)    
-                sysID.c_Vy  = zeros(N,4)    
+                sysID.c_Vx  = zeros(N,4)
+                sysID.c_Vy  = zeros(N,4)
                 sysID.c_Psi = zeros(N,4)
             else    
                 sysID.c_Vx  = zeros(N,3)
@@ -591,13 +616,12 @@ export SafeSet,SysID,FeatureData,MpcSol,MpcParams,ModelParams,GPData
         Z=zeros(num,num)
         for i = 1:num
             for j=1:num
-                # z = zu[i,2:6]-zu[j,2:6]
-                # Z[i,j] = (10*z[1]^2+10*z[2]^2+z[3]^2+z[4]^2+5*z[5]^2)
                 z = zu[i,4:6]-zu[j,4:6]
                 Z[i,j] = 5*z[1]^2+z[2]^2+5*z[3]^2
             end
         end
-        K=exp(-20.0*Z)
+        # K=exp(-130.0*Z)
+        K=exp(-300.0*Z) # for forecasting model
         return K\e 
     end
 
@@ -606,11 +630,11 @@ export SafeSet,SysID,FeatureData,MpcSol,MpcParams,ModelParams,GPData
         Z=zeros(num,num)
         for i = 1:num
             for j=1:num
-                z = zu[i,2:8]-zu[j,2:8]
+                z = zu[i,4:8]-zu[j,4:8]
                 Z[i,j] = (10*z[1]^2+10*z[2]^2+z[3]^2+z[4]^2+5*z[5]^2)
             end
         end
-        K=exp(-50.0*Z)
+        K=exp(-20.0*Z)
         return K\e
     end
 
@@ -684,7 +708,7 @@ export SafeSet,SysID,FeatureData,MpcSol,MpcParams,ModelParams,GPData
                 e_vx     	= data["e_vx"]
                 e_vy     	= data["e_vy"]
                 e_psiDot 	= data["e_psiDot"]
-                num_sps   	= 2 # THE NUMBER OF POINTS SELECTED FOR SPARSE GP
+                num_sps   	= 6 # THE NUMBER OF POINTS SELECTED FOR SPARSE GP
                 gpData.z   		 = z[1:num_sps:end,:]
                 gpData.u   		 = u[1:num_sps:end,:]
                 gpData.zu  		 = hcat(gpData.z,gpData.u)
@@ -696,12 +720,8 @@ export SafeSet,SysID,FeatureData,MpcSol,MpcParams,ModelParams,GPData
                 gpData.e_psiDot  = e_psiDot[1:num_sps:end]
             	println("GP feature size:",size(gpData.zu),num_sps)
                 if get_param("controller/n_state") == 4
-	                gpData.prep_ey   = gpPrepKin(gpData.e_ey,gpData.zu)
-	                gpData.prep_epsi = gpPrepKin(gpData.e_epsi,gpData.zu)
 	                gpData.prep_vx   = gpPrepKin(gpData.e_vx,gpData.zu)
 	            elseif get_param("controller/n_state") == 6
-	            	gpData.prep_ey   = gpPrepDyn(gpData.e_ey,gpData.zu)
-	                gpData.prep_epsi = gpPrepDyn(gpData.e_epsi,gpData.zu)
 	                gpData.prep_vx   = gpPrepDyn(gpData.e_vx,gpData.zu)
 	                gpData.prep_vy 	 = gpPrepDyn(gpData.e_vy,gpData.zu)
 	                gpData.prep_psiDot=gpPrepDyn(gpData.e_psiDot,gpData.zu)
@@ -1019,7 +1039,7 @@ export buildFeatureSetFromHistory, buildFeatureSetFromDataSet, buildFeatureSetFr
     end
 
     function findFeature(agent::Agent,curr_state::Array{Float64})
-        norm_state = [1 0.1 1 1 0.2]
+        norm_state = [0.1 1.0 1.0 1.0 1.0]
         norm_idx   = zeros(size(agent.sysID.feature_z,1),2)
 
         norm_dist  = (curr_state.-agent.sysID.feature[1:end,4:8])./norm_state
@@ -1031,6 +1051,7 @@ export buildFeatureSetFromHistory, buildFeatureSetFromDataSet, buildFeatureSetFr
             agent.sysID.select_z[i,:,2] = agent.sysID.feature_z[Int(norm_idx[i,2]),:,2]
             agent.sysID.select_u[i,:]   = agent.sysID.feature_u[Int(norm_idx[i,2]),:]
         end
+        agent.sysID.select_z[:,4,1] += 0.01*ones(agent.sysID.feature_Np)
     end
 
     function coeffId(agent::Agent,ID_idx::Int64)
@@ -1054,6 +1075,7 @@ export buildFeatureSetFromHistory, buildFeatureSetFromDataSet, buildFeatureSetFr
             A_psi[i,2]  = agent.sysID.select_z[i,5,1]/agent.sysID.select_z[i,4,1]
             A_psi[i,3]  = agent.sysID.select_u[i,2]
         end
+        # println(agent.sysID.select_z[:,4,1])
         # BACKSLASH OPERATOR WITHOUT REGULIZATION
         # c_Vx = A_vx\y_vx
         # c_Vy = A_vy\y_vy
@@ -1069,7 +1091,7 @@ export buildFeatureSetFromHistory, buildFeatureSetFromDataSet, buildFeatureSetFr
     end
 
     function coeffIdLin(agent::Agent,ID_idx::Int64)
-        A_vx = zeros(agent.sysID.feature_Np,5)
+        A_vx = zeros(agent.sysID.feature_Np,4)
         A_vy = zeros(agent.sysID.feature_Np,4)
         A_psi= zeros(agent.sysID.feature_Np,4)
 
@@ -1082,7 +1104,7 @@ export buildFeatureSetFromHistory, buildFeatureSetFromDataSet, buildFeatureSetFr
             A_vx[i,2]   = agent.sysID.select_z[i,5,1]
             A_vx[i,3]   = agent.sysID.select_z[i,6,1]
             A_vx[i,4]   = agent.sysID.select_u[i,1]
-            A_vx[i,5]   = agent.sysID.select_u[i,2]
+            # A_vx[i,5]   = agent.sysID.select_u[i,2]
             A_vy[i,1]   = agent.sysID.select_z[i,4,1]
             A_vy[i,2]   = agent.sysID.select_z[i,5,1]
             A_vy[i,3]   = agent.sysID.select_z[i,6,1]
@@ -1341,28 +1363,34 @@ export historyCollect, gpFeatureCollect, gpResultCollect, gpErrorCollect
             # FINISH ALL RACING LAPS
             save(log_path,  "z",         agent.history.z,
                             "u",         agent.history.u,
+                            "x",         agent.history.ax,
+                            "y",         agent.history.ay,
                             "SS_z",      agent.history.SS,
                             "sysID_z",   agent.history.feature_z,
                             "sysID_u",   agent.history.feature_u,
                             "log_cvx",   agent.history.c_Vx,
                             "log_cvy",   agent.history.c_Vy,
                             "log_cpsi",  agent.history.c_Psi,
+                            "GP_vx",     agent.history.GP_vx,
                             "GP_vy",     agent.history.GP_vy,
                             "GP_psiDot", agent.history.GP_psiDot,
                             "track",     agent.track,
-                            "cost",      agent.history.cost)
+                            "cost",      agent.history.cost,
+                            "mpcParams", agent.mpcParams)
         else
             # CALCULATE FINISHED ITERATION OF CURRENT LAP
             agent.history.cost[agent.lapStatus.lap] = agent.lapStatus.it-1
             # RACE IS KILLED
             save(log_path,  "z",         agent.history.z[:,1:agent.lapStatus.lap,:,:],
                             "u",         agent.history.u[:,1:agent.lapStatus.lap,:,:],
+                            "x",         agent.history.ax,
+                            "y",         agent.history.ay,
                             "SS_z",      agent.history.SS[:,1:agent.lapStatus.lap,:,:],
                             "sysID_z",   agent.history.feature_z[:,1:agent.lapStatus.lap,:,:],
                             "sysID_u",   agent.history.feature_u[:,1:agent.lapStatus.lap,:,:],
-                            "log_cvx",   agent.history.c_Vx[:,1:agent.lapStatus.lap,:],
-                            "log_cvy",   agent.history.c_Vy[:,1:agent.lapStatus.lap,:],
-                            "log_cpsi",  agent.history.c_Psi[:,1:agent.lapStatus.lap,:],
+                            "log_cvx",   agent.history.c_Vx[:,1:agent.lapStatus.lap,:,:],
+                            "log_cvy",   agent.history.c_Vy[:,1:agent.lapStatus.lap,:,:],
+                            "log_cpsi",  agent.history.c_Psi[:,1:agent.lapStatus.lap,:,:],
                             "GP_vy",     agent.history.GP_vy[:,1:agent.lapStatus.lap],
                             "GP_psiDot", agent.history.GP_psiDot[:,1:agent.lapStatus.lap],
                             "track",     agent.track,
@@ -1379,7 +1407,9 @@ export historyCollect, gpFeatureCollect, gpResultCollect, gpErrorCollect
             agent.history.z[agent.lapStatus.it,agent.lapStatus.lap,1,4:6]= z_curr[4:6]
             agent.history.u[agent.lapStatus.it,agent.lapStatus.lap,:,:]  = agent.mpcSol.u
             agent.SS.oldSS[agent.lapStatus.it,agent.lapStatus.lap,:]     = z_curr
-            agent.SS.oldSS_u[agent.lapStatus.it,agent.lapStatus.lap,:]   = agent.mpcSol.u[1,:]
+            agent.SS.oldSS_u[agent.lapStatus.it,agent.lapStatus.lap,:]   = agent.mpcSol.u[2,:]
+            agent.history.ax[agent.lapStatus.it,agent.lapStatus.lap]     = agent.posInfo.x
+            agent.history.ay[agent.lapStatus.it,agent.lapStatus.lap]     = agent.posInfo.y
         end
         
         # SafeSet history
@@ -1390,9 +1420,13 @@ export historyCollect, gpFeatureCollect, gpResultCollect, gpErrorCollect
         # SysID history
         agent.history.feature_z[agent.lapStatus.it,agent.lapStatus.lap,:,:] = agent.sysID.select_z[:,:,1]
         agent.history.feature_u[agent.lapStatus.it,agent.lapStatus.lap,:,:] = agent.sysID.select_u
+        agent.history.c_Vx[agent.lapStatus.it,agent.lapStatus.lap,:,:]  = agent.sysID.c_Vx
+        agent.history.c_Vy[agent.lapStatus.it,agent.lapStatus.lap,:,:]  = agent.sysID.c_Vy
+        agent.history.c_Psi[agent.lapStatus.it,agent.lapStatus.lap,:,:] = agent.sysID.c_Psi
 
         # GP history
         if !agent.raceSet.GP_LOCAL_FLAG || !agent.raceSet.GP_FULL_FLAG
+            agent.history.GP_vx[agent.lapStatus.it,agent.lapStatus.lap,:]     = agent.gpData.GP_vx
             agent.history.GP_vy[agent.lapStatus.it,agent.lapStatus.lap,:]     = agent.gpData.GP_vy
             agent.history.GP_psiDot[agent.lapStatus.it,agent.lapStatus.lap,:] = agent.gpData.GP_psiDot
         end
@@ -1560,11 +1594,10 @@ export gprKin,gprDyn
 
     function gpFullKin(z::Array{Float64,2},u::Array{Float64,2},feature_state::Array{Float64,2},GP_prepare::Array{Float64,1})
         state = hcat(z,u)
-        # z = feature_state[:,2:6].-state[1,2:6]
-        # Z = 10*z[:,1].^2+10*z[:,2].^2+z[:,3].^2+z[:,4].^2+5*z[:,5].^2
         z = feature_state[:,4:6].-state[1,4:6]
         Z = 5*z[:,1].^2+z[:,2].^2+5*z[:,3].^2
-        k = exp(-20.0*Z)
+        # k = exp(-130.0*Z)
+        k = exp(-300.0*Z) # for forecasting model
         GP_e = k'*GP_prepare
         return GP_e[1]
     end
@@ -1573,7 +1606,7 @@ export gprKin,gprDyn
         state = hcat(z,u)
         z = feature_state[:,4:8].-state[1,4:8]
         Z = 10*z[:,1].^2+10*z[:,2].^2+z[:,3].^2+z[:,4].^2+5*z[:,5].^2
-        k = exp(-50.0*Z)
+        k = exp(-20.0*Z)
         GP_e = k'*GP_prepare
         return GP_e[1]
     end

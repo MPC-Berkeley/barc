@@ -26,7 +26,7 @@
     <!-- Track parameters -->
     <param name="ds"            type="double" value="0.01" />
     <param name="ey"            type="double" value="0.8" />
-    <param name="ey_tighten"    type="double" value="0.8" />
+    <param name="ey_tighten"    type="double" value="0.9" />
 
     <!-- Machines -->
     <machine name="odroid" address="192.168.10.101" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid.sh"/>
@@ -34,37 +34,36 @@
     <machine name="this-pc" address="192.168.10.147" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc_shuqi.sh"/>
 
     <!-- CONTROL -->
-    <node machine="this-pc" pkg="barc" type="controllerIdLin.jl" name="controller" output="screen">
+    <node machine="this-pc" pkg="barc" type="controllerDynLin3.jl" name="controller" output="screen">
         <!-- Controller flags -->
-        <param name="SYS_ID_LIN_FLAG" type="bool" value="true" />
-        <param name="TV_FLAG"       type="bool" value="true" />
-        <param name="num_spare"     type="int"  value="30"    />
-        <param name="GP_LOCAL_FLAG" type="bool" value="false" />
-        <param name="GP_FULL_FLAG"  type="bool" value="false" />
+        <param name="TV_FLAG"           type="bool" value="false" />
+        <param name="SYS_ID_LIN_FLAG"   type="bool" value="false" />
+        <param name="num_spare"         type="int"  value="30"    />
+        <param name="GP_LOCAL_FLAG"     type="bool" value="false" />
+        <param name="GP_FULL_FLAG"      type="bool" value="true" />
         <!-- Controller parameters -->
-        <param name="dt"        type="double" value="0.05" />
-        <param name="c_f"       type="double" value="0.5" />
-        <param name="delay_df"  type="int" value="3" />
+        <param name="dt"        type="double" value="0.1" />
+        <param name="c_f"       type="double" value="0.05" />
+        <param name="delay_df"  type="int" value="1" />
         <param name="delay_a"   type="int" value="1" />
         <param name="N"         type="int" value="10" />
         <param name="n_state"   type="int" value="6" />
         <!-- Safe set parameters -->
         <param name="Nl"        type="int" value="2" />
-        <param name="Np"        type="int" value="20" />
+        <param name="Np"        type="int" value="10" />
         <!-- SYS ID parameters -->
         <param name="feature_Nl"    type="int" value="2" />
-        <param name="feature_Np"    type="int" value="60" />
+        <param name="feature_Np"    type="int" value="30" />
     </node>
 
     <!-- VISUALIZATION -->
     <node machine="this-pc" pkg="barc" type="visualizeCar.py" name="visualization" output="screen"/>
 
     <!--DYNAMIC OBSERVER-->
-    <!-- <node machine="odroid" pkg="barc" type="stateEstimator.py" name="state_estimator" output="screen"> -->
+    <!-- <node machine="this-pc" pkg="barc" type="stateEstimator.py" name="state_estimator" output="screen"> -->
         <!-- <param name="delay_df"  type="double" value="0.0" /> -->
         <!-- <param name="delay_a"   type="double" value="0.0" /> -->
     <!-- </node> -->
-
     <node machine="odroid" pkg="barc" type="stateEstimatorPsiInput_shuqi.py" name="state_estimator" output="screen">
         <param name="delay_df" type="double" value="0.0" />
         <param name="delay_a" type="double" value="0.0" />
