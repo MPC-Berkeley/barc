@@ -34,7 +34,7 @@ class Map():
                              [20 * 0.03, 0],
                              [60 * 0.03, +60 * 0.03 * 2 / np.pi]])
         elif selectedTrack == "3110_big":
-            self.halfWidth = 0.7
+            self.halfWidth = 0.4
             self.slack     = 0.45
             spec = np.array([[60 * 0.03, 0],
                              [80 * 0.03, +80 * 0.03 * 2 / np.pi],

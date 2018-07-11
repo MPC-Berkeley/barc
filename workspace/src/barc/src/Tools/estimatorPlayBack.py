@@ -274,7 +274,7 @@ def main():
     
     onVec = [1, 0, 1]
 
-    map = Map("3110")
+    map = Map("3110_big")
 
     estMsg = pos_info()
     
