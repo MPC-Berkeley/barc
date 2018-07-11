@@ -163,15 +163,40 @@ def main():
                 oldU = uApplied
                 uApplied = np.array([cmd.servo, cmd.motor])
 
+                Controller.OldInput = uApplied
+
+                if PickController == "LMPC":
+                    Controller.OldSteering.append(cmd.servo)
+                    Controller.OldAccelera.append(cmd.motor)
+
+                    Controller.OldSteering.pop(0)
+                    Controller.OldAccelera.pop(0)    
+                    # print Controller.OldAccelera, Controller.OldSteering
+
                 # Publish input
                 input_commands.publish(cmd)
 
                 oneStepPredictionError = LocalState - oneStepPrediction # Subtract the local measurement to the previously predicted one step
-                oneStepPrediction, oneStepPredictionTime = Controller.oneStepPrediction(LocalState, uApplied, 1)
+
+                if PickController == "LMPC":
+                    uAppliedDelay = [Controller.OldSteering[-1 - Controller.steeringDelay], Controller.OldAccelera[-1]]
+                else:
+                    uAppliedDelay = uApplied
+
+                # print uAppliedDelay, Controller.OldSteering
+                oneStepPrediction, oneStepPredictionTime = Controller.oneStepPrediction(LocalState, uAppliedDelay, 0)
                 
                 Controller.solve(oneStepPrediction)
-                cmd.servo = Controller.uPred[0,0]
-                cmd.motor = Controller.uPred[0,1]
+                if PickController == "LMPC":
+                    cmd.servo = Controller.uPred[0 + Controller.steeringDelay, 0]
+                    cmd.motor = Controller.uPred[0, 1]
+
+                    # print Controller.uPred[:, 0]
+                    # print Controller.OldSteering
+
+                else:
+                    cmd.servo = Controller.uPred[0,0]
+                    cmd.motor = Controller.uPred[0,1]
                 if (Controller.solverTime.total_seconds() + Controller.linearizationTime.total_seconds() + oneStepPredictionTime.total_seconds() > dt):
                     print "NOT REAL-TIME FEASIBLE!!!"
                     print "Solver time: ", Controller.solverTime.total_seconds(), " Linearization Time: ", Controller.linearizationTime.total_seconds() + oneStepPredictionTime.total_seconds()
@@ -180,8 +205,6 @@ def main():
             #print "Tot Solver Time: ", deltaTimer.total_seconds()
             
             # == End: Computing Input
-
-            
 
             # == Start: Record data
             if (PickController != "LMPC") and (LapNumber >= 1):
@@ -310,15 +333,18 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
             Q_LMPC  =  0 * np.diag([0.0, 0.0, 10.0, 0.0, 0.0, 0.0])  # State cost x = [vx, vy, wz, epsi, s, ey]
             R_LMPC  =  0 * np.diag([1.0, 1.0])                      # Input cost u = [delta, a]
             dR_LMPC =  2* 1 * np.array([ 5 * 0.5 * 10.0, 8 * 20.0]) # Input rate cost u
+            steeringDelay = 0
+            idDelay       = 1
         else:
             Qslack  = 0.1 * 5 * np.diag([10, 0.1, 1, 0.1, 10, 1])          # Cost on the slack variable for the terminal constraint
             Qlane   = 0.1 * 0.5 * 10 * np.array([50, 10]) # Quadratic slack lane cost
             Q_LMPC  =  0 * np.diag([0.0, 0.0, 10.0, 0.0, 0.0, 0.0])  # State cost x = [vx, vy, wz, epsi, s, ey]
             R_LMPC  =  0 * np.diag([1.0, 1.0])                      # Input cost u = [delta, a]
             dR_LMPC =  1 * np.array([ 2 * 5 * 0.5 * 10.0, 2 * 8 * 20.0])                     # Input rate cost u
-        
+            steeringDelay = 1
+            idDelay       = 0            
         Controller = ControllerLMPC(numSS_Points, numSS_it, N, Qslack, Qlane, Q_LMPC, R_LMPC, dR_LMPC, 6, 2, shift, 
-                                        dt, map, Laps, TimeLMPC, LMPC_Solver, SysID_Solver, flag_LTV)
+                                        dt, map, Laps, TimeLMPC, LMPC_Solver, SysID_Solver, flag_LTV, steeringDelay, idDelay)
         # Controller.addTrajectory(ClosedLoopDataPID)
         Controller.addTrajectory(ClosedLoopDataTI_MPC)
         OpenLoopData = LMPCprediction(N, 6, 2, TimeLMPC, numSS_Points, Laps)

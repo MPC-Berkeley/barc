@@ -33,6 +33,20 @@ class Map():
                              [60 * 0.03, +60 * 0.03 * 2 / np.pi],
                              [20 * 0.03, 0],
                              [60 * 0.03, +60 * 0.03 * 2 / np.pi]])
+        elif selectedTrack == "3110_big":
+            self.halfWidth = 0.7
+            self.slack     = 0.45
+            spec = np.array([[60 * 0.03, 0],
+                             [80 * 0.03, +80 * 0.03 * 2 / np.pi],
+                             # Note s = 1 * np.pi / 2 and r = -1 ---> Angle spanned = np.pi / 2
+                             [20 * 0.03, 0],
+                             [80 * 0.03, +80 * 0.03 * 2 / np.pi],
+                             [40 * 0.03, -40 * 0.03 * 10 / np.pi],
+                             [60 * 0.03, +60 * 0.03 * 5 / np.pi],
+                             [40 * 0.03, -40 * 0.03 * 10 / np.pi],
+                             [80 * 0.03, +80 * 0.03 * 2 / np.pi],
+                             [20 * 0.03, 0],
+                             [80 * 0.03, +80 * 0.03 * 2 / np.pi]])
 
         elif selectedTrack == "oval":
             self.halfWidth = 0.7 

@@ -22,7 +22,7 @@ class ControllerLMPC():
         update: this function can be used to set SS, Qfun, uSS and the iteration index.
     """
 
-    def __init__(self, numSS_Points, numSS_it, N, Qslack, Qlane, Q, R, dR, n, d, shift, dt,  map, Laps, TimeLMPC, Solver, SysID_Solver, flag_LTV):
+    def __init__(self, numSS_Points, numSS_it, N, Qslack, Qlane, Q, R, dR, n, d, shift, dt,  map, Laps, TimeLMPC, Solver, SysID_Solver, flag_LTV, steeringDelay, idDelay):
         """Initialization
         Arguments:
             numSS_Points: number of points selected from the previous trajectories to build SS
@@ -57,8 +57,15 @@ class ControllerLMPC():
         self.C = []
         self.flag_LTV = flag_LTV
         self.halfWidth = map.halfWidth
+        self.idDelay = idDelay
+
+        self.steeringDelay = steeringDelay
+        self.acceleraDelay = 0
 
         self.OldInput = np.zeros((1,2))
+
+        self.OldSteering = [0.0]*int(1 + steeringDelay)
+        self.OldAccelera = [0.0]*int(1)
 
         self.MaxNumPoint = 40
         self.itUsedSysID = 2
@@ -88,6 +95,8 @@ class ControllerLMPC():
         self.xPred = []
         self.uPred = []
 
+        self.inputPrediction = np.zeros(4)
+
     def setTime(self, time):
         self.LapTime = time
 
@@ -104,7 +113,7 @@ class ControllerLMPC():
         SS           = self.SS;    Qfun     = self.Qfun; SS_glob = self.SS_glob
         uSS          = self.uSS;   TimeSS   = self.TimeSS
         Q            = self.Q;     R        = self.R
-        dR           = self.dR;    OldInput = self.OldInput
+        dR           = self.dR;
         N            = self.N;     dt       = self.dt
         it           = self.it
         numSS_Points = self.numSS_Points
@@ -139,18 +148,20 @@ class ControllerLMPC():
         startTimer = datetime.datetime.now()
         self.A, self.B, self.C, indexUsed_list = _LMPC_EstimateABC(self)
         endTimer = datetime.datetime.now(); deltaTimer = endTimer - startTimer
-        L, npG, npE = _LMPC_BuildMatEqConst(self, self.A, self.B, self.C, N, n, d)
         self.linearizationTime = deltaTimer
+        npL, npG, npE, npEu = _LMPC_BuildMatEqConst(self)
 
         # Build Terminal cost and Constraint
-        G, E = _LMPC_TermConstr(self, npG, npE, N, n, d, SS_PointSelectedTot)
-        M, q = _LMPC_BuildMatCost(self, Qfun_SelectedTot, numSS_Points, N, Qslack, Q, R, dR, OldInput)
+        G, E, L, Eu = _LMPC_TermConstr(self, npG, npE, npL, npEu)
+        M, q = _LMPC_BuildMatCost(self)
 
         # Solve QP
         startTimer = datetime.datetime.now()
 
+        uOld  = [self.OldSteering[0], self.OldAccelera[0]]
+
         if self.Solver == "CVX":
-            res_cons = qp(M, matrix(q), F, matrix(b), G, E * matrix(x0) + L)
+            res_cons = qp(M, matrix(q), F, matrix(b), G, E * matrix(x0) + L, E * matrix(uOld))
             if res_cons['status'] == 'optimal':
                 feasible = 1
             else:
@@ -159,7 +170,10 @@ class ControllerLMPC():
 
         elif self.Solver == "OSQP":
             # Adaptarion for QSQP from https://github.com/alexbuyval/RacingLMPC/
-            res_cons, feasible = osqp_solve_qp(sparse.csr_matrix(M), q, sparse.csr_matrix(F), b, sparse.csr_matrix(G), np.add(np.dot(E,x0),L[:,0]))
+            # np.savetxt('Eu.csv', Eu, delimiter=',', fmt='%f')
+            # np.savetxt('Mmmu.csv', np.dot(Eu,uOld), delimiter=',', fmt='%f')
+
+            res_cons, feasible = osqp_solve_qp(sparse.csr_matrix(M), q, sparse.csr_matrix(F), b, sparse.csr_matrix(G), np.add(np.dot(E,x0),L[:,0], np.dot(Eu,uOld)) )
             Solution = res_cons.x
 
         self.feasible = feasible
@@ -180,7 +194,14 @@ class ControllerLMPC():
 
         self.LinPoints = np.vstack((xPred.T[1:,:], xPred.T[-1,:]))
 
-        self.OldInput = uPred.T[0,:]
+        # self.OldInput = uPred.T[0,:]
+        
+        # self.OldSteering.pop(0)
+        # self.OldAccelera.pop(0)
+        
+        # self.OldSteering.append(uPred.T[0,0])
+        # self.OldAccelera.append(uPred.T[0,1])
+
 
     def addTrajectory(self, ClosedLoopData):
         """update iteration index and construct SS, uSS and Qfun
@@ -263,16 +284,20 @@ class ControllerLMPC():
         if self.A == []:
             x_next = x
         elif UpdateModel == 1:
-            usedIt = range(self.it-self.itUsedSysID, self.it)
             self.LinPoints[0, :] = x
             self.LinInput[0, :]  = u
 
-            Ai, Bi, Ci, indexSelected = RegressionAndLinearization(self.LinPoints, self.LinInput, usedIt, self.SS, self.uSS, self.LapCounter,
-                                                       self.MaxNumPoint, self.n, self.d, matrix, self.map.PointAndTangent, self.dt, 0, self.SysID_Solver)
+            Ai, Bi, Ci, indexSelected = RegressionAndLinearization(self, 0)
             x_next = np.dot(Ai, x) + np.dot(Bi, u) + np.squeeze(Ci)
         else:
-            x_next = np.dot(self.A[0], x) + np.dot(self.B[0], u) + np.squeeze(self.C[0])            
-        
+            if self.idDelay == 0:
+                x_next = np.dot(self.A[0], x) + np.dot(self.B[0], u) + np.squeeze(self.C[0])            
+            else:
+                self.inputPrediction[2:4] = self.inputPrediction[0:2]
+                self.inputPrediction[0:2] = u
+                # print self.inputPrediction
+                x_next = np.dot(self.A[0], x) + np.dot(self.B[0], self.inputPrediction) + np.squeeze(self.C[0])            
+                
         endTimer = datetime.datetime.now(); deltaTimer = endTimer - startTimer
 
         return x_next, deltaTimer
@@ -335,11 +360,24 @@ def osqp_solve_qp(P, q, G=None, h=None, A=None, b=None, initvals=None):
         feasible = 1
     return res, feasible
 
-def _LMPC_BuildMatCost(LMPC, Sel_Qfun, numSS_Points, N, Qslack, Q, R, dR, uOld):
+def _LMPC_BuildMatCost(LMPC):
+    Q = LMPC.Q
     n = Q.shape[0]
     P = Q
     vt = 2
-    Qlane = LMPC.Qlane
+    Qlane  = LMPC.Qlane
+    N      = LMPC.N
+    Qslack = LMPC.Qslack
+    R      = LMPC.R
+    dR     = LMPC.dR
+    Qfun_SelectedTot = LMPC.Qfun_SelectedTot
+    numSS_Points     = LMPC.numSS_Points
+
+    uOld  = [LMPC.OldSteering[0], LMPC.OldAccelera[0]]
+
+    # if (uOld[0] != LMPC.OldInput[0]) or (uOld[1] != LMPC.OldInput[1]):
+    #     print uOld == LMPC.OldInput
+    #     print uOld, LMPC.OldInput
 
     b = [Q] * (N)
     Mx = linalg.block_diag(*b)
@@ -347,6 +385,7 @@ def _LMPC_BuildMatCost(LMPC, Sel_Qfun, numSS_Points, N, Qslack, Q, R, dR, uOld):
     c = [R + 2 * np.diag(dR)] * (N) # Need to add dR for the derivative input cost
 
     Mu = linalg.block_diag(*c)
+
     # Need to condider that the last input appears just once in the difference
     Mu[Mu.shape[0] - 1, Mu.shape[1] - 1] = Mu[Mu.shape[0] - 1, Mu.shape[1] - 1] - dR[1]
     Mu[Mu.shape[0] - 2, Mu.shape[1] - 2] = Mu[Mu.shape[0] - 2, Mu.shape[1] - 2] - dR[0]
@@ -373,7 +412,7 @@ def _LMPC_BuildMatCost(LMPC, Sel_Qfun, numSS_Points, N, Qslack, Q, R, dR, uOld):
     linLaneSlack = Qlane[1] * np.ones(2*LMPC.N)
 
     # Add cost on lambda, slackTermConstr and slackLane
-    q = np.append(np.append(np.append(q0, Sel_Qfun), np.zeros(Q.shape[0])), linLaneSlack)
+    q = np.append(np.append(np.append(q0, Qfun_SelectedTot), np.zeros(Q.shape[0])), linLaneSlack)
     # np.savetxt('q.csv', q, delimiter=',', fmt='%f')
 
     M = 2 * M0  # Need to multiply by two because CVX considers 1/2 in front of quadratic cost
@@ -546,16 +585,23 @@ def _ComputeCost(x, u, TrackLength):
     return Cost
 
 
-def _LMPC_TermConstr(LMPC, G, E, N ,n ,d , SS_Points):
+def _LMPC_TermConstr(LMPC, G, E, L, Eu):
     # Update the matrices for the Equality constraint in the LMPC. Now we need an extra row to constraint the terminal point to be equal to a point in SS
     # The equality constraint has now the form: G_LMPC*z = E_LMPC*x0 + TermPoint.
     # Note that the vector TermPoint is updated to constraint the predicted trajectory into a point in SS. This is done in the FTOCP_LMPC function
+    N         = LMPC.N
+    n         = LMPC.n
+    d         = LMPC.d
+    SS_Points = LMPC.SS_PointSelectedTot
 
     # This considers the last point of the horizon
     TermCons = np.zeros((n, (N + 1) * n + N * d))
     TermCons[:, N * n:(N + 1) * n] = np.eye(n)
+    L_TermCons = np.zeros(( n, 1))
+
 
     G_enlarged = np.vstack((G, TermCons)) 
+    L_enlarged = np.vstack((L, L_TermCons))
 
     # Now add the points in SS and the slack variables
     G_lambda = np.zeros(( G_enlarged.shape[0], SS_Points.shape[1] + n))
@@ -570,6 +616,8 @@ def _LMPC_TermConstr(LMPC, G, E, N ,n ,d , SS_Points):
 
     # This is the final matrix for the terminal constraints + Slack
     G_LMPC_hard = np.vstack((G_LMPC0, G_ConHull))
+    L_LMPC = np.vstack((L_enlarged, np.array([1])))
+
 
     # Add slack variables on the lanes as Opt variables: [x, u, lambda, slackSS, slackLane]
     # Note that slackLane where not added to the original equalirty constraint
@@ -578,32 +626,60 @@ def _LMPC_TermConstr(LMPC, G, E, N ,n ,d , SS_Points):
 
     # Add the added constraints on the E vector (n constraints from Terminal SS and 1 for summation to 1)
     E_LMPC = np.vstack((E, np.zeros((n + 1, n))))
+    Eu_LMPC = np.vstack((Eu, np.zeros((n + 1, d))))
 
     if LMPC.Solver == "CVX":
-        G_LMPC_sparse = spmatrix(G_LMPC[np.nonzero(G_LMPC)], np.nonzero(G_LMPC)[0].astype(int), np.nonzero(G_LMPC)[1].astype(int), G_LMPC.shape)
-        E_LMPC_sparse = spmatrix(E_LMPC[np.nonzero(E_LMPC)], np.nonzero(E_LMPC)[0].astype(int), np.nonzero(E_LMPC)[1].astype(int), E_LMPC.shape)
-        G_LMPC_return = G_LMPC_sparse
-        E_LMPC_return = E_LMPC_sparse
+        G_LMPC_sparse   = spmatrix(G_LMPC[np.nonzero(G_LMPC)],  np.nonzero(G_LMPC)[0].astype(int),  np.nonzero(G_LMPC)[1].astype(int),  G_LMPC.shape)
+        E_LMPC_sparse   = spmatrix(E_LMPC[np.nonzero(E_LMPC)],  np.nonzero(E_LMPC)[0].astype(int),  np.nonzero(E_LMPC)[1].astype(int),  E_LMPC.shape)
+        L_LMPC_sparse   = spmatrix(L_LMPC[np.nonzero(L_LMPC)],  np.nonzero(L_LMPC)[0].astype(int),  np.nonzero(L_LMPC)[1].astype(int),  L_LMPC.shape)
+        Eu_LMPC_sparse  = spmatrix(Eu_LMPC[np.nonzero(L_LMPC)], np.nonzero(L_LMPC)[0].astype(int), np.nonzero(Eu_LMPC)[1].astype(int), Eu_LMPC.shape)
+        G_LMPC_return   = G_LMPC_sparse
+        E_LMPC_return   = E_LMPC_sparse
+        L_LMPC_return   = L_LMPC_sparse
+        Eu_LMPC_return  = Eu_LMPC_sparse
     else:
-        G_LMPC_return = G_LMPC
-        E_LMPC_return = E_LMPC
+        G_LMPC_return  = G_LMPC
+        E_LMPC_return  = E_LMPC
+        L_LMPC_return  = L_LMPC
+        Eu_LMPC_return = Eu_LMPC
 
-    return G_LMPC_return, E_LMPC_return
+    # np.savetxt('G_LMPC.csv', G_LMPC, delimiter=',', fmt='%f')
+    # np.savetxt('L_LMPC.csv', L_LMPC, delimiter=',', fmt='%f')
+    # print LMPC.steeringDelay
 
-def _LMPC_BuildMatEqConst(LMPC, A, B, C, N, n, d):
+    return G_LMPC_return, E_LMPC_return, L_LMPC_return, Eu_LMPC_return
+
+def _LMPC_BuildMatEqConst(LMPC):
     # Buil matrices for optimization (Convention from Chapter 15.2 Borrelli, Bemporad and Morari MPC book)
     # We are going to build our optimization vector z \in \mathbb{R}^((N+1) \dot n \dot N \dot d), note that this vector
     # stucks the predicted trajectory x_{k|t} \forall k = t, \ldots, t+N+1 over the horizon and
     # the predicte input u_{k|t} \forall k = t, \ldots, t+N over the horizon
-    # G * z = L + E * x(t)
+    # G * z = L + E * x(t) + Eu * OldInputs
+
+    A = LMPC.A
+    B = LMPC.B
+    C = LMPC.C
+    N = LMPC.N
+    n = LMPC.n
+    d = LMPC.d
+
+    idDelay = LMPC.idDelay
+
     Gx = np.eye(n * (N + 1))
     Gu = np.zeros((n * (N + 1), d * (N)))
 
-    E = np.zeros((n * (N + 1), n))
+    E = np.zeros((n * (N + 1) + LMPC.steeringDelay, n))
     E[np.arange(n)] = np.eye(n)
 
-    L = np.zeros((n * (N + 1) + n + 1, 1)) # n+1 for the terminal constraint
-    L[-1] = 1 # Summmation of lamba must add up to 1
+    Eu = np.zeros((n * (N + 1) + LMPC.steeringDelay, d))
+
+    if (idDelay > 0):
+        Eu[n + np.arange(n)] = B[0][:, [2, 3]]
+
+    # L = np.zeros((n * (N + 1) + n + 1, 1)) # n+1 for the terminal constraint
+    # L[-1] = 1 # Summmation of lamba must add up to 1
+
+    L = np.zeros((n * (N + 1) + LMPC.steeringDelay, 1))
 
     for i in range(0, N):
         ind1 = n + i * n + np.arange(n)
@@ -611,19 +687,46 @@ def _LMPC_BuildMatEqConst(LMPC, A, B, C, N, n, d):
         ind2u = i * d + np.arange(d)
 
         Gx[np.ix_(ind1, ind2x)] = -A[i]
-        Gu[np.ix_(ind1, ind2u)] = -B[i]
-        L[ind1, :]              =  C[i]
+
+        if idDelay > 0:
+            Gu[np.ix_(ind1, ind2u)] = -B[i][:, [0, 1]]
+            if i > 0:
+                Gu[np.ix_(ind1, ind2u - d)] = -B[i][:, [2, 3]]
+        else:
+            Gu[np.ix_(ind1, ind2u)] = -B[i]
+            
+        L[ind1, :] =  C[i]
 
     G = np.hstack((Gx, Gu))
 
+    # Add System Delay
+    if LMPC.steeringDelay > 0:
+        xZerosMat = np.zeros((LMPC.steeringDelay, n *(N+1)))
+        uZerosMat = np.zeros((LMPC.steeringDelay, d * N))
+        for i in range(0, LMPC.steeringDelay):
+            ind2Steer = i * d
+            # print i, L.shape
+            L[n * (N + 1) + i, :] = LMPC.OldSteering[i+1]
+            # print LMPC.OldSteering[-1-i]
+            uZerosMat[i, ind2Steer] = 1.0
+        # print LMPC.OldSteering
+        # print "Final L: ", L
+        # print LMPC.OldSteering
 
-    if LMPC.Solver == "CVX":
-        L_sparse = spmatrix(L[np.nonzero(L)], np.nonzero(L)[0].astype(int), np.nonzero(L)[1].astype(int), L.shape)
-        L_return = L_sparse
-    else:
-        L_return = L
+        Gdelay = np.hstack((xZerosMat, uZerosMat))
+        G = np.vstack((G, Gdelay))
+        # print "Final G delay: ", G
+        # print G.shape
 
-    return L_return, G, E
+    # np.savetxt('G.csv', G, delimiter=',', fmt='%f')
+    # if LMPC.Solver == "CVX":
+    #     L_sparse = spmatrix(L[np.nonzero(L)], np.nonzero(L)[0].astype(int), np.nonzero(L)[1].astype(int), L.shape)
+    #     L_return = L_sparse
+    # else:
+    #     L_return = L
+
+    # return L_return, G, E
+    return L, G, E, Eu
 
 def _LMPC_GetPred(Solution,n,d,N, np):
     xPred = np.squeeze(np.transpose(np.reshape((Solution[np.arange(n*(N+1))]),(N+1,n))))
@@ -660,14 +763,15 @@ def _LMPC_EstimateABC(ControllerLMPC):
     Atv = []; Btv = []; Ctv = []; indexUsed_list = []
 
     # Index of the laps used in the System ID
-    usedIt = sortedLapTime[0:ControllerLMPC.itUsedSysID] # range(ControllerLMPC.it-ControllerLMPC.itUsedSysID, ControllerLMPC.it)
 
     for i in range(0, N):
         if (i > 0) and (flag_LTV == False):
             Ai, Bi, Ci = Linearization(LinPoints, PointAndTangent, dt, i, Atv[0], Btv[0], Ctv[0])            
         else:
-            Ai, Bi, Ci, indexSelected = RegressionAndLinearization(LinPoints, LinInput, usedIt, SS, uSS, LapCounter,
-                                                           MaxNumPoint, n, d, matrix, PointAndTangent, dt, i, SysID_Solver)
+            # Ai, Bi, Ci, indexSelected = RegressionAndLinearization(LinPoints, LinInput, usedIt, SS, uSS, LapCounter,
+            #                                                MaxNumPoint, n, d, matrix, PointAndTangent, dt, i, SysID_Solver)
+            Ai, Bi, Ci, indexSelected = RegressionAndLinearization(ControllerLMPC, i)
+
         Atv.append(Ai)
         Btv.append(Bi)
         Ctv.append(Ci)
@@ -675,13 +779,33 @@ def _LMPC_EstimateABC(ControllerLMPC):
 
     return Atv, Btv, Ctv, indexUsed_list
 
-def RegressionAndLinearization(LinPoints, LinInput, usedIt, SS, uSS, LapCounter, MaxNumPoint, n, d, matrix, PointAndTangent, dt, i, SysID_Solver):
+def RegressionAndLinearization(ControllerLMPC, i):
+    LinPoints       = ControllerLMPC.LinPoints
+    LinInput        = ControllerLMPC.LinInput
+    N               = ControllerLMPC.N
+    n               = ControllerLMPC.n
+    d               = ControllerLMPC.d
+    SS              = ControllerLMPC.SS
+    uSS             = ControllerLMPC.uSS
+    LapCounter      = ControllerLMPC.LapCounter
+    PointAndTangent = ControllerLMPC.map.PointAndTangent
+    dt              = ControllerLMPC.dt
+    it              = ControllerLMPC.it
+    SysID_Solver    = ControllerLMPC.SysID_Solver
+    flag_LTV        = ControllerLMPC.flag_LTV
+    MaxNumPoint     = ControllerLMPC.MaxNumPoint  # Need to reason on how these points are selected
+    sortedLapTime   = ControllerLMPC.lapSelected
+    steeringDelay   = ControllerLMPC.steeringDelay
+    acceleraDelay   = ControllerLMPC.acceleraDelay
+    idDelay         = ControllerLMPC.idDelay
+
+    usedIt = sortedLapTime[0:ControllerLMPC.itUsedSysID] # range(ControllerLMPC.it-ControllerLMPC.itUsedSysID, ControllerLMPC.it)
 
 
     x0 = LinPoints[i, :]
 
     Ai = np.zeros((n, n))
-    Bi = np.zeros((n, d))
+    Bi = np.zeros((n, d + d*idDelay))
     Ci = np.zeros((n, 1))
 
     # Compute Index to use
@@ -707,35 +831,59 @@ def RegressionAndLinearization(LinPoints, LinInput, usedIt, SS, uSS, LapCounter,
     K = []
     for i in usedIt:
         indexSelected_i, K_i = ComputeIndex(h, SS, uSS, LapCounter, i, xLin, stateFeatures, scaling, MaxNumPoint,
-                                            ConsiderInput)
+                                            ConsiderInput, steeringDelay, idDelay)
         indexSelected.append(indexSelected_i)
         K.append(K_i)
 
     # =========================
     # ====== Identify vx ======
     inputFeatures = [1]
-    Q_vx, M_vx = Compute_Q_M(SS, uSS, indexSelected, stateFeatures, inputFeatures, usedIt, np, matrix, lamb, K, SysID_Solver)
+    
+    Q_vx, M_vx = Compute_Q_M(SS, uSS, indexSelected, stateFeatures, inputFeatures, usedIt, lamb, K, SysID_Solver, acceleraDelay, idDelay)
 
     yIndex = 0
     b = Compute_b(SS, yIndex, usedIt, matrix, M_vx, indexSelected, K, np, SysID_Solver)
 
-    Ai[yIndex, stateFeatures], Bi[yIndex, inputFeatures], Ci[yIndex] = LMPC_LocLinReg(Q_vx, b, stateFeatures,
-                                                                                      inputFeatures, qp, SysID_Solver)
+    if idDelay == 0:
+        Ai[yIndex, stateFeatures], Bi[yIndex, inputFeatures], Ci[yIndex] = LMPC_LocLinReg(Q_vx, b, stateFeatures,
+                                                                                      inputFeatures, qp, SysID_Solver, idDelay)
+    else:
+        indInpDelay = []
+        indInpDelay.append(inputFeatures[0])
+        indInpDelay.append(indInpDelay[0]+d)
+        Ai[yIndex, stateFeatures], Bi[yIndex, indInpDelay], Ci[yIndex] = LMPC_LocLinReg(Q_vx, b, stateFeatures,
+                                                                                      inputFeatures, qp, SysID_Solver, idDelay)
 
     # =======================================
     # ====== Identify Lateral Dynamics ======
     inputFeatures = [0]
-    Q_lat, M_lat = Compute_Q_M(SS, uSS, indexSelected, stateFeatures, inputFeatures, usedIt, np, matrix, lamb, K, SysID_Solver)
+
+    Q_lat, M_lat = Compute_Q_M(SS, uSS, indexSelected, stateFeatures, inputFeatures, usedIt, lamb, K, SysID_Solver, steeringDelay, idDelay)
 
     yIndex = 1  # vy
     b = Compute_b(SS, yIndex, usedIt, matrix, M_lat, indexSelected, K, np, SysID_Solver)
-    Ai[yIndex, stateFeatures], Bi[yIndex, inputFeatures], Ci[yIndex] = LMPC_LocLinReg(Q_lat, b, stateFeatures,
-                                                                                      inputFeatures, qp, SysID_Solver)
-
+    
+    if idDelay == 0:
+        Ai[yIndex, stateFeatures], Bi[yIndex, inputFeatures], Ci[yIndex] = LMPC_LocLinReg(Q_lat, b, stateFeatures,
+                                                                                      inputFeatures, qp, SysID_Solver, idDelay)
+    else:
+        indInpDelay = []
+        indInpDelay.append(inputFeatures[0])
+        indInpDelay.append(indInpDelay[0]+d)
+        Ai[yIndex, stateFeatures], Bi[yIndex, indInpDelay], Ci[yIndex] = LMPC_LocLinReg(Q_lat, b, stateFeatures,
+                                                                                      inputFeatures, qp, SysID_Solver, idDelay)
+    
     yIndex = 2  # wz
     b = Compute_b(SS, yIndex, usedIt, matrix, M_lat, indexSelected, K, np, SysID_Solver)
-    Ai[yIndex, stateFeatures], Bi[yIndex, inputFeatures], Ci[yIndex] = LMPC_LocLinReg(Q_lat, b, stateFeatures,
-                                                                                      inputFeatures, qp, SysID_Solver)
+    if idDelay == 0:
+        Ai[yIndex, stateFeatures], Bi[yIndex, inputFeatures], Ci[yIndex] = LMPC_LocLinReg(Q_lat, b, stateFeatures,
+                                                                                      inputFeatures, qp, SysID_Solver, idDelay)
+    else:
+        indInpDelay = []
+        indInpDelay.append(inputFeatures[0])
+        indInpDelay.append(indInpDelay[0]+d)
+        Ai[yIndex, stateFeatures], Bi[yIndex, indInpDelay], Ci[yIndex] = LMPC_LocLinReg(Q_lat, b, stateFeatures,
+                                                                                      inputFeatures, qp, SysID_Solver, idDelay)
 
     # ===========================
     # ===== Linearization =======
@@ -853,15 +1001,38 @@ def Linearization(LinPoints, PointAndTangent, dt, i, Ai, Bi, Ci):
 
     return Ai, Bi, Ci
 
-def Compute_Q_M(SS, uSS, indexSelected, stateFeatures, inputFeatures, usedIt, np, matrix, lamb, K, SysID_Solver):
+def Compute_Q_M(SS, uSS, indexSelected, stateFeatures, inputFeatures, usedIt, lamb, K, SysID_Solver, inputDelay, idDelay):
     Counter = 0
 
     # Compute Matrices For Local Linear Regression
-    X0   = np.empty((0,len(stateFeatures)+len(inputFeatures)))
+    X0   = np.empty((0,len(stateFeatures)+len(inputFeatures)+idDelay))
     Ktot = np.empty((0))
+
     for it in usedIt:
-        X0 = np.append( X0, np.hstack((np.squeeze(SS[np.ix_(indexSelected[Counter], stateFeatures, [it])]),
-                            np.squeeze(uSS[np.ix_(indexSelected[Counter], inputFeatures, [it])], axis=2))), axis=0)
+        if idDelay == 0:
+            X0 = np.append( X0, np.hstack((np.squeeze(SS[np.ix_(indexSelected[Counter], stateFeatures, [it])]),
+                            np.squeeze(uSS[np.ix_(indexSelected[Counter] - inputDelay, inputFeatures, [it])], axis=2))), axis=0)
+        else:
+            # print indexSelected[Counter]
+
+            # Aa = np.squeeze(SS[np.ix_(indexSelected[Counter], stateFeatures, [it])])
+            # print "Aa", Aa
+            # Bb = np.squeeze(uSS[np.ix_(indexSelected[Counter] - inputDelay, [inputFeatures[0]], [it])], axis=2)
+            # print "Bb",Bb
+            # Cc = np.squeeze(uSS[np.ix_(indexSelected[Counter] - inputDelay - 1 , [inputFeatures[0]], [it])], axis=2)
+            # print "Cc", Cc
+            # Dd = np.hstack((Aa,Bb,Cc))
+            # print "Dd", Dd
+            # print it, X0.shape, inputFeatures[0]
+            # print indexSelected[Counter] - inputDelay - 1
+            if np.any(indexSelected[Counter] - inputDelay - 1<0):
+                print "Error in point selection!"
+
+            X0 = np.append( X0, np.hstack(( np.squeeze(SS[np.ix_(indexSelected[Counter], stateFeatures, [it])]),
+                            np.squeeze(uSS[np.ix_(indexSelected[Counter] - inputDelay, inputFeatures, [it])], axis=2),
+                            np.squeeze(uSS[np.ix_(indexSelected[Counter] - inputDelay - 1, inputFeatures, [it])], axis=2) )), axis=0)
+
+
         Ktot = np.append(Ktot, K[Counter])
         Counter = Counter + 1
 
@@ -892,7 +1063,7 @@ def Compute_b(SS, yIndex, usedIt, matrix, M, indexSelected, K, np, SysID_Solver)
 
     return b
 
-def LMPC_LocLinReg(Q, b, stateFeatures, inputFeatures, qp, SysID_Solver):
+def LMPC_LocLinReg(Q, b, stateFeatures, inputFeatures, qp, SysID_Solver, idDelay ):
     if SysID_Solver == "CVX":
         res_cons = qp(Q, b) # This is ordered as [A B C]
         Result = np.squeeze(np.array(res_cons['x']))
@@ -904,27 +1075,35 @@ def LMPC_LocLinReg(Q, b, stateFeatures, inputFeatures, qp, SysID_Solver):
         Result = res_cons
 
     A = Result[0:len(stateFeatures)]
-    B = Result[len(stateFeatures):(len(stateFeatures)+len(inputFeatures))]
+    B = Result[len(stateFeatures):(len(stateFeatures)+len(inputFeatures) + idDelay)]
     C = Result[-1]
 
     return A, B, C
 
-def ComputeIndex(h, SS, uSS, LapCounter, it, x0, stateFeatures, scaling, MaxNumPoint, ConsiderInput):
+def ComputeIndex(h, SS, uSS, LapCounter, it, x0, stateFeatures, scaling, MaxNumPoint, ConsiderInput, steeringDelay, idDelay):
     startTimer = datetime.datetime.now()  # Start timer for LMPC iteration
 
     # What to learn a model such that: x_{k+1} = A x_k  + B u_k + C
-    oneVec = np.ones( (SS[0:LapCounter[it]-1, :, it].shape[0], 1) )
+    startTime = 0
+    endTime   = LapCounter[it] - 1
+
+    oneVec = np.ones( (SS[startTime:endTime, :, it].shape[0], 1) )
 
     x0Vec = (np.dot( np.array([x0]).T, oneVec.T )).T
 
     if ConsiderInput == 1:
-        DataMatrix = np.hstack((SS[0:LapCounter[it]-1, stateFeatures, it], uSS[0:LapCounter[it]-1, :, it]))
+        DataMatrix = np.hstack((SS[startTime:endTime, stateFeatures, it], uSS[startTime:endTime, :, it]))
     else:
-        DataMatrix = SS[0:LapCounter[it]-1, stateFeatures, it]
+        DataMatrix = SS[startTime:endTime, stateFeatures, it]
 
     diff  = np.dot(( DataMatrix - x0Vec ), scaling)
     # print 'x0Vec \n',x0Vec
     norm = la.norm(diff, 1, axis=1)
+    
+    # Need to make sure that the indices [0:steeringDelay] are not selected as it us needed to shift the input vector
+    if (steeringDelay+idDelay) > 0:
+        norm[0:(steeringDelay+idDelay)] = 10000
+
     indexTot =  np.squeeze(np.where(norm < h))
     # print indexTot.shape, np.argmin(norm), norm, x0
     if (indexTot.shape[0] >= MaxNumPoint):

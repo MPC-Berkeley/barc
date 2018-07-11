@@ -35,7 +35,10 @@ def main():
     rospy.init_node("simulator")
     gps_freq_update = rospy.get_param("simulator/gps_freq_update")
     simulator_dt    = rospy.get_param("simulator/dt")
-    
+    lowLevelDyn     = rospy.get_param("simulator/lowLevelDyn")
+
+    print "Low Level Dynamics is active: ", lowLevelDyn
+        
     sim = Simulator()
     imu = ImuClass()
     gps = GpsClass(gps_freq_update, simulator_dt)
@@ -67,12 +70,11 @@ def main():
 		a_his.append(ecu.u[0])
 		df_his.append(ecu.u[1])
 
-
-		# servo_inp = (1 - T / Tf) * servo_inp + ( T / Tf )*df_his.pop(0)
-		# u = [a_his.pop(0), servo_inp]
-
-		u = [a_his.pop(0), df_his.pop(0)]
-
+		if lowLevelDyn == True:
+			servo_inp = (1 - T / Tf) * servo_inp + ( T / Tf )*df_his.pop(0)
+			u = [a_his.pop(0), servo_inp]
+		else:
+			u = [a_his.pop(0), df_his.pop(0)]
 		sim.f(u)
 
 		simStates.x      = sim.x
