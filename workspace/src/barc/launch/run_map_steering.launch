@@ -16,7 +16,7 @@
 
     <!-- VISUALIZATION -->
     <node machine="this-pc" pkg="barc" type="steeringMap.py" name="IMUplot" output="screen" >
-        <param name="car" value="old" />
+        <param name="car" value="new" />
     </node>
 
     <!-- IMU -->

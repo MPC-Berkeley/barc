@@ -13,7 +13,7 @@ from osqp import OSQP
 
 solvers.options['show_progress'] = False
 
-class ControllerLMPC():
+class ControllerZeroStepLMPC():
     """Create the LMPC
     Attributes:
         solve: given x0 computes the control action
@@ -22,7 +22,7 @@ class ControllerLMPC():
         update: this function can be used to set SS, Qfun, uSS and the iteration index.
     """
 
-    def __init__(self, numSS_Points, numSS_it, N, Qslack, Qlane, Q, R, dR, n, d, shift, dt,  map, Laps, TimeLMPC, Solver, SysID_Solver, flag_LTV, steeringDelay, idDelay, aConstr):
+    def __init__(self, LMPC, backPoints, forePoints):
         """Initialization
         Arguments:
             numSS_Points: number of points selected from the previous trajectories to build SS
@@ -37,67 +37,24 @@ class ControllerLMPC():
             TimeLMPC: maximum time [s] that an lap can last (used to avoid dynamic allocation)
             Solver: solver used in the reformulation of the LMPC as QP
         """
-        self.numSS_Points = numSS_Points
-        self.numSS_it     = numSS_it
-        self.N = N
-        self.Qslack = Qslack
-        self.Qlane = Qlane
-        self.Q = Q
-        self.R = R
-        self.dR = dR
-        self.n = n
-        self.d = d
-        self.shift = shift
-        self.dt = dt
-        self.map = map
-        self.Solver = Solver            
-        self.SysID_Solver = SysID_Solver
-        self.A = []
-        self.B = []
-        self.C = []
-        self.flag_LTV = flag_LTV
-        self.halfWidth = map.halfWidth
-        self.idDelay = idDelay
-
-        self.aConstr = aConstr
-
-        self.steeringDelay = steeringDelay
-        self.acceleraDelay = 0
-
-        self.OldInput = np.zeros((1,2))
-
-        self.OldSteering = [0.0]*int(1 + steeringDelay)
-        self.OldAccelera = [0.0]*int(1)
-
-        self.MaxNumPoint = 40
-        self.itUsedSysID = 2
-
-        self.lapSelected = []
 
         # Initialize the following quantities to avoid dynamic allocation
-        NumPoints = int(TimeLMPC / dt) + 1
-        self.TimeSS      = -10000 * np.ones(Laps).astype(int)        # Number of points in j-th iterations (counts also points after finisch line)
-        self.LapCounter  = -10000 * np.ones(Laps).astype(int)        # Time at which each j-th iteration is completed
-        self.SS          = -10000 * np.ones((NumPoints, 6, Laps))    # Sampled Safe SS
-        self.uSS         = -10000 * np.ones((NumPoints, 2, Laps))    # Input associated with the points in SS
-        self.Qfun        =      0 * np.ones((NumPoints, Laps))       # Qfun: cost-to-go from each point in SS
-        self.SS_glob     = -10000 * np.ones((NumPoints, 6, Laps))    # SS in global (X-Y) used for plotting
+        self.TimeSS      = LMPC.TimeSS        # Number of points in j-th iterations (counts also points after finisch line)
+        self.LapCounter  = LMPC.LapCounter    # Time at which each j-th iteration is completed
+        self.SS          = LMPC.SS            # Sampled Safe SS
+        self.uSS         = LMPC.uSS           # Input associated with the points in SS
+        self.Qfun        = LMPC.Qfun          # Qfun: cost-to-go from each point in SS
+        self.SS_glob     = LMPC.SS_glob       # SS in global (X-Y) used for plotting
+
+        self.map     = LMPC.map       # SS in global (X-Y) used for plotting
+        self.n = LMPC.n
+        self.d = LMPC.d
+
+        self.backPoints = backPoints
+        self.forePoints = forePoints
 
         # Initialize the controller iteration
-        self.it      = 0
-
-        # Initialize pool for parallel computing used in the internal function _LMPC_EstimateABC
-        # self.p = Pool(4)
-
-        # Build matrices for inequality constraints
-        self.F, self.b = _LMPC_BuildMatIneqConst(self)
-
-        self.LapTime = 0.0
-
-        self.xPred = []
-        self.uPred = []
-
-        self.inputPrediction = np.zeros(4)
+        self.it      = LMPC.it
 
     def setTime(self, time):
         self.LapTime = time
@@ -110,20 +67,16 @@ class ControllerLMPC():
         Arguments:
             x0: current state position
         """
-        n            = self.n;     d        = self.d
-        F            = self.F;     b        = self.b
-        SS           = self.SS;    Qfun     = self.Qfun; SS_glob = self.SS_glob
-        uSS          = self.uSS;   TimeSS   = self.TimeSS
-        Q            = self.Q;     R        = self.R
-        dR           = self.dR;
-        N            = self.N;     dt       = self.dt
-        it           = self.it
-        numSS_Points = self.numSS_Points
-        shift        = self.shift
-        Qslack       = self.Qslack
-        LinPoints    = self.LinPoints
-        LinInput     = self.LinInput
-        map          = self.map
+        SS         = self.SS    
+        Qfun       = self.Qfun 
+        SS_glob    = self.SS_glob
+        uSS        = self.uSS
+        TimeSS     = self.TimeSS
+        it         = self.it
+        backPoints = self.backPoints
+        forePoints = self.forePoints
+        n          = self.n
+        d          = self.d
 
         # Select laps from SS based on LapTime, always keep the last lap
         sortedLapTime = np.argsort(self.Qfun[0, 0:it])
@@ -133,76 +86,104 @@ class ControllerLMPC():
             self.lapSelected = sortedLapTime
 
         # Select points to be used in LMPC as Terminal Constraint
-        SS_PointSelectedTot      = np.empty((n, 0))
-        SS_glob_PointSelectedTot = np.empty((n, 0))
-        Qfun_SelectedTot         = np.empty((0))
-        for jj in self.lapSelected[0:self.numSS_it]:
-            SS_PointSelected, SS_glob_PointSelected, Qfun_Selected = _SelectPoints(self, jj, x0, numSS_Points / self.numSS_it, shift)
+        SS_PointSelectedTot       = np.empty((n, 0))
+        uSS_PointSelectedTot      = np.empty((d, 0))
+        SS_glob_PointSelectedTot  = np.empty((n, 0))
+        Qfun_SelectedTot          = np.empty((0))
+
+        for jj in range(0, it-1):
+            SS_PointSelected, SS_glob_PointSelected, Qfun_Selected, uSS_PointSelected = _SelectPoints(self, jj, x0)
             SS_PointSelectedTot      =  np.append(SS_PointSelectedTot, SS_PointSelected, axis=1)
+            uSS_PointSelectedTot     =  np.append(uSS_PointSelectedTot, uSS_PointSelected, axis=1)
             SS_glob_PointSelectedTot =  np.append(SS_glob_PointSelectedTot, SS_glob_PointSelected, axis=1)
             Qfun_SelectedTot         =  np.append(Qfun_SelectedTot, Qfun_Selected, axis=0)
 
         self.SS_PointSelectedTot      = SS_PointSelectedTot
+        self.uSS_PointSelectedTot     = uSS_PointSelectedTot
         self.SS_glob_PointSelectedTot = SS_glob_PointSelectedTot
         self.Qfun_SelectedTot         = Qfun_SelectedTot
 
-        # Run System ID
-        startTimer = datetime.datetime.now()
-        self.A, self.B, self.C, indexUsed_list = _LMPC_EstimateABC(self)
-        endTimer = datetime.datetime.now(); deltaTimer = endTimer - startTimer
-        self.linearizationTime = deltaTimer
-        npL, npG, npE, npEu = _LMPC_BuildMatEqConst(self)
+        # Create Equality Constraints
+        OnesZeros = np.hstack(( np.ones(SS_PointSelectedTot.shape[1]), np.zeros(n) ))
 
-        # Build Terminal cost and Constraint
-        G, E, L, Eu = _LMPC_TermConstr(self, npG, npE, npL, npEu)
-        M, q = _LMPC_BuildMatCost(self)
+        np.savetxt('SS_PointSelectedTot.csv', SS_PointSelectedTot, delimiter=',', fmt='%f')
+        np.savetxt('x0.csv', x0, delimiter=',', fmt='%f')
+        # print SS_PointSelectedTot
+        # print x0
+
+        G = np.vstack(( np.hstack((SS_PointSelectedTot, np.eye(n) )), OnesZeros ))
+        
+        E = np.zeros((G.shape[0], n))
+        E[0:n,0:n] = np.eye(6)
+
+        L   = np.zeros(( G.shape[0], 1 ))
+        L[n,:] = 1
+
+        # Create Inequality Constraints
+        numVariables = G.shape[1]
+        numLambda = numVariables-n
+        F = -np.eye(numLambda, numVariables)
+        b = np.zeros(numLambda)
+
+        # Create Cost
+        slackCost = 100 * np.diag( np.array([1, 1, 1, 5, 5, 5]))
+        M = np.zeros((numVariables, numVariables))
+        M[numVariables-6:numVariables, numVariables-6:numVariables] = slackCost
+
+        q = np.hstack((Qfun_SelectedTot, np.zeros(6)))
+
+
+        # np.savetxt('M.csv', M, delimiter=',', fmt='%f')
+        # np.savetxt('q.csv', q, delimiter=',', fmt='%f')
+        # np.savetxt('F.csv', F, delimiter=',', fmt='%f')
+        # np.savetxt('b.csv', b, delimiter=',', fmt='%f')
+        # np.savetxt('G.csv', G, delimiter=',', fmt='%f')
+        # np.savetxt('E.csv', E, delimiter=',', fmt='%f')
+        # np.savetxt('L.csv', L, delimiter=',', fmt='%f')
+        
+        # print "M shape: ", M.shape
+        # print "q shape: ", q.shape
+        # print "F shape: ", F.shape
+        # print "b shape: ", b.shape
+        # print "G shape: ", G.shape
+        # print "L shape: ", L.shape
+        # print "E shape: ", E.shape
+        # print "np.add(np.dot(E, x0), L) shape: ", np.add(np.dot(E, x0), L).shape
+
 
         # Solve QP
         startTimer = datetime.datetime.now()
+        res_cons, feasible = osqp_solve_qp(sparse.csr_matrix(M), q, sparse.csr_matrix(F), b, sparse.csr_matrix(G), np.add(np.dot(E,x0),L[:,0]) )
 
-        uOld  = [self.OldSteering[0], self.OldAccelera[0]]
+        lambdaVar = res_cons.x[0:numLambda]
+        self.uPred = np.zeros([1,2])
+        self.uPred[0,:] = np.dot(uSS_PointSelectedTot, lambdaVar).T        
 
-        if self.Solver == "CVX":
-            res_cons = qp(M, matrix(q), F, matrix(b), G, E * matrix(x0) + L + Eu * matrix(uOld))
-            if res_cons['status'] == 'optimal':
-                feasible = 1
-            else:
-                feasible = 0
-            Solution = np.squeeze(res_cons['x'])     
+        # M_sparse   = spmatrix(M[np.nonzero(M)],  np.nonzero(M)[0].astype(int),  np.nonzero(M)[1].astype(int),  M.shape)
+        # F_sparse   = spmatrix(F[np.nonzero(F)],  np.nonzero(F)[0].astype(int),  np.nonzero(F)[1].astype(int),  F.shape)
+        # G_sparse   = spmatrix(G[np.nonzero(G)],  np.nonzero(G)[0].astype(int),  np.nonzero(G)[1].astype(int),  G.shape)
+        # E_sparse   = spmatrix(E[np.nonzero(E)],  np.nonzero(E)[0].astype(int),  np.nonzero(E)[1].astype(int),  E.shape)
+        # L_sparse   = spmatrix(L[np.nonzero(L)],  np.nonzero(L)[0].astype(int),  np.nonzero(L)[1].astype(int),  L.shape)
 
-        elif self.Solver == "OSQP":
-            # Adaptarion for QSQP from https://github.com/alexbuyval/RacingLMPC/
-            # np.savetxt('Eu.csv', Eu, delimiter=',', fmt='%f')
-            # np.savetxt('Mmmu.csv', np.dot(Eu,uOld), delimiter=',', fmt='%f')
-
-            res_cons, feasible = osqp_solve_qp(sparse.csr_matrix(M), q, sparse.csr_matrix(F), b, sparse.csr_matrix(G), np.add(np.dot(E,x0),L[:,0], np.dot(Eu,uOld)) )
-            Solution = res_cons.x
-
-        self.feasible = feasible
+        # res_cons = qp(M_sparse, matrix(q), F_sparse, matrix(b), G_sparse, E_sparse * matrix(x0) + L_sparse )
+        # lambdaVar = res_cons["x"][0:numLambda]
+        # self.uPred = np.dot(uSS_PointSelectedTot, lambdaVar).T
 
         endTimer = datetime.datetime.now(); deltaTimer = endTimer - startTimer
         self.solverTime = deltaTimer
-
-        # Extract solution and set linerizations points
-        xPred, uPred, lambd, slack = _LMPC_GetPred(Solution, n, d, N, np)
-
-        self.xPred = xPred.T
-        if self.N == 1:
-            self.uPred    = np.array([[uPred[0], uPred[1]]])
-            self.LinInput =  np.array([[uPred[0], uPred[1]]])
-        else:
-            self.uPred = uPred.T
-            self.LinInput = np.vstack((uPred.T[1:, :], uPred.T[-1, :]))
-
-        self.LinPoints = np.vstack((xPred.T[1:,:], xPred.T[-1,:]))
-
-        # self.OldInput = uPred.T[0,:]
         
-        # self.OldSteering.pop(0)
-        # self.OldAccelera.pop(0)
-        
-        # self.OldSteering.append(uPred.T[0,0])
-        # self.OldAccelera.append(uPred.T[0,1])
+
+        # print "Results: "
+        # print lambdaVar,  np.sum(lambdaVar)
+        # print np.dot(uSS_PointSelectedTot, lambdaVar)
+        # print np.dot(SS_PointSelectedTot, lambdaVar), x0
+
+
+
+        if np.abs(self.uPred[0,0])>0.3:
+            print uSS_PointSelectedTot
+            print Qfun_SelectedTot
+            pdb.set_trace()
 
 
     def addTrajectory(self, ClosedLoopData):
@@ -446,8 +427,8 @@ def _LMPC_BuildMatIneqConst(LMPC):
 
     bu = np.array([[0.3],  # Max Steering
                    [0.3],  # Max Steering
-                   [LMPC.aConstr[1]],  # Max Acceleration
-                   [LMPC.aConstr[0]]])  # Min Acceleration
+                   [2.5],  # Max Acceleration
+                   [0.7]])  # Min Acceleration
 
 
 
@@ -524,53 +505,63 @@ def _LMPC_BuildMatIneqConst(LMPC):
     return F_return, b
 
 
-def _SelectPoints(LMPC, it, x0, numSS_Points, shift):
-    SS          = LMPC.SS
-    SS_glob     = LMPC.SS_glob
-    Qfun        = LMPC.Qfun
-    xPred       = LMPC.xPred
-    map         = LMPC.map
+def _SelectPoints(ZeroStepLMPC, it, x0):
+    SS          = ZeroStepLMPC.SS
+    SS_glob     = ZeroStepLMPC.SS_glob
+    uSS         = ZeroStepLMPC.uSS
+    Qfun        = ZeroStepLMPC.Qfun
+    map         = ZeroStepLMPC.map
     TrackLength = map.TrackLength
-    currIt      = LMPC.it
-    LapCounter  = LMPC.LapCounter
+    currIt      = ZeroStepLMPC.it
+    LapCounter  = ZeroStepLMPC.LapCounter
+    backPoints  = ZeroStepLMPC.backPoints
+    forePoints  = ZeroStepLMPC.forePoints
 
-    x = SS[0:(LapCounter[it]+1), :, it]
+    # x0 = np.array([x00[4]])
+    # x = SS[0:(LapCounter[it]+1), 4, it]
+
+    x = SS[0:(LapCounter[it]+1), :, it]    
     oneVec = np.ones((x.shape[0], 1))
     x0Vec = (np.dot(np.array([x0]).T, oneVec.T)).T
     diff = x - x0Vec
-    norm = la.norm(diff, 1, axis=1)
+    
+    norm = la.norm(diff, 1, axis=1)    
     MinNorm = np.argmin(norm)
 
-    if (MinNorm + shift >= 0):
-        indexSSandQfun = range(shift + MinNorm, shift + MinNorm + numSS_Points)
+    # print x0, x[MinNorm,:]
+
+    if (MinNorm - backPoints >= 0):
+        indexSSandQfun = range(-backPoints + MinNorm, -backPoints + MinNorm + forePoints)
         # SS_Points = x[shift + MinNorm:shift + MinNorm + numSS_Points, :].T
         # SS_glob_Points = x_glob[shift + MinNorm:shift + MinNorm + numSS_Points, :].T
         # Sel_Qfun = Qfun[shift + MinNorm:shift + MinNorm + numSS_Points, it]
     else:
-        indexSSandQfun = range(MinNorm,MinNorm + numSS_Points)
+        indexSSandQfun = range(MinNorm, MinNorm + forePoints)
         # SS_Points = x[MinNorm:MinNorm + numSS_Points, :].T
         # SS_glob_Points = x_glob[MinNorm:MinNorm + numSS_Points, :].T
         # Sel_Qfun = Qfun[MinNorm:MinNorm + numSS_Points, it]
 
-    SS_Points = SS[indexSSandQfun, :, it].T
+    SS_Points      = SS[indexSSandQfun, :, it].T
+    uSS_Points     = uSS[indexSSandQfun, :, it].T
     SS_glob_Points = SS_glob[indexSSandQfun, :, it].T
-    Sel_Qfun = Qfun[indexSSandQfun, it]
+    Sel_Qfun       = Qfun[indexSSandQfun, it]
 
 
     # Modify the cost if the predicion has crossed the finisch line
-    if xPred == []:
-        Sel_Qfun = Qfun[indexSSandQfun, it]
-    elif (np.all((xPred[:, 4] > TrackLength) == False)):
-        Sel_Qfun = Qfun[indexSSandQfun, it]
-    elif  it < currIt - 1:
-        Sel_Qfun = Qfun[indexSSandQfun, it] + Qfun[0, it + 1]
-    else:
-        sPred = xPred[:, 4]
-        predCurrLap = LMPC.N - sum(sPred > TrackLength)
-        currLapTime = LMPC.LapTime
-        Sel_Qfun = Qfun[indexSSandQfun, it] + currLapTime + predCurrLap
+    Sel_Qfun = Qfun[indexSSandQfun, it]
+    # if xPred == []:
+    #     Sel_Qfun = Qfun[indexSSandQfun, it]
+    # elif (np.all((xPred[:, 4] > TrackLength) == False)):
+    #     Sel_Qfun = Qfun[indexSSandQfun, it]
+    # elif  it < currIt - 1:
+    #     Sel_Qfun = Qfun[indexSSandQfun, it] + Qfun[0, it + 1]
+    # else:
+    #     sPred = xPred[:, 4]
+    #     predCurrLap = LMPC.N - sum(sPred > TrackLength)
+    #     currLapTime = LMPC.LapTime
+    #     Sel_Qfun = Qfun[indexSSandQfun, it] + currLapTime + predCurrLap
 
-    return SS_Points, SS_glob_Points, Sel_Qfun
+    return SS_Points, SS_glob_Points, Sel_Qfun, uSS_Points
 
 def _ComputeCost(x, u, TrackLength):
     Cost = 10000 * np.ones((x.shape[0]))  # The cost has the same elements of the vector x --> time +1

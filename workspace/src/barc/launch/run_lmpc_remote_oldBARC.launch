@@ -22,13 +22,13 @@
     <param name="feature_flag" type="bool" value="false" />
 
     <!-- Track parameters -->
-    <param name="trackShape" type="str" value="3110_big" />
+    <param name="trackShape" type="str" value="3110_bi" />
 
     <!-- Machines -->
     <machine name="odroid" address="192.168.10.213" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid_ugo.sh"/>
 
     <!-- <machine name="this-pc" address="10.0.0.72" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc.sh"/> -->
-    <machine name="this-pc" address="192.168.10.157" user="ugo" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc.sh"/>
+    <machine name="this-pc" address="192.168.10.157" user="ugo" timeout="20.0" env-loader="/home/ugo/GitHub/barc/env_loader_pc.sh"/>
     
     <!-- START NODES -->
     <!-- LOW LEVEL CONTROLLER -->
@@ -128,5 +128,7 @@
     <node machine="odroid" pkg="rosserial_python" type="serial_node.py" name="arduino_node" >
         <param name="port" value="/dev/ttyUSB0" />
     </node>
+
+    <node pkg="rosbag" type="record" name="record" output="screen" args="-a"/>
 
 </launch>

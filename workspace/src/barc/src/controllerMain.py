@@ -24,6 +24,8 @@ from PathFollowingLTI_MPC import PathFollowingLTI_MPC
 from PathFollowingLTVMPC import PathFollowingLTV_MPC
 from dataStructures import LMPCprediction, EstimatorData, ClosedLoopDataObj
 from LMPC import ControllerLMPC
+from ZeroStepLMPC import ControllerZeroStepLMPC
+
 homedir = os.path.expanduser("~")    
 
 def main():
@@ -155,7 +157,19 @@ def main():
                 uApplied = np.array([cmd.servo, cmd.motor])
                 # Publish input
                 input_commands.publish(cmd)
-                
+            elif PickController == "ZeroStep":
+                Controller.solve(LocalState)
+                # print "Solution is: ", Controller.uPred
+                print "SOlver time: ", Controller.solverTime.total_seconds()
+                cmd.servo = Controller.uPred[0,0]
+                cmd.motor = Controller.uPred[0,1]
+                oldU = uApplied
+                uApplied = np.array([cmd.servo, cmd.motor])
+                input_commands.publish(cmd)
+                SS_glob_sel.SSx       = Controller.SS_glob_PointSelectedTot[4, :]
+                SS_glob_sel.SSy       = Controller.SS_glob_PointSelectedTot[5, :]
+                sel_safe_set.publish(SS_glob_sel)
+
             else:                                     # Else use the selected controller
                 if LocalState[0] < 0.5 and cmd.motor < 0.5:
                     cmd.motor = 0.5
@@ -334,21 +348,33 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
             R_LMPC  =  0 * np.diag([1.0, 1.0])                      # Input cost u = [delta, a]
             dR_LMPC =  2* 1 * np.array([ 5 * 0.5 * 10.0, 8 * 20.0]) # Input rate cost u
             steeringDelay = 0
-            idDelay       = 1
+            idDelay       = 0
         else:
             Qslack  = 0.1 * 5 * np.diag([10, 0.1, 1, 0.1, 10, 1])          # Cost on the slack variable for the terminal constraint
             Qlane   = 0.1 * 0.5 * 10 * np.array([50, 10]) # Quadratic slack lane cost
             Q_LMPC  =  0 * np.diag([0.0, 0.0, 10.0, 0.0, 0.0, 0.0])  # State cost x = [vx, vy, wz, epsi, s, ey]
             R_LMPC  =  0 * np.diag([1.0, 1.0])                      # Input cost u = [delta, a]
             dR_LMPC =  1 * np.array([ 2 * 5 * 0.5 * 10.0, 2 * 8 * 20.0])                     # Input rate cost u
+            aConstr = np.array([1.7, 3.5]) # aConstr = [amin, amax]
             steeringDelay = 1
             idDelay       = 0            
         Controller = ControllerLMPC(numSS_Points, numSS_it, N, Qslack, Qlane, Q_LMPC, R_LMPC, dR_LMPC, 6, 2, shift, 
-                                        dt, map, Laps, TimeLMPC, LMPC_Solver, SysID_Solver, flag_LTV, steeringDelay, idDelay)
+                                        dt, map, Laps, TimeLMPC, LMPC_Solver, SysID_Solver, flag_LTV, steeringDelay, idDelay, aConstr)
         # Controller.addTrajectory(ClosedLoopDataPID)
         Controller.addTrajectory(ClosedLoopDataTI_MPC)
         OpenLoopData = LMPCprediction(N, 6, 2, TimeLMPC, numSS_Points, Laps)
         print "LMPC initialized!"
+    
+    elif PickController == "ZeroStep":
+        file_data = open(homedir+'/barc_data/'+'/ClosedLoopDataLMPC.obj', 'rb')
+        ClosedLoopData = pickle.load(file_data)
+        LMPController = pickle.load(file_data)
+        LMPCOpenLoopData = pickle.load(file_data) 
+        file_data.close()
+        backPoints = 3
+        forePoints = 7
+        Controller = ControllerZeroStepLMPC(LMPController, backPoints, forePoints)
+
 
     return ControllerLap0, Controller, OpenLoopData       
         

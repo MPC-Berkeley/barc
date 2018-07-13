@@ -221,7 +221,7 @@ def _initializeFigure_xy(map, mode):
     plt.plot(Points1[:, 0], Points1[:, 1], '-b')
     plt.plot(Points2[:, 0], Points2[:, 1], '-b')
     line_cl, = axtr.plot(xdata, ydata, '-k')
-    line_gps_cl, = axtr.plot(xdata, ydata, '--og')
+    line_gps_cl, = axtr.plot(xdata, ydata, '--ob')
     line_tr, = axtr.plot(xdata, ydata, '-or')
     line_SS, = axtr.plot(xdata, ydata, 'og')
     line_pred, = axtr.plot(xdata, ydata, '-or')

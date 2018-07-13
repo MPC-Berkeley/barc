@@ -24,12 +24,15 @@ def main():
     LMPController = pickle.load(file_data)
     LMPCOpenLoopData = pickle.load(file_data)    
     file_data.close()
-    map = Map("oval")
+    map = Map("3110_big")
 
     pdb.set_trace()
     print "Track length is: ", map.TrackLength
     plotOneStepPreditionError(LMPController, LMPCOpenLoopData)
 
+    plt.figure()
+    plt.plot([i*LMPController.dt for i in LMPController.LapCounter[0:LMPController.it]], '-o', label="Lap Time")
+    plt.legend()
     plt.show()
 
     plotClosedLoopLMPC(LMPController, map)
