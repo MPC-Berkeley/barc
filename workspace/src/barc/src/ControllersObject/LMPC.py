@@ -82,6 +82,9 @@ class ControllerLMPC():
         self.uSS         = -10000 * np.ones((NumPoints, 2, Laps))    # Input associated with the points in SS
         self.Qfun        =      0 * np.ones((NumPoints, Laps))       # Qfun: cost-to-go from each point in SS
         self.SS_glob     = -10000 * np.ones((NumPoints, 6, Laps))    # SS in global (X-Y) used for plotting
+        self.qpTime      = -10000 * np.ones((NumPoints, Laps))    # Input associated with the points in SS
+        self.sysIDTime   = -10000 * np.ones((NumPoints, Laps))    # Input associated with the points in SS
+        self.contrTime   = -10000 * np.ones((NumPoints, Laps))    # Input associated with the points in SS
 
         # Initialize the controller iteration
         self.it      = 0
@@ -96,6 +99,11 @@ class ControllerLMPC():
 
         self.xPred = []
         self.uPred = []
+
+        startTimer = datetime.datetime.now()
+        endTimer = datetime.datetime.now(); deltaTimer = endTimer - startTimer
+        self.solverTime = deltaTimer
+        self.linearizationTime = deltaTimer
 
         self.inputPrediction = np.zeros(4)
 
@@ -227,6 +235,10 @@ class ControllerLMPC():
             self.LinPoints = self.SS[1:self.N + 2, :, it]
             self.LinInput  = self.uSS[1:self.N + 1, :, it]
 
+        self.qpTime[0:(self.TimeSS[it] + 1), it]     = np.squeeze(ClosedLoopData.solverTime[0:(self.TimeSS[it] + 1), :])
+        self.sysIDTime[0:(self.TimeSS[it] + 1), it]  = np.squeeze(ClosedLoopData.sysIDTime[0:(self.TimeSS[it] + 1), :])
+        self.contrTime[0:(self.TimeSS[it] + 1), it]  = np.squeeze(ClosedLoopData.contrTime[0:(self.TimeSS[it] + 1), :])
+
         self.it = self.it + 1
 
     def addPoint(self, x, x_glob, u, i):
@@ -238,21 +250,11 @@ class ControllerLMPC():
         """
         self.TimeSS[self.it - 1] = self.TimeSS[self.it - 1] + 1
         Counter = self.TimeSS[self.it - 1]
-        # print "Counter is: ", Counter, " iteration: ", self.it - 1 
-        # print "Current Time is: i"
-        # print "SS is: ", self.SS[0:Counter , :, self.it - 1]
-        # print "previous Point to modify is: ", self.SS[Counter-1, :, self.it - 1]
-        # print "Point to modify is: ", self.SS[Counter, :, self.it - 1]
-        # print "Point to add is: ", x + np.array([0, 0, 0, 0, self.map.TrackLength, 0]), self.map.TrackLength
-        
         self.SS[Counter, :, self.it - 1] = x + np.array([0, 0, 0, 0, self.map.TrackLength, 0])
         self.SS_glob[Counter, :, self.it - 1] = x_glob
         self.uSS[Counter, :, self.it - 1] = u
         if self.Qfun[Counter, self.it - 1] == 0:
-            self.Qfun[Counter, self.it - 1] = self.Qfun[Counter + i - 1, self.it - 1] - 1
-
-        # print "Qfun updated is: ", self.Qfun[Counter, self.it - 1]
-        
+            self.Qfun[Counter, self.it - 1] = self.Qfun[Counter + i - 1, self.it - 1] - 1        
         
     def update(self, SS, uSS, Qfun, TimeSS, it, LinPoints, LinInput):
         """update controller parameters. This function is useful to transfer information among LMPC controller
@@ -812,7 +814,7 @@ def RegressionAndLinearization(ControllerLMPC, i):
 
     # Compute Index to use
     h = 2 * 5
-    lamb = 0.0000
+    lamb = 0.0
     stateFeatures = [0, 1, 2]
     ConsiderInput = 1
 

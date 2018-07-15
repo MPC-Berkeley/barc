@@ -109,21 +109,18 @@ def main():
         if HalfTrack == 1 and LocalState[4] <= map.TrackLength/4 and firtLap == False:
 
             # If not LMPC then reset initial conditon after Lap 0
-            if LapNumber == 0 and PickController != "LMPC":
+            if LapNumber == 0 and (PickController != "LMPC" and PickController != "ZeroStep"):
                 ClosedLoopData.updateInitialConditions(LocalState, GlobalState)
 
             # If LMPC put in SS lap after finisching lap 1
-            if LapNumber >= 1 and PickController == "LMPC":
+            if LapNumber >= 1 and ((PickController == "LMPC") or (PickController == "ZeroStep")):
                 Controller.addTrajectory(ClosedLoopData)
                 ClosedLoopData.updateInitialConditions(LocalState, GlobalState)
 
             LapNumber += 1
-
             print "Lap completed starting lap:", LapNumber, ". Lap time: ", float(TimeCounter)/loop_rate
+            
             if PickController == "LMPC":
-                # if Controller.lapSelected != []:
-                #     print "Lap Ordered: ", Controller.Qfun[0, Controller.lapSelected]
-    
                 print "Lap completed starting lap:", LapNumber, ". Lap time: ", float(Controller.LapTime)/loop_rate
                 Controller.resetTime()
 
@@ -135,6 +132,9 @@ def main():
         # == End: Check if the lap has finisched
 
         # If inside the track publish input
+        startTimer = datetime.datetime.now()
+        endTimer = datetime.datetime.now(); deltaTimer = endTimer - startTimer
+        oneStepPredictionTime = deltaTimer
         if (insideTrack == 1):
             startTimer = datetime.datetime.now()
 
@@ -146,6 +146,7 @@ def main():
 
                 oldU = uApplied
                 uApplied = np.array([cmd.servo, cmd.motor])
+
                 # Publish input
                 input_commands.publish(cmd)
 
@@ -160,7 +161,7 @@ def main():
             elif PickController == "ZeroStep":
                 Controller.solve(LocalState)
                 # print "Solution is: ", Controller.uPred
-                print "SOlver time: ", Controller.solverTime.total_seconds()
+                # print "Solver time: ", Controller.solverTime.total_seconds()
                 cmd.servo = Controller.uPred[0,0]
                 cmd.motor = Controller.uPred[0,1]
                 oldU = uApplied
@@ -200,7 +201,9 @@ def main():
                 # print uAppliedDelay, Controller.OldSteering
                 oneStepPrediction, oneStepPredictionTime = Controller.oneStepPrediction(LocalState, uAppliedDelay, 0)
                 
+                startTimer = datetime.datetime.now()
                 Controller.solve(oneStepPrediction)
+                endTimer = datetime.datetime.now(); deltaTimer = endTimer - startTimer
                 if PickController == "LMPC":
                     cmd.servo = Controller.uPred[0 + Controller.steeringDelay, 0]
                     cmd.motor = Controller.uPred[0, 1]
@@ -211,22 +214,28 @@ def main():
                 else:
                     cmd.servo = Controller.uPred[0,0]
                     cmd.motor = Controller.uPred[0,1]
+
                 if (Controller.solverTime.total_seconds() + Controller.linearizationTime.total_seconds() + oneStepPredictionTime.total_seconds() > dt):
                     print "NOT REAL-TIME FEASIBLE!!!"
                     print "Solver time: ", Controller.solverTime.total_seconds(), " Linearization Time: ", Controller.linearizationTime.total_seconds() + oneStepPredictionTime.total_seconds()
             
-            endTimer = datetime.datetime.now(); deltaTimer = endTimer - startTimer
-            #print "Tot Solver Time: ", deltaTimer.total_seconds()
+            
+            # print "Tot Solver Time: ", deltaTimer.total_seconds()
             
             # == End: Computing Input
 
             # == Start: Record data
-            if (PickController != "LMPC") and (LapNumber >= 1):
+            if ((PickController != "LMPC") and (PickController != "ZeroStep")) and (LapNumber >= 1):
                 LocalState[4] = LocalState[4] + (LapNumber - 1)*map.TrackLength
-                ClosedLoopData.addMeasurement(GlobalState, LocalState, uApplied)
+                ClosedLoopData.addMeasurement(GlobalState, LocalState, uApplied, 
+                                              Controller.solverTime.total_seconds(), 
+                                              Controller.linearizationTime.total_seconds() + oneStepPredictionTime.total_seconds(),
+                                              deltaTimer.total_seconds())
             elif LapNumber >= 1:
-                ClosedLoopData.addMeasurement(GlobalState, LocalState, uApplied)
-
+                ClosedLoopData.addMeasurement(GlobalState, LocalState, uApplied, 
+                                              Controller.solverTime.total_seconds(), 
+                                              Controller.linearizationTime.total_seconds() + oneStepPredictionTime.total_seconds(),
+                                              deltaTimer.total_seconds())
             # Add data to SS and Record Prediction                    
 
             if (PickController == "LMPC") and (LapNumber >= PathFollowingLaps):
@@ -347,6 +356,7 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
             Q_LMPC  =  0 * np.diag([0.0, 0.0, 10.0, 0.0, 0.0, 0.0])  # State cost x = [vx, vy, wz, epsi, s, ey]
             R_LMPC  =  0 * np.diag([1.0, 1.0])                      # Input cost u = [delta, a]
             dR_LMPC =  2* 1 * np.array([ 5 * 0.5 * 10.0, 8 * 20.0]) # Input rate cost u
+            aConstr = np.array([0.7, 2.5]) # aConstr = [amin, amax]
             steeringDelay = 0
             idDelay       = 0
         else:
@@ -355,7 +365,7 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
             Q_LMPC  =  0 * np.diag([0.0, 0.0, 10.0, 0.0, 0.0, 0.0])  # State cost x = [vx, vy, wz, epsi, s, ey]
             R_LMPC  =  0 * np.diag([1.0, 1.0])                      # Input cost u = [delta, a]
             dR_LMPC =  1 * np.array([ 2 * 5 * 0.5 * 10.0, 2 * 8 * 20.0])                     # Input rate cost u
-            aConstr = np.array([1.7, 3.5]) # aConstr = [amin, amax]
+            aConstr = np.array([0.7, 2.5]) # aConstr = [amin, amax]
             steeringDelay = 1
             idDelay       = 0            
         Controller = ControllerLMPC(numSS_Points, numSS_it, N, Qslack, Qlane, Q_LMPC, R_LMPC, dR_LMPC, 6, 2, shift, 
@@ -373,7 +383,8 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
         file_data.close()
         backPoints = 3
         forePoints = 7
-        Controller = ControllerZeroStepLMPC(LMPController, backPoints, forePoints)
+        Laps       = NumberOfLaps+2   # Total LMPC laps
+        Controller = ControllerZeroStepLMPC(LMPController, backPoints, forePoints, Laps)
 
 
     return ControllerLap0, Controller, OpenLoopData       

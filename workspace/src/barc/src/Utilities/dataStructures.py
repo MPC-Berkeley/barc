@@ -51,6 +51,9 @@ class ClosedLoopDataObj():
         self.u = np.zeros((self.Points, 2))  # Initialize the input vector
         self.x = np.zeros((self.Points + 1, 6))  # Initialize state vector (In curvilinear abscissas)
         self.x_glob = np.zeros((self.Points + 1, 6))  # Initialize the state vector in absolute reference frame
+        self.solverTime = np.zeros((self.Points + 1, 1))  # Initialize state vector (In curvilinear abscissas)
+        self.sysIDTime  = np.zeros((self.Points + 1, 1))  # Initialize state vector (In curvilinear abscissas)
+        self.contrTime  = np.zeros((self.Points + 1, 1))  # Initialize state vector (In curvilinear abscissas)
         self.SimTime = -1
         self.x[0,0] = v0
         self.x_glob[0,0] = v0
@@ -68,7 +71,7 @@ class ClosedLoopDataObj():
         self.x_glob[1:, :] = np.zeros((self.x.shape[0]-1, 6))
         self.SimTime = -1
 
-    def addMeasurement(self, xMeasuredGlob, xMeasuredLoc, uApplied):
+    def addMeasurement(self, xMeasuredGlob, xMeasuredLoc, uApplied, solverTime, sysIDTime, contrTime):
         """Add point to the object ClosedLoopData
         xMeasuredGlob: measured state in the inerial reference frame
         xMeasuredLoc: measured state in the curvilinear reference frame
@@ -78,3 +81,7 @@ class ClosedLoopDataObj():
         self.x[self.SimTime, :]      = xMeasuredLoc
         self.x_glob[self.SimTime, :] = xMeasuredGlob
         self.u[self.SimTime, :]      = uApplied
+        self.solverTime[self.SimTime, :]  = solverTime
+        self.sysIDTime[self.SimTime, :]   = sysIDTime
+        self.contrTime[self.SimTime, :]   = contrTime
+
