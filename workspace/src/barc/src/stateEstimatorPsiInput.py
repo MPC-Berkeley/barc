@@ -683,16 +683,16 @@ class GpsClass(object):
         # 1) x(t) ~ c0x + c1x * t + c2x * t^2
         # 2) y(t) ~ c0y + c1y * t + c2y * t^2
         # c_X = [c0x c1x c2x] and c_Y = [c0y c1y c2y] 
-        n_intplt = 50 # 50*0.01=0.5s data
-        if size(self.x_ply_his,0) > n_intplt:
-            x_intplt = self.x_ply_his[-n_intplt:]
-            y_intplt = self.y_ply_his[-n_intplt:]
-            t_intplt = self.time_ply_his[-n_intplt:]-self.time_ply_his[-n_intplt]
-            t_matrix = vstack([t_intplt**2, t_intplt, ones(n_intplt)]).T
-            c_X = linalg.lstsq(t_matrix, x_intplt)[0]
-            c_Y = linalg.lstsq(t_matrix, y_intplt)[0]
-            self.x_ply = polyval(c_X, self.curr_time-self.time_ply_his[-n_intplt])
-            self.y_ply = polyval(c_Y, self.curr_time-self.time_ply_his[-n_intplt])
+        # n_intplt = 50 # 50*0.01=0.5s data
+        # if size(self.x_ply_his,0) > n_intplt:
+        #     x_intplt = self.x_ply_his[-n_intplt:]
+        #     y_intplt = self.y_ply_his[-n_intplt:]
+        #     t_intplt = self.time_ply_his[-n_intplt:]-self.time_ply_his[-n_intplt]
+        #     t_matrix = vstack([t_intplt**2, t_intplt, ones(n_intplt)]).T
+        #     c_X = linalg.lstsq(t_matrix, x_intplt)[0]
+        #     c_Y = linalg.lstsq(t_matrix, y_intplt)[0]
+        #     self.x_ply = polyval(c_X, self.curr_time-self.time_ply_his[-n_intplt])
+        #     self.y_ply = polyval(c_Y, self.curr_time-self.time_ply_his[-n_intplt])
 
         # # Estimate yaw angle from previous 2 time steps
         # x_0 = self.x_his[-1]

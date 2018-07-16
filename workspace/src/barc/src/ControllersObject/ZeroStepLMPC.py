@@ -123,6 +123,7 @@ class ControllerZeroStepLMPC():
 
         # TO DO HOW TO PICK THE ITERATIONS? HOW ABOUT SWITHING????
         # for jj in range(0, itLMPC-1):
+        # for jj in range(10,20):
         for jj in range(15,25):
             SS_PointSelected, SS_glob_PointSelected, Qfun_Selected, uSS_PointSelected = _SelectPoints(self, jj, x0)
             SS_PointSelectedTot      =  np.append(SS_PointSelectedTot, SS_PointSelected, axis=1)

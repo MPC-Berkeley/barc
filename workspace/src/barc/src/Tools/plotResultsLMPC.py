@@ -79,7 +79,7 @@ def plotAccelerations(LMPController, LapToPlot, map):
     psiDot = np.zeros((10000, 1, LMPController.it+2))
     roll = np.zeros((10000, 1, LMPController.it+2))
     pitch = np.zeros((10000, 1, LMPController.it+2))
-    LapCounter = np.zeros(LMPController.it+2)
+    LapCounter = np.zeros(LMPController.it+2).astype(int)
 
     homedir = os.path.expanduser("~")
     pathSave = os.path.join(homedir,"barc_data/estimator_output.npz")
