@@ -8,7 +8,7 @@
     <param name="I_z" type="double" value="0.03" />
         
     <!-- Track parameters -->
-    <param name="trackShape" type="str" value="oval" />
+    <param name="trackShape" type="str" value="L_shape" />
 
    
     <!-- VISUALIZATION -->

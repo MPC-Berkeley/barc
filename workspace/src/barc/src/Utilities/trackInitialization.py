@@ -57,6 +57,32 @@ class Map():
                              [2.0, 0],
                              [5.5, 5.5 / np.pi],
                              [1.0, 0]])
+        elif selectedTrack == "L_shape":
+            self.halfWidth = 0.4 
+            self.slack     = 0.45
+            lengthCurve = 3.0
+            spec = np.array([[1.0, 0],
+                             [lengthCurve, lengthCurve / np.pi],
+                             # Note s = 1 * np.pi / 2 and r = -1 ---> Angle spanned = np.pi / 2
+                             [lengthCurve/2,-lengthCurve / np.pi ],
+                             [lengthCurve, lengthCurve / np.pi],
+                             [lengthCurve / np.pi *2, 0],
+                             [lengthCurve/2, lengthCurve / np.pi]])
+        elif selectedTrack == "L_shape_1":
+            self.halfWidth = 0.4 
+            self.slack     = 0.45
+            lengthCurve = 3.0
+            straight = 1.0
+            spec = np.array([[1.0, 0],
+                             [lengthCurve, lengthCurve / np.pi],
+                             # Note s = 1 * np.pi / 2 and r = -1 ---> Angle spanned = np.pi / 2
+                             [straight, 0],
+                             [lengthCurve/2,-lengthCurve / np.pi ],
+                             [straight, 0],
+                             [lengthCurve, lengthCurve / np.pi],
+                             [lengthCurve / np.pi *2 + 1.0, 0],
+                             [lengthCurve/2, lengthCurve / np.pi]])
+
         elif selectedTrack == "circle":
             self.halfWidth = 0.7 
             self.slack     = 0.45
