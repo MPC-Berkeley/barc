@@ -22,7 +22,7 @@
     <param name="feature_flag" type="bool" value="false" />
 
     <!-- Track parameters -->
-    <param name="trackShape" type="str" value="3110" />
+    <param name="trackShape" type="str" value="oval" />
 
     <!-- Machines -->
     <machine name="odroid" address="192.168.10.101" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid_ugo.sh"/>

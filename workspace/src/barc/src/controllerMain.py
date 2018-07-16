@@ -59,7 +59,7 @@ def main():
     
     # Choose Controller and Number of Laps
 
-    PickController = "LMPC"
+    PickController = "ZeroStep"
     NumberOfLaps   = 30
     vt = 1.2
     PathFollowingLaps = 2
@@ -365,7 +365,7 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
             Q_LMPC  =  0 * np.diag([0.0, 0.0, 10.0, 0.0, 0.0, 0.0])  # State cost x = [vx, vy, wz, epsi, s, ey]
             R_LMPC  =  0 * np.diag([1.0, 1.0])                      # Input cost u = [delta, a]
             dR_LMPC =  1 * np.array([ 2 * 5 * 0.5 * 10.0, 2 * 8 * 20.0])                     # Input rate cost u
-            aConstr = np.array([0.7, 2.5]) # aConstr = [amin, amax]
+            aConstr = np.array([0.7, 2.0]) # aConstr = [amin, amax]
             steeringDelay = 1
             idDelay       = 0            
         Controller = ControllerLMPC(numSS_Points, numSS_it, N, Qslack, Qlane, Q_LMPC, R_LMPC, dR_LMPC, 6, 2, shift, 

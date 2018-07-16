@@ -45,7 +45,7 @@ def main():
     BestNunberLaps = 4
     SortedTimes    = np.sort(LMPController.LapCounter[1:LMPController.it])
     LapToPlot      = np.argsort(LMPController.LapCounter[1:LMPController.it])[0:BestNunberLaps]
-    LapToPlot = range(24,28)
+    LapToPlot = range(15,19)
     print SortedTimes
     print "Lap Plotted: ", LapToPlot, " Lap Time: ", LMPController.LapCounter[LapToPlot]
     plotClosedLoopColorLMPC(LMPController, map, LapToPlot)

@@ -68,14 +68,18 @@ def main():
     # For LMPC_2 Oval New Car
     LapToPlot = [24,25, 26] 
     LapToPlot.append(43); LapToPlot.append(44)
+
+    # For LMPC_1 3110_big
+    LapToPlot = [16,17, 18] 
+    LapToPlot.append(36); LapToPlot.append(37)
     
     print LapToPlot
 
-    
+    groupFlag = 1
     print "Lap Time: ", LMPController.LapCounter[LapToPlot]
-    plotClosedLoopLMPC(LMPController, map, LapToPlot)
+    plotClosedLoopLMPC(LMPController, map, LapToPlot, groupFlag)
 
-    plotComputationalTime(LMPController, LapToPlot, map)
+    plotComputationalTime(LMPController, LapToPlot, map, groupFlag)
     plt.show()
 
     # pdb.set_trace()
@@ -200,7 +204,7 @@ def plotAccelerations(LMPController, LapToPlot, map):
     
     
 
-def plotComputationalTime(LMPController, LapToPlot, map):
+def plotComputationalTime(LMPController, LapToPlot, map, groupFlag):
     SS_glob = LMPController.SS_glob
     LapCounter  = LMPController.LapCounter
     SS      = LMPController.SS
@@ -209,13 +213,23 @@ def plotComputationalTime(LMPController, LapToPlot, map):
     sysIDTime  = LMPController.sysIDTime
     contrTime  = LMPController.contrTime
 
-    plotColors = ['b','g','r','c','y','k','m']
+    if groupFlag == 0:
+        plotColors = ['b','g','r','c','y','k','m']
+        Label = LapToPlot
+    else:
+        plotColors = ['b','b','b','r','r','k','m']
+        Label = ["LMPC", "LMPC", "LMPC", "New Controller", "New Controller"]
+
 
     plt.figure()
     plt.subplot(311)
     counter = 0
     for i in LapToPlot:
-        plt.plot(SS[0:LapCounter[i], 4, i], qpTime[0:LapCounter[i], i], '-o', label=i, color=plotColors[counter%len(plotColors)])
+        if counter != 0 and (Label[counter-1] == Label[counter]):
+            plt.plot(SS[0:LapCounter[i], 4, i], qpTime[0:LapCounter[i], i], '-o', color=plotColors[counter%len(plotColors)])
+        else:
+            plt.plot(SS[0:LapCounter[i], 4, i], qpTime[0:LapCounter[i], i], '-o', label=Label[counter], color=plotColors[counter%len(plotColors)])
+
         counter += 1
     plt.legend(bbox_to_anchor=(0,1.02,1,0.2), borderaxespad=0, ncol=len(LapToPlot))
 
@@ -377,13 +391,11 @@ def plotClosedLoopColorLMPC(LMPController, map, LapToPlot):
     plt.colorbar()
 
 
-def plotClosedLoopLMPC(LMPController, map, LapToPlot):
+def plotClosedLoopLMPC(LMPController, map, LapToPlot, groupFlag):
     SS_glob = LMPController.SS_glob
     LapCounter  = LMPController.LapCounter
     SS      = LMPController.SS
     uSS     = LMPController.uSS
-
-    plotColors = ['b','g','r','c','y','k','m']
 
     TotNumberIt = LMPController.it
     print "Number iterations: ", TotNumberIt
@@ -402,10 +414,21 @@ def plotClosedLoopLMPC(LMPController, map, LapToPlot):
     plt.plot(Points1[:, 0], Points1[:, 1], '-b')
     plt.plot(Points2[:, 0], Points2[:, 1], '-b')
 
+    if groupFlag == 0:
+        plotColors = ['b','g','r','c','y','k','m']
+        Label = LapToPlot
+    else:
+        plotColors = ['b','b','b','r','r','k','m']
+        Label = ["LMPC", "LMPC","LMPC","New Controller","New Controller"]
+    
     counter = 0
     for i in LapToPlot:
-        plt.plot(SS_glob[0:LapCounter[i], 4, i], SS_glob[0:LapCounter[i], 5, i], '-o', color=plotColors[counter%len(plotColors)], label=i)
+        if counter != 0 and (Label[counter-1] ==  Label[counter]):
+            plt.plot(SS_glob[0:LapCounter[i], 4, i], SS_glob[0:LapCounter[i], 5, i], '-o', color=plotColors[counter%len(plotColors)])
+        else:
+            plt.plot(SS_glob[0:LapCounter[i], 4, i], SS_glob[0:LapCounter[i], 5, i], '-o', color=plotColors[counter%len(plotColors)], label=Label[counter])
         counter += 1
+
     plt.legend()
     plt.xlabel("x [m]")
     plt.ylabel("y [m]")
@@ -414,7 +437,11 @@ def plotClosedLoopLMPC(LMPController, map, LapToPlot):
     plt.subplot(711)
     counter = 0
     for i in LapToPlot:
-        plt.plot(SS[0:LapCounter[i], 4, i], SS[0:LapCounter[i], 0, i], '-o', label=i, color=plotColors[counter%len(plotColors)])
+        if counter != 0 and (Label[counter-1] ==  Label[counter]):
+            plt.plot(SS[0:LapCounter[i], 4, i], SS[0:LapCounter[i], 0, i], '-o', color=plotColors[counter%len(plotColors)])
+        else:
+            plt.plot(SS[0:LapCounter[i], 4, i], SS[0:LapCounter[i], 0, i], '-o', label=Label[counter], color=plotColors[counter%len(plotColors)])
+
         counter += 1
     plt.legend(bbox_to_anchor=(0,1.02,1,0.2), borderaxespad=0, ncol=len(LapToPlot))
 
