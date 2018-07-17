@@ -1,12 +1,36 @@
 # LMPC simulation result
+
 **Legend**:
 
 1. Blue prediction horizon: MPC prediction.
 2. Black prediction horizon: true prediction with nonlinear dynamic bicycle model used in simulator.
 3. Cyan dots: safe set.
 4. Green dots: feature points used to do system identification by LMS with feature lifting.
+
+**Model**: fully linearised dynamic bicycle model, linearize the model below.
+
+<p align="center">
+<img src="./results/linear_dyn_model_equ.png" width="400" />
+</p>
+
+<p align="center">
+<img src="./results/dyn_linear_dyn_pre.gif" width="1000" />
+</p>
+
+**Model**:
+
+<p align="center">
+<img src="./results/id_dyn_model_equ.png" width="400" />
+</p>
+
 <p align="center">
 <img src="./results/dyn_iden.gif" width="1000" />
+</p>
+
+# LMPC experiment result
+
+<p align="center">
+<img src="./results/exp_result.png" width="800" />
 </p>
 
 # Source code structure for LMPC

@@ -17,7 +17,7 @@ using QuickHull
 @pyimport matplotlib.transforms as transforms
 @pyimport matplotlib.animation as animation
 @pyimport matplotlib as mpl
-@pyimport matplotlib.collections as collections 
+@pyimport matplotlib.collections as collections
 include("./library.jl")
 # FLAG FOR PLOTTING THE SELECTED POINTS
 const select_flag = false
@@ -101,7 +101,7 @@ if FLAG[1] == "record" || FLAG[1]=="both"
         # plot([current_x,current_x],[-3,3],color="grey",linestyle="--")
         # ylabel("psi_dot")
     end
-    
+
     # PLOT OF SYS_ID PARAMETERS
     # figure(figsize=(15,10))
     println(size(log_cvx))
@@ -369,27 +369,27 @@ if ARGS[1] == "prediction"
     end
     # ax_s_vy[:set_ylim]([-0.15, 0.15])
     ax_s_c[:set_ylim]([-1.2,1.2])
-    
+
     # INITIALIZE THE PLOTING FOR MPC PREDICTION
     pre_hs = []
     for i = 1 : 5
         pre_h = plot_prediction(ax[i], NaN*ones(size(solHistory.z,3)), NaN*ones(size(solHistory.z,3)), "blue")
         pre_hs = [pre_hs; pre_h]
     end
-    
+
     # INITIALIZE THE PLOTTING FOR TRUE PREDICTION WHICH NEEDS TO BE TURNED OFF DURING EXPERIMENT
     true_hs = []
     for i = 1 : 5
         true_h = plot_prediction(ax[i], NaN*ones(size(solHistory.z,3)), NaN*ones(size(solHistory.z,3)), "black")
         true_hs = [true_hs; true_h]
     end
-    
+
     # INITIALIZE THE PLOTTING FOR SAFESET
     conv_hulls = []
     hull_bounds = []
     plt_states = []
     for i = 1 : 5
-        conv_hull, hull_bound, plt_state = plot_selection(ax[i], NaN*ones(size(selectedStates.selStates[:, 1])), 
+        conv_hull, hull_bound, plt_state = plot_selection(ax[i], NaN*ones(size(selectedStates.selStates[:, 1])),
                                                                  NaN*ones(size(selectedStates.selStates[:, 1])), "blue")
         conv_hulls = [conv_hulls; conv_hull]
         hull_bounds = [hull_bounds; hull_bound]
@@ -424,7 +424,7 @@ if ARGS[1] == "prediction"
     #     lap = 1
     # elseif ARGS[3] == "LMPC"
     #     lap = 2 + max(selectedStates.Nl,selectedStates.feature_Nl)  # starting lap of LMPC
-    # elseif ARGS[3] == "GP"    
+    # elseif ARGS[3] == "GP"
     #     lap = 2 + max(selectedStates.Nl,selectedStates.feature_Nl)  # starting lap of LMPC
     #     GP_vy_plt, = ax_s_vy[:plot](NaN*ones(mpcParams.N),NaN*ones(mpcParams.N),"ro")
     #     GP_psidot_plt, = ax_s_psidot[:plot](NaN*ones(mpcParams.N),NaN*ones(mpcParams.N),"ro")
@@ -451,7 +451,7 @@ if ARGS[1] == "prediction"
                     update_prediction(true_hs[i], true_state[:,1], true_state[:,i+1], track)
                     update_limits(ax[i],solHistory.z[j,lap,:,1],true_state[:,1],NaN*ones(mpcParams.N+1))
                 end
-                
+
                 # UPDATE THE CURVATURE PLOT
                 curvature=curvature_prediction(reshape(solHistory.z[j,lap,:,:],size(solHistory.z[j,lap,:,:],3),size(solHistory.z[j,lap,:,:],4)),track)
                 update_prediction(curvature_plt,solHistory.z[j,lap,:,1],curvature,track)
@@ -468,13 +468,13 @@ if ARGS[1] == "prediction"
 
                 # UPDATE THE PLOTTING DATA
                 for i = 1 : 5
-                    update_selection(conv_hulls[i], hull_bounds[i], plt_states[i], 
+                    update_selection(conv_hulls[i], hull_bounds[i], plt_states[i],
                                      reshape(selectHistory[j,lap,:,1],size(selectHistory[j,lap,:,1],3)),
                                      reshape(selectHistory[j,lap,:,1+i],size(selectHistory[j,lap,:,1],3)))
                     update_prediction(pre_hs[i], solHistory.z[j,lap,:,1], solHistory.z[j,lap,:,1+i], track)
                     update_prediction(true_hs[i], true_state[:,1], true_state[:,i+1], track)
                     update_limits(ax[i],solHistory.z[j,lap,:,1],true_state[:,1],reshape(selectHistory[j,lap,:,1],size(selectHistory,3)))
-                    
+
                     if select_flag
                         # FEATURE DATA PLOTTING UPDATE
                         (z_iden_x, z_iden_y) = trackFrame_to_xyFrame(reshape(selectFeatureHistory[j,lap,:,:],size(selectFeatureHistory,3),size(selectFeatureHistory,4)),track)
