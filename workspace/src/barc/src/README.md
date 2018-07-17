@@ -43,7 +43,7 @@
 
 ## Library structure and data structure
 <p align="center">
-<img src="./results/library_data_structure.png" width="500" />
+<img src="./results/library_data_structure.png" width="1000" />
 </p>
 
 ## Tools
