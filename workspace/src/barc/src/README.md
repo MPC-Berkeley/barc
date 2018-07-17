@@ -6,10 +6,13 @@
 3. Cyan dots: safe set.
 4. Green dots: feature points used to do system identification by LMS with feature lifting.
 <p align="center">
-<img src="./results/dyn_iden.gif" width="500" />
+<img src="./results/dyn_iden.gif" width="1000" />
 </p>
+
 # Source code structure for LMPC
+
 ## ROS nodes
+
 **Controller nodes**:
 
 - `controllerOpenLoop.py`: open loop controller for hardware testing
