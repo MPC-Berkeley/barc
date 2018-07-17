@@ -102,6 +102,7 @@ class ControllerZeroStepLMPC():
         d          = self.d
         
         startTimer = datetime.datetime.now()
+        
         # Select laps from SS based on LapTime, always keep the last lap
         # print self.Qfun
         # print self.Qfun[0, 0:itLMPC]
