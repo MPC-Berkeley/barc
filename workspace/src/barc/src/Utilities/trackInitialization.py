@@ -71,7 +71,7 @@ class Map():
         elif selectedTrack == "L_shape_1":
             self.halfWidth = 0.4 
             self.slack     = 0.45
-            lengthCurve = 3.0
+            lengthCurve = 3.5 #3.0
             straight = 1.0
             spec = np.array([[1.0, 0],
                              [lengthCurve, lengthCurve / np.pi],

@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 import matplotlib.patches as patches
 from LMPC import ControllerLMPC
+from ZeroStepLMPC import ControllerZeroStepLMPC
+
 import sys
 import pickle
 import pdb
@@ -18,11 +20,22 @@ import os
 
 def main():
     homedir = os.path.expanduser("~")
+    print "Do you wanna use LMPC.obj? [y/n]"
+    inputKeyBoard = raw_input()
+    fromLMPC = inputKeyBoard == "y"
 
-    file_data = open(homedir+'/barc_data/ClosedLoopDataLMPC.obj', 'rb')    
-    ClosedLoopData = pickle.load(file_data)
-    LMPController = pickle.load(file_data)
-    LMPCOpenLoopData = pickle.load(file_data)    
+    if fromLMPC == True:
+        file_data = open(homedir+'/barc_data/ClosedLoopDataLMPC.obj', 'rb')    
+        ClosedLoopData = pickle.load(file_data)
+        LMPController = pickle.load(file_data)
+        LMPCOpenLoopData = pickle.load(file_data)    
+    else:
+        file_data = open(homedir+'/barc_data/ClosedLoopDataZeroStep.obj', 'rb')    
+        ClosedLoopData = pickle.load(file_data)
+        ControllerZeroStepLMPC = pickle.load(file_data)
+        LMPCOpenLoopData = pickle.load(file_data)    
+        LMPController = pickle.load(file_data)
+    
     file_data.close()
     map = LMPController.map
 
@@ -130,6 +143,9 @@ def plotAccelerations(LMPController, LapToPlot, map):
             LapCounter[iteration-1] = TimeCounter - 1
             LapCounter[iteration] = 0
             TimeCounter = 0
+
+        if iteration > LMPController.it:
+            break
 
         s[TimeCounter, 0, iteration]      = s_i
         ax[TimeCounter, 0, iteration]     = inp_ax_his[i]

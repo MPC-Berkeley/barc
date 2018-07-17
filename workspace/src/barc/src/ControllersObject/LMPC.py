@@ -222,6 +222,7 @@ class ControllerLMPC():
 
         self.TimeSS[it] = ClosedLoopData.SimTime
         self.LapCounter[it] = ClosedLoopData.SimTime
+        # print self.TimeSS[it], it 
         self.SS[0:(self.TimeSS[it] + 1), :, it] = ClosedLoopData.x[0:(self.TimeSS[it] + 1), :]
         self.SS_glob[0:(self.TimeSS[it] + 1), :, it] = ClosedLoopData.x_glob[0:(self.TimeSS[it] + 1), :]
         self.uSS[0:(self.TimeSS[it]+ 1), :, it]      = ClosedLoopData.u[0:(self.TimeSS[it] + 1), :]

@@ -40,6 +40,7 @@ class ControllerZeroStepLMPC():
         # Initialize the controller iteration
         self.it      = LMPC.it + 2
         self.itLMPC  = LMPC.it
+        self.dt      = LMPC.dt
 
         NumPoints = LMPC.SS.shape[0]
 
@@ -126,7 +127,7 @@ class ControllerZeroStepLMPC():
         # for jj in range(0, itLMPC-1):
         # for jj in range(10,20):
         for jj in range(18,28):
-        # for jj in range(0,10):        
+        # for jj in range(0,5):        
             SS_PointSelected, SS_glob_PointSelected, Qfun_Selected, uSS_PointSelected = _SelectPoints(self, jj, x0)
             SS_PointSelectedTot      =  np.append(SS_PointSelectedTot, SS_PointSelected, axis=1)
             uSS_PointSelectedTot     =  np.append(uSS_PointSelectedTot, uSS_PointSelected, axis=1)

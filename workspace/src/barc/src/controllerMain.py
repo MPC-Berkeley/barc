@@ -25,6 +25,7 @@ from PathFollowingLTVMPC import PathFollowingLTV_MPC
 from dataStructures import LMPCprediction, EstimatorData, ClosedLoopDataObj
 from LMPC import ControllerLMPC
 from ZeroStepLMPC import ControllerZeroStepLMPC
+import time
 
 homedir = os.path.expanduser("~")    
 
@@ -89,6 +90,7 @@ def main():
 
 
     firtLap = True
+    ChangeToZeroStep = False
     while (not rospy.is_shutdown()) and RunController == 1:    
         # == Start: Read Measurements
         GlobalState[:] = estimatorData.CurrentState
@@ -121,8 +123,10 @@ def main():
                 backPoints = 3
                 forePoints = 7
                 Laps       = NumberOfLaps+2   # Total LMPC laps
+                LMPControllerBeforeSwitch = Controller
                 Controller = ControllerZeroStepLMPC(Controller, backPoints, forePoints, Laps)
                 PickController = "ZeroStep"
+                ChangeToZeroStep = True
 
 
             LapNumber += 1
@@ -285,9 +289,11 @@ def main():
         file_data = open(homedir+'/barc_data'+'/ClosedLoopData'+PickController+'.obj', 'wb')
         pickle.dump(ClosedLoopData, file_data)
         pickle.dump(Controller, file_data)
-        pickle.dump(OpenLoopData, file_data)    
-
-        file_data.close()
+        pickle.dump(OpenLoopData, file_data)
+        if ChangeToZeroStep == True:
+            pickle.dump(LMPControllerBeforeSwitch, file_data)
+        
+        file_data.close()    
     # == End: Save Data
 
 # ===============================================================================================================================
@@ -350,7 +356,7 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
         Laps       = NumberOfLaps+2   # Total LMPC laps
         # Safe Set Parameters
         flag_LTV = True
-        TimeLMPC   = 400              # Simulation time
+        TimeLMPC   = 70              # Simulation time
         N = 12
         LMPC_Solver = "OSQP"          # Can pick CVX for cvxopt or OSQP. For OSQP uncomment line 14 in LMPC.py
         SysID_Solver = "scipy"        # Can pick CVX, OSQP or scipy. For OSQP uncomment line 14 in LMPC.py  
@@ -380,7 +386,7 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
                                         dt, map, Laps, TimeLMPC, LMPC_Solver, SysID_Solver, flag_LTV, steeringDelay, idDelay, aConstr)
         # Controller.addTrajectory(ClosedLoopDataPID)
         Controller.addTrajectory(ClosedLoopDataTI_MPC)
-        OpenLoopData = LMPCprediction(N, 6, 2, TimeLMPC, numSS_Points, Laps)
+        OpenLoopData = LMPCprediction(N, 6, 2, int(TimeLMPC/dt), numSS_Points, Laps)
         print "LMPC initialized!"
     
     elif PickController == "ZeroStep":
