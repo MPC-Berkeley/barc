@@ -59,7 +59,7 @@ def main():
     
     # Choose Controller and Number of Laps
 
-    PickController = "ZeroStep"
+    PickController = "LMPC"
     NumberOfLaps   = 30
     vt = 1.2
     PathFollowingLaps = 2
@@ -117,6 +117,14 @@ def main():
                 Controller.addTrajectory(ClosedLoopData)
                 ClosedLoopData.updateInitialConditions(LocalState, GlobalState)
 
+            if LapNumber == (NumberOfLaps-1):
+                backPoints = 3
+                forePoints = 7
+                Laps       = NumberOfLaps+2   # Total LMPC laps
+                Controller = ControllerZeroStepLMPC(Controller, backPoints, forePoints, Laps)
+                PickController = "ZeroStep"
+
+
             LapNumber += 1
             print "Lap completed starting lap:", LapNumber, ". Lap time: ", float(TimeCounter)/loop_rate
             
@@ -124,7 +132,7 @@ def main():
                 print "Lap completed starting lap:", LapNumber, ". Lap time: ", float(Controller.LapTime)/loop_rate
                 Controller.resetTime()
 
-            if LapNumber >= NumberOfLaps:
+            if LapNumber >= 2 * NumberOfLaps:
                 RunController = 0
 
             HalfTrack = 7

@@ -54,15 +54,15 @@ class ControllerZeroStepLMPC():
         self.contrTime   = -10000 * np.ones((NumPoints, self.it + Laps))    # Input associated with the points in SS
 
         # Initialize the following quantities to avoid dynamic allocation
-        self.TimeSS[0:self.it]      = LMPC.TimeSS        # Number of points in j-th iterations (counts also points after finisch line)
-        self.LapCounter[0:self.it]  = LMPC.LapCounter    # Time at which each j-th iteration is completed
-        self.SS[:, :, 0:self.it]          = LMPC.SS            # Sampled Safe SS
-        self.uSS[:, :, 0:self.it]         = LMPC.uSS           # Input associated with the points in SS
-        self.Qfun[:, 0:self.it]        = LMPC.Qfun          # Qfun: cost-to-go from each point in SS
-        self.SS_glob[:, :, 0:self.it]     = LMPC.SS_glob       # SS in global (X-Y) used for plotting
-        self.qpTime[:, 0:self.it]      = LMPC.qpTime    # Input associated with the points in SS
-        self.sysIDTime[:, 0:self.it]   = LMPC.sysIDTime    # Input associated with the points in SS
-        self.contrTime[:, 0:self.it]   = LMPC.contrTime    # Input associated with the points in SS
+        self.TimeSS[0:self.it]        = LMPC.TimeSS[0:self.it]        # Number of points in j-th iterations (counts also points after finisch line)
+        self.LapCounter[0:self.it]    = LMPC.LapCounter[0:self.it]    # Time at which each j-th iteration is completed
+        self.SS[:, :, 0:self.it]      = LMPC.SS[:, :, 0:self.it]            # Sampled Safe SS
+        self.uSS[:, :, 0:self.it]     = LMPC.uSS[:, :, 0:self.it]           # Input associated with the points in SS
+        self.Qfun[:, 0:self.it]       = LMPC.Qfun[:, 0:self.it]          # Qfun: cost-to-go from each point in SS
+        self.SS_glob[:, :, 0:self.it] = LMPC.SS_glob[:, :, 0:self.it]       # SS in global (X-Y) used for plotting
+        self.qpTime[:, 0:self.it]     = LMPC.qpTime[:, 0:self.it]    # Input associated with the points in SS
+        self.sysIDTime[:, 0:self.it]  = LMPC.sysIDTime[:, 0:self.it]   # Input associated with the points in SS
+        self.contrTime[:, 0:self.it]  = LMPC.contrTime[:, 0:self.it]    # Input associated with the points in SS
 
 
         self.map     = LMPC.map       # SS in global (X-Y) used for plotting
@@ -124,7 +124,8 @@ class ControllerZeroStepLMPC():
         # TO DO HOW TO PICK THE ITERATIONS? HOW ABOUT SWITHING????
         # for jj in range(0, itLMPC-1):
         # for jj in range(10,20):
-        for jj in range(15,25):
+        for jj in range(18,28):
+        # for jj in range(0,10):        
             SS_PointSelected, SS_glob_PointSelected, Qfun_Selected, uSS_PointSelected = _SelectPoints(self, jj, x0)
             SS_PointSelectedTot      =  np.append(SS_PointSelectedTot, SS_PointSelected, axis=1)
             uSS_PointSelectedTot     =  np.append(uSS_PointSelectedTot, uSS_PointSelected, axis=1)
@@ -136,79 +137,129 @@ class ControllerZeroStepLMPC():
         self.SS_glob_PointSelectedTot = SS_glob_PointSelectedTot
         self.Qfun_SelectedTot         = Qfun_SelectedTot
 
-        # Create Equality Constraints
-        OnesZeros = np.hstack(( np.ones(SS_PointSelectedTot.shape[1]), np.zeros(n) ))
-
-        # np.savetxt('SS_PointSelectedTot.csv', SS_PointSelectedTot, delimiter=',', fmt='%f')
-        # np.savetxt('x0.csv', x0, delimiter=',', fmt='%f')
-        # print SS_PointSelectedTot
-        # print x0
-
-        G = np.vstack(( np.hstack((SS_PointSelectedTot, np.eye(n) )), OnesZeros ))
-        
-        E = np.zeros((G.shape[0], n))
-        E[0:n,0:n] = np.eye(6)
-
-        L   = np.zeros(( G.shape[0], 1 ))
-        L[n,:] = 1
-
-        # Create Inequality Constraints
-        numVariables = G.shape[1]
-        numLambda = numVariables-n
-        F = np.vstack((-np.eye(numLambda, numVariables), np.eye(numLambda, numVariables)))
-
-        b = np.hstack(( 0.001 * np.ones(numLambda), np.ones(numLambda) ))
-
-        # Create Cost
-        slackCost = 100 * np.diag( np.array([1, 1, 1, 5, 5, 5]))
-        M = np.zeros((numVariables, numVariables))
-        # M = np.ones((numVariables, numVariables)) * 100
-        M[numVariables-6:numVariables, numVariables-6:numVariables] = slackCost
-
-        q = np.hstack((Qfun_SelectedTot, np.zeros(6)))
-
-
-        # np.savetxt('M.csv', M, delimiter=',', fmt='%f')
-        # np.savetxt('q.csv', q, delimiter=',', fmt='%f')
-        # np.savetxt('F.csv', F, delimiter=',', fmt='%f')
-        # np.savetxt('b.csv', b, delimiter=',', fmt='%f')
-        # np.savetxt('G.csv', G, delimiter=',', fmt='%f')
-        # np.savetxt('E.csv', E, delimiter=',', fmt='%f')
-        # np.savetxt('L.csv', L, delimiter=',', fmt='%f')
-        
-        # print "M shape: ", M.shape
-        # print "q shape: ", q.shape
-        # print "F shape: ", F.shape
-        # print "b shape: ", b.shape
-        # print "G shape: ", G.shape
-        # print "L shape: ", L.shape
-        # print "E shape: ", E.shape
-        # print "np.add(np.dot(E, x0), L) shape: ", np.add(np.dot(E, x0), L).shape
-
-        endTimer = datetime.datetime.now(); deltaTimer = endTimer - startTimer
-        self.linearizationTime = deltaTimer
 
         # Solve QP
-        startTimer = datetime.datetime.now()
-        res_cons, feasible = osqp_solve_qp(sparse.csr_matrix(M), q, sparse.csr_matrix(F), b, sparse.csr_matrix(G), np.add(np.dot(E,x0),L[:,0]) )
+        solver = "osqp"
 
-        lambdaVar = res_cons.x[0:numLambda]
-        # lambdaVar[lambdaVar<0.0] = 0
-        self.uPred = np.zeros([1,2])
-        self.uPred[0,:] = np.dot(uSS_PointSelectedTot, lambdaVar).T        
+        if solver == "osqp":
+            startTimer = datetime.datetime.now()
+            osqp = OSQP()
+            # Create Equality Constraints: G*x = E*x0 + L
+            OnesZeros = np.hstack(( np.ones(SS_PointSelectedTot.shape[1]), np.zeros(n) ))
+            G = np.vstack(( np.hstack((SS_PointSelectedTot, np.eye(n) )), OnesZeros ))
+            
+            E = np.zeros((G.shape[0], n))
+            E[0:n,0:n] = np.eye(6)
 
-        # M_sparse   = spmatrix(M[np.nonzero(M)],  np.nonzero(M)[0].astype(int),  np.nonzero(M)[1].astype(int),  M.shape)
-        # F_sparse   = spmatrix(F[np.nonzero(F)],  np.nonzero(F)[0].astype(int),  np.nonzero(F)[1].astype(int),  F.shape)
-        # G_sparse   = spmatrix(G[np.nonzero(G)],  np.nonzero(G)[0].astype(int),  np.nonzero(G)[1].astype(int),  G.shape)
-        # E_sparse   = spmatrix(E[np.nonzero(E)],  np.nonzero(E)[0].astype(int),  np.nonzero(E)[1].astype(int),  E.shape)
-        # L_sparse   = spmatrix(L[np.nonzero(L)],  np.nonzero(L)[0].astype(int),  np.nonzero(L)[1].astype(int),  L.shape)
+            L   = np.zeros(( G.shape[0], 1 ))
+            L[n,:] = 1
 
-        # res_cons = qp(M_sparse, matrix(q), F_sparse, matrix(b), G_sparse, E_sparse * matrix(x0) + L_sparse )
-        # lambdaVar = res_cons["x"][0:numLambda]
-        # self.uPred = np.dot(uSS_PointSelectedTot, lambdaVar).T
+            # Create Inequality Constraints
+            numVariables = G.shape[1]
+            numLambda = numVariables-n
+            F = np.eye(numLambda, numVariables)
 
-        endTimer = datetime.datetime.now(); deltaTimer = endTimer - startTimer
-        self.solverTime = deltaTimer
+            b_ub = np.ones(numLambda)
+            b_lb = np.zeros(numLambda)
+
+            # Create Cost
+            slackCost = 100 * np.diag( np.array([1, 1, 1, 5, 5, 5]))
+            M = np.zeros((numVariables, numVariables))
+            # M = np.ones((numVariables, numVariables)) * 100
+            M[numVariables-6:numVariables, numVariables-6:numVariables] = slackCost
+
+            q = np.hstack((Qfun_SelectedTot, np.zeros(6)))
+
+            # Matrices for osqp
+            qp_A = vstack([G, F]).tocsc()
+            dummy = np.add(np.dot(E,x0),L[:,0])
+            qp_u = hstack([dummy, b_ub])
+            qp_l = hstack([dummy, b_lb])
+
+            endTimer = datetime.datetime.now(); deltaTimer = endTimer - startTimer
+            self.linearizationTime = deltaTimer
+
+            startTimer = datetime.datetime.now()
+
+            osqp.setup(P=sparse.csr_matrix(M), q=q, A=qp_A, l=qp_l, u=qp_u, verbose=False, polish=True)
+            res_cons = osqp.solve()
+
+            # res_cons, feasible = osqp_solve_qp(sparse.csr_matrix(M), q, sparse.csr_matrix(F), b, sparse.csr_matrix(G), np.add(np.dot(E,x0),L[:,0]) )
+
+            lambdaVar = res_cons.x[0:numLambda]
+            endTimer = datetime.datetime.now(); deltaTimer = endTimer - startTimer
+            self.solverTime = deltaTimer
+
+            # lambdaVar[lambdaVar<0.0] = 0
+            self.uPred = np.zeros([1,2])
+            self.uPred[0,:] = np.dot(uSS_PointSelectedTot, lambdaVar).T        
+        elif solver == "CVX": 
+            # Create Equality Constraints
+            OnesZeros = np.hstack(( np.ones(SS_PointSelectedTot.shape[1]), np.zeros(n) ))
+
+            # np.savetxt('SS_PointSelectedTot.csv', SS_PointSelectedTot, delimiter=',', fmt='%f')
+            # np.savetxt('x0.csv', x0, delimiter=',', fmt='%f')
+            # print SS_PointSelectedTot
+            # print x0
+
+            G = np.vstack(( np.hstack((SS_PointSelectedTot, np.eye(n) )), OnesZeros ))
+            
+            E = np.zeros((G.shape[0], n))
+            E[0:n,0:n] = np.eye(6)
+
+            L   = np.zeros(( G.shape[0], 1 ))
+            L[n,:] = 1
+
+            # Create Inequality Constraints
+            numVariables = G.shape[1]
+            numLambda = numVariables-n
+            F = np.vstack((-np.eye(numLambda, numVariables), np.eye(numLambda, numVariables)))
+
+            b = np.hstack(( 0.0 * np.ones(numLambda), np.ones(numLambda) ))
+
+            # Create Cost
+            slackCost = 100 * np.diag( np.array([1, 1, 1, 5, 5, 5]))
+            M = np.zeros((numVariables, numVariables))
+            # M = np.ones((numVariables, numVariables)) * 100
+            M[numVariables-6:numVariables, numVariables-6:numVariables] = slackCost
+
+            q = np.hstack((Qfun_SelectedTot, np.zeros(6)))
+
+
+            # np.savetxt('M.csv', M, delimiter=',', fmt='%f')
+            # np.savetxt('q.csv', q, delimiter=',', fmt='%f')
+            # np.savetxt('F.csv', F, delimiter=',', fmt='%f')
+            # np.savetxt('b.csv', b, delimiter=',', fmt='%f')
+            # np.savetxt('G.csv', G, delimiter=',', fmt='%f')
+            # np.savetxt('E.csv', E, delimiter=',', fmt='%f')
+            # np.savetxt('L.csv', L, delimiter=',', fmt='%f')
+            
+            # print "M shape: ", M.shape
+            # print "q shape: ", q.shape
+            # print "F shape: ", F.shape
+            # print "b shape: ", b.shape
+            # print "G shape: ", G.shape
+            # print "L shape: ", L.shape
+            # print "E shape: ", E.shape
+            # print "np.add(np.dot(E, x0), L) shape: ", np.add(np.dot(E, x0), L).shape
+
+            endTimer = datetime.datetime.now(); deltaTimer = endTimer - startTimer
+            self.linearizationTime = deltaTimer
+
+            startTimer = datetime.datetime.now()
+
+            M_sparse   = spmatrix(M[np.nonzero(M)],  np.nonzero(M)[0].astype(int),  np.nonzero(M)[1].astype(int),  M.shape)
+            F_sparse   = spmatrix(F[np.nonzero(F)],  np.nonzero(F)[0].astype(int),  np.nonzero(F)[1].astype(int),  F.shape)
+            G_sparse   = spmatrix(G[np.nonzero(G)],  np.nonzero(G)[0].astype(int),  np.nonzero(G)[1].astype(int),  G.shape)
+            E_sparse   = spmatrix(E[np.nonzero(E)],  np.nonzero(E)[0].astype(int),  np.nonzero(E)[1].astype(int),  E.shape)
+            L_sparse   = spmatrix(L[np.nonzero(L)],  np.nonzero(L)[0].astype(int),  np.nonzero(L)[1].astype(int),  L.shape)
+
+            res_cons = qp(M_sparse, matrix(q), F_sparse, matrix(b), G_sparse, E_sparse * matrix(x0) + L_sparse )
+            lambdaVar = res_cons["x"][0:numLambda]
+            self.uPred = np.dot(uSS_PointSelectedTot, lambdaVar).T
+
+            endTimer = datetime.datetime.now(); deltaTimer = endTimer - startTimer
+            self.solverTime = deltaTimer
         
 
         # print "Results: "

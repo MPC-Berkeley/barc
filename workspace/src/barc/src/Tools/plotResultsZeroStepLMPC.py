@@ -72,7 +72,10 @@ def main():
     # For LMPC_1 3110_big
     LapToPlot = [16,17, 18] 
     LapToPlot.append(36); LapToPlot.append(37)
-    
+
+    # For Simulations
+    LapToPlot = [27,28,29] 
+    LapToPlot.append(36); LapToPlot.append(37)    
     print LapToPlot
 
     groupFlag = 1
