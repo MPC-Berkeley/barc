@@ -12,7 +12,7 @@ import matplotlib.patches as patches
 
 def main():
 
-    map = Map("oval")
+    map = Map("L_shape_1")
     # FIGURE 1 plotting of estimator output data
     homedir = os.path.expanduser("~")
     pathSave = os.path.join(homedir,"barc_data/estimator_output.npz")
@@ -135,7 +135,7 @@ def main():
 
 def plotTrack(map):
     fig = plt.figure("track x-y plot")
-    Points = np.floor(10 * (map.PointAndTangent[-1, 3] + map.PointAndTangent[-1, 4]))
+    Points = int(np.floor(10 * (map.PointAndTangent[-1, 3] + map.PointAndTangent[-1, 4])))
     Points1 = np.zeros((Points, 2))
     Points2 = np.zeros((Points, 2))
     Points0 = np.zeros((Points, 2))
@@ -167,7 +167,7 @@ def _initializeFigure_xy(map):
     plt.ion()
     axtr = plt.axes()
 
-    Points = np.floor(10 * (map.PointAndTangent[-1, 3] + map.PointAndTangent[-1, 4]))
+    Points = int(np.floor(10 * (map.PointAndTangent[-1, 3] + map.PointAndTangent[-1, 4])))
     Points1 = np.zeros((Points, 2))
     Points2 = np.zeros((Points, 2))
     Points0 = np.zeros((Points, 2))
