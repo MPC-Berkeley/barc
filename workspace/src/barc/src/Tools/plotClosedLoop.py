@@ -12,6 +12,7 @@ import matplotlib.patches as patches
 
 def main():
 
+
     map = Map("L_shape_1")
     # FIGURE 1 plotting of estimator output data
     homedir = os.path.expanduser("~")
