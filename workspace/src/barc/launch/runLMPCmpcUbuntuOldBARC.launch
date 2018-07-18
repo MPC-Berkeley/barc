@@ -22,12 +22,12 @@
     <param name="feature_flag" type="bool" value="false" />
 
     <!-- Track parameters -->
-    <!-- <param name="trackShape" type="str" value="oval" /> -->
+    <param name="trackShape" type="str" value="oval" />
     <!-- <param name="trackShape" type="str" value="3110_big" /> -->
-    <param name="trackShape" type="str" value="L_shape" />
+    <!-- <param name="trackShape" type="str" value="L_shape" /> -->
 
     <!-- Machines -->
-    <machine name="odroid" address="192.168.10.101" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid.sh"/>
+    <machine name="odroid" address="192.168.10.213" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid.sh"/>
 
     <!-- <machine name="this-pc" address="10.0.0.72" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc.sh"/> -->
     <machine name="this-pc" address="192.168.10.147" user="mpcubuntu" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc_mpc_ubuntu.sh"/>
@@ -35,7 +35,7 @@
     <!-- START NODES -->
     <!-- LOW LEVEL CONTROLLER -->
     <node machine="odroid" pkg="barc" type="controllerLowLevelNew.py" name="low_level_controller" >
-        <param name="car" type="str" value="NewBARC" />
+        <param name="car" type="str" value="OldBARC" />
     </node>
 
     <!-- Estimator -->
@@ -46,7 +46,7 @@
         <!-- ekf properties -->
          <param name="thReset" type="double" value="0.1" />
          <param name="vSwitch" type="double" value="5.5" />
-         <param name="psiSwitch" type="double" value="0.05" />
+         <param name="psiSwitch" type="double" value="0.5" />
 
          <param name="Qx_hs" type="double" value="0.01" />
          <param name="Qx_ls" type="double" value="0.01" />
@@ -60,8 +60,8 @@
          <param name="Qvy_hs" type="double" value="50.0" />
          <param name="Qvy_ls" type="double" value="50.0" />
 
-         <param name="Qax_hs" type="double" value="100.0" />
-         <param name="Qax_ls" type="double" value="100.0" />
+         <param name="Qax_hs" type="double" value="1.0" />
+         <param name="Qax_ls" type="double" value="1.0" />
 
          <param name="Qay_hs" type="double" value="100.0" />
          <param name="Qay_ls" type="double" value="100.0" />
@@ -81,8 +81,8 @@
          <param name="Rvx_hs" type="double" value="100.01" />
          <param name="Rvx_ls" type="double" value="100.01" />
 
-         <param name="Rax_hs" type="double" value="1.0" />
-         <param name="Rax_ls" type="double" value="1.0" />
+         <param name="Rax_hs" type="double" value="100.0" />
+         <param name="Rax_ls" type="double" value="100.0" />
 
          <param name="Ray_hs" type="double" value="1.0" />
          <param name="Ray_ls" type="double" value="1.0" />
@@ -106,11 +106,11 @@
     </node>
 
     <!-- IMU -->
-    <!--<node machine="odroid" pkg="myahrs_driver" type="myahrs_driver" name="myahrs_driver">
+    <node machine="odroid" pkg="myahrs_driver" type="myahrs_driver" name="myahrs_driver">
         <param name="port" value="/dev/ttyACM0" />
         <param name="baud_rate" value="115200" />
-    </node>-->
-    <node machine="odroid" pkg="xsens_driver" type="mtnode.py" name="xsens_driver" output="screen" >
+    </node>
+<!--     <node machine="odroid" pkg="xsens_driver" type="mtnode.py" name="xsens_driver" output="screen" >
         <param name="device" value="$(arg device)"/>
         <param name="baudrate" value="$(arg baudrate)"/>
         <param name="timeout" value="$(arg timeout)"/>
@@ -120,10 +120,10 @@
         <rosparam param="angular_velocity_covariance_diagonal" subst_value="True">$(arg angular_velocity_covariance_diagonal)</rosparam>
         <rosparam param="linear_acceleration_covariance_diagonal" subst_value="True">$(arg linear_acceleration_covariance_diagonal)</rosparam>
         <rosparam param="orientation_covariance_diagonal" subst_value="True">$(arg orientation_covariance_diagonal)</rosparam>
-    </node>
+    </node> -->
 
     <!-- GPS -->
-    <node machine="odroid" pkg="marvelmind_nav" type="hedge_rcv_bin" name="indoor_gps" args="/dev/ttyACM0"/>
+    <node machine="odroid" pkg="marvelmind_nav" type="hedge_rcv_bin" name="indoor_gps" args="/dev/ttyACM1"/>
     
     <!-- ARDUINO -->
     <!--  * encoders and ultrasound sensors -->

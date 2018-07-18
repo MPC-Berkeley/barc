@@ -364,6 +364,7 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
         numSS_Points = 42 + N         # Number of points to select from each trajectory to build the safe set
         shift = N / 2                     # Given the closed point, x_t^j, to the x(t) select the SS points from x_{t+shift}^j
         # Tuning Parameters
+        mode = "NewTuning"
         if mode == "simulations":
             Qslack  =  2 * 5 * np.diag([10, 0.1, 1, 0.1, 10, 1])          # Cost on the slack variable for the terminal constraint
             Qlane   = 0.1 * 0.5 * 10 * np.array([50, 10]) # Quadratic slack lane cost
@@ -372,6 +373,15 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
             dR_LMPC =  2* 1 * np.array([ 5 * 0.5 * 10.0, 8 * 20.0]) # Input rate cost u
             aConstr = np.array([0.7, 2.5]) # aConstr = [amin, amax]
             steeringDelay = 0
+            idDelay       = 0
+        elif mode == "NewTuning":
+            Qslack  =  2 * 5 * np.diag([10, 0.1, 1, 0.1, 10, 1])          # Cost on the slack variable for the terminal constraint
+            Qlane   = 0.1 * 0.5 * 10 * np.array([50, 10]) # Quadratic slack lane cost
+            Q_LMPC  =  0 * np.diag([0.0, 0.0, 10.0, 0.0, 0.0, 0.0])  # State cost x = [vx, vy, wz, epsi, s, ey]
+            R_LMPC  =  0 * np.diag([1.0, 1.0])                      # Input cost u = [delta, a]
+            dR_LMPC =  2* 1 * np.array([ 5 * 0.5 * 10.0, 8 * 20.0]) # Input rate cost u
+            aConstr = np.array([0.7, 2.5]) # aConstr = [amin, amax]
+            steeringDelay = 1
             idDelay       = 0
         else:
             Qslack  = 0.1 * 5 * np.diag([10, 0.1, 1, 0.1, 10, 1])          # Cost on the slack variable for the terminal constraint

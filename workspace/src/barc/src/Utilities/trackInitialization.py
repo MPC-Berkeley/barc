@@ -60,7 +60,7 @@ class Map():
         elif selectedTrack == "L_shape":
             self.halfWidth = 0.4 
             self.slack     = 0.45
-            lengthCurve = 3.0
+            lengthCurve = 4.5
             spec = np.array([[1.0, 0],
                              [lengthCurve, lengthCurve / np.pi],
                              # Note s = 1 * np.pi / 2 and r = -1 ---> Angle spanned = np.pi / 2

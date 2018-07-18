@@ -81,12 +81,12 @@ def main():
     print "Do you wanna create xy gif? [Lap #/n]"
     inputKeyBoard = raw_input()
     if inputKeyBoard != "n":
-        saveGif_xyResults(map, LMPCOpenLoopData, LMPController, inputKeyBoard)
+        saveGif_xyResults(map, LMPCOpenLoopData, LMPController, int(inputKeyBoard))
 
     print "Do you wanna create state gif? [Lap #/n]"
     inputKeyBoard = raw_input()
     if inputKeyBoard != "n":
-        Save_statesAnimation(map, LMPCOpenLoopData, LMPController, inputKeyBoard)
+        Save_statesAnimation(map, LMPCOpenLoopData, LMPController, int(inputKeyBoard))
     # pdb.set_trace()
     # animation_states(map, LMPCOpenLoopData, LMPController, 10)
 
@@ -660,15 +660,16 @@ def saveGif_xyResults(map, LMPCOpenLoopData, LMPController, it):
     SS = LMPController.SS
     uSS = LMPController.uSS
 
-    Points = np.floor(10 * (map.PointAndTangent[-1, 3] + map.PointAndTangent[-1, 4]))
+    Points = int(np.floor(10 * (map.PointAndTangent[-1, 3] + map.PointAndTangent[-1, 4])))
     Points1 = np.zeros((Points, 2))
     Points2 = np.zeros((Points, 2))
     Points0 = np.zeros((Points, 2))
-    for i in range(0, int(Points)):
+    for i in range(0, Points):
         Points1[i, :] = map.getGlobalPosition(i * 0.1, map.halfWidth)
         Points2[i, :] = map.getGlobalPosition(i * 0.1, -map.halfWidth)
         Points0[i, :] = map.getGlobalPosition(i * 0.1, 0)
 
+    pdb.set_trace()
     fig = plt.figure()
     # plt.ylim((-5, 1.5))
     fig.set_tight_layout(True)
@@ -779,7 +780,7 @@ def Save_statesAnimation(map, LMPCOpenLoopData, LMPController, it):
     plt.ylabel("ey")
     plt.xlabel("s")
 
-    Points = np.floor(10 * (map.PointAndTangent[-1, 3] + map.PointAndTangent[-1, 4]))
+    Points = int(np.floor(10 * (map.PointAndTangent[-1, 3] + map.PointAndTangent[-1, 4])))
     Points1 = np.zeros((Points, 2))
     Points2 = np.zeros((Points, 2))
     Points0 = np.zeros((Points, 2))
