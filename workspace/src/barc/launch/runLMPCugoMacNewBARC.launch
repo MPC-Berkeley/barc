@@ -22,17 +22,17 @@
     <param name="feature_flag" type="bool" value="false" />
 
     <!-- Track parameters -->
-    <param name="trackShape" type="str" value="3110" />
+    <param name="trackShape" type="str" value="oval" />
 
     <!-- Machines -->
     <machine name="odroid" address="192.168.10.101" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid_ugo.sh"/>
 
     <!-- <machine name="this-pc" address="10.0.0.72" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc.sh"/> -->
-    <machine name="this-pc" address="192.168.10.157" user="ugo" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc.sh"/>
+    <machine name="this-pc" address="192.168.10.157" user="ugo" timeout="20.0" env-loader="/home/ugo/GitHub/barc/env_loader_pc.sh"/>
     
     <!-- START NODES -->
     <!-- LOW LEVEL CONTROLLER -->
-    <node machine="odroid" pkg="barc" type="controllerLowLevel.py" name="low_level_controller" >
+    <node machine="odroid" pkg="barc" type="controllerLowLevelNew.py" name="low_level_controller" >
         <param name="car" type="str" value="NewBARC" />
     </node>
 
@@ -44,7 +44,7 @@
         <!-- ekf properties -->
          <param name="thReset" type="double" value="0.1" />
          <param name="vSwitch" type="double" value="5.5" />
-         <param name="psiSwitch" type="double" value="1.1" />
+         <param name="psiSwitch" type="double" value="0.5" />
 
          <param name="Qx_hs" type="double" value="0.01" />
          <param name="Qx_ls" type="double" value="0.01" />
@@ -52,11 +52,11 @@
          <param name="Qy_hs" type="double" value="0.01" />
          <param name="Qy_ls" type="double" value="0.01" />
 
-         <param name="Qvx_hs" type="double" value="5.0" />
-         <param name="Qvx_ls" type="double" value="5.0" />
+         <param name="Qvx_hs" type="double" value="50.0" />
+         <param name="Qvx_ls" type="double" value="50.0" />
 
-         <param name="Qvy_hs" type="double" value="5.0" />
-         <param name="Qvy_ls" type="double" value="5.0" />
+         <param name="Qvy_hs" type="double" value="50.0" />
+         <param name="Qvy_ls" type="double" value="50.0" />
 
          <param name="Qax_hs" type="double" value="100.0" />
          <param name="Qax_ls" type="double" value="100.0" />
@@ -76,20 +76,20 @@
          <param name="Ry_hs" type="double" value="1.0" />
          <param name="Ry_ls" type="double" value="1.0" />
 
-         <param name="Rvx_hs" type="double" value="0.01" />
-         <param name="Rvx_ls" type="double" value="0.01" />
+         <param name="Rvx_hs" type="double" value="100.01" />
+         <param name="Rvx_ls" type="double" value="100.01" />
 
-         <param name="Rax_hs" type="double" value="10.0" />
-         <param name="Rax_ls" type="double" value="10.0" />
+         <param name="Rax_hs" type="double" value="1.0" />
+         <param name="Rax_ls" type="double" value="1.0" />
 
          <param name="Ray_hs" type="double" value="1.0" />
-         <param name="Ray_ls" type="double" value="10.0" />
+         <param name="Ray_ls" type="double" value="1.0" />
 
          <param name="RpsiDot_hs" type="double" value="0.1" />
          <param name="RpsiDot_ls" type="double" value="0.1" />
 
-         <param name="Rvy_hs" type="double" value="0.01" />
-         <param name="Rvy_ls" type="double" value="0.01" />
+         <param name="Rvy_hs" type="double" value="100.01" />
+         <param name="Rvy_ls" type="double" value="100.01" />
     </node>
 
     <!-- LMPC CONTROL -->
