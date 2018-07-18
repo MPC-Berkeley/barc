@@ -86,7 +86,7 @@ def plotTrajectory(map, ClosedLoop):
     x_glob = ClosedLoop.x_glob
     u = ClosedLoop.u
     
-    Points = np.floor(10 * (map.PointAndTangent[-1, 3] + map.PointAndTangent[-1, 4]))
+    Points = int(np.floor(10 * (map.PointAndTangent[-1, 3] + map.PointAndTangent[-1, 4])))
     Points1 = np.zeros((int(Points), 2))
     Points2 = np.zeros((int(Points), 2))
     Points0 = np.zeros((int(Points), 2))
@@ -136,7 +136,7 @@ def plotClosedLoopLMPC(LMPController, map):
 
     TotNumberIt = LMPController.it
     print "Number iterations: ", TotNumberIt
-    Points = np.floor(10 * (map.PointAndTangent[-1, 3] + map.PointAndTangent[-1, 4]))
+    Points = int(np.floor(10 * (map.PointAndTangent[-1, 3] + map.PointAndTangent[-1, 4])))
     Points1 = np.zeros((int(Points), 2))
     Points2 = np.zeros((int(Points), 2))
     Points0 = np.zeros((int(Points), 2))
@@ -196,7 +196,7 @@ def animation_xy(map, LMPCOpenLoopData, LMPController, it):
     SS = LMPController.SS
     uSS = LMPController.uSS
 
-    Points = np.floor(10 * (map.PointAndTangent[-1, 3] + map.PointAndTangent[-1, 4]))
+    Points = int(np.floor(10 * (map.PointAndTangent[-1, 3] + map.PointAndTangent[-1, 4])))
     Points1 = np.zeros((Points, 2))
     Points2 = np.zeros((Points, 2))
     Points0 = np.zeros((Points, 2))
