@@ -18,124 +18,137 @@ from barc.msg import pos_info, ECU, prediction, SafeSetGlob
 
 
 def input_thread(a_list):
-	input = raw_input()
-	a_list.append(input)
+    input = raw_input()
+    a_list.append(input)
 
 def main():
-	rospy.init_node("steeringMap")
+    rospy.init_node("steeringMap")
 
-	input_commands = rospy.Publisher('ecu_pwm', ECU, queue_size = 1)
+    input_commands = rospy.Publisher('ecu_pwm', ECU, queue_size = 1)
+    t0 = rospy.get_rostime().to_sec()
 
+    imu = ImuClass(t0)
+    enc = EncClass(t0)
+    cmd = ECU()
 
-	t0 = rospy.get_rostime().to_sec()
-	imu = ImuClass(t0)
-	enc = EncClass(t0)
-	cmd = ECU()
+    fbk_srv = fbServoClass()
 
-	loop_rate = 100
-	rate = rospy.Rate(loop_rate)
+    loop_rate = 100
+    rate = rospy.Rate(loop_rate)
 
-	steering_his = []
-	PWMsteering_his = []
-	vx_his = []
-
-	while True!=False:
-		okFlag = False
-		vx_his = []
-
-		while okFlag==False:
-			print "Enter PWM for Steering"
-			PWM_Steering = raw_input()
-			print "Enter PWM for Acceleration"
-			PWM_Input = raw_input()
-			print "Steering you selected", PWM_Steering, ". Acceleration you selected", PWM_Input, ". Now enter ok to continue the test or q to exit"
-			confirmInput = raw_input()
-			okFlag = confirmInput == "ok"
-			if confirmInput == "q":
-				# Save Data
-				file_data = open(sys.path[0]+'/../data/sensorTesting/steeringMap_BARC'+'.obj', 'wb')
-				pickle.dump(PWMsteering_his, file_data)
-				pickle.dump(steering_his, file_data)
-				file_data.close()
-	
-		a_list = [0]
-		thread.start_new_thread(input_thread, (a_list,))
-		while a_list[-1] != "s":
-			cmd.servo = float(PWM_Steering)
-			cmd.motor = float(PWM_Input)
-			input_commands.publish(cmd)
-			vx_his.append(enc.v_meas)
-
-			if enc.v_meas>0.9:
-				steering = np.arctan(imu.psiDot*(0.25)/enc.v_meas)
-				steering_his.append(steering)
-				PWMsteering_his.append(PWM_Steering)
-
-			rate.sleep()
-
-		cmd.servo = 90.0
-		cmd.motor = 90.0
-		input_commands.publish(cmd)
-
-		if steering_his != []:
-			# Plotting
-			plt.figure(1)
-			plt.plot(vx_his, '-o')
-			plt.legend()
-			plt.ylabel('vx_his')
-
-			ax = plt.figure(2)
-			plt.plot(PWMsteering_his, steering_his, 'o')
-			plt.legend()
-			plt.ylabel('steering')
-			plt.xlabel('PWM')
-			plt.xlim((-150, 150))
-
-			# Compute Values
-			A = np.ones((len(steering_his),2))
-			y = np.zeros(len(PWMsteering_his))
-
-			Elements_pos = len([1 for i in steering_his if i >= 0])
-			A_pos = np.ones((Elements_pos,2))
-			y_pos = np.zeros(Elements_pos)
-
-			Elements_neg = len([1 for i in steering_his if i <= 0])
-			A_neg = np.ones((Elements_neg,2))
-			y_neg = np.zeros(Elements_neg)
-
-			counter_pos = 0
-			counter_neg = 0
-			for i in range(0, len(PWMsteering_his)):
-				A[i,0] = PWMsteering_his[i]
-				y[i]   = steering_his[i]
-				
-				if steering_his[i] >= 0:
-					A_pos[counter_pos,0] = PWMsteering_his[i]
-					y_pos[counter_pos]   = steering_his[i]
-					counter_pos = counter_pos + 1
-
-				if steering_his[i] <= 0:
-					A_neg[counter_neg,0] = PWMsteering_his[i]
-					y_neg[counter_neg]   = steering_his[i]
-					counter_neg = counter_neg + 1
-
-			m, c = np.linalg.lstsq(A, y)[0]
-			print "The fitted m is ", m, " and the fitted c is ", c
-
-			plt.plot(PWMsteering_his, [m*float(a)+c for a in PWMsteering_his], '-r*')
-
-			if Elements_pos>0:
-				m_pos, c_pos = np.linalg.lstsq(A_pos, y_pos)[0]
-				print "The positive fitted m is ", m_pos, " and the fitted c is ", c_pos
-				plt.plot(PWMsteering_his, [m_pos*float(a)+c_pos for a in PWMsteering_his], '-bs')
-
-			if Elements_neg>0:
-				m_neg, c_neg = np.linalg.lstsq(A_neg, y_neg)[0]
-				print "The negative fitted m is ", m_neg, " and the fitted c is ", c_neg
-				plt.plot(PWMsteering_his, [m_neg*float(a)+c_neg for a in PWMsteering_his], '-ko')
+    steering_his = []
+    PWMsteering_his = []
+    vx_his = []
+    fbk_srv_his = []
 
 
-			plt.show()	
+    while True!=False:
+        okFlag = False
+        vx_his = []
+
+        while okFlag==False:
+            print "Enter PWM for Steering"
+            PWM_Steering = raw_input()
+            print "Enter PWM for Acceleration"
+            PWM_Input = raw_input()
+            print "Steering you selected", PWM_Steering, ". Acceleration you selected", PWM_Input, ". Now enter ok to continue the test or q to exit"
+            confirmInput = raw_input()
+            okFlag = confirmInput == "ok"
+            if confirmInput == "q":
+                # Save Data
+                file_data = open(sys.path[0]+'/../data/sensorTesting/steeringMap_BARC'+'.obj', 'wb')
+                pickle.dump(PWMsteering_his, file_data)
+                pickle.dump(steering_his, file_data)
+                pickle.dump(fbk_srv_his, file_data)
+                file_data.close()
+    
+        a_list = [0]
+        thread.start_new_thread(input_thread, (a_list,))
+        timeCounter = 0
+        while a_list[-1] != "s":
+            cmd.servo = float(PWM_Steering)
+            cmd.motor = float(PWM_Input)
+            input_commands.publish(cmd)
+            vx_his.append(enc.v_meas)
+
+            if enc.v_meas>0.9:
+                steering = np.arctan(imu.psiDot*(0.25)/enc.v_meas)
+                steering_his.append(steering)
+                PWMsteering_his.append(PWM_Steering)
+                fbk_srv_his.append(fbk_srv.value)
+
+            rate.sleep()
+
+        cmd.servo = 90.0
+        cmd.motor = 90.0
+        input_commands.publish(cmd)
+
+        if steering_his != []:
+            # Plotting
+            plt.figure(1)
+            plt.plot(vx_his, '-o')
+            plt.legend()
+            plt.ylabel('vx_his')
+
+            ax = plt.figure(2)
+            plt.plot(PWMsteering_his, steering_his, 'o')
+            plt.legend()
+            plt.ylabel('steering')
+            plt.xlabel('PWM')
+            plt.xlim((50, 150))
+
+            ax = plt.figure(2)
+            plt.plot(fbk_srv_his, steering_his, 'o')
+            plt.legend()
+            plt.ylabel('steering')
+            plt.xlabel('Servo Output')
+            plt.xlim((50, 150))
+
+            # Compute Values
+            A = np.ones((len(steering_his),2))
+            y = np.zeros(len(PWMsteering_his))
+
+            Elements_pos = len([1 for i in steering_his if i >= 0])
+            A_pos = np.ones((Elements_pos,2))
+            y_pos = np.zeros(Elements_pos)
+
+            Elements_neg = len([1 for i in steering_his if i <= 0])
+            A_neg = np.ones((Elements_neg,2))
+            y_neg = np.zeros(Elements_neg)
+
+            counter_pos = 0
+            counter_neg = 0
+            for i in range(0, len(PWMsteering_his)):
+                A[i,0] = PWMsteering_his[i]
+                y[i]   = steering_his[i]
+                
+                if steering_his[i] >= 0:
+                    A_pos[counter_pos,0] = PWMsteering_his[i]
+                    y_pos[counter_pos]   = steering_his[i]
+                    counter_pos = counter_pos + 1
+
+                if steering_his[i] <= 0:
+                    A_neg[counter_neg,0] = PWMsteering_his[i]
+                    y_neg[counter_neg]   = steering_his[i]
+                    counter_neg = counter_neg + 1
+
+            m, c = np.linalg.lstsq(A, y)[0]
+            print "The fitted m is ", m, " and the fitted c is ", c
+
+            plt.plot(PWMsteering_his, [m*float(a)+c for a in PWMsteering_his], '-r*')
+
+            if Elements_pos>0:
+                m_pos, c_pos = np.linalg.lstsq(A_pos, y_pos)[0]
+                print "The positive fitted m is ", m_pos, " and the fitted c is ", c_pos
+                plt.plot(PWMsteering_his, [m_pos*float(a)+c_pos for a in PWMsteering_his], '-bs')
+
+            if Elements_neg>0:
+                m_neg, c_neg = np.linalg.lstsq(A_neg, y_neg)[0]
+                print "The negative fitted m is ", m_neg, " and the fitted c is ", c_neg
+                plt.plot(PWMsteering_his, [m_neg*float(a)+c_neg for a in PWMsteering_his], '-ko')
+
+
+            plt.show()    
 
 
 
@@ -143,6 +156,57 @@ def main():
 # ================================================================================================================== #
 # ================================================================================================================== #
 # ================================================================================================================== #
+def fbk_servo2angle(fbk_servo):
+    value = 0.0
+    if fbk_servo <=  262.855764711 :
+        value = (float(fbk_servo) +  -325.701609958 ) /  200.146003972
+    elif fbk_servo >=  262.77571644  and fbk_servo <=  276.316745277 :
+        value = (float(fbk_servo) +  -323.71034621 ) /  194.059330479
+    elif fbk_servo >=  277.146919121  and fbk_servo <=  286.84972625 :
+        value = (float(fbk_servo) +  -322.426685723 ) /  185.403957881
+    elif fbk_servo >=  285.978054091  and fbk_servo <=  298.381242153 :
+        value = (float(fbk_servo) +  -324.959502285 ) /  203.14593732
+    elif fbk_servo >=  298.982314807  and fbk_servo <=  307.363898115 :
+        value = (float(fbk_servo) +  -330.413252214 ) /  240.23646426
+    elif fbk_servo >=  307.42318524  and fbk_servo <=  321.275461559 :
+        value = (float(fbk_servo) +  -329.191048027 ) /  226.879866922
+    elif fbk_servo >=  321.181409436  and fbk_servo <=  325.220355282 :
+        value = (float(fbk_servo) +  -329.259301128 ) /  231.531927481
+    elif fbk_servo >=  325.514791039  and fbk_servo <=  329.236912923 :
+        value = (float(fbk_servo) +  -329.236912923 ) /  213.370044281
+    elif fbk_servo >=  329.748964883  and fbk_servo <=  344.203827941 :
+        value = (float(fbk_servo) +  -329.748964883 ) /  236.749349448
+    elif fbk_servo >=  344.1983397  and fbk_servo <=  350.412110906 :
+        value = (float(fbk_servo) +  -329.699540221 ) /  237.46896326
+    elif fbk_servo >=  350.445546932  and fbk_servo <=  356.912318647 :
+        value = (float(fbk_servo) +  -328.889641217 ) /  247.137772538
+    elif fbk_servo >=  355.26962867  and fbk_servo <=  368.204209132 :
+        value = (float(fbk_servo) +  -321.63971947 ) /  296.589106128
+    elif fbk_servo >=  367.549320682  and fbk_servo <=  377.272666065 :
+        value = (float(fbk_servo) +  -323.794266458 ) /  278.694612891
+    elif fbk_servo >=  377.798822582  and fbk_servo <=  386.633382013 :
+        value = (float(fbk_servo) +  -329.208745715 ) /  253.219856284
+    elif fbk_servo >=  386.632540987 :
+        value = (float(fbk_servo) +  -328.733535618 ) /  255.311635631
+
+    return value
+
+class fbServoClass(object):
+    def __init__(self):
+        rospy.Subscriber('srv_fbk', ECU, self.srv_fbk_callback, queue_size=1)
+
+        # ENC measurement
+        self.recorded = [0.0]*int(10)
+        self.value = 0.0
+
+    def srv_fbk_callback(self,data):
+        """Unpack message from sensor, ENC"""
+        self.recorded.pop(0)
+        self.recorded.append(data.servo)
+        self.value = np.sum(self.recorded)/len(self.recorded)
+
+
+
 class EncClass(object):
     """ Object collecting ENC measurement data
     Attributes:

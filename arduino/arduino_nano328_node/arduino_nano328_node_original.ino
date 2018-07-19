@@ -28,8 +28,6 @@ WARNING:
 #include <EnableInterrupt.h>
 #include <std_msgs/Int32.h>
 #include <std_msgs/Float32.h>
-#include <std_msgs/Float64.h>
-// #include <stdio.h>
 
 /**************************************************************************
 CAR CLASS DEFINITION (would like to refactor into car.cpp and car.h but can't figure out arduino build process so far)
@@ -79,7 +77,7 @@ class Car {
     const int THROTTLE_PIN = 7;
     const int STEERING_PIN = 8;
     const int MOTOR_PIN = 10;
-    const int SERVO_PIN = 11;
+    const int SERVO_PIN= 11;
 
     // Car properties
     // unclear what this is for
@@ -106,7 +104,7 @@ class Car {
 
     // Interfaces to motor and steering actuators
     Servo motor;
-	  Servo steering;
+	Servo steering;
 
     // Utility variables to handle RC and encoder inputs
     volatile uint8_t updateFlagsShared;
@@ -202,21 +200,17 @@ volatile unsigned long dt;
 volatile unsigned long t0;
 volatile unsigned long ecu_t0;
 
-const int SRV_FBK_PIN = A1;
-
 // Global message variables
 // Encoder, RC Inputs, Electronic Control Unit, Ultrasound
 barc::ECU ecu;
 barc::Vel_est vel_est;
-barc::ECU srv_fbk;
-// std_msgs::Float32 srv_fbk;
+// std_msgs::Int32 servo_feedback;
 
 ros::NodeHandle nh;
 
 ros::Subscriber<barc::ECU> sub_ecu("ecu_pwm", ecuCallback);
-// ros::Publisher pub_srv_fbk("srv_fbk", &srv_fbk); 
+// ros::Publisher pub_servo_feedback("servo_feedback", &servo_feedback); 
 ros::Publisher pub_vel_est("vel_est", &vel_est);          // vel est publisher
-ros::Publisher pub_srv_fbk("srv_fbk", &srv_fbk);          // vel est publisher
 
 int min_degrees;
 int max_degrees;
@@ -252,9 +246,8 @@ void setup()
   nh.initNode();
 
   // Publish and subscribe to topics
-  // nh.advertise(pub_srv_fbk);
+  // nh.advertise(pub_servo_feedback);
   nh.advertise(pub_vel_est);
-  nh.advertise(pub_srv_fbk);
   nh.subscribe(sub_ecu);
 
   // calibrate(car.steering, car.FEEDBACK_PIN, 80, 120);
@@ -298,12 +291,9 @@ void loop() {
     vel_est.vel_br = car.vel_BR;
     vel_est.header.stamp = nh.now();
     pub_vel_est.publish(&vel_est);       
-	   
-    srv_fbk.servo = analogRead(SRV_FBK_PIN);
-    // printf("Here!\n");
-    // printf("%f\n", analogRead(SRV_FBK_PIN));
-  	// srv_fbk.data = analogRead(SRV_FBK_PIN);
-    pub_srv_fbk.publish(&srv_fbk);
+	
+	// servo_feedback.data = analogRead(car.FEEDBACK_PIN);
+    // pub_servo_feedback.publish(&servo_feedback);
   }
 
   nh.spinOnce();
@@ -358,7 +348,6 @@ void Car::initRCInput() {
 void Car::initActuators() {
   motor.attach(MOTOR_PIN);
   steering.attach(SERVO_PIN);
-  pinMode(SRV_FBK_PIN, INPUT);
 }
 
 void Car::armActuators() {
