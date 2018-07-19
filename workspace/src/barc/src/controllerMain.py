@@ -152,6 +152,34 @@ def main():
 
             # == Start: Computing Input
             if LapNumber < PathFollowingLaps :        # First path following lap
+                # if TimeCounter < 50:
+                #     print "-0.05"
+                #     cmd.servo = -0.05
+                #     cmd.motor = 0.0
+                # elif TimeCounter < 150:
+                #     print "-0.15"
+                #     cmd.servo = -0.15
+                #     cmd.motor = 0.0
+                # elif TimeCounter < 250:
+                #     print "-0.25"
+                #     cmd.servo = -0.25
+                #     cmd.motor = 0.0
+                # elif TimeCounter < 350:
+                #     print "i0.05"
+                #     cmd.servo = 0.05
+                #     cmd.motor = 0.0
+                # elif TimeCounter < 450:
+                #     print "i0.15"
+                #     cmd.servo = 0.15
+                #     cmd.motor = 0.0
+                # elif TimeCounter < 550:
+                #     print "i0.25"
+                #     cmd.servo = 0.25
+                #     cmd.motor = 0.0
+                # else:
+                #     cmd.servo = 0.0
+                #     cmd.motor = 0.0
+                                            
                 ControllerLap0.solve(LocalState)
                 cmd.servo = ControllerLap0.uPred[0,0]
                 cmd.motor = ControllerLap0.uPred[0,1]
@@ -163,6 +191,7 @@ def main():
                 input_commands.publish(cmd)
 
             elif PickController == "PID":
+                    
                 Controller.solve(LocalState)
                 cmd.servo = Controller.uPred[0,0]
                 cmd.motor = Controller.uPred[0,1]
@@ -242,12 +271,12 @@ def main():
                 ClosedLoopData.addMeasurement(GlobalState, LocalState, uApplied, 
                                               Controller.solverTime.total_seconds(), 
                                               Controller.linearizationTime.total_seconds() + oneStepPredictionTime.total_seconds(),
-                                              deltaTimer.total_seconds())
+                                              deltaTimer.total_seconds(), estimatorData.CurrentAppliedSteeringInput)
             elif LapNumber >= 1:
                 ClosedLoopData.addMeasurement(GlobalState, LocalState, uApplied, 
                                               Controller.solverTime.total_seconds(), 
                                               Controller.linearizationTime.total_seconds() + oneStepPredictionTime.total_seconds(),
-                                              deltaTimer.total_seconds())
+                                              deltaTimer.total_seconds(), estimatorData.CurrentAppliedSteeringInput)
             # Add data to SS and Record Prediction                    
 
             if (PickController == "LMPC") and (LapNumber >= PathFollowingLaps):
@@ -364,7 +393,7 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
         numSS_Points = 42 + N         # Number of points to select from each trajectory to build the safe set
         shift = N / 2                     # Given the closed point, x_t^j, to the x(t) select the SS points from x_{t+shift}^j
         # Tuning Parameters
-        # mode = "NewTuning"
+        mode = "NewTuning"
         if mode == "simulations":
             Qslack  =  2 * 5 * np.diag([10, 0.1, 1, 0.1, 10, 1])          # Cost on the slack variable for the terminal constraint
             Qlane   = 0.1 * 0.5 * 10 * np.array([50, 10]) # Quadratic slack lane cost
@@ -379,9 +408,9 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
             Qlane   = 0.1 * 0.5 * 10 * np.array([50, 10]) # Quadratic slack lane cost
             Q_LMPC  =  0 * np.diag([0.0, 0.0, 10.0, 0.0, 0.0, 0.0])  # State cost x = [vx, vy, wz, epsi, s, ey]
             R_LMPC  =  0 * np.diag([1.0, 1.0])                      # Input cost u = [delta, a]
-            dR_LMPC =  2* 1 * np.array([ 5 * 0.5 * 10.0, 8 * 20.0]) # Input rate cost u
-            aConstr = np.array([0.7, 2.5]) # aConstr = [amin, amax]
-            steeringDelay = 1
+            dR_LMPC =  2* 1 * np.array([ 5 * 0.5 * 10.0, 0.3 * 8 * 20.0]) # Input rate cost u
+            aConstr = np.array([0.7, 2.0]) # aConstr = [amin, amax]
+            steeringDelay = 0
             idDelay       = 0
         else:
             Qslack  = 0.1 * 5 * np.diag([10, 0.1, 1, 0.1, 10, 1])          # Cost on the slack variable for the terminal constraint
@@ -390,7 +419,7 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
             R_LMPC  =  0 * np.diag([1.0, 1.0])                      # Input cost u = [delta, a]
             dR_LMPC =  1 * np.array([ 2 * 5 * 0.5 * 10.0, 2 * 8 * 20.0])                     # Input rate cost u
             aConstr = np.array([0.7, 2.0]) # aConstr = [amin, amax]
-            steeringDelay = 1
+            steeringDelay = 0
             idDelay       = 0            
         Controller = ControllerLMPC(numSS_Points, numSS_it, N, Qslack, Qlane, Q_LMPC, R_LMPC, dR_LMPC, 6, 2, shift, 
                                         dt, map, Laps, TimeLMPC, LMPC_Solver, SysID_Solver, flag_LTV, steeringDelay, idDelay, aConstr)

@@ -108,10 +108,10 @@ plt.show()
 
 # Now fit servo output
 ax = plt.figure(3)
-plt.plot(PWMsteering_his, steering_his, 'o')
+plt.plot(fbk_servo, steering_his, 'o')
 plt.legend()
 plt.ylabel('steering')
-plt.xlabel('PWM')
+plt.xlabel('Servo Output Steering')
 plt.xlim((min(fbk_servo), max(fbk_servo)))
 
 mi, ci = fit(min(fbk_servo), max(fbk_servo), fbk_servo, steering_his)

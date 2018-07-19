@@ -11,8 +11,10 @@
     <arg name="orientation_covariance_diagonal" default="[0.01745, 0.01745, 0.15708]" doc="Diagonal elements of the orientation covariance matrix"/>
 
     <!-- Machines -->
-    <machine name="odroid" address="192.168.10.101" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid_ugo.sh"/>
-    <machine name="this-pc" address="192.168.10.157" user="ugo" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc.sh"/>
+    <!-- <machine name="odroid" address="192.168.10.101" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid_ugo.sh"/> -->
+    <!-- <machine name="this-pc" address="192.168.10.157" user="ugo" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc.sh"/> -->
+    <machine name="odroid" address="192.168.10.101" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid.sh"/>
+    <machine name="this-pc" address="192.168.10.147" user="mpcubuntu" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc.sh"/>
 
     <!-- VISUALIZATION -->
     <node machine="this-pc" pkg="barc" type="steeringMap.py" name="IMUplot" output="screen" >

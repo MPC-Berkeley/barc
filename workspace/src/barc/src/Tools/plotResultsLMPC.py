@@ -54,12 +54,14 @@ def main():
     # LapToPlotLearningProcess = [1]
     plotClosedLoopLMPC(LMPController, map, LapToPlotLearningProcess)
 
+    plt.show()
     # Plot Best Laps
     LapToPlot      = range(0, LMPController.it)
     BestNunberLaps = 4
     SortedTimes    = np.sort(LMPController.LapCounter[1:LMPController.it])
     LapToPlot      = np.argsort(LMPController.LapCounter[1:LMPController.it])[0:BestNunberLaps]
     LapToPlot = range(15,19)
+    LapToPlot = range(24,28)
     print SortedTimes
     print "Lap Plotted: ", LapToPlot, " Lap Time: ", LMPController.LapCounter[LapToPlot]
     plotClosedLoopColorLMPC(LMPController, map, LapToPlot)
@@ -474,6 +476,15 @@ def plotClosedLoopLMPC(LMPController, map, LapToPlot):
         counter += 1
     plt.ylabel('Acc [m/s^2]')
     plt.xlabel('s [m]')
+
+    plt.figure()
+    counter = 0
+    for i in LapToPlot:
+        plt.plot(SS[0:LapCounter[i]-1, 4, i], uSS[0:LapCounter[i] - 1, 0, i], '-o', color=plotColors[counter], label="commanded Steering")
+        plt.plot(SS[0:LapCounter[i]-1, 4, i], LMPController.measSteering[0:LapCounter[i] - 1, 0, i], '--*', color=plotColors[counter], label="meausred Steering")
+        counter += 1
+    plt.legend()
+    plt.ylabel('Steering [rad]')
 
 
 def animation_xy(map, LMPCOpenLoopData, LMPController, it):

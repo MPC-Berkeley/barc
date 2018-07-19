@@ -23,8 +23,8 @@
 
     <!-- Track parameters -->
     <!-- <param name="trackShape" type="str" value="oval" /> -->
-    <!-- <param name="trackShape" type="str" value="3110_big" /> -->
-    <param name="trackShape" type="str" value="L_shape" />
+    <param name="trackShape" type="str" value="3110_big" />
+    <!-- <param name="trackShape" type="str" value="L_shape" /> -->
 
     <!-- Machines -->
     <machine name="odroid" address="192.168.10.101" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid.sh"/>
@@ -34,19 +34,19 @@
     
     <!-- START NODES -->
     <!-- LOW LEVEL CONTROLLER -->
-    <node machine="odroid" pkg="barc" type="controllerLowLevelNew.py" name="low_level_controller" >
+    <node machine="odroid" pkg="barc" type="controllerLowLevel.py" name="low_level_controller" >
         <param name="car" type="str" value="NewBARC" />
     </node>
 
     <!-- Estimator -->
-    <node machine="odroid" pkg="barc" type="stateEstimatorPsiInput.py" name="state_estimator" output="screen">
+    <node machine="odroid" pkg="barc" type="stateEstimator.py" name="state_estimator" output="screen">
     <!-- delay in state estuiamtor -->
         <param name="delay_df" type="double" value="0.0" />
         <param name="delay_a" type="double" value="0.0" />
         <!-- ekf properties -->
          <param name="thReset" type="double" value="0.1" />
          <param name="vSwitch" type="double" value="5.5" />
-         <param name="psiSwitch" type="double" value="0.05" />
+         <param name="psiSwitch" type="double" value="0.5" />
 
          <param name="Qx_hs" type="double" value="0.01" />
          <param name="Qx_ls" type="double" value="0.01" />

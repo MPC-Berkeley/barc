@@ -71,7 +71,7 @@ def main():
             input_commands.publish(cmd)
             vx_his.append(enc.v_meas)
 
-            if enc.v_meas>0.9:
+            if enc.v_meas>1.1:
                 steering = np.arctan(imu.psiDot*(0.25)/enc.v_meas)
                 steering_his.append(steering)
                 PWMsteering_his.append(PWM_Steering)
@@ -91,18 +91,20 @@ def main():
             plt.ylabel('vx_his')
 
             ax = plt.figure(2)
+            plt.plot(fbk_srv_his, steering_his, 'o')
+            plt.legend()
+            plt.ylabel('steering')
+            plt.xlabel('Servo Output')
+
+            ax = plt.figure(3)
             plt.plot(PWMsteering_his, steering_his, 'o')
             plt.legend()
             plt.ylabel('steering')
             plt.xlabel('PWM')
             plt.xlim((50, 150))
 
-            ax = plt.figure(2)
-            plt.plot(fbk_srv_his, steering_his, 'o')
-            plt.legend()
-            plt.ylabel('steering')
-            plt.xlabel('Servo Output')
-            plt.xlim((50, 150))
+            # plt.xlim((50, 150))
+            # pdb.set_trace()
 
             # Compute Values
             A = np.ones((len(steering_his),2))
