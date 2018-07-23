@@ -95,11 +95,11 @@ for i in range(0, len(PWM_interval_float)-1):
 
 for i in range(0, len(PWM_interval_float)-1):
 	if i == 0:
-		print "if msg.servo <= ", y[i][1],":"
+		print "if msg.servo >= ", y[i][1],":"
 	elif i != len(PWM_interval_float)-2:
-		print "elif msg.servo >= ", y[i][0], " and msg.servo <= ", y[i][1],":"
+		print "elif msg.servo <= ", y[i][0], " and msg.servo >= ", y[i][1],":"
 	else:
-		print "elif msg.servo >= ", y[i][0], ":"
+		print "elif msg.servo <= ", y[i][0], ":"
 	
 	print "\tself.servo_pwm = (float(msg.servo) + ", -c[i], ") / ", m[i]
 

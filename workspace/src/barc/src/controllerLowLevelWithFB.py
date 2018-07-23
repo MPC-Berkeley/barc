@@ -22,6 +22,7 @@ from rospy import init_node, Subscriber, Publisher, get_param, get_rostime
 from rospy import Rate, is_shutdown, ROSInterruptException, spin, on_shutdown
 from barc.msg import ECU
 import rospy
+import numpy as np
 
 class low_level_control(object):
     motor_pwm = 90
@@ -31,8 +32,22 @@ class low_level_control(object):
     ecu_pub = 0
     ecu_cmd = ECU()
     sel_car = rospy.get_param("/low_level_controller/car")
+    recorded_servo = [0.0]*int(10)
+    fbk_servo = 0.0
+    commanded_steering = 0.0
+
+    def fbk_servo_callback(self,data ):
+        """Unpack message from sensor, ENC"""
+
+        self.recorded_servo.pop(0)
+        self.recorded_servo.append(data.servo)
+
+        self.value_servo = np.sum(self.recorded_servo)/len(self.recorded_servo)
+
+        self.fbk_servo = -0.0031283647115524587 * self.value_servo +  1.0745666280004817
 
     def pwm_converter_callback(self, msg):
+
         # translate from SI units in vehicle model
         # to pwm angle units (i.e. to send command signal to actuators)
         # convert desired steering angle to degrees, saturate based on input limits
@@ -44,6 +59,8 @@ class low_level_control(object):
         #     self.servo_pwm = 95.5 + 118.8*float(msg.servo)
         # elif msg.servo > 0.0:       # left curve
         #     self.servo_pwm = 90.8 + 78.9*float(msg.servo)
+        self.commanded_steering = msg.servo
+
         if self.sel_car == "OldBARC":
             if msg.servo <=  -0.289253621435 :
                 self.servo_pwm = (float(msg.servo) +  0.632099117661 ) /  0.00601483326712
@@ -150,6 +167,7 @@ class low_level_control(object):
             elif msg.servo <=  -0.267436556835 :
                 self.servo_pwm = (float(msg.servo) +  -0.494743806388 ) /  -0.0055633603155
 
+
             # if msg.servo >= 0:
             #     self.servo_pwm = (float(msg.servo) ) / 0.00822442841151 + 83.3
             # else:
@@ -197,6 +215,7 @@ def arduino_interface():
     llc = low_level_control()
 
     Subscriber('ecu', ECU, llc.pwm_converter_callback, queue_size = 1)
+    Subscriber('srv_fbk', ECU, llc.fbk_servo_callback, queue_size = 1)
     llc.ecu_pub = Publisher('ecu_pwm', ECU, queue_size = 1)
 
     # Set motor to neutral on shutdown
