@@ -175,7 +175,9 @@ class low_level_control(object):
             self.motor_pwm = 93.5 + 46.73*FxR
             # self.motor_pwm = 98.65 + 67.11*FxR
             #self.motor = 69.95 + 68.49*FxR
+            
         self.update_arduino()
+
     def neutralize(self):
         self.motor_pwm = 40             # slow down first
         self.servo_pwm = 90

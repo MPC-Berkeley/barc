@@ -76,6 +76,12 @@ def main():
     # For Simulations
     LapToPlot = [27,28,29] 
     LapToPlot.append(36); LapToPlot.append(37)    
+
+    # New Servo Oval Fast
+    LapToPlot = [23,21]
+
+    LapToPlot.append(36); LapToPlot.append(37)    
+
     print LapToPlot
 
     groupFlag = 1
@@ -220,8 +226,8 @@ def plotComputationalTime(LMPController, LapToPlot, map, groupFlag):
         plotColors = ['b','g','r','c','y','k','m']
         Label = LapToPlot
     else:
-        plotColors = ['b','b','b','r','r','k','m']
-        Label = ["LMPC", "LMPC", "LMPC", "New Controller", "New Controller"]
+        plotColors = ['b','b','r','r','k','m']
+        Label = ["LMPC", "LMPC", "New Controller", "New Controller"]
 
 
     plt.figure()
@@ -421,8 +427,8 @@ def plotClosedLoopLMPC(LMPController, map, LapToPlot, groupFlag):
         plotColors = ['b','g','r','c','y','k','m']
         Label = LapToPlot
     else:
-        plotColors = ['b','b','b','r','r','k','m']
-        Label = ["LMPC", "LMPC","LMPC","New Controller","New Controller"]
+        plotColors = ['b','b','r','r','k','m']
+        Label = ["LMPC", "LMPC","New Controller","New Controller"]
     
     counter = 0
     for i in LapToPlot:
