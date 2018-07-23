@@ -40,12 +40,12 @@ and
     <td>D8</td> 
   </tr>
   <tr>
-    <td>Electronic Speed Control (for 3-phase Motor)</td>
-    <td>D10</td> 
+    <td>Servo</td>
+    <td>D9</td> 
   </tr>
   <tr>
-    <td>Servo</td>
-    <td>D11</td> 
+    <td>Electronic Speed Control (for 3-phase Motor)</td>
+    <td>D10</td> 
   </tr>
   <tr>
     <td>Front Ultrasound</td>
