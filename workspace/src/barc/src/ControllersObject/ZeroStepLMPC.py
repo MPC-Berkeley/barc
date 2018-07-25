@@ -127,7 +127,7 @@ class ControllerZeroStepLMPC():
         # for jj in range(0, itLMPC-1):
         # for jj in range(10,20):
         for jj in range(18,28):
-        # for jj in range(0,5):        
+        # for jj in range(22,29):        
             SS_PointSelected, SS_glob_PointSelected, Qfun_Selected, uSS_PointSelected = _SelectPoints(self, jj, x0)
             SS_PointSelectedTot      =  np.append(SS_PointSelectedTot, SS_PointSelected, axis=1)
             uSS_PointSelectedTot     =  np.append(uSS_PointSelectedTot, uSS_PointSelected, axis=1)

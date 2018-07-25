@@ -22,8 +22,8 @@
     <param name="feature_flag" type="bool" value="false" />
 
     <!-- Track parameters -->
-    <!-- <param name="trackShape" type="str" value="oval" /> -->
-    <param name="trackShape" type="str" value="3110_big" />
+    <param name="trackShape" type="str" value="oval" />
+    <!-- <param name="trackShape" type="str" value="3110_big" /> -->
     <!-- <param name="trackShape" type="str" value="L_shape" /> -->
 
     <!-- Machines -->
@@ -34,7 +34,7 @@
     
     <!-- START NODES -->
     <!-- LOW LEVEL CONTROLLER -->
-    <node machine="odroid" pkg="barc" type="controllerLowLevel.py" name="low_level_controller" >
+    <node machine="odroid" pkg="barc" type="controllerLowLevelWithFB.py" name="low_level_controller" >
         <param name="car" type="str" value="NewBARC" />
     </node>
 

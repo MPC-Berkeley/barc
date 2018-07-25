@@ -55,6 +55,8 @@ def main():
     plotClosedLoopLMPC(LMPController, map, LapToPlotLearningProcess)
     plt.show()
     
+    LapToPlotLearningProcess = [10,15]
+
     plotMeasuredAndAppliedSteering(LMPController, map, LapToPlotLearningProcess)
     plt.show()
     # Plot Best Laps
@@ -63,7 +65,7 @@ def main():
     SortedTimes    = np.sort(LMPController.LapCounter[1:LMPController.it])
     LapToPlot      = np.argsort(LMPController.LapCounter[1:LMPController.it])[0:BestNunberLaps]
     LapToPlot = range(15,19)
-    LapToPlot = range(24,28)
+    LapToPlot = range(22,29)
     print SortedTimes
     print "Lap Plotted: ", LapToPlot, " Lap Time: ", LMPController.LapCounter[LapToPlot]
     plotClosedLoopColorLMPC(LMPController, map, LapToPlot)

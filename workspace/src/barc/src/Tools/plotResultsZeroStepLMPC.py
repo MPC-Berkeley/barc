@@ -78,10 +78,13 @@ def main():
     LapToPlot.append(36); LapToPlot.append(37)    
 
     # New Servo Oval Fast
-    LapToPlot = [23,21]
+    LapToPlot = [23,25]
+    LapToPlot.append(36); LapToPlot.append(35)    
 
-    LapToPlot.append(36); LapToPlot.append(37)    
-
+    # # New Servo New Map Oval LMPC 1
+    # LapToPlot = [19, 27]
+    # LapToPlot.append(50)    
+    # LapToPlot.append(52)
     print LapToPlot
 
     groupFlag = 1
