@@ -150,7 +150,7 @@ def main():
         estMsg.a_x      = est.ax_est
         estMsg.a_y      = est.ay_est
         estMsg.u_a      = ecu.a
-        estMsg.u_df     = -0.0031283647115524587 * fbk_srv.value +  1.0745666280004817
+        estMsg.u_df     = -0.003530958631043808 *fbk_srv.value +  1.0861319262672648 #-0.0031283647115524587 * fbk_srv.value +  1.0745666280004817
         est.state_pub_pos.publish(estMsg)
 
 

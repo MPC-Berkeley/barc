@@ -56,12 +56,12 @@ def main():
             print "Enter Acceleration 2"
             acc_Input_2 = raw_input()
 
-            print "Steering you selected", PWM_Steering, ". Acceleration you selected", PWM_Input, ". Now enter ok to continue the test or q to exit"
+            print "Now enter ok to continue the test or q to exit"
             confirmInput = raw_input()
             okFlag = confirmInput == "ok"
             if confirmInput == "q":
                 # Save Data
-                file_data = open(sys.path[0]+'/../data/sensorTesting/steeringMap_BARC'+'.obj', 'wb')
+                file_data = open(sys.path[0]+'/../data/sensorTesting/steeringDelay_BARC'+'.obj', 'wb')
                 pickle.dump(steering_his, file_data)
                 pickle.dump(steering_his, file_data)
                 pickle.dump(fbk_srv_his, file_data)
@@ -71,32 +71,33 @@ def main():
         thread.start_new_thread(input_thread, (a_list,))
         timeCounter = 0
         while a_list[-1] != "c":
-            cmd.servo = float(PWM_Steering_1)
-            cmd.motor = float(PWM_Input_1)
+            cmd.servo = float(rad_Steering_1)
+            cmd.motor = float(acc_Input_1)
             input_commands.publish(cmd)
             vx_his.append(enc.v_meas)
 
-            if enc.v_meas>1.1:
+            if enc.v_meas>0.7:
                 steering_his.append(rad_Steering_1)
                 fbk_srv_his.append(fbk_srv.value)
 
             rate.sleep()
 
+        thread.start_new_thread(input_thread, (a_list,))
         while a_list[-1] != "s":
-            cmd.servo = float(PWM_Steering_2)
-            cmd.motor = float(PWM_Input_2)
+            cmd.servo = float(rad_Steering_2)
+            cmd.motor = float(acc_Input_2)
             input_commands.publish(cmd)
             vx_his.append(enc.v_meas)
 
-            if enc.v_meas>1.1:
+            if enc.v_meas>0.7:
                 steering_his.append(rad_Steering_2)
                 fbk_srv_his.append(fbk_srv.value)
 
             rate.sleep()
 
 
-        cmd.servo = 90.0
-        cmd.motor = 90.0
+        cmd.servo = 0.0
+        cmd.motor = 0.0
         input_commands.publish(cmd)
 
         if steering_his != []:
@@ -107,20 +108,14 @@ def main():
             plt.ylabel('vx_his')
 
             ax = plt.figure(2)
-            plt.plot(steering_his, '-o', label="Commanded Steering")
-            a = 0.1
-            b = 0.1
-            plt.plot([a*i+b for i in fbk_srv_his], '-s', label="Measured Steering")
+            plt.plot([0.001*float(j) for j in range(0, len(fbk_srv_his))], steering_his, '-o', label="Commanded Steering")
+            a = -0.003530958631043808
+            b = 1.0861319262672648
+            plt.plot([0.001*float(j) for j in range(0, len(fbk_srv_his))], [a*i+b for i in fbk_srv_his], '-s', label="Measured Steering")
             
             plt.legend()
             plt.ylabel('steering')
-            plt.xlabel('PWM')
-            plt.xlim((50, 150))
-
-            # plt.xlim((50, 150))
-            # pdb.set_trace()
-
-
+            plt.xlabel('time')
             plt.show()    
 
 

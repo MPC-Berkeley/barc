@@ -60,7 +60,7 @@ def main():
     
     # Choose Controller and Number of Laps
 
-    PickController = "LMPC"
+    PickController = "PID"
     NumberOfLaps   = 30
     vt = 1.2
     PathFollowingLaps = 2
@@ -152,37 +152,38 @@ def main():
 
             # == Start: Computing Input
             if LapNumber < PathFollowingLaps :        # First path following lap
-                # if TimeCounter < 50:
-                #     print -0.05*180/3.14, "0.05"
-                #     cmd.servo = -0.05
-                #     cmd.motor = 0.0
-                # elif TimeCounter < 150:
-                #     print -0.15*180/3.14, "0.15"
-                #     cmd.servo = -0.15
-                #     cmd.motor = 0.0
-                # elif TimeCounter < 250:
-                #     print -0.25*180/3.14, "0.25"
-                #     cmd.servo = -0.25
-                #     cmd.motor = 0.0
-                # elif TimeCounter < 350:
-                #     print 0.05*180/3.14, "0.05"
-                #     cmd.servo = 0.05
-                #     cmd.motor = 0.0
-                # elif TimeCounter < 450:
-                #     print 0.15*180/3.14, "0.15"
-                #     cmd.servo = 0.15
-                #     cmd.motor = 0.0
-                # elif TimeCounter < 550:
-                #     print 0.25*180/3.14, "0.25"
-                #     cmd.servo = 0.25
-                #     cmd.motor = 0.0
-                # else:
-                #     cmd.servo = 0.0
-                    # cmd.motor = 0.0
+                if TimeCounter < 50:
+                    print -0.05*180/3.14, "-0.05"
+                    cmd.servo = -0.05
+                    cmd.motor =  0.0
+                elif TimeCounter < 150:
+                    print -0.15*180/3.14, "-0.15"
+                    cmd.servo = -0.15
+                    cmd.motor =  0.0
+                elif TimeCounter < 250:
+                    print -0.25*180/3.14, "-0.25"
+                    cmd.servo = -0.25
+                    cmd.motor =  0.0
+                elif TimeCounter < 350:
+                    print 0.05*180/3.14, "0.05"
+                    cmd.servo = 0.05
+                    cmd.motor =  0.0
+                elif TimeCounter < 450:
+                    print 0.15*180/3.14, "0.15"
+                    cmd.servo = 0.15
+                    cmd.motor =  0.0
+                elif TimeCounter < 550:
+                    print 0.25*180/3.14, "0.25"
+                    cmd.servo = 0.25
+                    cmd.motor =  0.0
+                else:
+                    print 0.0*180/3.14, "0.00"
+                    cmd.servo = 0.0
+                    cmd.motor = 0.0
                                             
-                ControllerLap0.solve(LocalState)
-                cmd.servo = ControllerLap0.uPred[0,0]
-                cmd.motor = ControllerLap0.uPred[0,1]
+                # ControllerLap0.solve(LocalState)
+                # cmd.servo = ControllerLap0.uPred[0,0]
+                # cmd.motor = ControllerLap0.uPred[0,1]
 
                 oldU = uApplied
                 uApplied = np.array([cmd.servo, cmd.motor])
