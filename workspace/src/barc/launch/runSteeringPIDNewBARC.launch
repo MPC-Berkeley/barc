@@ -1,0 +1,55 @@
+<launch>
+    <!-- parameters -->
+    <arg name="device" default="/dev/ttyUSB1" doc="device file of the IMU"/>
+    <arg name="baudrate" default="115200" doc="baudrate of the IMU"/>
+    <arg name="timeout" default="0.002" doc="timeout for the IMU communication"/>
+    <arg name="frame_id" default="/imu" doc="frame id of the IMU"/>
+    <arg name="frame_local" default="ENU" doc="desired frame orientation (ENU, NED or NWU)"/>
+    <arg name="no_rotation_duration" default="0" doc="duration (int in seconds) of the no-rotation calibration procedure"/>
+    <arg name="angular_velocity_covariance_diagonal" default="[0.0004, 0.0004, 0.0004]" doc="Diagonal elements of angular velocity covariance matrix"/>
+    <arg name="linear_acceleration_covariance_diagonal" default="[0.0004, 0.0004, 0.0004]" doc="Diagonal elements of linear acceleration covariance matrix"/>
+    <arg name="orientation_covariance_diagonal" default="[0.01745, 0.01745, 0.15708]" doc="Diagonal elements of the orientation covariance matrix"/>
+
+    <!-- Machines -->
+    <!-- <machine name="odroid" address="192.168.10.101" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid_ugo.sh"/> -->
+    <!-- <machine name="this-pc" address="192.168.10.157" user="ugo" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc.sh"/> -->
+    <machine name="odroid" address="192.168.10.101" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid.sh"/>
+    <machine name="this-pc" address="192.168.10.147" user="mpcubuntu" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc.sh"/>
+
+    <!-- VISUALIZATION -->
+    <node machine="this-pc" pkg="barc" type="steeringDelayPID.py" name="IMUplot" output="screen" >
+        <param name="car" value="new" />
+    </node>
+
+    <!-- IMU -->
+    <!-- node -->
+    <node machine="odroid" pkg="xsens_driver" type="mtnode.py" name="xsens_driver" output="screen" >
+        <param name="device" value="$(arg device)"/>
+        <param name="baudrate" value="$(arg baudrate)"/>
+        <param name="timeout" value="$(arg timeout)"/>
+        <param name="frame_id" value="$(arg frame_id)"/>
+        <param name="frame_local" value="$(arg frame_local)"/>
+        <param name="no_rotation_duration" value="$(arg no_rotation_duration)"/>
+        <rosparam param="angular_velocity_covariance_diagonal" subst_value="True">$(arg angular_velocity_covariance_diagonal)</rosparam>
+        <rosparam param="linear_acceleration_covariance_diagonal" subst_value="True">$(arg linear_acceleration_covariance_diagonal)</rosparam>
+        <rosparam param="orientation_covariance_diagonal" subst_value="True">$(arg orientation_covariance_diagonal)</rosparam>
+    </node>
+
+
+<!--     <node machine="odroid" pkg="myahrs_driver" type="myahrs_driver" name="myahrs_driver">
+        <param name="port" value="/dev/ttyACM0" />
+        <param name="baud_rate" value="115200" />
+    </node>
+ -->
+    <!-- ARDUINO -->
+    <!--  * encoders and ultrasound sensors -->
+    <node machine="odroid" pkg="rosserial_python" type="serial_node.py" name="arduino_node" >
+        <param name="port" value="/dev/ttyUSB0" />
+    </node>
+
+    <node machine="odroid" pkg="barc" type="controllerLowLevelWithFB.py" name="low_level_controller" >
+        <param name="car" type="str" value="NewBARC" />
+    </node>
+
+
+</launch>

@@ -35,6 +35,11 @@ from tf import transformations
 import math
 import numpy as np
 
+def srvOutput2Angle(fbk_srv):
+    angle_rad =  -0.003530958631043808 *fbk_srv +  1.0861319262672648
+    return angle_rad
+
+
 def main():
     # node initialization
     rospy.init_node("state_estimation")
@@ -150,7 +155,7 @@ def main():
         estMsg.a_x      = est.ax_est
         estMsg.a_y      = est.ay_est
         estMsg.u_a      = ecu.a
-        estMsg.u_df     = -0.003530958631043808 *fbk_srv.value +  1.0861319262672648 #-0.0031283647115524587 * fbk_srv.value +  1.0745666280004817
+        estMsg.u_df     = srvOutput2Angle(fbk_srv.value)
         est.state_pub_pos.publish(estMsg)
 
 
@@ -224,7 +229,6 @@ def main():
                       ecu_time      = ecu.time_his)
 
     print "Finishing saveing state estimation data"
-
 
 class Estimator(object):
     """ Object collecting  estimated state data

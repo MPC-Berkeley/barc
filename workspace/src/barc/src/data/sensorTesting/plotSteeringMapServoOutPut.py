@@ -119,5 +119,40 @@ xi = [i for i in np.arange(min(fbk_servo), max(fbk_servo),1.0)]
 yi = [mi*float(a)+ci for a in xi]
 plt.plot(xi, yi, '-bs')
 
-print "Equation is: ", mi ,"*fbk_servo + ", ci
+print "Equation is: tangle_rad = ", mi ,"*fbk_srv + ", ci
 plt.show()
+
+ax = plt.figure(4)
+plt.plot(fbk_servo, steering_his, 'o')
+plt.legend()
+plt.ylabel('steering')
+plt.xlabel('Servo Output Steering')
+plt.xlim((min(fbk_servo), max(fbk_servo)))
+low_lim_1 = 220
+up__lim_1 = 300
+mi_1, ci_1 = fit(low_lim_1, up__lim_1, fbk_servo, steering_his)
+xi = [i for i in np.arange(low_lim_1, up__lim_1,1.0)]
+yi = [mi_1*float(a)+ci_1 for a in xi]
+plt.plot(xi, yi, '-bs')
+
+low_lim_2 = up__lim_1
+up__lim_2 = 320
+mi_2, ci_2 = fit(low_lim_2, up__lim_2, fbk_servo, steering_his)
+xi = [i for i in np.arange(low_lim_2, up__lim_2,1.0)]
+yi = [mi_2*float(a)+ci_2 for a in xi]
+plt.plot(xi, yi, '-rs')
+
+low_lim_3 = up__lim_2 
+up__lim_3 = 420
+mi_3, ci_3 = fit(low_lim_3, up__lim_3, fbk_servo, steering_his)
+xi = [i for i in np.arange(low_lim_3, up__lim_3,1.0)]
+yi = [mi_3*float(a)+ci_3 for a in xi]
+plt.plot(xi, yi, '-ks')
+plt.show()
+
+print "if fbk_srv <= ", up__lim_1, ":"
+print "\tangle_rad = ", mi_1 ,"*fbk_srv + ", ci_1
+print "elif fbk_srv <= ", up__lim_2, " and fbk_srv >= ", low_lim_2,":"
+print "\tangle_rad = ", mi_2 ,"*fbk_srv + ", ci_2
+print "if fbk_srv >= ", low_lim_3, ":"
+print "\tangle_rad = ", mi_3 ,"*fbk_srv + ", ci_3

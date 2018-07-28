@@ -25,6 +25,7 @@ def srvOutput2Angle(fbk_srv):
     angle_rad =  -0.003530958631043808 *fbk_srv +  1.0861319262672648
     return angle_rad
 
+
 def main():
     rospy.init_node("steeringMap")
 
@@ -39,6 +40,8 @@ def main():
 
     loop_rate = 100
     rate = rospy.Rate(loop_rate)
+
+    PIDController = SteeringPID(loop_rate)
 
     steering_his = []
     PWMsteering_his = []
@@ -70,59 +73,41 @@ def main():
                 pickle.dump(steering_his, file_data)
                 pickle.dump(fbk_srv_his, file_data)
                 file_data.close()
-        
-        step_counter = 0
-        inpu_counter = 0
-        servo_cmd_list = [0.0, -0.05, -0.15, -0.25, 0.0, 0.05, 0.15, 0.25]
-        motor_cmd_list = [0.025, 0.025, 0.025, 0.025, 0.025,  0.025,  0.025,  0.025]
-        ms_time = 500
-        if rad_Steering_1 == "step":
-            while (step_counter <= ms_time * (len(servo_cmd_list))): 
-                if step_counter <= (inpu_counter+1) * ms_time:
-                    cmd.servo = servo_cmd_list[inpu_counter]
-                    cmd.motor = motor_cmd_list[inpu_counter]
-                else:
-                    inpu_counter += 1
-                step_counter += 1
+    
+        a_list = [0]
+        thread.start_new_thread(input_thread, (a_list,))
+        timeCounter = 0
+        while a_list[-1] != "c":
+            steering_out = srvOutput2Angle(fbk_srv.value) #-0.003530958631043808*fbk_srv.value + 1.0861319262672648
+            PIDController.solve(float(rad_Steering_1), float(steering_out))
+            # print "In: ", rad_Steering_1, "    Out: ", steering_out, "    PID output: ", PIDController.Steering, "\n \n"    
+            cmd.servo = PIDController.Steering
+            # cmd.servo = float(rad_Steering_1)
+            cmd.motor = float(acc_Input_1)
+            input_commands.publish(cmd)
+            vx_his.append(enc.v_meas)
 
-                input_commands.publish(cmd)
-                vx_his.append(enc.v_meas)
+            if enc.v_meas>0.7:
+                steering_his.append(rad_Steering_1)
+                fbk_srv_his.append(fbk_srv.value)
 
-                if enc.v_meas>0.7:
-                    steering_his.append(servo_cmd_list[inpu_counter])
-                    fbk_srv_his.append(fbk_srv.value)
+            rate.sleep()
 
-                rate.sleep()
+        thread.start_new_thread(input_thread, (a_list,))
+        while a_list[-1] != "s":
+            steering_out = srvOutput2Angle(fbk_srv.value) #-0.003530958631043808*fbk_srv.value + 1.0861319262672648
+            PIDController.solve(float(rad_Steering_2), float(steering_out))
+            cmd.servo = PIDController.Steering
+            # cmd.servo = float(rad_Steering_2)
+            cmd.motor = float(acc_Input_2)
+            input_commands.publish(cmd)
+            vx_his.append(enc.v_meas)
 
-        else:
+            if enc.v_meas>0.7:
+                steering_his.append(rad_Steering_2)
+                fbk_srv_his.append(fbk_srv.value)
 
-            a_list = [0]
-            thread.start_new_thread(input_thread, (a_list,))
-            timeCounter = 0
-            while a_list[-1] != "c":
-                cmd.servo = float(rad_Steering_1)
-                cmd.motor = float(acc_Input_1)
-                input_commands.publish(cmd)
-                vx_his.append(enc.v_meas)
-
-                if enc.v_meas>0.7:
-                    steering_his.append(rad_Steering_1)
-                    fbk_srv_his.append(fbk_srv.value)
-
-                rate.sleep()
-
-            thread.start_new_thread(input_thread, (a_list,))
-            while a_list[-1] != "s":
-                cmd.servo = float(rad_Steering_2)
-                cmd.motor = float(acc_Input_2)
-                input_commands.publish(cmd)
-                vx_his.append(enc.v_meas)
-
-                if enc.v_meas>0.7:
-                    steering_his.append(rad_Steering_2)
-                    fbk_srv_his.append(fbk_srv.value)
-
-                rate.sleep()
+            rate.sleep()
 
 
         cmd.servo = 0.0
@@ -157,7 +142,7 @@ class fbServoClass(object):
         rospy.Subscriber('srv_fbk', ECU, self.srv_fbk_callback, queue_size=1)
 
         # ENC measurement
-        self.recorded = [0.0]*int(10)
+        self.recorded = [0.0]*int(20)
         self.value = 0.0
 
     def srv_fbk_callback(self,data):
@@ -165,6 +150,36 @@ class fbServoClass(object):
         self.recorded.pop(0)
         self.recorded.append(data.servo)
         self.value = np.sum(self.recorded)/len(self.recorded)
+
+
+
+
+class SteeringPID(object):
+
+    def __init__(self, loop_rate):
+
+        self.Ts       = 1/loop_rate
+        self.Steering = 0.0
+        self.integral = 0.0
+
+    def solve(self, comanded_delta, measured_delta):
+        """Computes control action
+        Arguments:
+            delta: current steering angle
+        """
+        error = comanded_delta - measured_delta
+        #print error, "\n"
+        self.integral = self.integral +  error*self.Ts
+        self.integral = self.truncate( self.integral , 3 )
+
+        self.Steering =  self.truncate(self.Steering + 0.02*error + 0.006*self.integral ,  0.3)
+        
+
+    def truncate(self, val, bound):
+        return np.maximum(-bound, np.minimum(val, bound))
+        
+
+
 
 
 

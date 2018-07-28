@@ -29,6 +29,30 @@ def srvOutput2Angle(fbk_srv):
     return angle_rad
 
 
+class SteeringPID(object):
+
+    def __init__(self, loop_rate):
+
+        self.Ts       = 1/loop_rate
+        self.Steering = 0.0
+        self.integral = 0.0
+
+    def solve(self, comanded_delta, measured_delta):
+        """Computes control action
+        Arguments:
+            delta: current steering angle
+        """
+        error = comanded_delta - measured_delta
+        #print error, "\n"
+        self.integral = self.integral +  error*self.Ts
+        self.integral = self.truncate( self.integral , 3 )
+
+        self.Steering =  self.truncate(self.Steering + 0.01*error + 0.008*self.integral ,  0.3)
+        
+
+    def truncate(self, val, bound):
+        return np.maximum(-bound, np.minimum(val, bound))
+
 class low_level_control(object):
     motor_pwm = 90
     servo_pwm = 90
@@ -37,24 +61,87 @@ class low_level_control(object):
     ecu_pub = 0
     ecu_cmd = ECU()
     sel_car = rospy.get_param("/low_level_controller/car")
-    pid_active = False
+
+    PIDController = SteeringPID(10)
 
     recorded_servo = [0.0]*int(20)
     fbk_servo = 0.0
     commanded_steering = 0.0
+    commanded_steering_PID = 0.0
     
     def fbk_servo_callback(self,data ):
         """Unpack message from sensor, ENC"""
 
+        self.recorded_servo.pop(0)
+        self.recorded_servo.append(data.servo)
+        self.value_servo = np.sum(self.recorded_servo)/len(self.recorded_servo)
 
-        if self.pid_active == True:
-            self.recorded_servo.pop(0)
-            self.recorded_servo.append(data.servo)
-            self.value_servo = np.sum(self.recorded_servo)/len(self.recorded_servo)
+        steering_out = srvOutput2Angle(self.value_servo) #-0.003530958631043808*fbk_srv.value + 1.0861319262672648
+        self.PIDController.solve(float(self.commanded_steering_PID), float(steering_out))
+        self.commanded_steering = self.PIDController.Steering
 
-            steering_out = srvOutput2Angle(self.value_servo) #-0.003530958631043808*fbk_srv.value + 1.0861319262672648
-            PIDController.solve(float(self.commanded_steering), float(steering_out))
-            self.commanded_steering = PIDController.Steering
+        if self.commanded_steering >=  0.271748477594145 :
+            self.servo_pwm = (float(self.commanded_steering) +  -0.6180603103568691 ) /  -0.0070675884237290645
+        elif self.commanded_steering <=  0.2717484775941458  and self.commanded_steering >=  0.2554686004136957 :
+            self.servo_pwm = (float(self.commanded_steering) +  -0.5376531382081644 ) /  -0.005426625726816707
+        elif self.commanded_steering <=  0.2554686004136967  and self.commanded_steering >=  0.22637315820481485 :
+            self.servo_pwm = (float(self.commanded_steering) +  -0.759789598700981 ) /  -0.00969848073629393
+        elif self.commanded_steering <=  0.22637315820481269  and self.commanded_steering >=  0.20571227696341288 :
+            self.servo_pwm = (float(self.commanded_steering) +  -0.60515598096381 ) /  -0.00688696041379995
+        elif self.commanded_steering <=  0.2057122769634162  and self.commanded_steering >=  0.16617707955839722 :
+            self.servo_pwm = (float(self.commanded_steering) +  -0.7789726393361914 ) /  -0.009883799351254744
+        elif self.commanded_steering <=  0.16617707955839633  and self.commanded_steering >=  0.14552846784025059 :
+            self.servo_pwm = (float(self.commanded_steering) +  -0.5929150550667419 ) /  -0.006882870572715251
+        elif self.commanded_steering <=  0.14552846784024898  and self.commanded_steering >=  0.11796964644491936 :
+            self.servo_pwm = (float(self.commanded_steering) +  -0.7426362647390593 ) /  -0.009186273798443235
+        elif self.commanded_steering <=  0.11796964644491859  and self.commanded_steering >=  0.09945597233128706 :
+            self.servo_pwm = (float(self.commanded_steering) +  -0.5376129263538998 ) /  -0.006171224704543841
+        elif self.commanded_steering <=  0.099455972331286  and self.commanded_steering >=  0.07034295529014778 :
+            self.servo_pwm = (float(self.commanded_steering) +  -0.7884640423048922 ) /  -0.009704339013712763
+        elif self.commanded_steering <=  0.07034295529014867  and self.commanded_steering >=  0.044084479382825226 :
+            self.servo_pwm = (float(self.commanded_steering) +  -0.7180520276707935 ) /  -0.008752825302441146
+        elif self.commanded_steering <=  0.04408447938282428  and self.commanded_steering >=  0.0330607836356801 :
+            self.servo_pwm = (float(self.commanded_steering) +  -0.4684967656478735 ) /  -0.005511847873572068
+        elif self.commanded_steering <=  0.033060783635680435  and self.commanded_steering >=  0.007520301524546746 :
+            self.servo_pwm = (float(self.commanded_steering) +  -0.7056268125622019 ) /  -0.008513494037044576
+        elif self.commanded_steering <=  0.0075203015245473015  and self.commanded_steering >=  -0.0015686544265943736 :
+            self.servo_pwm = (float(self.commanded_steering) +  -0.7528146895181625 ) /  -0.009088955951141649
+        elif self.commanded_steering <=  -0.0015686544265950397  and self.commanded_steering >=  -0.010379109894857463 :
+            self.servo_pwm = (float(self.commanded_steering) +  -0.7296991494391903 ) /  -0.008810455468262474
+        elif self.commanded_steering <=  -0.010379109894858463  and self.commanded_steering >=  -0.01670257042834955 :
+            self.servo_pwm = (float(self.commanded_steering) +  -0.5207915749183991 ) /  -0.006323460533491161
+        elif self.commanded_steering <=  -0.016702570428348218  and self.commanded_steering >=  -0.026038642972046833 :
+            self.servo_pwm = (float(self.commanded_steering) +  -0.7768635957860361 ) /  -0.009336072543698639
+        elif self.commanded_steering <=  -0.026038642972047055  and self.commanded_steering >=  -0.04154722815221579 :
+            self.servo_pwm = (float(self.commanded_steering) +  -0.6408305197752049 ) /  -0.0077542925900843255
+        elif self.commanded_steering <=  -0.04154722815221584  and self.commanded_steering >=  -0.06449664329690569 :
+            self.servo_pwm = (float(self.commanded_steering) +  -0.4633399050309606 ) /  -0.00573735378617246
+        elif self.commanded_steering <=  -0.06449664329690519  and self.commanded_steering >=  -0.09067831040253727 :
+            self.servo_pwm = (float(self.commanded_steering) +  -0.7384078146091428 ) /  -0.008727222368544
+        elif self.commanded_steering <=  -0.09067831040253777  and self.commanded_steering >=  -0.10722629235046827 :
+            self.servo_pwm = (float(self.commanded_steering) +  -0.43334111794859426 ) /  -0.0055159939826434955
+        elif self.commanded_steering <=  -0.10722629235046754  and self.commanded_steering >=  -0.12902829503324786 :
+            self.servo_pwm = (float(self.commanded_steering) +  -0.6049724619536923 ) /  -0.007267334227593467
+        elif self.commanded_steering <=  -0.1290282950332492  and self.commanded_steering >=  -0.15277998557153327 :
+            self.servo_pwm = (float(self.commanded_steering) +  -0.6706119530889807 ) /  -0.007917230179428018
+        elif self.commanded_steering <=  -0.1527799855715316  and self.commanded_steering >=  -0.17309500293432833 :
+            self.servo_pwm = (float(self.commanded_steering) +  -0.5514739496720873 ) /  -0.006771672454265566
+        elif self.commanded_steering <=  -0.17309500293433233  and self.commanded_steering >=  -0.19516681168236716 :
+            self.servo_pwm = (float(self.commanded_steering) +  -0.6141328424122462 ) /  -0.007357269582678304
+        elif self.commanded_steering <=  -0.1951668116823626  and self.commanded_steering >=  -0.21082415402432397 :
+            self.servo_pwm = (float(self.commanded_steering) +  -0.6659870171255149 ) /  -0.007828671170980704
+        elif self.commanded_steering <=  -0.2108241540243243  and self.commanded_steering >=  -0.23687110133349532 :
+            self.servo_pwm = (float(self.commanded_steering) +  -0.7615952121847259 ) /  -0.008682315769723663
+        elif self.commanded_steering <=  -0.2368711013334988  and self.commanded_steering >=  -0.251275282681168 :
+            self.servo_pwm = (float(self.commanded_steering) +  -0.31528918366048914 ) /  -0.0048013937825564165
+        elif self.commanded_steering <=  -0.2512752826811647  and self.commanded_steering >=  -0.2734474105207739 :
+            self.servo_pwm = (float(self.commanded_steering) +  -0.6208284123434624 ) /  -0.007390709279869722
+        elif self.commanded_steering <=  -0.2734474105207766 :
+            self.servo_pwm = (float(self.commanded_steering) +  -0.47700527437619844 ) /  -0.006202088304933678
+        
+        # self.update_arduino()
+
+
 
     def pwm_converter_callback(self, msg):
 
@@ -69,8 +156,9 @@ class low_level_control(object):
         #     self.servo_pwm = 95.5 + 118.8*float(msg.servo)
         # elif msg.servo > 0.0:       # left curve
         #     self.servo_pwm = 90.8 + 78.9*float(msg.servo)
-        if self.pid_active == False:
-            self.commanded_steering = msg.servo
+        self.commanded_steering_PID = msg.servo
+
+        msg.servo = self.commanded_steering
 
         if self.sel_car == "OldBARC":
             if msg.servo <=  -0.289253621435 :
@@ -234,29 +322,6 @@ def arduino_interface():
     # process callbacks and keep alive
     spin()
 
-class SteeringPID(object):
-
-    def __init__(self, loop_rate):
-
-        self.Ts       = 1/loop_rate
-        self.Steering = 0.0
-        self.integral = 0.0
-
-    def solve(self, comanded_delta, measured_delta):
-        """Computes control action
-        Arguments:
-            delta: current steering angle
-        """
-        error = comanded_delta - measured_delta
-        #print error, "\n"
-        self.integral = self.integral +  error*self.Ts
-        self.integral = self.truncate( self.integral , 3 )
-
-        self.Steering =  self.truncate(self.Steering + 0.02*error + 0.006*self.integral ,  0.3)
-        
-
-    def truncate(self, val, bound):
-        return np.maximum(-bound, np.minimum(val, bound))
         
 #############################################################
 if __name__ == '__main__':

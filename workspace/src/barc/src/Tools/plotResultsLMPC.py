@@ -55,7 +55,7 @@ def main():
     plotClosedLoopLMPC(LMPController, map, LapToPlotLearningProcess)
     plt.show()
     
-    LapToPlotLearningProcess = [10,15]
+    LapToPlotLearningProcess = [20,21,23,24]
 
     plotMeasuredAndAppliedSteering(LMPController, map, LapToPlotLearningProcess)
     plt.show()
