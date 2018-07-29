@@ -39,6 +39,10 @@
         <param name="car" type="str" value="NewBARC" />
     </node>
 
+    <node machine="this-pc" pkg="barc" type="lowLevelPub.py" name="low_level_controller_publisher" >
+        <param name="car" type="str" value="NewBARC" />
+    </node>
+
     <!-- Estimator -->
     <node machine="odroid" pkg="barc" type="stateEstimator.py" name="state_estimator" output="screen">
     <!-- delay in state estuiamtor -->

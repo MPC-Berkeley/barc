@@ -35,9 +35,18 @@ from tf import transformations
 import math
 import numpy as np
 
+# def srvOutput2Angle(fbk_srv):
+#     angle_rad =  -0.0034491341998312613 *fbk_srv +  1.1623406938241259
+#     return angle_rad
 def srvOutput2Angle(fbk_srv):
-    angle_rad =  -0.003530958631043808 *fbk_srv +  1.0861319262672648
-    return angle_rad
+    if float(fbk_srv) <=  320.0 :
+        angle_rad =  -0.003366574167351213 *float(fbk_srv) +  1.1389698045630452
+    elif float(fbk_srv) <=  350.0  and float(fbk_srv) >=  320.0 :
+        angle_rad =  -0.0031810272915515298 *float(fbk_srv) +  1.0788516796907799
+    if float(fbk_srv) >=  350.0 :
+        angle_rad =  -0.003403610071374642 *float(fbk_srv) +  1.1429416196105804
+
+    return angle_rad-0.022
 
 
 def main():

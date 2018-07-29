@@ -22,8 +22,14 @@ def input_thread(a_list):
     a_list.append(input)
 
 def srvOutput2Angle(fbk_srv):
-    angle_rad =  -0.003530958631043808 *fbk_srv +  1.0861319262672648
-    return angle_rad
+    if float(fbk_srv) <=  320.0 :
+        angle_rad =  -0.003366574167351213 *float(fbk_srv) +  1.1389698045630452
+    elif float(fbk_srv) <=  350.0  and float(fbk_srv) >=  320.0 :
+        angle_rad =  -0.0031810272915515298 *float(fbk_srv) +  1.0788516796907799
+    if float(fbk_srv) >=  350.0 :
+        angle_rad =  -0.003403610071374642 *float(fbk_srv) +  1.1429416196105804
+
+    return angle_rad-0.022
 
 def main():
     rospy.init_node("steeringMap")
@@ -74,7 +80,7 @@ def main():
         step_counter = 0
         inpu_counter = 0
         servo_cmd_list = [0.0, -0.05, -0.15, -0.25, 0.0, 0.05, 0.15, 0.25]
-        motor_cmd_list = [0.025, 0.025, 0.025, 0.025, 0.025,  0.025,  0.025,  0.025]
+        motor_cmd_list = [0.25, 0.25, 0.25, 0.25, 0.25,  0.25,  0.25,  0.25]
         ms_time = 500
         if rad_Steering_1 == "step":
             while (step_counter <= ms_time * (len(servo_cmd_list))): 

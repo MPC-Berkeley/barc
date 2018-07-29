@@ -117,7 +117,7 @@ plt.xlim((min(fbk_servo), max(fbk_servo)))
 mi, ci = fit(min(fbk_servo), max(fbk_servo), fbk_servo, steering_his)
 xi = [i for i in np.arange(min(fbk_servo), max(fbk_servo),1.0)]
 yi = [mi*float(a)+ci for a in xi]
-plt.plot(xi, yi, '-bs')
+plt.plot(xi, yi, '-rs')
 
 print "Equation is: tangle_rad = ", mi ,"*fbk_srv + ", ci
 plt.show()
@@ -129,14 +129,14 @@ plt.ylabel('steering')
 plt.xlabel('Servo Output Steering')
 plt.xlim((min(fbk_servo), max(fbk_servo)))
 low_lim_1 = 220
-up__lim_1 = 300
+up__lim_1 = 320
 mi_1, ci_1 = fit(low_lim_1, up__lim_1, fbk_servo, steering_his)
 xi = [i for i in np.arange(low_lim_1, up__lim_1,1.0)]
 yi = [mi_1*float(a)+ci_1 for a in xi]
 plt.plot(xi, yi, '-bs')
 
 low_lim_2 = up__lim_1
-up__lim_2 = 320
+up__lim_2 = 350
 mi_2, ci_2 = fit(low_lim_2, up__lim_2, fbk_servo, steering_his)
 xi = [i for i in np.arange(low_lim_2, up__lim_2,1.0)]
 yi = [mi_2*float(a)+ci_2 for a in xi]

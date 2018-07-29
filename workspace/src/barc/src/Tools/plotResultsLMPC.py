@@ -38,7 +38,9 @@ def main():
     
     file_data.close()
     map = LMPController.map
+    LapToPlot = range(2,4)
 
+    plotComputationalTime(LMPController, LapToPlot, map)
 
     pdb.set_trace()
     print "Track length is: ", map.TrackLength

@@ -33,8 +33,8 @@ def main():
     # Initializa ROS node
     rospy.init_node("LMPC")
 
-    input_commands = rospy.Publisher('ecu', ECU, queue_size=1)
-    pred_treajecto = rospy.Publisher('OL_predictions', prediction, queue_size=1)
+    input_commands = rospy.Publisher('ecu_LMPC', ECU, queue_size=1)
+    # input_commands = rospy.Publisher('ecu1', ECU, queue_size=1)
     pred_treajecto = rospy.Publisher('OL_predictions', prediction, queue_size=1)
     sel_safe_set   = rospy.Publisher('SS', SafeSetGlob, queue_size=1)
 
@@ -377,14 +377,14 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
         Controller = PathFollowingLTV_MPC(Q, R, N, vt, ClosedLoopDataPID.x[0:ClosedLoopDataPID.SimTime, :], 
                                                        ClosedLoopDataPID.u[0:ClosedLoopDataPID.SimTime, :], dt, map, "OSQP")
     elif PickController == "LMPC":
-        file_data = open(homedir+'/barc_data/'+'/ClosedLoopDataTI_MPC.obj', 'rb')
+        # file_data = open(homedir+'/barc_data/'+'/ClosedLoopDataTI_MPC.obj', 'rb')
+        file_data = open(homedir+'/barc_data/'+'/ClosedLoopDataPIDforLMPC.obj', 'rb')
         ClosedLoopDataTI_MPC = pickle.load(file_data)
         file_data.close()
         Laps       = NumberOfLaps+2   # Total LMPC laps
         # Safe Set Parameters
         flag_LTV = True
         TimeLMPC   = 70              # Simulation time
-        N = 12
         LMPC_Solver = "OSQP"          # Can pick CVX for cvxopt or OSQP. For OSQP uncomment line 14 in LMPC.py
         SysID_Solver = "scipy"        # Can pick CVX, OSQP or scipy. For OSQP uncomment line 14 in LMPC.py  
         numSS_it = 2                  # Number of trajectories used at each iteration to build the safe set
@@ -393,6 +393,7 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
         # Tuning Parameters
         mode = "NewTuning"
         if mode == "simulations":
+            N = 12
             Qslack  =  2 * 5 * np.diag([10, 0.1, 1, 0.1, 10, 1])          # Cost on the slack variable for the terminal constraint
             Qlane   = 0.1 * 0.5 * 10 * np.array([50, 10]) # Quadratic slack lane cost
             Q_LMPC  =  0 * np.diag([0.0, 0.0, 10.0, 0.0, 0.0, 0.0])  # State cost x = [vx, vy, wz, epsi, s, ey]
@@ -402,6 +403,7 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
             steeringDelay = 0
             idDelay       = 0
         elif mode == "NewTuning":
+            N = 12
             Qslack  =  2 * 5 * np.diag([10, 0.1, 1, 0.1, 10, 1])          # Cost on the slack variable for the terminal constraint
             Qlane   = 0.1 * 0.5 * 10 * np.array([50, 10]) # Quadratic slack lane cost
             Q_LMPC  =  0 * np.diag([0.0, 0.0, 10.0, 0.0, 0.0, 0.0])  # State cost x = [vx, vy, wz, epsi, s, ey]
