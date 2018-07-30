@@ -40,6 +40,7 @@ def main():
 
     mode = rospy.get_param("/control/mode")
     saveData = rospy.get_param("/control/saveData")
+    sel_car = rospy.get_param("/control/car")
 
 
     loop_rate = 10.0
@@ -70,7 +71,7 @@ def main():
     else:
         PIDnoise = np.array([1.0, 1.0]) # noise on [Steering, Acceleration] 
 
-    ControllerLap0, Controller,  OpenLoopData   = ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PIDnoise)
+    ControllerLap0, Controller,  OpenLoopData   = ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PIDnoise, sel_car)
                  
     # Initialize variables for main loop
     GlobalState      = np.zeros(6)
@@ -326,7 +327,7 @@ def main():
 # ===============================================================================================================================
 # ==================================================== END OF MAIN ==============================================================
 # ===============================================================================================================================
-def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PIDnoise):
+def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PIDnoise, sel_car):
     OpenLoopData = 0.0
 
     # TI MPC tuning
@@ -391,7 +392,6 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
         numSS_Points = 42 + N         # Number of points to select from each trajectory to build the safe set
         shift = N / 2                     # Given the closed point, x_t^j, to the x(t) select the SS points from x_{t+shift}^j
         # Tuning Parameters
-        mode = "NewTuning"
         if mode == "simulations":
             N = 12
             Qslack  =  2 * 5 * np.diag([10, 0.1, 1, 0.1, 10, 1])          # Cost on the slack variable for the terminal constraint
@@ -402,7 +402,7 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
             aConstr = np.array([0.7, 2.0]) # aConstr = [amin, amax]
             steeringDelay = 0
             idDelay       = 0
-        elif mode == "NewTuning":
+        elif sel_car == "NewBARC":
             N = 12
             Qslack  =  2 * 5 * np.diag([10, 0.1, 1, 0.1, 10, 1])          # Cost on the slack variable for the terminal constraint
             Qlane   = 0.1 * 0.5 * 10 * np.array([50, 10]) # Quadratic slack lane cost
@@ -412,15 +412,17 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
             aConstr = np.array([0.7, 2.0]) # aConstr = [amin, amax]
             steeringDelay = 2
             idDelay       = 0
-        else:
-            Qslack  = 0.1 * 5 * np.diag([10, 0.1, 1, 0.1, 10, 1])          # Cost on the slack variable for the terminal constraint
+            print "New BARC tuning selected"
+        elif sel_car == "OldBARC":
+            N = 12
+            Qslack  =  2 * 5 * np.diag([10, 0.1, 1, 0.1, 10, 1])          # Cost on the slack variable for the terminal constraint
             Qlane   = 0.1 * 0.5 * 10 * np.array([50, 10]) # Quadratic slack lane cost
             Q_LMPC  =  0 * np.diag([0.0, 0.0, 10.0, 0.0, 0.0, 0.0])  # State cost x = [vx, vy, wz, epsi, s, ey]
             R_LMPC  =  0 * np.diag([1.0, 1.0])                      # Input cost u = [delta, a]
-            dR_LMPC =  1 * np.array([ 2 * 5 * 0.5 * 10.0, 2 * 8 * 20.0])                     # Input rate cost u
+            dR_LMPC =  2* 1 * np.array([ 5 * 0.5 * 10.0, 0.5 * 8 * 20.0]) # Input rate cost u
             aConstr = np.array([0.7, 2.0]) # aConstr = [amin, amax]
-            steeringDelay = 0
-            idDelay       = 0            
+            steeringDelay = 1
+            idDelay       = 0          
         Controller = ControllerLMPC(numSS_Points, numSS_it, N, Qslack, Qlane, Q_LMPC, R_LMPC, dR_LMPC, 6, 2, shift, 
                                         dt, map, Laps, TimeLMPC, LMPC_Solver, SysID_Solver, flag_LTV, steeringDelay, idDelay, aConstr)
         # Controller.addTrajectory(ClosedLoopDataPID)

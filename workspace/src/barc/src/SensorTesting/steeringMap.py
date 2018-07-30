@@ -26,6 +26,7 @@ def main():
 
     input_commands = rospy.Publisher('ecu_pwm', ECU, queue_size = 1)
     t0 = rospy.get_rostime().to_sec()
+    car_sel = rospy.get_param("/control/car")
 
     imu = ImuClass(t0)
     enc = EncClass(t0)
@@ -56,7 +57,7 @@ def main():
             okFlag = confirmInput == "ok"
             if confirmInput == "q":
                 # Save Data
-                file_data = open(sys.path[0]+'/../data/sensorTesting/steeringMap_BARC'+'.obj', 'wb')
+                file_data = open(sys.path[0]+'/../data/sensorTesting/steeringMap_'+car_sel+'BARC'+'.obj', 'wb')
                 pickle.dump(PWMsteering_his, file_data)
                 pickle.dump(steering_his, file_data)
                 pickle.dump(fbk_srv_his, file_data)
@@ -71,7 +72,7 @@ def main():
             input_commands.publish(cmd)
             vx_his.append(enc.v_meas)
 
-            if enc.v_meas>1.1:
+            if enc.v_meas>0.8:
                 steering = np.arctan(imu.psiDot*(0.25)/enc.v_meas)
                 steering_his.append(steering)
                 PWMsteering_his.append(PWM_Steering)

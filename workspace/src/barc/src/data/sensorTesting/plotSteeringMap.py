@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pdb
 
-file_data = open(sys.path[0]+'/steeringMap_BARC.obj', 'rb')
+file_data = open(sys.path[0]+'/steeringMap_oldBARC.obj', 'rb')
 PWMsteering_his = pickle.load(file_data)
 steering_his = pickle.load(file_data)
 
@@ -72,7 +72,7 @@ plt.plot(PWMsteering_his, steering_his, 'o')
 plt.legend()
 plt.ylabel('steering')
 plt.xlabel('PWM')
-plt.xlim((50, 150))
+# plt.xlim((50, 150))
 
 PWM_interval = list(set(PWMsteering_his))
 PWM_interval_float = sorted([float(x) for x in PWM_interval])

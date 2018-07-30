@@ -34,12 +34,16 @@
     
     <!-- START NODES -->
     <!-- LOW LEVEL CONTROLLER -->
-    <node machine="odroid" pkg="barc" type="controllerLowLevelNew.py" name="low_level_controller" >
+    <node machine="odroid" pkg="barc" type="controllerLowLevelWithFB.py" name="low_level_controller" >
+        <param name="car" type="str" value="OldBARC" />
+    </node>
+
+    <node machine="this-pc" pkg="barc" type="lowLevelPub.py" name="low_level_controller_publisher" >
         <param name="car" type="str" value="OldBARC" />
     </node>
 
     <!-- Estimator -->
-    <node machine="odroid" pkg="barc" type="stateEstimatorPsiInput.py" name="state_estimator" output="screen">
+    <node machine="odroid" pkg="barc" type="stateEstimator.py" name="state_estimator" output="screen">
     <!-- delay in state estuiamtor -->
         <param name="delay_df" type="double" value="0.0" />
         <param name="delay_a" type="double" value="0.0" />
@@ -98,6 +102,7 @@
     <node machine="this-pc" pkg="barc" type="controllerMain.py" name="control" output="screen">
         <param name="mode" type="str" value="experiments" />
         <param name="saveData" type="bool" value="true" />
+        <param name="car" type="str" value="OldBARC" />
     </node>
 
     <!-- VISUALIZATION -->

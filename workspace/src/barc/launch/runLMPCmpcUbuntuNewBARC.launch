@@ -103,6 +103,7 @@
     <node machine="this-pc" pkg="barc" type="controllerMain.py" name="control" output="screen">
         <param name="mode" type="str" value="experiments" />
         <param name="saveData" type="bool" value="true" />
+        <param name="car" type="str" value="NewBARC" />
     </node>
 
     <!-- VISUALIZATION -->
