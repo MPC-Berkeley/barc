@@ -22,9 +22,9 @@
     <param name="feature_flag" type="bool" value="false" />
 
     <!-- Track parameters -->
-    <param name="trackShape" type="str" value="oval" />
+    <!-- <param name="trackShape" type="str" value="oval" /> -->
     <!-- <param name="trackShape" type="str" value="3110_big" /> -->
-    <!-- <param name="trackShape" type="str" value="L_shape" /> -->
+    <param name="trackShape" type="str" value="L_shape" />
 
     <!-- Machines -->
     <machine name="odroid" address="192.168.10.101" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid.sh"/>

@@ -41,10 +41,15 @@ def main():
 
     LMPC = LMPC_commands()
 
+    cntrStarted = False
     while (not rospy.is_shutdown()):
-        cmd.servo = LMPC.servo
-        cmd.motor = LMPC.motor
-        input_commands.publish(cmd)
+        if LMPC.motor > 0.0:
+            cntrStarted = True
+
+        if cntrStarted == True:
+            cmd.servo = LMPC.servo
+            cmd.motor = LMPC.motor
+            input_commands.publish(cmd)
 
         rate.sleep()
 

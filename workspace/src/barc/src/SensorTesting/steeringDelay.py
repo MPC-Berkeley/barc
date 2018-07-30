@@ -22,14 +22,9 @@ def input_thread(a_list):
     a_list.append(input)
 
 def srvOutput2Angle(fbk_srv):
-    if float(fbk_srv) <=  320.0 :
-        angle_rad =  -0.003366574167351213 *float(fbk_srv) +  1.1389698045630452
-    elif float(fbk_srv) <=  350.0  and float(fbk_srv) >=  320.0 :
-        angle_rad =  -0.0031810272915515298 *float(fbk_srv) +  1.0788516796907799
-    if float(fbk_srv) >=  350.0 :
-        angle_rad =  -0.003403610071374642 *float(fbk_srv) +  1.1429416196105804
+    angle_rad =  -0.0033268041861073613 *fbk_srv +  1.0803742426217051
+    return angle_rad
 
-    return angle_rad-0.022
 
 def main():
     rospy.init_node("steeringMap")

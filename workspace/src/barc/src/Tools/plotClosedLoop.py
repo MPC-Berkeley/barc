@@ -76,6 +76,15 @@ def main():
     plt.plot(x_his,y_his,color="blue")
     plt.legend()
 
+    plt.figure("Encoder Input")
+    axes = plt.gca()
+    plt.plot(v_rl_his,'--sb', label="v_rl")
+    plt.plot(v_rr_his,'--ob', label="v_rr")
+    plt.plot(v_fl_his,'--sk', label="v_fl")
+    plt.plot(v_fr_his,'--ok', label="v_fr")
+    plt.plot(inp_v_meas_his,'--or', label="v_x")
+    axes.legend()
+    
     plt.show()
     # Acc 
     plt.subplot(311)

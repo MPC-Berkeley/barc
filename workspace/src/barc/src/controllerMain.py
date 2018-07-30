@@ -34,7 +34,7 @@ def main():
     rospy.init_node("LMPC")
 
     input_commands = rospy.Publisher('ecu_LMPC', ECU, queue_size=1)
-    # input_commands = rospy.Publisher('ecu1', ECU, queue_size=1)
+    # input_commands = rospy.Publisher('ecu', ECU, queue_size=1)
     pred_treajecto = rospy.Publisher('OL_predictions', prediction, queue_size=1)
     sel_safe_set   = rospy.Publisher('SS', SafeSetGlob, queue_size=1)
 
