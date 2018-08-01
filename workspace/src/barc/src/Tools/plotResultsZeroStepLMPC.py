@@ -77,14 +77,18 @@ def main():
     LapToPlot = [27,28,29] 
     LapToPlot.append(36); LapToPlot.append(37)    
 
-    # New Servo Oval Fast
-    LapToPlot = [23,25]
-    LapToPlot.append(36); LapToPlot.append(35)    
+    # Oval 6_LMPC_60Laps
+    LapToPlot = [26,27]
+    LapToPlot.append(32); LapToPlot.append(33)    
 
-    # # New Servo New Map Oval LMPC 1
-    # LapToPlot = [19, 27]
-    # LapToPlot.append(50)    
-    # LapToPlot.append(52)
+    # 3110_big 6_LMPC_AfterVideo10LapsZeroStep
+    LapToPlot = [27, 29]
+    LapToPlot.append(34); LapToPlot.append(32) 
+
+    # # 3110_big 2_LMPC_FromCoderLinear
+    # LapToPlot = [26, 28]
+    # LapToPlot.append(36); LapToPlot.append(39) 
+
     print LapToPlot
 
     groupFlag = 1
@@ -230,7 +234,7 @@ def plotComputationalTime(LMPController, LapToPlot, map, groupFlag):
         Label = LapToPlot
     else:
         plotColors = ['b','b','r','r','k','m']
-        Label = ["LMPC", "LMPC", "New Controller", "New Controller"]
+        Label = ["LMPC", "LMPC", "Data Based Policy", "Data Based Policy"]
 
 
     plt.figure()
@@ -262,6 +266,17 @@ def plotComputationalTime(LMPController, LapToPlot, map, groupFlag):
         counter += 1
     plt.axvline(map.TrackLength, linewidth=4, color='g')
     plt.ylabel('Total [s]')
+
+    compTime = np.empty((0))
+    for i in LapToPlot:
+        compTime =  np.append(compTime, qpTime[0:LapCounter[i], i] + sysIDTime[0:LapCounter[i], i], axis=0)
+
+
+    plt.figure()
+    plt.plot(0.1*np.arange(0, np.shape(compTime)[0]), compTime,'-o')
+    plt.ylabel('Computational Time [s]')
+    plt.xlabel('Time [s]')
+
 
 
 def plotOneStepPreditionError(LMPController, LMPCOpenLoopData, LapToPlot):
@@ -431,7 +446,7 @@ def plotClosedLoopLMPC(LMPController, map, LapToPlot, groupFlag):
         Label = LapToPlot
     else:
         plotColors = ['b','b','r','r','k','m']
-        Label = ["LMPC", "LMPC","New Controller","New Controller"]
+        Label = ["LMPC", "LMPC", "Data Based Policy", "Data Based Policy"]
     
     counter = 0
     for i in LapToPlot:
