@@ -14,6 +14,8 @@ import pdb
 from trackInitialization import Map
 from dataStructures import LMPCprediction, EstimatorData, ClosedLoopDataObj
 import os
+from numpy import linalg as la
+
 
 
 def main():
@@ -88,6 +90,10 @@ def main():
     # # 3110_big 2_LMPC_FromCoderLinear
     # LapToPlot = [26, 28]
     # LapToPlot.append(36); LapToPlot.append(39) 
+    
+    # L_shape 6_LMPC_40LapsNiceVideo
+    LapToPlot = [23, 27]
+    LapToPlot.append(35); LapToPlot.append(32) 
 
     print LapToPlot
 
@@ -98,6 +104,14 @@ def main():
     plotComputationalTime(LMPController, LapToPlot, map, groupFlag)
     plt.show()
 
+    plotClosedLoopColorLMPC(LMPController, map, [35])
+    plt.show()
+
+    print "Do you wanna create xy gif? [Lap #/n]"
+    inputKeyBoard = raw_input()
+    if inputKeyBoard != "n":
+        saveGif_xyResults(map, LMPCOpenLoopData, LMPController, int(inputKeyBoard))
+    
     # pdb.set_trace()
     # animation_states(map, LMPCOpenLoopData, LMPController, 10)
 
@@ -701,17 +715,16 @@ def saveGif_xyResults(map, LMPCOpenLoopData, LMPController, it):
     SS = LMPController.SS
     uSS = LMPController.uSS
 
-    Points = np.floor(10 * (map.PointAndTangent[-1, 3] + map.PointAndTangent[-1, 4]))
+    Points = int(np.floor(10 * (map.PointAndTangent[-1, 3] + map.PointAndTangent[-1, 4])))
     Points1 = np.zeros((Points, 2))
     Points2 = np.zeros((Points, 2))
     Points0 = np.zeros((Points, 2))
     for i in range(0, int(Points)):
-        Points1[i, :] = map.getGlobalPosition(i * 0.1, map.width)
-        Points2[i, :] = map.getGlobalPosition(i * 0.1, -map.width)
+        Points1[i, :] = map.getGlobalPosition(i * 0.1, map.halfWidth)
+        Points2[i, :] = map.getGlobalPosition(i * 0.1, -map.halfWidth)
         Points0[i, :] = map.getGlobalPosition(i * 0.1, 0)
 
     fig = plt.figure()
-    plt.ylim((-5, 1.5))
     fig.set_tight_layout(True)
     plt.plot(map.PointAndTangent[:, 0], map.PointAndTangent[:, 1], 'o')
     plt.plot(Points0[:, 0], Points0[:, 1], '--')
@@ -721,9 +734,7 @@ def saveGif_xyResults(map, LMPCOpenLoopData, LMPController, it):
 
     ax = plt.axes()
     SSpoints_x = []; SSpoints_y = []
-    xPred = []; yPred = []
-    SSpoints, = ax.plot(SSpoints_x, SSpoints_y, 'sb', label="SS",zorder=0)
-    line, = ax.plot(xPred, yPred, '-or', label="Predicted Trajectory",zorder=1)
+    SSpoints, = ax.plot(SSpoints_x, SSpoints_y, 'og', label="Recorded Data",zorder=0)
 
     v = np.array([[ 1.,  1.],
                   [ 1., -1.],
@@ -736,39 +747,113 @@ def saveGif_xyResults(map, LMPCOpenLoopData, LMPController, it):
     # plt.legend(bbox_to_anchor=(0,1.02,1,0.2), loc="lower left",
     #             mode="expand", borderaxespad=0, ncol=3)
 
-    N = LMPController.N
-    numSS_Points = LMPController.numSS_Points
+    numSS_Points = LMPController.backPoints + LMPController.forePoints
+    
+    pdb.set_trace()
 
     def update(i):
-        xPred = np.zeros((N + 1, 1)); yPred = np.zeros((N + 1, 1))
-        SSpoints_x = np.zeros((numSS_Points, 1)); SSpoints_y = np.zeros((numSS_Points, 1))
+        SSpoints_x = np.zeros((10*numSS_Points, 1)); SSpoints_y = np.zeros((10*numSS_Points, 1))
 
-        for j in range(0, N + 1):
-            xPred[j, 0], yPred[j, 0] = map.getGlobalPosition(LMPCOpenLoopData.PredictedStates[j, 4, i, it],
-                                                             LMPCOpenLoopData.PredictedStates[j, 5, i, it])
+        x = SS_glob[i, 4, it]
+        y = SS_glob[i, 5, it]
+        psi = SS_glob[i, 3, it]
+        l = 2*0.15;
+        w = 2*0.075
+        
+        car_x = [x + l * np.cos(psi) - w * np.sin(psi), x + l * np.cos(psi) + w * np.sin(psi),
+                 x - l * np.cos(psi) + w * np.sin(psi), x - l * np.cos(psi) - w * np.sin(psi)]
+        car_y = [y + l * np.sin(psi) + w * np.cos(psi), y + l * np.sin(psi) - w * np.cos(psi),
+                 y - l * np.sin(psi) - w * np.cos(psi), y - l * np.sin(psi) + w * np.cos(psi)]
 
-            if j == 0:
-                x = SS_glob[i, 4, it]
-                y = SS_glob[i, 5, it]
-                psi = SS_glob[i, 3, it]
-                l = 0.4;w = 0.2
-                car_x = [x + l * np.cos(psi) - w * np.sin(psi), x + l * np.cos(psi) + w * np.sin(psi),
-                         x - l * np.cos(psi) + w * np.sin(psi), x - l * np.cos(psi) - w * np.sin(psi)]
-                car_y = [y + l * np.sin(psi) + w * np.cos(psi), y + l * np.sin(psi) - w * np.cos(psi),
-                         y - l * np.sin(psi) - w * np.cos(psi), y - l * np.sin(psi) + w * np.cos(psi)]
+        currState = SS[i, :, it]
+        n = 6
+        d = 2
+        SS_PointSelectedTot       = np.empty((n, 0))
+        uSS_PointSelectedTot      = np.empty((d, 0))
+        SS_glob_PointSelectedTot  = np.empty((n, 0))
+        Qfun_SelectedTot          = np.empty((0))
 
-        for j in range(0, numSS_Points):
-            SSpoints_x[j, 0], SSpoints_y[j, 0] = map.getGlobalPosition(LMPCOpenLoopData.SSused[4, j, i, it],
-                                                                       LMPCOpenLoopData.SSused[5, j, i, it])
-        SSpoints.set_data(SSpoints_x, SSpoints_y)
+        for jj in [20,21,22,23,24,26,27,28,29]:
+        # for jj in range(22,29):        
+            SS_PointSelected, SS_glob_PointSelected, Qfun_Selected, uSS_PointSelected = _SelectPoints(LMPController, jj, currState)
+            SS_PointSelectedTot      =  np.append(SS_PointSelectedTot, SS_PointSelected, axis=1)
+            uSS_PointSelectedTot     =  np.append(uSS_PointSelectedTot, uSS_PointSelected, axis=1)
+            SS_glob_PointSelectedTot =  np.append(SS_glob_PointSelectedTot, SS_glob_PointSelected, axis=1)
+            Qfun_SelectedTot         =  np.append(Qfun_SelectedTot, Qfun_Selected, axis=0)
 
-        line.set_data(xPred, yPred)
+        for j in range(0, SS_glob_PointSelectedTot.shape[1]):
+            SSpoints_x[j, 0] = SS_glob_PointSelectedTot[4, j]
+            SSpoints_y[j, 0] = SS_glob_PointSelectedTot[5, j]
+
+        SSpoints.set_data(SSpoints_x[0:(SS_glob_PointSelectedTot.shape[1]-1)], SSpoints_y[0:(SS_glob_PointSelectedTot.shape[1]-1)])
+
 
         rec.set_xy(np.array([car_x, car_y]).T)
 
     anim = FuncAnimation(fig, update, frames=np.arange(0, int(LMPController.LapCounter[it])), interval=100)
 
     anim.save('ClosedLoop.gif', dpi=80, writer='imagemagick')
+
+
+def _SelectPoints(ZeroStepLMPC, it, x0):
+    SS          = ZeroStepLMPC.SS
+    SS_glob     = ZeroStepLMPC.SS_glob
+    uSS         = ZeroStepLMPC.uSS
+    Qfun        = ZeroStepLMPC.Qfun
+    map         = ZeroStepLMPC.map
+    TrackLength = map.TrackLength
+    currIt      = ZeroStepLMPC.it
+    LapCounter  = ZeroStepLMPC.LapCounter
+    backPoints  = ZeroStepLMPC.backPoints
+    forePoints  = ZeroStepLMPC.forePoints
+
+    # x0 = np.array([x00[4]])
+    # x = SS[0:(LapCounter[it]+1), 4, it]
+    # print LapCounter, it
+    # print SS[0:(LapCounter[it]+1), :, it]
+
+    x = SS[0:(LapCounter[it]+1), :, it]    
+    oneVec = np.ones((x.shape[0], 1))
+    x0Vec = (np.dot(np.array([x0]).T, oneVec.T)).T
+    diff = x - x0Vec
+    
+    norm = la.norm(diff, 1, axis=1)    
+    MinNorm = np.argmin(norm)
+
+    # print x0, x[MinNorm,:]
+
+    if (MinNorm - backPoints >= 0):
+        indexSSandQfun = range(-backPoints + MinNorm, -backPoints + MinNorm + forePoints)
+        # SS_Points = x[shift + MinNorm:shift + MinNorm + numSS_Points, :].T
+        # SS_glob_Points = x_glob[shift + MinNorm:shift + MinNorm + numSS_Points, :].T
+        # Sel_Qfun = Qfun[shift + MinNorm:shift + MinNorm + numSS_Points, it]
+    else:
+        indexSSandQfun = range(MinNorm, MinNorm + forePoints)
+        # SS_Points = x[MinNorm:MinNorm + numSS_Points, :].T
+        # SS_glob_Points = x_glob[MinNorm:MinNorm + numSS_Points, :].T
+        # Sel_Qfun = Qfun[MinNorm:MinNorm + numSS_Points, it]
+
+    SS_Points      = SS[indexSSandQfun, :, it].T
+    uSS_Points     = uSS[indexSSandQfun, :, it].T
+    SS_glob_Points = SS_glob[indexSSandQfun, :, it].T
+    Sel_Qfun       = Qfun[indexSSandQfun, it]
+
+
+    # Modify the cost if the predicion has crossed the finisch line
+    Sel_Qfun = Qfun[indexSSandQfun, it]
+    # if xPred == []:
+    #     Sel_Qfun = Qfun[indexSSandQfun, it]
+    # elif (np.all((xPred[:, 4] > TrackLength) == False)):
+    #     Sel_Qfun = Qfun[indexSSandQfun, it]
+    # elif  it < currIt - 1:
+    #     Sel_Qfun = Qfun[indexSSandQfun, it] + Qfun[0, it + 1]
+    # else:
+    #     sPred = xPred[:, 4]
+    #     predCurrLap = LMPC.N - sum(sPred > TrackLength)
+    #     currLapTime = LMPC.LapTime
+    #     Sel_Qfun = Qfun[indexSSandQfun, it] + currLapTime + predCurrLap
+
+    return SS_Points, SS_glob_Points, Sel_Qfun, uSS_Points
 
 
 

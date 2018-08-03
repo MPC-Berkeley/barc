@@ -22,8 +22,8 @@ def input_thread(a_list):
     a_list.append(input)
     
 def srvOutput2Angle(fbk_srv):
-    # angle_rad =  -0.003530958631043808 *fbk_srv +  1.0861319262672648
-    angle_rad =  -0.003325686873493677 *fbk_srv +  1.1045130391911997
+    # angle_rad =  -0.003325686873493677 *fbk_srv +  1.1045130391911997
+    angle_rad =  -0.0033597966955940897 *fbk_srv +  1.0990602157436302
     return angle_rad
 
 
