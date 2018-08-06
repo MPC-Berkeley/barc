@@ -379,7 +379,7 @@ class PWAControllerLMPC(AbstractControllerLMPC):
             else:
                 # to make testing run faster
                 try:
-                    data = np.load('/home/sarah/barc/workspace/src/barc/src/ControllersObject/cluster_labels.npz')
+                    data = np.load('/home/ugo/GitHub/barc/workspace/src/barc/src/ControllersObject/cluster_labels.npz')
                 except NameError: #IOError: # FileNotFoundError:
                     # use greedy method to fit PWA model
                     self.clustering = pwac.ClusterPWA.from_num_clusters(zs, ys, 
@@ -674,17 +674,20 @@ def LMPC_BuildMatCost(N, Qslack, Q, R, dR, uOld, Sel_Qfun=[], numSS_Points=0):
     n = Q.shape[0]
     d = R.shape[0]
     vt = 2
+    Qlane = 0.1 * 0.5 * 10 * np.array([50, 10])
+    quadLaneSlack = Qlane[0] * np.eye(2*N)
+    linLaneSlack = Qlane[1] * np.ones(2*N)
 
     Mx, P, Mu = MPC_MatCost(N, Q, R, dR)
     M = 2 * linalg.block_diag(Mx, P, Mu, 
-                   np.zeros((numSS_Points, numSS_Points)), Qslack)
+                   np.zeros((numSS_Points, numSS_Points)), Qslack, quadLaneSlack)
     
     xtrack = np.array([vt, 0, 0, 0, 0, 0])
     q00 = - 2 * np.dot(np.tile(xtrack, N + 1), linalg.block_diag(Mx, P) )
     q0 = np.append(q00, np.zeros(d * N))
     # Derivative Input
     q0[n*(N+1):n*(N+1)+2] = -2 * np.dot( uOld, np.diag(dR) )
-    q = np.append(np.append(q0, Sel_Qfun), np.zeros(n))
+    q = np.append(np.append(np.append(q0, Sel_Qfun), np.zeros(n)), linLaneSlack)
     return M, q
 
 def LMPC_BuildMatCost_old(N, Sel_Qfun, numSS_Points, Qslack, Q, R, dR, uOld):
@@ -708,16 +711,23 @@ def LMPC_BuildMatCost_old(N, Sel_Qfun, numSS_Points, Qslack, Q, R, dR, uOld):
     np.fill_diagonal(Mu[:, 2:], OffDiaf)
     # np.savetxt('Mu.csv', Mu, delimiter=',', fmt='%f')
 
+    # Add lane slack variable Cost
+    Qlane = 0.1 * 0.5 * 10 * np.array([50, 10])
+    quadLaneSlack = Qlane[0] * np.eye(2*LMPC.N)
+
     M00 = linalg.block_diag(Mx, P, Mu)
-    M0 = linalg.block_diag(M00, np.zeros((numSS_Points, numSS_Points)), Qslack)
+    M0 = linalg.block_diag(M00, np.zeros((numSS_Points, numSS_Points)), Qslack, quadLaneSlack)
     xtrack = np.array([vt, 0, 0, 0, 0, 0])
     q0 = - 2 * np.dot(np.append(np.tile(xtrack, N + 1), np.zeros(R.shape[0] * N)), M00)
 
     # Derivative Input
     q0[n*(N+1):n*(N+1)+2] = -2 * np.dot( uOld, np.diag(dR) )
 
+
+    # Add lane slack variable Cost
+    linLaneSlack = Qlane[1] * np.ones(2*LMPC.N)
     # np.savetxt('q0.csv', q0, delimiter=',', fmt='%f')
-    q = np.append(np.append(q0, Sel_Qfun), np.zeros(Q.shape[0]))
+    q = np.append(np.append(q0, Sel_Qfun), np.zeros(Q.shape[0]), linLaneSlack)
 
     # np.savetxt('q.csv', q, delimiter=',', fmt='%f')
 
@@ -798,19 +808,48 @@ def LMPC_BuildMatIneqConst(N, numSS_Points=0, SelectReg=None,
     FDummy2 = linalg.block_diag(FDummy, I)
     
     Fslack = np.zeros((FDummy2.shape[0], n))
-    F = np.hstack((FDummy2, Fslack))
-    b = np.hstack((bxtot, butot, np.zeros(numSS_Points)))
+    F_hard = np.hstack((FDummy2, Fslack))
+    b_hard = np.hstack((bxtot, butot, np.zeros(numSS_Points)))
+
+    # Add slack Variables on Lane Boundaries
+    LaneSlack = np.zeros((F_hard.shape[0], 2*N))
+    colIndexPositive = []
+    rowIndexPositive = []
+    colIndexNegative = []
+    rowIndexNegative = []
+    for i in range(0, N):
+        colIndexPositive.append( i*2 + 0 )
+        colIndexNegative.append( i*2 + 1 )
+
+        rowIndexPositive.append(i*Fx.shape[0] + 0) # Slack on first element of Fx
+        rowIndexNegative.append(i*Fx.shape[0] + 1) # Slack on second element of Fx
+    
+    LaneSlack[rowIndexPositive, colIndexPositive] = -1.0
+    LaneSlack[rowIndexNegative, rowIndexNegative] = -1.0
+
+    F_1 = np.hstack((F_hard, LaneSlack))
+
+    I = - np.eye(2*N)
+    Zeros = np.zeros((2*N, F_hard.shape[1]))
+    Positivity = np.hstack((Zeros, I))
+
+    F = np.vstack((F_1, Positivity))
+
+    # np.savetxt('F.csv', F, delimiter=',', fmt='%f')
+    # pdb.set_trace()
+
+    # b vector
+    b = np.hstack((b_hard, np.zeros(2*N)))
+
     return F, b
 
 
 def getRacingFb():
     # Build the matrices for the state constraint in each region. In the region i we want Fx[i]x <= bx[b]
-    Fx = np.array([[1., 0., 0., 0., 0., 0.],
-                   [0., 0., 0., 0., 0., 1.],
+    Fx = np.array([[0., 0., 0., 0., 0., 1.],
                    [0., 0., 0., 0., 0., -1.]])
 
-    bx = np.array([[3.],  # vx max
-                   [0.8],  # max ey
+    bx = np.array([[0.8],  # max ey
                    [0.8]])  # max ey
 
     # Build the matrices for the input constraint in each region. In the region i we want Fx[i]x <= bx[b]
@@ -819,10 +858,10 @@ def getRacingFb():
                    [0., 1.],
                    [0., -1.]])
 
-    bu = np.array([[0.5],  # Max Steering
-                   [0.5],  # Max Steering
-                   [1.],  # Max Acceleration
-                   [1.]])  # Max Acceleration
+    bu = np.array([[0.25],  # Max Steering
+                   [0.25],  # Max Steering
+                   [2.],  # Max Acceleration
+                   [0.7]])  # Max Acceleration
     return Fx, bx, Fu, bu
 
 
@@ -879,7 +918,11 @@ def BuildMatEqConst_PWA(As, Bs, ds, N, SelectedRegions):
     Gterm = np.zeros([n, G0.shape[1]])  # constraint on x_{N+1}
     Gterm[:,n*N:n*(N+1)] = np.eye(n) # constraint on x_{N+1}
     Gterm[:,-n:] = np.eye(n) # slack on x_{N+1}
-    G = np.vstack([G0,Gterm])
+    G_hard = np.vstack([G0,Gterm])
+
+    # Add columns related with lane slack
+    SlackLane = np.zeros((G_hard.shape[0], 2*N))
+    G = np.hstack((G_hard, SlackLane))
 
 
     E1 = np.zeros((n * (N + 1) + n, n))  # + n for terminal constraint
