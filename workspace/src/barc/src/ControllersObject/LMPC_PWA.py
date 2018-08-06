@@ -260,6 +260,12 @@ class PWAControllerLMPC(AbstractControllerLMPC):
         # python 2/3 compatibility
         super(PWAControllerLMPC, self).__init__(numSS_Points, numSS_it, N, Qslack, Q, R, dR, 
                                               n, d, shift, dt, track_map, Laps, TimeLMPC, Solver)
+        self.affine = True # False
+        dim0 = n+d+1 if self.affine else n+d
+        # mask = [A B d].T
+        sparse_mask = np.ones([n, dim0])
+        sparse_mask[1,0] = 0.0; sparse_mask[1,2] = 0.0
+        self.sparse_mask = sparse_mask.T
         
 
     def addTrajectory(self, ClosedLoopData):
@@ -371,7 +377,7 @@ class PWAControllerLMPC(AbstractControllerLMPC):
             if self.load_model:
                 data = np.load('../notebooks/pwa_model_10.npz')
                 self.clustering = pwac.ClusterPWA.from_labels(data['zs'], data['ys'], 
-                                   data['labels'], z_cutoff=self.n)
+                                   data['labels'], z_cutoff=self.n, affine=self.affine, sparse_mask=self.sparse_mask)
                 self.clustering.region_fns = data['region_fns']
                 cluster_ind = len(self.clustering.cluster_labels)
                 self.clustering.add_data_update(zs, ys, verbose=verbose, full_update=self.region_update)
@@ -390,7 +396,7 @@ class PWAControllerLMPC(AbstractControllerLMPC):
                     self.clustering.determine_polytopic_regions(verbose=verbose)
                 else:
                     self.clustering = pwac.ClusterPWA.from_labels(zs, ys, 
-                                   data['labels'], z_cutoff=self.n)
+                                   data['labels'], z_cutoff=self.n, affine=self.affine, sparse_mask=self.sparse_mask)
                     self.clustering.region_fns = data['region_fns']
                 # np.savez('cluster_labels', labels=self.clustering.cluster_labels,
                 #                        region_fns=self.clustering.region_fns,

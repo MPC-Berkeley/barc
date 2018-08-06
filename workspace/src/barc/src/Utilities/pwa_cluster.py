@@ -14,7 +14,8 @@ class ClusterPWA:
     """
 
     def __init__(self, zs, ys, num_clusters, centroids, thetas,
-                 cluster_labels, cov_c, z_cutoff=None, affine=True):
+                 cluster_labels, cov_c, z_cutoff=None, affine=True,
+                 sparse_mask=None):
         """object initialization
 
         Args:
@@ -38,6 +39,7 @@ class ClusterPWA:
         self.affine = affine
         self.Nd = zs.shape[0]
         self.cov_e = np.eye(self.dimy) # TODO: change error model?
+        self.sparse_mask = sparse_mask
 
         # Initializing clusters and models
         self.cluster_labels = cluster_labels
@@ -51,7 +53,8 @@ class ClusterPWA:
         self.update_thetas = True
 
     @classmethod
-    def from_num_clusters(cls, zs, ys, num_clusters, initialization=None, z_cutoff=None, affine=True):
+    def from_num_clusters(cls, zs, ys, num_clusters, initialization=None, z_cutoff=None, affine=True,
+                          sparse_mask=None):
         dimy = ys[0].size; dimz = zs[0].size
         z_lim = dimz if z_cutoff is None else z_cutoff
         # centroids are initialized to be randomly spread over the range of the data
@@ -71,21 +74,22 @@ class ClusterPWA:
         dim0 = dimz+1 if affine else dimz
         thetas = np.zeros( np.hstack([num_clusters, dim0, dimy]))
         return cls(zs, ys, num_clusters, centroids, thetas, 
-                   cluster_labels, cov_c, z_cutoff, affine=affine)
+                   cluster_labels, cov_c, z_cutoff, affine=affine,sparse_mask=sparse_mask)
 
     @classmethod
-    def from_centroids_models(cls, zs, ys, centroids, thetas, z_cutoff=None, affine=True):
+    def from_centroids_models(cls, zs, ys, centroids, thetas, z_cutoff=None, affine=True,sparse_mask=None):
         z_lim = zs[0].size if z_cutoff is None else z_cutoff
         cov_c = [np.eye(z_lim) for i in range(centroids.shape[0])]
         return cls(zs, ys, len(centroids), centroids, thetas, 
-                   np.zeros(zs.shape[0]), cov_c, z_cutoff, affine=affine)
+                   np.zeros(zs.shape[0]), cov_c, z_cutoff, affine=affine, sparse_mask=sparse_mask)
 
     @classmethod
-    def from_labels(cls, zs, ys, cluster_labels, z_cutoff=None, affine=True):
+    def from_labels(cls, zs, ys, cluster_labels, z_cutoff=None, affine=True, sparse_mask=None):
         centroids, thetas, cov_c = ClusterPWA.get_model_from_labels(zs, ys, 
-                                                     cluster_labels, z_cutoff,affine=affine)
+                                                     cluster_labels, z_cutoff,
+                                                     affine=affine, sparse_mask=sparse_mask)
         return cls(zs, ys, np.unique(cluster_labels).size, centroids, thetas, 
-                   cluster_labels, cov_c, z_cutoff, affine=affine)
+                   cluster_labels, cov_c, z_cutoff, affine=affine, sparse_mask=sparse_mask)
 
     def add_data(self, new_zs, new_ys):
         # TODO assertions about data size
@@ -124,10 +128,12 @@ class ClusterPWA:
             self.cluster_labels[i] = np.argmax(dot_pdt)
         if self.update_thetas:
             self.centroids, self.thetas, self.cov_c = ClusterPWA.get_model_from_labels(self.zs, 
-                                             self.ys, self.cluster_labels, self.z_cutoff, affine=self.affine)
+                                             self.ys, self.cluster_labels, self.z_cutoff, affine=self.affine,
+                                             sparse_mask=self.sparse_mask)
         else:
             self.centroids, _, self.cov_c = ClusterPWA.get_model_from_labels(self.zs, self.ys, 
-                                             self.cluster_labels, self.z_cutoff, affine=self.affine)
+                                             self.cluster_labels, self.z_cutoff, affine=self.affine,
+                                             sparse_mask=self.sparse_mask)
         
     def get_region_matrices(self):
         return getRegionMatrices(self.region_fns)
@@ -171,10 +177,12 @@ class ClusterPWA:
         if verbose: print("updating models")
         if self.update_thetas:
             self.centroids, self.thetas, self.cov_c = ClusterPWA.get_model_from_labels(self.zs, self.ys, 
-                                             self.cluster_labels, self.z_cutoff, affine=self.affine)
+                                             self.cluster_labels, self.z_cutoff, affine=self.affine,
+                                             sparse_mask=self.sparse_mask)
         else:
             self.centroids, _, self.cov_c = ClusterPWA.get_model_from_labels(self.zs, self.ys, 
-                                             self.cluster_labels, self.z_cutoff, affine=self.affine)        
+                                             self.cluster_labels, self.z_cutoff, affine=self.affine,
+                                             sparse_mask=self.sparse_mask)        
         try:
             c_error = np.linalg.norm(self.centroids-centroids_old, ord='fro')
         except ValueError as e:
@@ -212,7 +220,7 @@ class ClusterPWA:
         return np.array(zdists) + np.array(ydists)
 
     @staticmethod
-    def get_model_from_labels(zs, ys, labels, z_cutoff=None, affine=True):
+    def get_model_from_labels(zs, ys, labels, z_cutoff=None, affine=True, sparse_mask=None):
         """ 
         Uses the cluster labels and data to return centroids and models and spatial covariances
 
@@ -251,7 +259,7 @@ class ClusterPWA:
                     cov_c[i] = np.array([[cov_c[i]]])
             # compute centroids and affine fit
             centroids[i] = np.mean(np.array(points_cutoff), axis=0)
-            thetas[i] = affine_fit(points, points_y, affine=affine) 
+            thetas[i] = affine_fit(points, points_y, affine=affine, sparse_mask=sparse_mask) 
             assert len(cov_c[i].shape) == 2, cov_c[i].shape
         return centroids, thetas, cov_c
 
@@ -303,13 +311,53 @@ class ClusterPWA:
             idx = np.argmin(quality_of_clusters)
         return idx
 
-def affine_fit(x,y,affine=True):
-        # TODO use best least squares (scipy?)
-        if affine:
-            ls_res = np.linalg.lstsq(np.hstack([x, np.ones([len(x),1])]), y)
-        else:
-            ls_res = np.linalg.lstsq(x, y)
-        return ls_res[0]
+def affine_fit(x,y,affine=True,sparse_mask=None):
+    # TODO use best least squares (scipy?)
+    x = np.array(x); y = np.array(y)
+    x1 = np.hstack([x, np.ones([len(x),1])]) if affine else x
+    N,n = x1.shape; N2,m = y.shape
+    if sparse_mask is None:
+        ls_res = np.linalg.lstsq(x1, y)
+        theta = ls_res[0]
+    else:
+        theta = sparse_least_squares(x1, y, sparse_mask)
+    return theta
+
+def sparse_least_squares(x, y, M):
+    '''
+    solves y = A x where we want to enforce a sparsity pattern described by mask M
+    i.e., A * M = A (element-wise multiplication)
+
+    TODO speed up with QR? 
+    TODO correct LS method?
+    '''
+    N,n = x.shape
+    N2,m = y.shape
+    assert N2 == N, "dimension mismatch: " + str(N) + ", " + str(N2)
+
+    A = np.zeros([n,m])
+    for i in range(m):
+        xi = np.zeros(x.shape)
+        xi[:,np.where(M[:,i]==1)] = x[:,np.where(M[:,i]==1)]
+        ls_res = np.linalg.lstsq(xi, y[:,i])
+        A[:,i] = ls_res[0]
+        A[np.where(M[:,i]==0),i] = 0
+    return A
+
+def test_least_squares():
+    N,n,m = 500,8,6
+    x = np.random.normal(size=[N,n])
+    A0 = np.random.normal(size=[n,m])
+
+    M = np.ones([n,m])
+    M[::2,1::2] = 0
+    A0 = A0 * M
+
+    y = x.dot(A0) + 0.1 * np.random.normal(size=[N,m])
+    A2 = affine_fit(x,y,affine=False)
+    assert np.amax(A2 - sparse_least_squares(x, y, np.ones([n,m]))) < 1e-10
+    A = sparse_least_squares(x, y, M)
+    assert np.linalg.norm(A-A0) < np.linalg.norm(A2-A0)
 
 def cvx_cluster_problem(zs, labels):
     s = np.unique(labels).size
