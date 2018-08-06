@@ -33,15 +33,19 @@ def main():
     # Initializa ROS node
     rospy.init_node("LMPC")
 
-    input_commands = rospy.Publisher('ecu_LMPC', ECU, queue_size=1)
-    # input_commands = rospy.Publisher('ecu', ECU, queue_size=1)
-    pred_treajecto = rospy.Publisher('OL_predictions', prediction, queue_size=1)
-    sel_safe_set   = rospy.Publisher('SS', SafeSetGlob, queue_size=1)
-
     mode = rospy.get_param("/control/mode")
     saveData = rospy.get_param("/control/saveData")
     sel_car = rospy.get_param("/control/car")
 
+    if mode == "simulations":
+        input_commands = rospy.Publisher('ecu', ECU, queue_size=1)
+    else:
+        input_commands = rospy.Publisher('ecu_LMPC', ECU, queue_size=1)
+    
+    pred_treajecto = rospy.Publisher('OL_predictions', prediction, queue_size=1)
+    sel_safe_set   = rospy.Publisher('SS', SafeSetGlob, queue_size=1)
+
+    
 
     loop_rate = 10.0
     dt = 1.0/loop_rate
@@ -120,15 +124,6 @@ def main():
                 Controller.addTrajectory(ClosedLoopData)
                 ClosedLoopData.updateInitialConditions(LocalState, GlobalState)
 
-            if LapNumber == (NumberOfLaps-1):
-                backPoints = 3
-                forePoints = 7
-                Laps       = NumberOfLaps+2   # Total LMPC laps
-                LMPControllerBeforeSwitch = Controller
-                Controller = ControllerZeroStepLMPC(Controller, backPoints, forePoints, Laps)
-                PickController = "ZeroStep"
-                ChangeToZeroStep = True
-
 
             LapNumber += 1
             print "Lap completed starting lap:", LapNumber, ". Lap time: ", float(TimeCounter)/loop_rate
@@ -201,18 +196,6 @@ def main():
                 uApplied = np.array([cmd.servo, cmd.motor])
                 # Publish input
                 input_commands.publish(cmd)
-            elif PickController == "ZeroStep":
-                Controller.solve(LocalState)
-                # print "Solution is: ", Controller.uPred
-                # print "Solver time: ", Controller.solverTime.total_seconds()
-                cmd.servo = Controller.uPred[0,0]
-                cmd.motor = Controller.uPred[0,1]
-                oldU = uApplied
-                uApplied = np.array([cmd.servo, cmd.motor])
-                input_commands.publish(cmd)
-                SS_glob_sel.SSx       = Controller.SS_glob_PointSelectedTot[4, :]
-                SS_glob_sel.SSy       = Controller.SS_glob_PointSelectedTot[5, :]
-                sel_safe_set.publish(SS_glob_sel)
 
             else:                                     # Else use the selected controller
                 if LocalState[0] < 0.5 and cmd.motor < 0.5:
@@ -318,8 +301,6 @@ def main():
         pickle.dump(ClosedLoopData, file_data)
         pickle.dump(Controller, file_data)
         pickle.dump(OpenLoopData, file_data)
-        if ChangeToZeroStep == True:
-            pickle.dump(LMPControllerBeforeSwitch, file_data)
         
         file_data.close()    
     # == End: Save Data
