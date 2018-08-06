@@ -17,7 +17,7 @@
     <machine name="this-pc" address="192.168.10.147" user="mpcubuntu" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc.sh"/>
 
     <!-- VISUALIZATION -->
-    <node machine="this-pc" pkg="barc" type="steeringMap.py" name="IMUplot" output="screen" >
+    <node machine="this-pc" pkg="barc" type="steeringMap.py" name="control" output="screen" >
         <param name="car" value="new" />
     </node>
 
