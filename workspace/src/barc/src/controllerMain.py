@@ -24,6 +24,7 @@ from PathFollowingLTI_MPC import PathFollowingLTI_MPC
 from PathFollowingLTVMPC import PathFollowingLTV_MPC
 from dataStructures import LMPCprediction, EstimatorData, ClosedLoopDataObj
 from LMPC import ControllerLMPC
+from LMPC_PWA import PWAControllerLMPC
 from ZeroStepLMPC import ControllerZeroStepLMPC
 import time
 
@@ -65,7 +66,7 @@ def main():
     
     # Choose Controller and Number of Laps
 
-    PickController = "LMPC"
+    PickController = "LMPC_PWA" #"TI_MPC" # PID" # "LMPC"
     NumberOfLaps   = 30
     vt = 1.2
     PathFollowingLaps = 2
@@ -116,11 +117,11 @@ def main():
         if HalfTrack == 1 and LocalState[4] <= map.TrackLength/4 and firtLap == False:
 
             # If not LMPC then reset initial conditon after Lap 0
-            if LapNumber == 0 and (PickController != "LMPC" and PickController != "ZeroStep"):
+            if LapNumber == 0 and (PickController != "LMPC" and PickController != "LMPC_PWA"):
                 ClosedLoopData.updateInitialConditions(LocalState, GlobalState)
 
             # If LMPC put in SS lap after finisching lap 1
-            if LapNumber >= 1 and ((PickController == "LMPC") or (PickController == "ZeroStep")):
+            if LapNumber >= 1 and ((PickController == "LMPC") or (PickController == "LMPC_PWA")):
                 Controller.addTrajectory(ClosedLoopData)
                 ClosedLoopData.updateInitialConditions(LocalState, GlobalState)
 
@@ -248,7 +249,7 @@ def main():
             # == End: Computing Input
 
             # == Start: Record data
-            if ((PickController != "LMPC") and (PickController != "ZeroStep")) and (LapNumber >= 1):
+            if ((PickController != "LMPC") and (PickController != "LMPC_PWA")) and (LapNumber >= 1):
                 LocalState[4] = LocalState[4] + (LapNumber - 1)*map.TrackLength
                 ClosedLoopData.addMeasurement(GlobalState, LocalState, uApplied, 
                                               Controller.solverTime.total_seconds(), 
@@ -261,7 +262,7 @@ def main():
                                               deltaTimer.total_seconds(), estimatorData.CurrentAppliedSteeringInput)
             # Add data to SS and Record Prediction                    
 
-            if (PickController == "LMPC") and (LapNumber >= PathFollowingLaps):
+            if (PickController == "LMPC" or PickController == "LMPC_PWA") and (LapNumber >= PathFollowingLaps):
                 OL_predictions.s    = Controller.xPred[:, 4]
                 OL_predictions.ey   = Controller.xPred[:, 5]
                 OL_predictions.epsi = Controller.xPred[:, 3]
@@ -410,6 +411,60 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
         Controller.addTrajectory(ClosedLoopDataTI_MPC)
         OpenLoopData = LMPCprediction(N, 6, 2, int(TimeLMPC/dt), numSS_Points, Laps)
         print "LMPC initialized!"
+
+    elif PickController == "LMPC_PWA":
+        file_data = open(homedir+'/barc_data/'+'/ClosedLoopDataPID.obj', 'rb')
+        # file_data = open(homedir+'/barc_data/'+'/ClosedLoopDataPIDforLMPC.obj', 'rb')
+        ClosedLoopDataTI_MPC = pickle.load(file_data)
+        file_data.close()
+        Laps       = NumberOfLaps+2   # Total LMPC laps
+        # Safe Set Parameters
+        flag_LTV = True
+        TimeLMPC   = 70              # Simulation time
+        LMPC_Solver = "OSQP"          # Can pick CVX for cvxopt or OSQP. For OSQP uncomment line 14 in LMPC.py
+        SysID_Solver = "scipy"        # Can pick CVX, OSQP or scipy. For OSQP uncomment line 14 in LMPC.py  
+        numSS_it = 2                  # Number of trajectories used at each iteration to build the safe set
+        numSS_Points = 8 + N         # Number of points to select from each trajectory to build the safe set
+        shift = N / 2                     # Given the closed point, x_t^j, to the x(t) select the SS points from x_{t+shift}^j
+        # Tuning Parameters
+        if mode == "simulations":
+            N = 12
+            Qslack  =  2 * 5 * np.diag([10, 0.1, 1, 0.1, 10, 1])          # Cost on the slack variable for the terminal constraint
+            Qlane   = 0.1 * 0.5 * 10 * np.array([50, 10]) # Quadratic slack lane cost
+            Q_LMPC  =  0 * np.diag([0.0, 0.0, 10.0, 0.0, 0.0, 0.0])  # State cost x = [vx, vy, wz, epsi, s, ey]
+            R_LMPC  =  0 * np.diag([1.0, 1.0])                      # Input cost u = [delta, a]
+            dR_LMPC =  2* 1 * np.array([ 5 * 0.5 * 10.0, 8 * 20.0]) # Input rate cost u
+            # dR_LMPC =  np.array([ 5.0, 5.0]) # Input rate cost u
+            aConstr = np.array([0.7, 2.0]) # aConstr = [amin, amax]
+            steeringDelay = 0
+            idDelay       = 0
+        elif sel_car == "NewBARC":
+            N = 12
+            Qslack  =  2 * 5 * np.diag([10, 0.1, 1, 0.1, 10, 1])          # Cost on the slack variable for the terminal constraint
+            Qlane   = 0.1 * 0.5 * 10 * np.array([50, 10]) # Quadratic slack lane cost
+            Q_LMPC  =  0 * np.diag([0.0, 0.0, 10.0, 0.0, 0.0, 0.0])  # State cost x = [vx, vy, wz, epsi, s, ey]
+            R_LMPC  =  0 * np.diag([1.0, 1.0])                      # Input cost u = [delta, a]
+            dR_LMPC =  2* 1 * np.array([ 5 * 0.5 * 10.0, 8 * 20.0]) # Input rate cost u
+            aConstr = np.array([0.7, 2.0]) # aConstr = [amin, amax]
+            steeringDelay = 2
+            idDelay       = 0
+            print "New BARC tuning selected"
+        elif sel_car == "OldBARC":
+            N = 12
+            Qslack  =  2 * 5 * np.diag([10, 0.1, 1, 0.1, 10, 1])          # Cost on the slack variable for the terminal constraint
+            Qlane   = 0.1 * 0.5 * 10 * np.array([50, 10]) # Quadratic slack lane cost
+            Q_LMPC  =  0 * np.diag([0.0, 0.0, 10.0, 0.0, 0.0, 0.0])  # State cost x = [vx, vy, wz, epsi, s, ey]
+            R_LMPC  =  0 * np.diag([1.0, 1.0])                      # Input cost u = [delta, a]
+            dR_LMPC =  2* 1 * np.array([ 5 * 0.5 * 10.0, 0.5 * 8 * 20.0]) # Input rate cost u
+            aConstr = np.array([0.7, 2.0]) # aConstr = [amin, amax]
+            steeringDelay = 1
+            idDelay       = 0          
+        Controller = PWAControllerLMPC(3, numSS_Points, numSS_it, N, Qslack, Q_LMPC, R_LMPC, dR_LMPC, 6, 2, shift, dt, map, Laps, TimeLMPC, LMPC_Solver)
+        # Controller.addTrajectory(ClosedLoopDataPID)
+        Controller.addTrajectory(ClosedLoopDataTI_MPC)
+        OpenLoopData = LMPCprediction(N, 6, 2, int(TimeLMPC/dt), numSS_Points, Laps)
+        print "LMPC initialized!"    
+
     
     elif PickController == "ZeroStep":
         file_data = open(homedir+'/barc_data/'+'/ClosedLoopDataLMPC.obj', 'rb')

@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 from matplotlib.animation import FuncAnimation
 import matplotlib.patches as patches
 from LMPC import ControllerLMPC
+from LMPC_PWA import PWAControllerLMPC
 from ZeroStepLMPC import ControllerZeroStepLMPC
 
 import sys
@@ -30,17 +31,17 @@ def main():
         LMPController = pickle.load(file_data)
         LMPCOpenLoopData = pickle.load(file_data)    
     else:
-        file_data = open(homedir+'/barc_data/ClosedLoopDataZeroStep.obj', 'rb')    
+        file_data = open(homedir+'/barc_data/ClosedLoopDataLMPC_PWA.obj', 'rb')    
         ClosedLoopData = pickle.load(file_data)
-        ControllerZeroStepLMPC = pickle.load(file_data)
-        LMPCOpenLoopData = pickle.load(file_data)    
+        # ControllerZeroStepLMPC = pickle.load(file_data)
         LMPController = pickle.load(file_data)
+        LMPCOpenLoopData = pickle.load(file_data)    
     
     file_data.close()
     map = LMPController.map
     LapToPlot = range(2,4)
 
-    plotComputationalTime(LMPController, LapToPlot, map)
+    # plotComputationalTime(LMPController, LapToPlot, map)
 
     pdb.set_trace()
     print "Track length is: ", map.TrackLength
@@ -59,15 +60,15 @@ def main():
     
     LapToPlot = range(10,15)
 
-    plotMeasuredAndAppliedSteering(LMPController, map, LapToPlotLearningProcess)
+    # plotMeasuredAndAppliedSteering(LMPController, map, LapToPlotLearningProcess)
     plt.show()
     # Plot Best Laps
     LapToPlot      = range(0, LMPController.it)
     BestNunberLaps = 4
     SortedTimes    = np.sort(LMPController.LapCounter[1:LMPController.it])
     LapToPlot      = np.argsort(LMPController.LapCounter[1:LMPController.it])[0:BestNunberLaps]
-    LapToPlot = range(15,19)
-    LapToPlot = range(25,30)
+    LapToPlot = range(11,15)
+    #LapToPlot = range(25,30)
     print SortedTimes
     print "Lap Plotted: ", LapToPlot, " Lap Time: ", LMPController.LapCounter[LapToPlot]
     plotClosedLoopColorLMPC(LMPController, map, LapToPlot)
@@ -83,7 +84,7 @@ def main():
     plt.show()
 
     # Computational Time    
-    plotComputationalTime(LMPController, LapToPlot, map)
+    # plotComputationalTime(LMPController, LapToPlot, map)
     plt.show()
 
     print "Do you wanna create xy gif? [Lap #/n]"
