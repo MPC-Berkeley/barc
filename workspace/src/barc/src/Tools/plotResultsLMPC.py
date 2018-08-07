@@ -16,6 +16,8 @@ import pdb
 from trackInitialization import Map
 from dataStructures import LMPCprediction, EstimatorData, ClosedLoopDataObj
 import os
+import datetime
+from numpy import linalg as la
 
 
 def main():
@@ -52,7 +54,7 @@ def main():
     plt.show()
 
     # Plot First Path Following Lap and Learning laps
-    LapToPlotLearningProcess = [2,3,5,10,15]
+    LapToPlotLearningProcess = [2, 27]
     # LapToPlotLearningProcess = [1]
     plotClosedLoopLMPC(LMPController, map, LapToPlotLearningProcess)
     plt.show()
@@ -68,6 +70,8 @@ def main():
     LapToPlot      = np.argsort(LMPController.LapCounter[1:LMPController.it])[0:BestNunberLaps]
     LapToPlot = range(15,19)
     LapToPlot = range(25,30)
+    LapToPlot = [2, 27]
+    
     print SortedTimes
     print "Lap Plotted: ", LapToPlot, " Lap Time: ", LMPController.LapCounter[LapToPlot]
     plotClosedLoopColorLMPC(LMPController, map, LapToPlot)
@@ -97,6 +101,11 @@ def main():
         Save_statesAnimation(map, LMPCOpenLoopData, LMPController, int(inputKeyBoard))
     # pdb.set_trace()
     # animation_states(map, LMPCOpenLoopData, LMPController, 10)
+
+    print "Do you wanna create xy gif for sys ID? [Lap #/n]"
+    inputKeyBoard = raw_input()
+    if inputKeyBoard != "n":
+        saveGif_xyResultsSysID(map, LMPCOpenLoopData, LMPController, int(inputKeyBoard))
 
     # plt.show()
     
@@ -755,7 +764,167 @@ def saveGif_xyResults(map, LMPCOpenLoopData, LMPController, it):
 
     anim.save('gif/ClosedLoop/ClosedLoop.gif', dpi=80, writer='imagemagick')
 
+def saveGif_xyResultsSysID(map, LMPCOpenLoopData, LMPController, it):
+    SS_glob = LMPController.SS_glob
+    LapCounter = LMPController.LapCounter
+    SS = LMPController.SS
+    uSS = LMPController.uSS
 
+    Points = int(np.floor(10 * (map.PointAndTangent[-1, 3] + map.PointAndTangent[-1, 4])))
+    Points1 = np.zeros((Points, 2))
+    Points2 = np.zeros((Points, 2))
+    Points0 = np.zeros((Points, 2))
+    for i in range(0, Points):
+        Points1[i, :] = map.getGlobalPosition(i * 0.1, map.halfWidth)
+        Points2[i, :] = map.getGlobalPosition(i * 0.1, -map.halfWidth)
+        Points0[i, :] = map.getGlobalPosition(i * 0.1, 0)
+
+    pdb.set_trace()
+    fig = plt.figure()
+    # plt.ylim((-5, 1.5))
+    fig.set_tight_layout(True)
+    plt.plot(map.PointAndTangent[:, 0], map.PointAndTangent[:, 1], 'o')
+    plt.plot(Points0[:, 0], Points0[:, 1], '--')
+    plt.plot(Points1[:, 0], Points1[:, 1], '-b')
+    plt.plot(Points2[:, 0], Points2[:, 1], '-b')
+    plt.plot(SS_glob[0:LapCounter[it], 4, it], SS_glob[0:LapCounter[it], 5, it], '-ok', label="Closed-loop trajectory", markersize=1,zorder=-1)
+
+    ax = plt.axes()
+    SSpoints_x = []; SSpoints_y = []
+    xPred = []; yPred = []
+    SSpoints, = ax.plot(SSpoints_x, SSpoints_y, 'sb', label="Used Data",zorder=0)
+    line, = ax.plot(xPred, yPred, '-or',zorder=1)
+
+    v = np.array([[ 1.,  1.],
+                  [ 1., -1.],
+                  [-1., -1.],
+                  [-1.,  1.]])
+    rec = patches.Polygon(v, alpha=0.7,closed=True, fc='r', ec='k',zorder=10)
+    ax.add_patch(rec)
+
+    plt.legend(mode="expand", ncol=3)
+    # plt.legend(bbox_to_anchor=(0,1.02,1,0.2), loc="lower left",
+    #             mode="expand", borderaxespad=0, ncol=3)
+
+    N = LMPController.N
+    numSS_Points = LMPController.numSS_Points
+
+    def update(i):
+        xPred = np.zeros((N + 1, 1)); 
+        yPred = np.zeros((N + 1, 1))
+
+        scaling = np.array([[0.1, 0.0, 0.0, 0.0, 0.0],
+                            [0.0, 1.0, 0.0, 0.0, 0.0],
+                            [0.0, 0.0, 1.0, 0.0, 0.0],
+                            [0.0, 0.0, 0.0, 1.0, 0.0],
+                            [0.0, 0.0, 0.0, 0.0, 1.0]])
+
+        xLin = np.hstack((SS[i, [0, 1, 2], it], uSS[i, :, it]))
+        h = 2 * 5
+        lamb = 0.0
+        stateFeatures = [0, 1, 2]
+        usedIt = [it - 2, it -1]
+
+        indexSelected = []
+        K = []
+        LapCounter = LMPController.LapCounter
+        MaxNumPoint= LMPController.MaxNumPoint
+        print xLin
+        for iterationUsed in usedIt:
+            indexSelected_i, K_i = ComputeIndex(h, SS, uSS, LapCounter, iterationUsed, xLin, stateFeatures, scaling, MaxNumPoint,1, 0, 0)
+            indexSelected.append(indexSelected_i)
+            K.append(K_i)
+
+        Counter = 0
+
+        # Compute Matrices For Local Linear Regression
+        stateFeatures = [4, 5]
+        DataSysID   = np.empty((0,len(stateFeatures)))
+
+        for indexIterations in usedIt:
+            DataSysID = np.append( DataSysID, np.squeeze(SS_glob[np.ix_(indexSelected[Counter], stateFeatures, [indexIterations])]), axis=0)
+            Counter = Counter + 1
+
+        # pdb.set_trace()
+
+        # SSpoints_x = np.zeros((numSS_Points, 1)); SSpoints_y = np.zeros((numSS_Points, 1))
+
+        # for j in range(0, N + 1):
+        #     xPred[j, 0], yPred[j, 0] = map.getGlobalPosition(LMPCOpenLoopData.PredictedStates[j, 4, i, it],
+        #                                                      LMPCOpenLoopData.PredictedStates[j, 5, i, it])
+
+        #     if j == 0:
+        #         x = SS_glob[i, 4, it]
+        #         y = SS_glob[i, 5, it]
+        #         psi = SS_glob[i, 3, it]
+        #         l = 0.4;w = 0.2
+        #         car_x = [x + l * np.cos(psi) - w * np.sin(psi), x + l * np.cos(psi) + w * np.sin(psi),
+        #                  x - l * np.cos(psi) + w * np.sin(psi), x - l * np.cos(psi) - w * np.sin(psi)]
+        #         car_y = [y + l * np.sin(psi) + w * np.cos(psi), y + l * np.sin(psi) - w * np.cos(psi),
+        #                  y - l * np.sin(psi) - w * np.cos(psi), y - l * np.sin(psi) + w * np.cos(psi)]
+
+        # for j in range(0, numSS_Points):
+        #     SSpoints_x[j, 0], SSpoints_y[j, 0] = map.getGlobalPosition(LMPCOpenLoopData.SSused[4, j, i, it],
+        #                                                                LMPCOpenLoopData.SSused[5, j, i, it])
+        SSpoints.set_data(DataSysID[:,0], DataSysID[:,1])
+
+        x = SS_glob[i, 4, it]
+        y = SS_glob[i, 5, it]
+        psi = SS_glob[i, 3, it]
+        l = 2*0.15;
+        w = 2*0.075
+        car_x = [x + l * np.cos(psi) - w * np.sin(psi), x + l * np.cos(psi) + w * np.sin(psi),
+                 x - l * np.cos(psi) + w * np.sin(psi), x - l * np.cos(psi) - w * np.sin(psi)]
+        car_y = [y + l * np.sin(psi) + w * np.cos(psi), y + l * np.sin(psi) - w * np.cos(psi),
+                 y - l * np.sin(psi) - w * np.cos(psi), y - l * np.sin(psi) + w * np.cos(psi)]
+        rec.set_xy(np.array([car_x, car_y]).T)
+
+    anim = FuncAnimation(fig, update, frames=np.arange(0, int(LMPController.LapCounter[it])), interval=100)
+
+    anim.save('gif/ClosedLoop/ClosedLoop.gif', dpi=80, writer='imagemagick')
+
+
+
+def ComputeIndex(h, SS, uSS, LapCounter, it, x0, stateFeatures, scaling, MaxNumPoint, ConsiderInput, steeringDelay, idDelay):
+    startTimer = datetime.datetime.now()  # Start timer for LMPC iteration
+
+    # What to learn a model such that: x_{k+1} = A x_k  + B u_k + C
+    startTime = 0
+    endTime   = LapCounter[it] - 1
+
+    oneVec = np.ones( (SS[startTime:endTime, :, it].shape[0], 1) )
+
+    x0Vec = (np.dot( np.array([x0]).T, oneVec.T )).T
+
+    if ConsiderInput == 1:
+        DataMatrix = np.hstack((SS[startTime:endTime, stateFeatures, it], uSS[startTime:endTime, :, it]))
+    else:
+        DataMatrix = SS[startTime:endTime, stateFeatures, it]
+
+    diff  = np.dot(( DataMatrix - x0Vec ), scaling)
+    # print 'x0Vec \n',x0Vec
+    norm = la.norm(diff, 1, axis=1)
+    
+    # Need to make sure that the indices [0:steeringDelay] are not selected as it us needed to shift the input vector
+    if (steeringDelay+idDelay) > 0:
+        norm[0:(steeringDelay+idDelay)] = 10000
+
+    indexTot =  np.squeeze(np.where(norm < h))
+    # print indexTot.shape, np.argmin(norm), norm, x0
+    if (indexTot.shape[0] >= MaxNumPoint):
+        index = np.argsort(norm)[0:MaxNumPoint]
+        # MinNorm = np.argmin(norm)
+        # if MinNorm+MaxNumPoint >= indexTot.shape[0]:
+        #     index = indexTot[indexTot.shape[0]-MaxNumPoint:indexTot.shape[0]]
+        # else:
+        #     index = indexTot[MinNorm:MinNorm+MaxNumPoint]
+    else:
+        index = indexTot
+
+    K  = ( 1 - ( norm[index] / h )**2 ) * 3/4
+    # K = np.ones(len(index))
+
+    return index, K
 
 def Save_statesAnimation(map, LMPCOpenLoopData, LMPController, it):
     SS_glob = LMPController.SS_glob
