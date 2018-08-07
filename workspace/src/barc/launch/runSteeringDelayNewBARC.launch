@@ -13,8 +13,9 @@
     <!-- Machines -->
     <!-- <machine name="odroid" address="192.168.10.101" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid_ugo.sh"/> -->
     <!-- <machine name="this-pc" address="192.168.10.157" user="ugo" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc.sh"/> -->
-    <machine name="odroid" address="192.168.10.101" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid.sh"/>
+    <machine name="odroid" address="192.168.10.101" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid_sarah.sh"/>
     <machine name="this-pc" address="192.168.10.147" user="mpcubuntu" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc.sh"/>
+    <!-- <machine name="this-pc" address="192.168.10.188" user="sarah" timeout="20.0" env-loader="/home/sarah/barc/env_loader_pc_sarah.sh"/> -->
 
     <!-- VISUALIZATION -->
     <node machine="this-pc" pkg="barc" type="steeringDelay.py" name="control" output="screen" >

@@ -66,7 +66,7 @@ def main():
     
     # Choose Controller and Number of Laps
 
-    PickController = "LMPC_PWA" #"TI_MPC" # PID" # "LMPC"
+    PickController = "LMPC" # LMPC_PWA" #"TI_MPC" # PID" # "LMPC"
     NumberOfLaps   = 30
     vt = 1.2
     PathFollowingLaps = 2
@@ -242,7 +242,7 @@ def main():
                 if (Controller.solverTime.total_seconds() + Controller.linearizationTime.total_seconds() + oneStepPredictionTime.total_seconds() > dt):
                     print "NOT REAL-TIME FEASIBLE!!!"
                     print "Solver time: ", Controller.solverTime.total_seconds(), " Linearization Time: ", Controller.linearizationTime.total_seconds() + oneStepPredictionTime.total_seconds()
-            
+    
             
             # print "Tot Solver Time: ", deltaTimer.total_seconds()
             
@@ -363,7 +363,7 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
         if mode == "simulations":
             file_data = open(homedir+'/barc_data/'+'/ClosedLoopDataTI_MPC.obj', 'rb')
         else:
-            file_data = open(homedir+'/barc_data/'+'/ClosedLoopDataPIDforLMPC.obj', 'rb')
+            file_data = open(homedir+'/barc_data/'+'/ClosedLoopDataPID_for_LMPC.obj', 'rb')
         
         ClosedLoopDataTI_MPC = pickle.load(file_data)
         file_data.close()
@@ -428,7 +428,7 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
         LMPC_Solver = "OSQP"          # Can pick CVX for cvxopt or OSQP. For OSQP uncomment line 14 in LMPC.py
         SysID_Solver = "scipy"        # Can pick CVX, OSQP or scipy. For OSQP uncomment line 14 in LMPC.py  
         numSS_it = 2                  # Number of trajectories used at each iteration to build the safe set
-        numSS_Points = 8 + N         # Number of points to select from each trajectory to build the safe set
+        numSS_Points = 2+ N         # Number of points to select from each trajectory to build the safe set
         shift = N / 2                     # Given the closed point, x_t^j, to the x(t) select the SS points from x_{t+shift}^j
         # Tuning Parameters
         if mode == "simulations":

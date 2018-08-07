@@ -37,16 +37,16 @@ class Map():
             self.halfWidth = 0.4
             self.slack     = 0.45
             spec = np.array([[60 * 0.03, 0],
-                             [80 * 0.03, +80 * 0.03 * 2 / np.pi],
+                             [80 * 0.03, -80 * 0.03 * 2 / np.pi],
                              # Note s = 1 * np.pi / 2 and r = -1 ---> Angle spanned = np.pi / 2
                              [20 * 0.03, 0],
-                             [80 * 0.03, +80 * 0.03 * 2 / np.pi],
-                             [40 * 0.03, -40 * 0.03 * 10 / np.pi],
-                             [60 * 0.03, +60 * 0.03 * 5 / np.pi],
-                             [40 * 0.03, -40 * 0.03 * 10 / np.pi],
-                             [80 * 0.03, +80 * 0.03 * 2 / np.pi],
+                             [80 * 0.03, -80 * 0.03 * 2 / np.pi],
+                             [40 * 0.03, +40 * 0.03 * 10 / np.pi],
+                             [60 * 0.03, -60 * 0.03 * 5 / np.pi],
+                             [40 * 0.03, +40 * 0.03 * 10 / np.pi],
+                             [80 * 0.03, -80 * 0.03 * 2 / np.pi],
                              [20 * 0.03, 0],
-                             [80 * 0.03, +80 * 0.03 * 2 / np.pi]])
+                             [80 * 0.03, -80 * 0.03 * 2 / np.pi]])
 
         elif selectedTrack == "oval":
             self.halfWidth = 0.7 
@@ -354,14 +354,14 @@ class Map():
                             CompletedFlag = 1
 
         if epsi>1.0:
-            print "epsi Greater then 1.0"
+            print( "epsi Greater then 1.0")
         #     pdb.set_trace()
 
         if CompletedFlag == 0:
             s    = 10000
             ey   = 10000
             epsi = 10000
-            print "Error!! POINT OUT OF THE TRACK!!!! <=================="
+            print( "Error!! POINT OUT OF THE TRACK!!!! <==================")
             # pdb.set_trace()
 
         return s, ey, epsi, CompletedFlag
@@ -425,14 +425,14 @@ def unityTestChangeOfCoordinates(map, ClosedLoopData):
 
         if np.dot(v3 - v4, v3 - v4) > 0.00000001:
             TestResult = 0
-            print "ERROR", v1, v2, v3, v4
+            print( "ERROR", v1, v2, v3, v4)
             pdb.set_trace()
             v1 = np.array(map.getLocalPosition(xglobdat[i, 4], xglobdat[i, 5]))
             v2 = np.array(xdat[i, 4:6])
             v3 = np.array(map.getGlobalPosition(v1[0], v1[1]))
             v4 = np.array([xglobdat[i, 4], xglobdat[i, 5]])
-            print np.dot(v3 - v4, v3 - v4)
+            print( np.dot(v3 - v4, v3 - v4))
             pdb.set_trace()
 
     if TestResult == 1:
-        print "Change of coordinates test passed!"
+        print( "Change of coordinates test passed!")

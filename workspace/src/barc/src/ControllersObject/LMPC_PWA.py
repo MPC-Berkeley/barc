@@ -12,6 +12,7 @@ from utilities import Curvature
 from numpy import hstack, inf, ones
 from scipy.sparse import vstack
 from osqp import OSQP
+import os
 
 from abc import ABCMeta, abstractmethod
 import sys
@@ -255,19 +256,22 @@ class PWAControllerLMPC(AbstractControllerLMPC):
                  n, d, shift, dt, track_map, Laps, TimeLMPC, Solver):
         self.n_clusters = n_clusters
         self.SS_regions = None
-        self.load_model = False #  True
+        self.load_model = True
         self.region_update = False
         # python 2/3 compatibility
         super(PWAControllerLMPC, self).__init__(numSS_Points, numSS_it, N, Qslack, Q, R, dR, 
                                               n, d, shift, dt, track_map, Laps, TimeLMPC, Solver)
-        self.affine = True # False
+        self.affine = False # False
         dim0 = n+d+1 if self.affine else n+d
         # mask = [A B d].T
         sparse_mask = np.ones([n, dim0])
-        sparse_mask[1,0] = 0.0; sparse_mask[1,2] = 0.0
+        sparse_mask[0:3, 3:6] = 0
+        sparse_mask[0,6] = 0
+        sparse_mask[1:3,7] = 0
+        sparse_mask[3:,6:8] = 0
+        # sparse_mask[1,0] = 0.0; sparse_mask[1,2] = 0.0
         self.sparse_mask = sparse_mask.T
         
-
     def addTrajectory(self, ClosedLoopData):
         # overriding abstract class
         super(PWAControllerLMPC, self).addTrajectory(ClosedLoopData)
@@ -318,6 +322,7 @@ class PWAControllerLMPC(AbstractControllerLMPC):
                 # TODO what's happening in this case?
                 select_reg = select_reg_0
             # print(select_reg)
+            select_reg[0] = self.SS_regions[self.SSind, it] # TODO is this a hack...
             SS_PointSelectedTot.append(terminal_point)
             SS_glob_PointSelectedTot.append(terminal_point_glob)
             Qfun_SelectedTot.append(terminal_cost)
@@ -354,13 +359,15 @@ class PWAControllerLMPC(AbstractControllerLMPC):
             F_region, b_region = self.clustering.get_region_matrices()
             stackedF, stackedb = LMPC_BuildMatIneqConst(self.N, F_region=F_region, 
                                                             b_region=b_region, SelectReg=select_reg)
+            # stackedF, stackedb = LMPC_BuildMatIneqConst(self.N)
             M, q = LMPC_BuildMatCost(self.N, self.Qslack, self.Q, self.R, self.dR, self.OldInput)
 
             qp_mat_list.append((Lterm, G, E1, M, q, stackedF, stackedb))
-
         return qp_mat_list
 
-    def _estimate_pwa(self, verbose=False, addTrajectory=False):
+    def _estimate_pwa(self, verbose=False, addTrajectory=False, forceEstimate=False):
+        homedir = os.path.expanduser("~")    
+
         verbose=True
         if self.clustering is None:
             # reading in SS data
@@ -368,16 +375,16 @@ class PWAControllerLMPC(AbstractControllerLMPC):
             for it in range(self.it):
                 states = self.SS[:int(self.LapCounter[it]), :, it]
                 inputs = self.uSS[:int(self.LapCounter[it]), :, it]
-                print(states, inputs)
                 zs.append(np.hstack([states[:-1,:], inputs[:-1,:]]))
                 ys.append(states[1:,:])
             zs = np.squeeze(np.vstack(zs)); ys = np.squeeze(np.vstack(ys))
-            print(zs.shape, ys.shape)
 
             if self.load_model:
-                data = np.load('../notebooks/pwa_model_10.npz')
+                data = np.load('/home/sarah/Dropbox/controls/MPC-collab/RacingLMPC/notebooks/pwa_model_15.npz')
+                #'../notebooks/pwa_model_10.npz')
+                affine=False; sparse_mask=None #self.affine, self.sparse_mask
                 self.clustering = pwac.ClusterPWA.from_labels(data['zs'], data['ys'], 
-                                   data['labels'], z_cutoff=self.n, affine=self.affine, sparse_mask=self.sparse_mask)
+                                   data['labels'], z_cutoff=self.n, affine=affine, sparse_mask=sparse_mask)
                 self.clustering.region_fns = data['region_fns']
                 cluster_ind = len(self.clustering.cluster_labels)
                 self.clustering.add_data_update(zs, ys, verbose=verbose, full_update=self.region_update)
@@ -385,27 +392,42 @@ class PWAControllerLMPC(AbstractControllerLMPC):
             else:
                 # to make testing run faster
                 try:
-                    data = np.load('/home/ugo/GitHub/barc/workspace/src/barc/src/ControllersObject/cluster_labels.npz')
+                    # TODO path and make this hack better
+                    if forceEstimate:
+                        raise NameError
+                    data = np.load(homedir + '/barc/workspace/src/barc/src/Utilities/cluster_labels.npz')
                 except NameError: #IOError: # FileNotFoundError:
                     # use greedy method to fit PWA model
                     self.clustering = pwac.ClusterPWA.from_num_clusters(zs, ys, 
-                                        self.n_clusters, z_cutoff=self.n)
+                                        self.n_clusters, z_cutoff=self.n,
+                                        affine=self.affine, sparse_mask=self.sparse_mask)
                     self.clustering.fit_clusters(verbose=verbose)
                 
                     # TODO this method takes a long time to runs
-                    self.clustering.determine_polytopic_regions(verbose=verbose)
+                    if not forceEstimate: self.clustering.determine_polytopic_regions(verbose=verbose)
+                    cluster_ind = 0
                 else:
-                    self.clustering = pwac.ClusterPWA.from_labels(zs, ys, 
-                                   data['labels'], z_cutoff=self.n, affine=self.affine, sparse_mask=self.sparse_mask)
+                    cluster_labels = []
+                    for z,y in zip(zs,ys):
+                        dot_pdt = [w.T.dot(np.hstack([z[0:self.n], [1]])) for w in data['region_fns']]
+                        idx = np.argmax(dot_pdt)
+                        cluster_labels.append(idx)
+                    cluster_labels = np.array(cluster_labels)
+                    self.clustering = pwac.ClusterPWA.from_labels(zs, ys, #data['zs'], data['ys'], #
+                                   cluster_labels, z_cutoff=self.n, affine=self.affine, sparse_mask=self.sparse_mask)
                     self.clustering.region_fns = data['region_fns']
-                # np.savez('cluster_labels', labels=self.clustering.cluster_labels,
-                #                        region_fns=self.clustering.region_fns,
-                #                        thetas=self.clustering.thetas)
-                cluster_ind = 0
+                    cluster_ind = 0 # len(self.clustering.cluster_labels) # 0
+                    # self.clustering.add_data_update(zs, ys, verbose=verbose, full_update=self.region_update)
+                if forceEstimate:
+                    np.savez('cluster_labels', labels=self.clustering.cluster_labels,
+                                           #region_fns=self.clustering.region_fns,
+                                           thetas=self.clustering.thetas,
+                                           zs=zs, ys=ys)
+                
             # label the regions of the points in the safe set
             # TODO zeros is a hack... np.nan * np.ones((self.SS.shape[0],self.SS.shape[2]))
             self.SS_regions = np.zeros((self.SS.shape[0],self.SS.shape[2]))
-            for it in range(self.it-1):
+            for it in range(self.it):
                 for i in range(self.LapCounter[it]-1):
                     self.SS_regions[i, it] = self.clustering.cluster_labels[cluster_ind]
                     cluster_ind += 1
@@ -437,6 +459,7 @@ class PWAControllerLMPC(AbstractControllerLMPC):
             np.savez('cluster_labels'+str(self.it), labels=self.clustering.cluster_labels,
                                        region_fns=self.clustering.region_fns,
                                        thetas=self.clustering.thetas)
+        print('count in regions 0/1', np.bincount(self.clustering.cluster_labels.astype(int)))
             # to access SS in certain region,
             # region_indices[i] = np.where(self.SS_regions == i)
 
