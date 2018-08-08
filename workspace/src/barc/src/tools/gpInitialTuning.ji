@@ -1,0 +1,87 @@
+#=
+This file is used to do initial tuning of GPR
+=#
+
+folder_name = "experiments"
+# folder_name = "simulations"
+file_name = "GP-SYS_ID_LIN_TV"
+gpStateNumber = 6
+
+using JLD
+using PyPlot
+include("gpLibrary.jl")
+
+data = load("$(homedir())/$(folder_name)/$(file_name).jld")
+println("Load data from $(homedir())/$(folder_name)/$(file_name).jld")
+
+feature_GP_s_e      = data["e_s"]
+feature_GP_ey_e     = data["e_ey"]
+feature_GP_epsi_e   = data["e_epsi"]
+feature_GP_vx_e     = data["e_vx"]
+feature_GP_vy_e     = data["e_vy"]
+feature_GP_psiDot_e = data["e_psiDot"]
+
+num_sps             = 6
+feature_GP_z        = data["z"]
+feature_GP_u        = data["u"]
+feature_GP_z        = feature_GP_z[1:num_sps:end,:]
+feature_GP_u        = feature_GP_u[1:num_sps:end,:]
+feature_GP          = hcat(feature_GP_z,feature_GP_u)
+feature_GP_s_e      = feature_GP_s_e[1:num_sps:end]
+feature_GP_ey_e     = feature_GP_ey_e[1:num_sps:end]
+feature_GP_epsi_e   = feature_GP_epsi_e[1:num_sps:end]
+feature_GP_vx_e     = feature_GP_vx_e[1:num_sps:end]
+feature_GP_vy_e     = feature_GP_vy_e[1:num_sps:end]
+feature_GP_psiDot_e = feature_GP_psiDot_e[1:num_sps:end]
+
+# full GPR testing
+feature_GP_e = feature_GP_vx_e
+GP_vx_check      = zeros(size(feature_GP,1))
+GP_vy_check      = zeros(size(feature_GP,1))
+GP_psiDot_check  = zeros(size(feature_GP,1))
+
+if gpStateNumber==4
+    prep_vx = gpPrepKin(feature_GP_vx_e,feature_GP)
+elseif gpStateNumber==6
+    prep_vx     = gpPrepDyn(feature_GP_vx_e,feature_GP)
+    prep_vy     = gpPrepDyn(feature_GP_vy_e,feature_GP)
+    prep_psiDot = gpPrepDyn(feature_GP_psiDot_e,feature_GP)
+end
+# println(sum(isnan(feature_GP_vx_e)))
+# println(sum(isnan(feature_GP)))
+
+# do state variation
+function bound(num,threshold)
+    n = randn(num)
+    n_new = max(n,-threshold)
+    n_new = min(n_new,threshold)
+    return n_new
+end
+feature_GP_z[:,4] += bound(size(feature_GP_z,1),0.1)
+if gpStateNumber==6
+    feature_GP_z[:,5] += bound(size(feature_GP_z,1),0.01)
+    feature_GP_z[:,6] += bound(size(feature_GP_z,1),0.05)
+end
+feature_GP_u[:,1] += bound(size(feature_GP_z,1),0.1)
+feature_GP_u[:,2] += bound(size(feature_GP_z,1),0.05)
+if gpStateNumber==4
+    for i = 1:size(feature_GP,1)
+        GP_vx_check[i] = gpFullKin(feature_GP_z[i,:],feature_GP_u[i,:],feature_GP,prep_vx)
+    end
+elseif gpStateNumber==6
+    for i = 1:size(feature_GP,1)
+        GP_vx_check[i]     = gpFullDyn(feature_GP_z[i,:],feature_GP_u[i,:],feature_GP,prep_vx)
+        GP_vy_check[i]     = gpFullDyn(feature_GP_z[i,:],feature_GP_u[i,:],feature_GP,prep_vy)
+        GP_psiDot_check[i] = gpFullDyn(feature_GP_z[i,:],feature_GP_u[i,:],feature_GP,prep_psiDot)
+    end
+end
+# println(prep_vx)
+
+figure("One step prediction error-$(file_name)")
+subplot(3,2,1); plot(feature_GP_s_e,     "-",alpha=0.5); ylabel("GP_s");     grid("on")
+subplot(3,2,2); plot(feature_GP_ey_e,    "-",alpha=0.5); ylabel("GP_ey");    grid("on")
+subplot(3,2,3); plot(feature_GP_epsi_e,  "-",alpha=0.5); ylabel("GP_epsi");  grid("on")
+subplot(3,2,4); plot(feature_GP_vx_e,    "-",alpha=0.5); ylabel("GP_vx");    grid("on"); plot(GP_vx_check[:,1],    "o",alpha=0.6)
+subplot(3,2,5); plot(feature_GP_vy_e,    "-",alpha=0.5); ylabel("GP_vy");    grid("on"); plot(GP_vy_check[:,1],    "o",alpha=0.6)
+subplot(3,2,6); plot(feature_GP_psiDot_e,"-",alpha=0.5); ylabel("GP_psiDot");grid("on"); plot(GP_psiDot_check[:,1],"o",alpha=0.6)
+show()

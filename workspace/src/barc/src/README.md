@@ -1,56 +1,83 @@
-Source code for LMPC
-====================
+# LMPC simulation result
 
-1. barc_record.jl
-=================
-This node records data that might be interesting for later evaluation. It subscribes to topics, records received messages into arrays and saves these arrays into a .jld file when the ros master is shut down. It uses log_functions.jl in barc_lib to import the callback functions.
+**Legend**:
 
-2. barc_simulator_dyn.jl
-========================
-This node simulates a dynamic bicycle model. It subscribes to the ECU commands of the MPC and publishes simulated "raw" measurement data: GPS, IMU and Encoders. It also logs its "real" states into a .jld file, this can be interesting to experiment with Kalman filters to find a good estimator (since you can compare "real" simulation data with your estimation data).
-It uses the simModel.jl in barc_lib.
+1. Blue prediction horizon: MPC prediction.
+2. Black prediction horizon: true prediction with nonlinear dynamic bicycle model used in simulator.
+3. Cyan dots: safe set.
+4. Green dots: feature points used to do system identification by LMS with feature lifting.
 
-3. controller_low_level.py
-==========================
-This is the low level controller that maps acceleration and steering angle commands (in SI units) to PWM signals that are needed by the motor and steering servo. The mapping is linear and has been found by multiple open-loop measurements. It might vary from BARC to BARC.
+**Model**: fully linearised dynamic bicycle model, linearize the model below.
 
-4. controller_MPC_traj.jl
-=========================
-This is a simple MPC path following controller that uses a given track.
+<p align="center">
+<img src="./results/linear_dyn_model_equ.png" width="400" />
+</p>
 
-5. debug_localization.py
-========================
-This is a very short script you can use to debug and analyze the mapping from x/y coordinates to s/e_y/e_psi. You can use it to find an optimal approximation length for the curvature.
+<p align="center">
+<img src="./results/dyn_linear_dyn_pre.gif" width="1000" />
+</p>
 
-6. filtering.py
-===============
-Basic filtering classes, not used in LMPC but might be helpful for future use.
+**Model**:
 
-7. LMPC_node.jl
-===============
-This is the main node of LMPC. It receives data from the estimator, records it and does system ID and LMPC to find optimal inputs.
+<p align="center">
+<img src="./results/id_dyn_model_equ.png" width="400" />
+</p>
 
-8. Localization_helpers.py
-==========================
-This contains a class that is used to map x-y-coordinates to s-ey-epsi coordinates. It also includes the shape of the track (in create_track()). Tracks are created by putting together curves using the function add_curve(track,length,angle_of_curve). This makes sure that there are no jumps in curvature (but there are jumps in the 1st derivative of the curvature!).
-Mapping x-y to s-ey:
-1. set_pos() sets the class variables to the current position/heading
-2. find_s() calculates s, ey, epsi and the curvature coefficients according to its settings (polynomial degree, length of approximation)
-3. read variables (s,ey, ...) manually from class (look at state estimation node to get an idea)
+<p align="center">
+<img src="./results/dyn_iden.gif" width="1000" />
+</p>
 
-9. observers.py
-===============
-Contains the function for the EKF and other necessary functions.
+# LMPC experiment result
 
-10. open_loop.jl
-================
-Can do open loop experiments with this and send either ECU or ECU_pwm commands.
+<p align="center">
+<img src="./results/exp_result.png" width="800" />
+</p>
 
-11. state_estimation_SensorKinematicModel.py
-============================================
-State estimation node. Uses a combination of a kinematic bicycle model and a kinematic motion model in an EKF (without the bicycle assumption) to calculate states. It also prefilters GPS data to make sure holes and outliers are not used.
+# Source code structure for LMPC
 
-12. system_models.py
-====================
-This contains the model that is used by the Kalman filter in state estimation.
+## ROS nodes
+
+**Controller nodes**:
+
+- `controllerOpenLoop.py`: open loop controller for hardware testing
+- `controllerFd.jl`: controller used to do 8-figure to collect feature data for LMS online system identification
+- `controllerDynLin.jl`: linearised dynamic bicycle model
+- `controllerDynLin3.jl`: partially linearised dynamic bicycle model
+- `controllerId.jl`: nonlinear dynamic bicycle model by LMS with feature lifting
+- `controllerIdLin.jl`: nonlinear dynamic bicycle model by LMS
+- `controllerKin.jl`: nonlinear kinematic bicycle model
+- `controllerKinLin.jl`: linearised kinematic model by forecasting
+
+**Other nodes**
+
+- `stateEstimator.py`: Multi-rate extended Kalman filter
+- `simulateDyn.py`: vehicle simulator, dynamic bicycle model
+- `visualizeCar.py`: node to visualise data in real time
+
+## Library
+
+- `models.jl`: it includes everything for JuMP optimisation model construction and corresponding function used to solve the optimisation problem.
+- `modules.jl`: modules needed for Learning MPC: 
+	- Data structure types. 
+	- Safe set construction.
+	- Nonlinear system identification by LMS.
+	- Data collecting.
+	- Gaussian process regression.
+- `Localization_helpers.py`: used by `stateEstimator.py` to do localisation by coordinate transformation
+
+## Library structure and data structure
+<p align="center">
+<img src="./results/library_data_structure.png" width="1000" />
+</p>
+
+## Tools
+- `trackBuilder.py`: used to do track construction to fit the experiment room.
+- `estimatorPlayBack.py`: used to play back the experiment data for estimator tuning.
+- `juliaPostPlot.jl`: used to plot the experiment data.
+- `gpInitialTuning.jl`: used to do initial Gaussian Process Regression tuning.
+- `gpFutherTuning.jl`: used to do further Gaussian Process Regression tuning based on Gaussian Process Regression experiment result.
+- `copyFromBarc.bash`: copy experiment data saved on BARC.
+- `copyFromLapTop.bash`: copy required code from Laptop to BARC.
+
+
 
