@@ -779,7 +779,7 @@ def _LMPC_EstimateABC(ControllerLMPC):
             # Ai, Bi, Ci, indexSelected = RegressionAndLinearization(LinPoints, LinInput, usedIt, SS, uSS, LapCounter,
             #                                                MaxNumPoint, n, d, matrix, PointAndTangent, dt, i, SysID_Solver)
             Ai, Bi, Ci, indexSelected = RegressionAndLinearization(ControllerLMPC, i)
-
+            
         Atv.append(Ai)
         Btv.append(Bi)
         Ctv.append(Ci)

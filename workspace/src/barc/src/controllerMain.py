@@ -33,8 +33,6 @@ def main():
     # Initializa ROS node
     rospy.init_node("LMPC")
 
-    input_commands = rospy.Publisher('ecu_LMPC', ECU, queue_size=1)
-    # input_commands = rospy.Publisher('ecu', ECU, queue_size=1)
     pred_treajecto = rospy.Publisher('OL_predictions', prediction, queue_size=1)
     sel_safe_set   = rospy.Publisher('SS', SafeSetGlob, queue_size=1)
 
@@ -42,7 +40,11 @@ def main():
     saveData = rospy.get_param("/control/saveData")
     sel_car = rospy.get_param("/control/car")
 
-
+    if mode=="simulations":
+        input_commands = rospy.Publisher('ecu', ECU, queue_size=1)
+    else:
+        input_commands = rospy.Publisher('ecu_LMPC', ECU, queue_size=1)
+    
     loop_rate = 10.0
     dt = 1.0/loop_rate
     rate = rospy.Rate(loop_rate)
@@ -378,8 +380,10 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
         Controller = PathFollowingLTV_MPC(Q, R, N, vt, ClosedLoopDataPID.x[0:ClosedLoopDataPID.SimTime, :], 
                                                        ClosedLoopDataPID.u[0:ClosedLoopDataPID.SimTime, :], dt, map, "OSQP")
     elif PickController == "LMPC":
-        # file_data = open(homedir+'/barc_data/'+'/ClosedLoopDataTI_MPC.obj', 'rb')
-        file_data = open(homedir+'/barc_data/'+'/ClosedLoopDataPIDforLMPC.obj', 'rb')
+        if mode == "simulations":
+            file_data = open(homedir+'/barc_data/'+'/ClosedLoopDataTI_MPC.obj', 'rb')
+        else:
+            file_data = open(homedir+'/barc_data/'+'/ClosedLoopDataPIDforLMPC.obj', 'rb')
         ClosedLoopDataTI_MPC = pickle.load(file_data)
         file_data.close()
         Laps       = NumberOfLaps+2   # Total LMPC laps
