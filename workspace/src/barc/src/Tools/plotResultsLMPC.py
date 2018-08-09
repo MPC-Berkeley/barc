@@ -56,24 +56,22 @@ def main():
     plt.show()
 
     # Plot First Path Following Lap and Learning laps
-    LapToPlotLearningProcess = [2, 27]
-    LapToPlotLearningProcess = [2, 37]
+    LapToPlotLearningProcess = [2, 4, 7, 15, 24]
     # LapToPlotLearningProcess = [1]
     plotClosedLoopLMPC(LMPController, map, LapToPlotLearningProcess)
     plt.show()
     
-    LapToPlot = range(10,15)
+    LapToPlot = range(20,28)
 
     plotMeasuredAndAppliedSteering(LMPController, map, LapToPlotLearningProcess)
     plt.show()
     # Plot Best Laps
-    LapToPlot      = range(0, LMPController.it)
-    BestNunberLaps = 4
+    # LapToPlot      = range(0, LMPController.it)
+    BestNunberLaps = 5
     SortedTimes    = np.sort(LMPController.LapCounter[1:LMPController.it])
     LapToPlot      = np.argsort(LMPController.LapCounter[1:LMPController.it])[0:BestNunberLaps]
-    LapToPlot = range(15,19)
-    LapToPlot = range(25,30)
-    LapToPlot = [2, 37]
+    # LapToPlot = range(15,19)
+    LapToPlot = range(23,28)
     
     print SortedTimes
     print "Lap Plotted: ", LapToPlot, " Lap Time: ", LMPController.LapCounter[LapToPlot]
@@ -187,7 +185,7 @@ def plotAccelerations(LMPController, LapToPlot, map):
         TimeCounter += 1
 
 
-    plotColors = ['b','g','r','c','y','k','m']
+    plotColors = ['b','g','r','c','y','k','m','b','g','r','c','y','k','m']
 
     plt.figure()
     plt.subplot(511)
@@ -242,7 +240,7 @@ def plotComputationalTime(LMPController, LapToPlot, map):
     contrTime  = LMPController.contrTime
 
 
-    plotColors = ['b','g','r','c','y','k','m']
+    plotColors = ['b','g','r','c','y','k','m','b','g','r','c','y','k','m']
 
     plt.figure()
     plt.subplot(311)
@@ -416,7 +414,7 @@ def plotClosedLoopLMPC(LMPController, map, LapToPlot):
     SS      = LMPController.SS
     uSS     = LMPController.uSS
 
-    plotColors = ['b','g','r','c','y','k','m']
+    plotColors = ['b','g','r','c','y','k','m','b','g','r','c','y','k','m']
 
     TotNumberIt = LMPController.it
     print "Number iterations: ", TotNumberIt
@@ -501,7 +499,7 @@ def plotClosedLoopLMPC(LMPController, map, LapToPlot):
     plt.xlabel('s [m]')
 
 def plotMeasuredAndAppliedSteering(LMPController, map, LapToPlot):
-    plotColors = ['b','g','r','c','y','k','m']
+    plotColors = ['b','g','r','c','y','k','m','b','g','r','c','y','k','m']
 
     SS_glob = LMPController.SS_glob
     LapCounter  = LMPController.LapCounter

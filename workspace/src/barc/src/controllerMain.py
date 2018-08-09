@@ -334,12 +334,12 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
 
     # TI MPC tuning
     if mode == "simulations":
-        Q = 1*np.diag([500.0, 1.0, 10.0, 1.0, 0.0, 5 * 10 * 2 * 5 * 50.0]) # vx, vy, wz, epsi, s, ey
+        Q = 1*np.diag([500.0, 1.0, 10.0, 1.0, 0.0, 10 * 2 * 5 * 50.0]) # vx, vy, wz, epsi, s, ey
         R = np.diag([1.0, 1.0]) # delta, a
         N = 12
         TI_Qlane   =  1 * np.array([100, 0]) # Quadratic and linear slack lane cost
     else:
-        Q = 1*np.diag([500.0, 1.0, 10.0, 10 * 5.0, 0.0, 250.0]) # vx, vy, wz, epsi, s, ey
+        Q = 1*np.diag([500.0, 1.0, 10.0, 10 * 5.0, 0.0, 5 * 250.0]) # vx, vy, wz, epsi, s, ey
         R = np.diag([1.0, 1.0]) # delta, a
         N = 12
         TI_Qlane   =  1 * np.array([100, 0]) # Quadratic and linear slack lane cost
