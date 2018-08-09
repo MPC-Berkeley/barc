@@ -64,7 +64,7 @@ def main():
     # Choose Controller and Number of Laps
 
     PickController = "LMPC"
-    NumberOfLaps   = 30
+    NumberOfLaps   = 40
     vt = 1.2
     PathFollowingLaps = 2
     
@@ -334,7 +334,7 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
 
     # TI MPC tuning
     if mode == "simulations":
-        Q = 1*np.diag([500.0, 1.0, 10.0, 1.0, 0.0, 10 * 2 * 5 * 50.0]) # vx, vy, wz, epsi, s, ey
+        Q = 1*np.diag([500.0, 1.0, 10.0, 1.0, 0.0, 5 * 10 * 2 * 5 * 50.0]) # vx, vy, wz, epsi, s, ey
         R = np.diag([1.0, 1.0]) # delta, a
         N = 12
         TI_Qlane   =  1 * np.array([100, 0]) # Quadratic and linear slack lane cost
@@ -365,16 +365,19 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
         Controller = PID(vt, PIDnoise, mode)
                                         # PID controller
     elif PickController == "TI_MPC":
-        file_data = open(homedir+'/barc_data/'+'/ClosedLoopDataPID.obj', 'rb')
+        # file_data = open(homedir+'/barc_data/'+'/ClosedLoopDataPID.obj', 'rb')
+        file_data = open(homedir+'/barc_data/'+'/ClosedLoopDataPIDforLMPC.obj', 'rb')
         ClosedLoopDataPID = pickle.load(file_data)
         file_data.close()     
         Controller = PathFollowingLTI_MPC(A, B, Q, R, N, vt, TI_Qlane)
 
     elif PickController == "TV_MPC":
+        # file_data = open(homedir+'/barc_data/'+'/ClosedLoopDataPIDforLMPC.obj', 'rb')
         file_data = open(homedir+'/barc_data/'+'/ClosedLoopDataTI_MPC.obj', 'rb')
         ClosedLoopDataPID = pickle.load(file_data)
         file_data.close()
-        Q = 1*np.diag([10.0, 1.0, 1, 10.0, 0.0, 10.0]) # vx, vy, wz, epsi, s, ey
+        Q = 1*np.diag([500.0, 1.0, 10.0, 1.0, 0.0, 10 * 2 * 5 * 50.0]) # vx, vy, wz, epsi, s, ey
+        # Q = 1*np.diag([10.0, 1.0, 10.0, 1.0, 0.0, 10.0]) #vx, vy, wz, epsi, s, ey
         R = np.diag([1.0, 5.0]) # delta, a
         N = 12
         Controller = PathFollowingLTV_MPC(Q, R, N, vt, ClosedLoopDataPID.x[0:ClosedLoopDataPID.SimTime, :], 

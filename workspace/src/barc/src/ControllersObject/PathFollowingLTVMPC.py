@@ -43,6 +43,10 @@ class PathFollowingLTV_MPC:
         self.map = map
 
         self.Solver = Solver
+        startTimer = datetime.datetime.now()
+        endTimer = datetime.datetime.now(); deltaTimer = endTimer - startTimer
+        self.solverTime = deltaTimer
+        self.linearizationTime = deltaTimer
 
         self.M, self.q = _buildMatCost(self)
         self.F, self.b = _buildMatIneqConst(self)
@@ -189,8 +193,8 @@ def _buildMatIneqConst(Controller):
                    [0., 1.],
                    [0., -1.]])
 
-    bu = np.array([[0.5],  # Max Steering
-                   [0.5],  # Max Steering
+    bu = np.array([[0.25],  # Max Steering
+                   [0.25],  # Max Steering
                    [1.],  # Max Acceleration
                    [1.]])  # Max Acceleration
 
@@ -224,29 +228,36 @@ def _buildMatIneqConst(Controller):
     return F, b
 
 def _buildMatCost(Controller):
-    Q  = Controller.Q
-    R  = Controller.R
-    P  = Controller.Q
-    N  = Controller.N
+    N = Controller.N
+    Q = Controller.Q
+    R = Controller.R
     vt = Controller.vt
+    P = Controller.Q
     b = [Q] * (N)
     Mx = linalg.block_diag(*b)
 
-    c = [R] * (N)
+    dR = np.array([10, 2* 10])
+    c = [R + 2 * np.diag(dR)] * (N) # Need to add dR for the derivative input cost
+
     Mu = linalg.block_diag(*c)
+    # Need to condider that the last input appears just once in the difference
+    Mu[Mu.shape[0] - 1, Mu.shape[1] - 1] = Mu[Mu.shape[0] - 1, Mu.shape[1] - 1] - dR[1]
+    Mu[Mu.shape[0] - 2, Mu.shape[1] - 2] = Mu[Mu.shape[0] - 2, Mu.shape[1] - 2] - dR[0]
+
+    # Derivative Input Cost
+    OffDiaf = -np.tile(dR, N-1)
+    np.fill_diagonal(Mu[2:], OffDiaf)
+    np.fill_diagonal(Mu[:, 2:], OffDiaf)
+
 
     M0 = linalg.block_diag(Mx, P, Mu)
+
     xtrack = np.array([vt, 0, 0, 0, 0, 0])
     q = - 2 * np.dot(np.append(np.tile(xtrack, N + 1), np.zeros(R.shape[0] * N)), M0)
+    
     M = 2 * M0  # Need to multiply by two because CVX considers 1/2 in front of quadratic cost
 
-    if Controller.Solver == "CVX":
-        M_sparse = spmatrix(M[np.nonzero(M)], np.nonzero(M)[0].astype(int), np.nonzero(M)[1].astype(int), M.shape)
-        M_return = M_sparse
-    else:
-        M_return = M
-
-    return M_return, q
+    return M, q
 
 def _buildMatEqConst(Controller):
     # Buil matrices for optimization (Convention from Chapter 15.2 Borrelli, Bemporad and Morari MPC book)
@@ -306,7 +317,7 @@ def _EstimateABC(Controller):
     Atv = []; Btv = []; Ctv = []
 
     for i in range(0, N):
-        MaxNumPoint = 300 # Need to reason on how these points are selected
+        MaxNumPoint = 80 #Need to reason on how these points are selected
         x0 = LinPoints[i, :]
 
 
@@ -316,7 +327,7 @@ def _EstimateABC(Controller):
 
         # =========================
         # ====== Identify vx ======
-        h = 10
+        h = 2
         stateFeatures = [0, 1, 2]
         inputFeatures = [1]
         lamb = 0.0
@@ -330,7 +341,7 @@ def _EstimateABC(Controller):
 
         # =========================
         # ====== Identify vy ======
-        h = 10
+        h = 2
         stateFeatures = [0, 1, 2]
         inputFeatures = [0] # May want to add acceleration here
         lamb = 0.0
@@ -345,7 +356,7 @@ def _EstimateABC(Controller):
 
         # =========================
         # ====== Identify wz ======
-        h = 10
+        h = 2
         stateFeatures = [0, 1, 2]
         inputFeatures = [0] # May want to add acceleration here
         lamb = 0.0

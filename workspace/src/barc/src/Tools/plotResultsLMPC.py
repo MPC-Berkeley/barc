@@ -17,6 +17,8 @@ from trackInitialization import Map
 from dataStructures import LMPCprediction, EstimatorData, ClosedLoopDataObj
 import os
 import datetime
+import scipy.io as sio
+
 from numpy import linalg as la
 
 
@@ -55,6 +57,7 @@ def main():
 
     # Plot First Path Following Lap and Learning laps
     LapToPlotLearningProcess = [2, 27]
+    LapToPlotLearningProcess = [2, 37]
     # LapToPlotLearningProcess = [1]
     plotClosedLoopLMPC(LMPController, map, LapToPlotLearningProcess)
     plt.show()
@@ -70,7 +73,7 @@ def main():
     LapToPlot      = np.argsort(LMPController.LapCounter[1:LMPController.it])[0:BestNunberLaps]
     LapToPlot = range(15,19)
     LapToPlot = range(25,30)
-    LapToPlot = [2, 27]
+    LapToPlot = [2, 37]
     
     print SortedTimes
     print "Lap Plotted: ", LapToPlot, " Lap Time: ", LMPController.LapCounter[LapToPlot]
@@ -439,6 +442,11 @@ def plotClosedLoopLMPC(LMPController, map, LapToPlot):
     plt.legend()
     plt.xlabel("x [m]")
     plt.ylabel("y [m]")
+
+    # i = 37
+    # sio.savemat('States.mat', {'globalStates':SS_glob[0:LapCounter[i], :, i], 'localStates':SS[0:LapCounter[i], :, i]})
+    # sio.savemat('Input.mat', {'input':uSS[0:LapCounter[i], :, i]})
+
 
     plt.figure()
     plt.subplot(711)
