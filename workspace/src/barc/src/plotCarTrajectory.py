@@ -14,8 +14,8 @@
 #
 # ---------------------------------------------------------------------------
 import sys
-sys.path.append(sys.path[0]+'/ControllersObject')
-sys.path.append(sys.path[0]+'/Utilities')
+sys.path.append(sys.path[0]+'/RacingLMPC/ControllersObject')
+sys.path.append(sys.path[0]+'/RacingLMPC/Utilities')
 
 import rospy
 from marvelmind_nav.msg import hedge_pos, hedge_imu_fusion

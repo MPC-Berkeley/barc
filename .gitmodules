@@ -1,0 +1,3 @@
+[submodule "workspace/src/barc/src/RacingLMPC"]
+	path = workspace/src/barc/src/RacingLMPC
+	url = https://github.com/urosolia/RacingLMPC

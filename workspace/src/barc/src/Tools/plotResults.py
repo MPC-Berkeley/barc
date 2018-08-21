@@ -1,6 +1,6 @@
 import sys
-sys.path.append(sys.path[0]+'/../ControllersObject')
-sys.path.append(sys.path[0]+'/../Utilities')
+sys.path.append(sys.path[0]+'/../RacingLMPC/ControllersObject')
+sys.path.append(sys.path[0]+'/../RacingLMPC/Utilities')
 from dataStructures import LMPCprediction, EstimatorData, ClosedLoopDataObj, LMPCprediction
 
 import numpy as np

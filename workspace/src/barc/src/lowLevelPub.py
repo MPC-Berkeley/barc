@@ -8,8 +8,8 @@
 '''
 import os
 import sys
-sys.path.append(sys.path[0]+'/ControllersObject')
-sys.path.append(sys.path[0]+'/Utilities')
+sys.path.append(sys.path[0]+'/RacingLMPC/ControllersObject')
+sys.path.append(sys.path[0]+'/RacingLMPC/Utilities')
 import datetime
 import rospy
 from trackInitialization import Map
