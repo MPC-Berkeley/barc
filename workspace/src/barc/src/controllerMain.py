@@ -66,7 +66,7 @@ def main():
     
     # Choose Controller and Number of Laps
 
-    PickController = 'LMPC' # "TV_MPC" # LMPC_PWA" #"TI_MPC" # PID" # "LMPC"
+    PickController = 'LMPC_PWA' # "TV_MPC" # LMPC_PWA" #"TI_MPC" # PID" # "LMPC"
     NumberOfLaps   = 40
     vt = 1.2
     PathFollowingLaps = 2
