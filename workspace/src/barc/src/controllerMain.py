@@ -68,7 +68,7 @@ def main():
 
     PickController = 'LMPC_PWA' # "TV_MPC" # LMPC_PWA" #"TI_MPC" # PID" # "LMPC"
     NumberOfLaps   = 40
-    vt = 1.2
+    vt = 1
     PathFollowingLaps = 2
     
     if mode == "simulations":
@@ -431,8 +431,9 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
         LMPC_Solver = "OSQP"          # Can pick CVX for cvxopt or OSQP. For OSQP uncomment line 14 in LMPC.py
         SysID_Solver = "scipy"        # Can pick CVX, OSQP or scipy. For OSQP uncomment line 14 in LMPC.py  
         numSS_it = 2                  # Number of trajectories used at each iteration to build the safe set
-        numSS_Points = 2+ N         # Number of points to select from each trajectory to build the safe set
-        shift = N / 2                     # Given the closed point, x_t^j, to the x(t) select the SS points from x_{t+shift}^j
+        N = 8
+        numSS_Points = 4 + N         # Number of points to select from each trajectory to build the safe set
+        shift = 3 * N / 4                     # Given the closed point, x_t^j, to the x(t) select the SS points from x_{t+shift}^j
         # Tuning Parameters
         if mode == "simulations":
             N = 12
