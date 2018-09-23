@@ -9,16 +9,9 @@
     <param name="dt" type="double" value="0.1" />
     <param name="num_agents" type="int" value="1" />
 
-    <!-- MACHINES -->
-    <machine name="yoga" address="127.0.0.1" user="lukas" timeout="20.0" env-loader="/home/lukas/barc/env_loader_yoga.sh" />
-    <!-- <machine name="yoga" address="192.168.10.74" user="lukas" timeout="20.0" env-loader="/home/lukas/barc/env_loader_yoga.sh" /> -->
-    <machine name="ubuntu-pc" address="127.0.0.1" user="mpcubuntu" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc.sh"/>
-
-    <machine name="odroid" address="192.168.10.213" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid.sh"/>
-
     <!-- AGENT 1 NODES-->
     <!-- AGENT-NODE 1-->
-    <node machine="ubuntu-pc" pkg="barc" type="agent_node.jl" name="agent_1" output="screen">
+    <node pkg="barc" type="agent_node.jl" name="agent_1" output="screen">
         <param name="index" type="int" value="1" />
         <param name="color" type="str" value="red" />
         <param name="mass" type="double" value="1.98" />
@@ -39,7 +32,7 @@
     </node>
 
     <!-- Estimator -->
-    <node machine="ubuntu-pc" pkg="barc" type="estimator_ugo.py" name="state_estimator_1" output="screen">
+    <node pkg="barc" type="estimator_ugo.py" name="state_estimator_1" output="screen">
         <!-- delay in state estuiamtor -->
         <param name="delay_df" type="double" value="0.0" />
         <param name="delay_a" type="double" value="0.0" />
@@ -73,7 +66,7 @@
     </node>
 
     <!-- SIMULATOR -->
-    <node machine="ubuntu-pc" pkg="barc" type="barc_simulator_dyn_lukas.jl" name="barc_sim_1" output="screen">
+    <node pkg="barc" type="barc_simulator_dyn_lukas.jl" name="barc_sim_1" output="screen">
         <remap from="hedge_imu_fusion" to="agent_1/hedge_imu_fusion" />
         <remap from="imu/data" to="agent_1/imu/data" />
         <remap from="vel_est" to="agent_1/vel_est" />
@@ -83,7 +76,7 @@
     <!-- AGENT 1 NODES-->
 
     <!-- VISUALIZATION -->
-    <node machine="ubuntu-pc" pkg="barc" type="plotter.py" name="visualization" output="screen">
+    <node pkg="barc" type="plotter.py" name="visualization" output="screen">
         <param name="num_agents" type="int" value="1" />
         <param name="index" type="int" value="1" />
         <param name="agent_1" type="str" value="simulation" />
