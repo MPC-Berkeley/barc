@@ -19,3 +19,24 @@ Pkg.build("Gtk")
 ```
 in the julia shell.
 
+### Adding get_name() from RobotOS
+This package requires access to the function get_name() from RobotOS, which is not supported by default (pull request is pending). In order to be able to access this function follow the next steps. Change into the source folder of your RobotOS package in the julia directory where you install all your packages. this should be at the following location: 
+```
+cd ~/.julia/v0.4/RobotOS/src
+```
+Using your favorite editor add "get_name" to
+```
+export init_node, is_shutdown, spin,
+       get_param, has_param, set_param, delete_param,
+       logdebug, loginfo, logwarn, logerr, logfatal
+```
+so you get
+```
+export init_node, is_shutdown, spin,
+       get_param, has_param, set_param, delete_param,
+       logdebug, loginfo, logwarn, logerr, logfatal, get_name
+```
+Rebuild the package in a julia console with
+```
+Pkg.build("RobotOS")
+```
