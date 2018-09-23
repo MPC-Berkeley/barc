@@ -38,6 +38,11 @@ function s_to_xy(track::Track, s_coord::Array{Float64})
 	s1_xy = track.xy_coords[xy1_index, :]
 
 	theta = track.thetas[xy1_index]
+
+    if xy1_index >= size(track.thetas, 1)
+        xy1_index = size(track.thetas, 1) - 1
+    end
+
     abs_delta_theta = abs(track.thetas[xy1_index + 1] - theta)
     delta_s = s - track.s_coord[xy1_index]
 
@@ -190,8 +195,25 @@ function xy_to_s(track::Track, xy_coord::Array{Float64})
 			delta_s = dist_to_s1
 			abs_e_y = 0.
 		else
-			abs_phi = acos((dist_to_s1^2 + track.ds^2 - dist_to_s2^2) /
-					   (2 * dist_to_s1 * track.ds))
+			argument = (dist_to_s1^2 + track.ds^2 - dist_to_s2^2) /
+					   (2 * dist_to_s1 * track.ds)
+
+            #=
+			if argument < - 1.0 && argument >= - 1.0 - 1e-2
+				argument = - 1.0
+			elseif argument > 1.0 && argument <= 1.0 + 1e-2
+				argument = 1.0
+			end
+            =#
+
+            if argument < - 1.0
+                argument = - 1.0
+            elseif argument > 1.0
+                argument = 1.0
+            end
+
+			abs_phi = acos(argument)
+
 			if get_curvature(track, track.s_coord[s1_index + 1]) < 0.0 
 				phi = abs_phi
 			else

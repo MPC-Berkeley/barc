@@ -74,6 +74,7 @@ type Optimizer
 	prediction_opponent_pub::RobotOS.Publisher{barc.msg.prediction}
 	input_pub::RobotOS.Publisher{barc.msg.ECU}
 
+
 	Optimizer() = new()
 end
 
@@ -102,7 +103,6 @@ function init!(optimizer::Optimizer, agent::Agent, horizon::Int64)
 	optimizer.adv_current_lap = 0
 	optimizer.adversarial = false
 	dummy = 0
-	
 	optimizer.prediction_sub = Subscriber("adv_prediction", prediction, 
 										  adv_prediction_callback, 
 										  (optimizer, dummy), 

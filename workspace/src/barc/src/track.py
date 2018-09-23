@@ -108,8 +108,6 @@ class Track:
             self.xy_inner[i, :] = self.width / 2 * np.array([np.cos(theta - np.pi / 2),
                                                              np.sin(theta - np.pi / 2)])
 
-        print self.xy_coords
-        
         self.xy_outer += self.xy_coords
         self.xy_inner += self.xy_coords
 
@@ -122,13 +120,11 @@ class Track:
             # exit()
 
     def oval_track(self):
-        """
-        self.add_segment(1.0, 0.0)
-        self.add_segment(4.5, np.pi)
-        self.add_segment(2.0, 0.0)
-        self.add_segment(4.5, np.pi)
-        self.add_segment(1.0, 0.0)
-        """
+        # self.add_segment(1.0, 0.0)
+        # self.add_segment(4.5, np.pi)
+        # self.add_segment(2.0, 0.0)
+        # self.add_segment(4.5, np.pi)
+        # self.add_segment(1.0, 0.0)
 
         self.add_segment(1.0, 0.0)
         self.add_segment(6.0, np.pi)
@@ -160,22 +156,6 @@ class Track:
         """
 
     def l_shape(self):
-        """
-        self.add_segment(1.5, 0.0)
-        self.add_segment(2.0, np.pi / 2)
-        self.add_segment(0.2, 0.0)
-        self.add_segment(2.0, np.pi / 2)
-        self.add_segment(0.2, 0.0)
-        self.add_segment(2.0, - np.pi / 2)
-        self.add_segment(0.2, 0.0)
-        self.add_segment(2.0, np.pi / 2)
-        self.add_segment(0.2, 0.0)
-        self.add_segment(2.0, np.pi / 2)
-        self.add_segment(2.3, 0.0)
-        self.add_segment(3.01, np.pi / 2)
-        self.add_segment(0.8, 0.0)
-        """
-        
         self.add_segment(1.5, 0.0)
         self.add_segment(2.2, np.pi / 2)
         self.add_segment(0.1, 0.0)
@@ -189,7 +169,6 @@ class Track:
         self.add_segment(3.0, 0.0)
         self.add_segment(2.2, np.pi / 2)
         self.add_segment(1.5, 0.0)
-
 
     def test_track(self):
         denominator = 3.5
@@ -208,15 +187,15 @@ class Track:
             self.add_segment(2.0, - np.pi / 2)
             self.add_segment(1.8, 0.0)
         else:
-            self.add_segment(1.5, 0.0)
-            self.add_segment(2.0, np.pi / 2)
-            self.add_segment(1.5, 0.0)
-            self.add_segment(2.0, np.pi / 2)
-            self.add_segment(3.0, 0.0)
-            self.add_segment(2.0, np.pi / 2)
-            self.add_segment(1.5, 0.0)
-            self.add_segment(2.0, np.pi / 2)
-            self.add_segment(1.5, 0.0)
+            self.add_segment(1.0, 0.0)
+            self.add_segment(3.0, np.pi / 2)
+            self.add_segment(1.0, 0.0)
+            self.add_segment(3.0, np.pi / 2)
+            self.add_segment(2.0, 0.0)
+            self.add_segment(3.0, np.pi / 2)
+            self.add_segment(1.0, 0.0)
+            self.add_segment(3.0, np.pi / 2)
+            self.add_segment(1.0, 0.0)
 
             """
             self.add_segment(2.5, 0.0)

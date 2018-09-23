@@ -75,8 +75,8 @@ type MpcModel_pF
         # Set bounds
         z_lb_4s = ones(N + 1, 1) * [-Inf -Inf -Inf -0.5]  # lower bounds on states
         z_ub_4s = ones(N + 1, 1) * [Inf Inf Inf 1.5]  # upper bounds
-        u_lb_4s = ones(N, 1) * [0 -0.3]  # lower bounds on steering
-        u_ub_4s = ones(N, 1) * [1.2 0.3]  # upper bounds
+        u_lb_4s = ones(N, 1) * [0 -0.4]  # lower bounds on steering
+        u_ub_4s = ones(N, 1) * [1.2 0.4]  # upper bounds
 
         for i = 1 : 2
             for j = 1 : N
@@ -148,7 +148,6 @@ type MpcModel_pF
             end
         end
 
-        #=
         @NLconstraint(mdl, u_Ol[1, 2] - uPrev[1, 2] <= 0.06)
         @NLconstraint(mdl, u_Ol[1, 2] - uPrev[1, 2] >= - 0.06)
 
@@ -156,7 +155,6 @@ type MpcModel_pF
             @NLconstraint(mdl, u_Ol[i + 1, 2] - u_Ol[i, 2] <= 0.06)
             @NLconstraint(mdl, u_Ol[i + 1, 2] - u_Ol[i, 2] >= - 0.06)
         end
-        =#
 
         # Cost definitions
         # Derivative cost
@@ -259,35 +257,37 @@ type MpcModel_convhull
 
         ey_max      = track.width / 2           # bound for the state ey (distance from the center track). It is set as half of the width of the track for obvious reasons
         # n_poly_curv = trackCoeff.nPolyCurvature    # polynomial degree for curvature approximation
-        v_max       = 3                            # maximum allowed velocity
+        # v_max       = 1.7                            # maximum allowed velocity
 
-        # Q = [5.0, 0.0, 0.0, 0.1, 50.0, 0.0]  # Q (only for path following mode)
-        Q = [0.0, 10.0, 1.0, 10.0]  # Q (only for path following mode)
-        R = 0 * [1.0, 1.0]  # put weights on a and d_f
-        # R = 0.0 * [0.05, 1.0]  # put weights on a and d_f
-        # QderivZ = 1.0 * [1, 1, 1, 1, 1, 1]  # cost matrix for derivative cost of states
-        QderivZ = 10.0 * [0, 0, 1, 1, 1, 1.0]  # cost matrix for derivative cost of states
-        # QderivU = 0.1 * [1, 1]  #NOTE Set this to [5.0, 0/40.0]              # cost matrix for derivative cost of inputs
-        QderivU = 5.0 * 5.0 * 4.0 * [4.0, 1.0]
-        # delay_df = 3  # steering delay
-        # delay_df = 0
-        # delay_a = 1  # acceleration delay
-        # delay_a = 0 # acceleration delay
         delay_a = agent.delay_a
         delay_df = agent.delay_df
 
+        #=
+        # tuning for fast laps
+        Q = [0.0, 10.0, 1.0, 10.0]  # Q (only for path following mode)
+        R = 0.0 * [1.0, 1.0]  # put weights on a and d_f
+        QderivZ = 1.0 * [1, 1, 1, 1, 1, 1.0]  # cost matrix for derivative cost of states
+        QderivU = 1.0 * 1.0 * 1.0 * [15.0, 0.1]        
+
         vPathFollowing = 1.0  # reference speed for first lap of path following
-        # Q_term = 1.0 * [20.0, 1.0, 10.0, 20.0, 50.0]  # weights for terminal constraints (LMPC, for xDot,yDot,psiDot,ePsi,eY).Not used if using convex hull
         
-        Q_term_cost = 3.0  # scaling of Q-function
-        # Q_lane = 100.0  # weight on the soft constraint for the lane
-        # Q_lane = 4.0
+        Q_term_cost = 1.0  # scaling of Q-function
         Q_lane = 16.0
-        # Q_vel = 1  # weight on the soft constraint for the maximum velocity
-        # Q_slack = 1 * [20.0, 1.0, 10.0, 30.0, 80.0, 50.0]  #[20.0,10.0,10.0,30.0,80.0,50.0]  #vx,vy,psiDot,ePsi,eY,s
-        # Q_slack = 1.1 * [40.0, 1.0, 10.0, 30.0, 80.0, 50.0]
-        Q_slack = 2.0 * [160.0, 1.0, 10.0, 30.0, 80.0, 50.0]
-        # Q_obs = ones(Nl * selectedStates.Np)  # weight to esclude some of the old trajectories
+        Q_slack = 1.0 * [100.0, 1.0, 1.0, 1.0, 5.0, 10.0]
+        =#
+
+        Q = [0.0, 10.0, 1.0, 10.0]  # Q (only for path following mode)
+        R = 0.0 * [1.0, 1.0]  # put weights on a and d_f
+        QderivZ = 1.0 * [1, 1, 1, 1, 1, 1.0]  # cost matrix for derivative cost of states
+        QderivU = 1.0 * 1.0 * 1.0 * [10.0, 0.1]
+
+        vPathFollowing = 1.0  # reference speed for first lap of path following
+        
+        Q_term_cost = 1.0  # scaling of Q-function
+        Q_lane = 16.0
+        # Q_slack = 1.1 * 1.0 * [100.0, 1.0, 1.0, 1.0, 4.0 * 5.0, 10.0]
+        Q_slack = 1.0 * 1.0 * [100.0, 1.0, 1.0, 1.0, 0.5 * 0.5 * 4.0 * 5.0, 10.0]
+        # Q_slack = 1.1 * 1.0 * [100.0, 1.0, 1.0, 0.1 * 1.0, 0.1 * 4.0 * 5.0, 10.0]
 
         println("prediction horizon = ", N)
 
@@ -311,8 +311,8 @@ type MpcModel_convhull
 
         z_lb_6s = ones(N + 1, 1) * [0.1 -Inf -Inf -Inf -Inf -Inf -Inf]  # lower bounds on states
         z_ub_6s = ones(N + 1, 1) * [3.5  Inf Inf  Inf  Inf  Inf Inf]  # upper bounds
-        u_lb_6s = ones(N, 1) * [-2.0  -0.3]  # lower bounds on steering
-        u_ub_6s = ones(N, 1) * [2.0   0.3]  # upper bounds
+        u_lb_6s = ones(N, 1) * [-1.3  -0.4]  # lower bounds on steering
+        u_ub_6s = ones(N, 1) * [3.0   0.4]  # upper bounds
 
         for i = 1 : 2
             for j = 1 : N
@@ -356,7 +356,7 @@ type MpcModel_convhull
 
         @NLconstraint(mdl, [i = 2 : N + 1], z_Ol[i, 5] <= ey_max + eps_lane[i])
         @NLconstraint(mdl, [i = 2 : N + 1], z_Ol[i, 5] >= - ey_max - eps_lane[i])
-        #@NLconstraint(mdl,[i = 1:(N+1)], z_Ol[i,4] <= v_max + eps_vel[i] )  # soft constraint on maximum velocity
+        # @NLconstraint(mdl,[i = 1:(N+1)], z_Ol[i,4] <= v_max + eps_vel[i] )  # soft constraint on maximum velocity
         @NLconstraint(mdl, sum{alpha[i], i = 1 : num_considered_states} == 1)  # constraint on the coefficients of the convex hull
         
         #=
@@ -547,6 +547,7 @@ type MpcModel_obstacle
     curvature::Array{JuMP.NonlinearParameter, 1}
     weights_obstacles::Array{JuMP.NonlinearParameter, 1}
     weights_obstacle::JuMP.NonlinearParameter
+    safety_weight::JuMP.NonlinearParameter
     adv_states_s::Array{JuMP.NonlinearParameter, 2}
     current_lap::JuMP.NonlinearParameter
     adv_lap::JuMP.NonlinearParameter
@@ -585,35 +586,32 @@ type MpcModel_obstacle
         dt = agent.dt
         L_a = agent.l_front
         L_b = agent.l_rear
+        width = agent.width
 
         N = size(agent.optimal_inputs, 1)
 
         ey_max      = track.width / 2           # bound for the state ey (distance from the center track). It is set as half of the width of the track for obvious reasons
         # n_poly_curv = trackCoeff.nPolyCurvature    # polynomial degree for curvature approximation
-        v_max       = 3                            # maximum allowed velocity
+        if agent.index == 2
+            v_max       = 1.5                            # maximum allowed velocity
+        else 
+            v_max = 100.0
+        end
+
         delay_a = agent.delay_a
         delay_df = agent.delay_df
 
-        # Q = [5.0, 0.0, 0.0, 0.1, 50.0, 0.0]  # Q (only for path following mode)
         Q = [0.0, 10.0, 1.0, 10.0]  # Q (only for path following mode)
-        R = 0 * [1.0, 1.0]  # put weights on a and d_f
-        # R = 0.0 * [0.05, 1.0]  # put weights on a and d_f
-        # QderivZ = 1.0 * [1, 1, 1, 1, 1, 1]  # cost matrix for derivative cost of states
-        QderivZ = 10.0 * [0, 0, 1, 1, 1, 1.0]  # cost matrix for derivative cost of states
-        # QderivU = 0.1 * [1, 1]  #NOTE Set this to [5.0, 0/40.0]              # cost matrix for derivative cost of inputs
-        QderivU = 5.0 * 5.0 * 4.0 * [4.0, 1.0]
-        
+        R = 0.0 * [1.0, 1.0]  # put weights on a and d_f
+        QderivZ = 1.0 * [1, 1, 1, 1, 1, 1.0]  # cost matrix for derivative cost of states
+        QderivU = 1.0 * 1.0 * 1.0 * [2 * 15.0, 0.1]
+
         vPathFollowing = 1.0  # reference speed for first lap of path following
-        # Q_term = 1.0 * [20.0, 1.0, 10.0, 20.0, 50.0]  # weights for terminal constraints (LMPC, for xDot,yDot,psiDot,ePsi,eY).Not used if using convex hull
         
-        Q_term_cost = 3.0  # scaling of Q-function
-        # Q_lane = 100.0  # weight on the soft constraint for the lane
-        # Q_lane = 4.0
-        Q_lane = 16.0
-        # Q_vel = 1  # weight on the soft constraint for the maximum velocity
-        # Q_slack = 1 * [20.0, 1.0, 10.0, 30.0, 80.0, 50.0]  #[20.0,10.0,10.0,30.0,80.0,50.0]  #vx,vy,psiDot,ePsi,eY,s
-        Q_slack = 1.1 * [40.0, 1.0, 10.0, 30.0, 80.0, 50.0]
-        # Q_obs = ones(Nl * selectedStates.Np)  # weight to esclude some of the old trajectories
+        Q_term_cost = 1.0  # scaling of Q-function
+        Q_lane = 0.5 * 16.0
+        Q_slack = 1.1 * 1.0 * [100.0, 1.0, 1.0, 1.0, 1.0 * 5.0, 10.0]
+        Q_vel = 1.0
 
         weights_progress = 0.5 * (- 1.0 * ones(N + 1))
 
@@ -635,7 +633,7 @@ type MpcModel_obstacle
         @variable( mdl, eps_lane[1 : N + 1] >= 0)  # eps for soft lane constraints
         @variable( mdl, alpha[1 : num_considered_states] >= 0)  # coefficients of the convex hull
         # @variable( mdl, eps_alpha[1:6] >=0)  # eps for soft constraint on alpha
-        # @variable( mdl, eps_vel[1:N+1]>=0)  # eps for soft constraint on velocity
+        @variable( mdl, eps_vel[1:N+1]>=0)  # eps for soft constraint on velocity
 
         z_lb_6s = ones(N + 1, 1) * [0.1 -Inf -Inf -Inf -Inf -Inf -Inf]  # lower bounds on states
         z_ub_6s = ones(N + 1, 1) * [3.5  Inf Inf  Inf  Inf  Inf Inf]  # upper bounds
@@ -668,6 +666,8 @@ type MpcModel_obstacle
         @NLparameter(mdl, progress[1 : N + 1] == 0)
         @NLparameter(mdl, weights_obstacles[1 : num_considered_states] == 1)
         @NLparameter(mdl, weights_obstacle == 0)
+        @NLparameter(mdl, safety_weight == 1)
+
         @NLparameter(mdl, adv_states_s[1 : (N + 1), 1 : 6] == 0)
         @NLparameter(mdl, current_lap == 0)
         @NLparameter(mdl, adv_lap == 0)
@@ -691,7 +691,7 @@ type MpcModel_obstacle
 
         @NLconstraint(mdl, [i = 2 : N + 1], z_Ol[i, 5] <= ey_max + eps_lane[i])
         @NLconstraint(mdl, [i = 2 : N + 1], z_Ol[i, 5] >= - ey_max - eps_lane[i])
-        #@NLconstraint(mdl,[i = 1:(N+1)], z_Ol[i,4] <= v_max + eps_vel[i] )  # soft constraint on maximum velocity
+        @NLconstraint(mdl,[i = 1:(N+1)], z_Ol[i,1] <= v_max + eps_vel[i] )  # soft constraint on maximum velocity
         @NLconstraint(mdl, sum{alpha[i], i = 1 : num_considered_states} == 1)  # constraint on the coefficients of the convex hull
 
         
@@ -806,19 +806,19 @@ type MpcModel_obstacle
         @NLexpression(mdl, slackS, (z_Ol[N + 1, 6] - sum{alpha[j] * selStates[j, 6], j = 1 : num_considered_states})^2)
 
         # Velocity Cost
-        #@NLexpression(mdl, velocityCost , Q_vel*sum{10.0*eps_vel[i]+100.0*eps_vel[i]^2 ,i=2:N+1})
+        @NLexpression(mdl, velocityCost , Q_vel*sum{10.0*eps_vel[i]+100.0*eps_vel[i]^2 ,i=2:N+1})
 
         radius_s = zeros(NUM_AGENTS - 1)
         radius_e_y = zeros(NUM_AGENTS - 1)
 
         for i = 1 : NUM_AGENTS - 1
             radius_s[i] = 2 * L_a
-            radius_e_y[i] = 2 * L_b / 2
+            radius_e_y[i] = 2 * width / 2
         end
 
         @NLexpression(mdl, obstacle_cost, weights_obstacle * 
-                      sum{- log(((z_Ol[j, 6] - adv_states_s[j, 1]) / radius_s[1])^2 + 
-                                ((z_Ol[j, 5] - adv_states_s[j, 2]) / radius_e_y[1])^2 - 1), 
+                      sum{- log(safety_weight * (((z_Ol[j, 6] - adv_states_s[j, 1]) / radius_s[1])^2 + 
+                                ((z_Ol[j, 5] - adv_states_s[j, 2]) / radius_e_y[1])^2 - 1)), 
                           j = 1 : (N + 1)})
 
         @NLexpression(mdl, progress_cost, sum{weights_progress[i] * 
@@ -827,7 +827,7 @@ type MpcModel_obstacle
 
         # Overall Cost function (objective of the minimization)
         #@NLobjective(mdl, Min, derivCost + laneCost + controlCost + terminalCost )#+ slackCost)#+ velocityCost)
-        @NLobjective(mdl, Min, derivCost + laneCost + Q_term_cost * terminalCost + controlCost + 
+        @NLobjective(mdl, Min, derivCost + laneCost + Q_term_cost * terminalCost + controlCost + velocityCost +
                                Q_slack[1] * slackVx + Q_slack[2] * slackVy + 
                                Q_slack[3] * slackPsidot + Q_slack[4] * slackEpsi + 
                                Q_slack[5] * slackEy + Q_slack[6] * slackS +
@@ -870,6 +870,7 @@ type MpcModel_obstacle
         m.progress_cost = progress_cost
         m.weights_obstacle = weights_obstacle
         m.weights_obstacles = weights_obstacles
+        m.safety_weight = safety_weight
 
         m.slackVx     = slackVx
         m.slackVy     = slackVy
@@ -974,8 +975,8 @@ function solveMpcProblem_pathFollow(mdl::MpcModel_pF, optimizer::Optimizer, agen
         curvature_approx = polyfit(s_data, kappa_data, order)
         indeces = collect(track_index - n_prev : track_index + n_after)
         kappa = coeffs(curvature_approx)
-        println("coefficents: ", kappa)
-        println(curvature_approx)
+        # println("coefficents: ", kappa)
+        # println(curvature_approx)
 
         #=
         app_curvature = zeros(indeces, Float64)
@@ -999,7 +1000,7 @@ function solveMpcProblem_pathFollow(mdl::MpcModel_pF, optimizer::Optimizer, agen
         =#
     else
         for i = 1 : N
-            println(agent.predicted_s[i + 1, 1])
+            # println(agent.predicted_s[i + 1, 1])
             s_curve = max(0.0, agent.predicted_s[i + 1, 1])
             kappa[i] = get_curvature(track, s_curve)
         end
@@ -1076,6 +1077,7 @@ function solveMpcProblem_pathFollow(mdl::MpcModel_pF, optimizer::Optimizer, agen
     optimizer.solution_states_s = sol_z[:, backward_mapping]
 
     publish_prediction(optimizer)
+    publish_prediction_for_opponent_pf(mdl, optimizer, agent)
 
     #mpcSol.cost = [getvalue(mdl.costZ),0,0,getvalue(mdl.derivCost),getvalue(mdl.controlCost),0]
 
@@ -1126,7 +1128,7 @@ function solveMpcProblem_convhull(m::MpcModel_convhull, optimizer::Optimizer,
         println("solution states have wrong size")
     end
 
-    println("INITIAL STATE: ", current_s)
+    # println("INITIAL STATE: ", current_s)
 
     acc0 = agent.acc 
     # zCurr = [v_x, v_y, psi_dot, e_psi, e_y, s, acc0]
@@ -1191,7 +1193,7 @@ function solveMpcProblem_convhull(m::MpcModel_convhull, optimizer::Optimizer,
         curvature_approx = polyfit(s_data, kappa_data, order)
         indeces = collect(track_index - n_prev : track_index + n_prev)
         kappa = coeffs(curvature_approx)
-        println("coefficents: ", kappa)
+        # println("coefficents: ", kappa)
         
         #=
         app_curvature = zeros(indeces, Float64)
@@ -1302,14 +1304,14 @@ function solveMpcProblem_convhull(m::MpcModel_convhull, optimizer::Optimizer,
 
     # mpcSol.costSlack = zeros(6)
     # mpcSol.costSlack = [getvalue(m.slackVx),getvalue(m.slackVy),getvalue(m.slackPsidot),getvalue(m.slackEpsi),getvalue(m.slackEy),getvalue(m.slackS)]
-    println("slack values: ", [getvalue(m.slackVx), getvalue(m.slackVy), 
-                               getvalue(m.slackPsidot), getvalue(m.slackEpsi), 
-                               getvalue(m.slackEy), getvalue(m.slackS)])
+    # println("slack values: ", [getvalue(m.slackVx), getvalue(m.slackVy), 
+    #                           getvalue(m.slackPsidot), getvalue(m.slackEpsi), 
+    #                           getvalue(m.slackEy), getvalue(m.slackS)])
 
     println(size(getvalue(m.alpha)))
     println(size(getvalue(m.selStates)))
     terminal_state = sum(getvalue(m.alpha) .* getvalue(m.selStates), 1)
-    println("terminal state:  ", terminal_state[backward_mapping])
+    # println("terminal state:  ", terminal_state[backward_mapping])
 
     println("Solved, status = $sol_status")
 
@@ -1385,6 +1387,13 @@ function solveMpcProblem_obstacle(m::MpcModel_obstacle, optimizer::Optimizer,
 
     setvalue(m.weights_obstacles, agent.weights_states)
     # println("ADV PREDICTIONS: ", optimizer.adv_predictions_s)
+
+    if !agent.leading && s > optimizer.adv_predictions_s[1, 1]
+        optimizer.adv_predictions_s[:, 1] += track.total_length
+    elseif agent.leading && s < optimizer.adv_predictions_s[1, 1]
+        optimizer.adv_predictions_s[:, 1] -= track.total_length
+    end
+
     setvalue(m.adv_states_s, optimizer.adv_predictions_s)
     setvalue(m.current_lap, agent.current_lap)
     setvalue(m.adv_lap, optimizer.adv_current_lap)
@@ -1421,11 +1430,19 @@ function solveMpcProblem_obstacle(m::MpcModel_obstacle, optimizer::Optimizer,
 
     println("Solved, status = $sol_status")
 
-    publish_prediction(optimizer)
-
     println("obstacle cost: ", getvalue(m.obstacle_cost))
 
-    println("test: ", ((optimizer.adv_predictions_s[:, 1] - optimizer.solution_states_s[:, 1])/ 0.25).^2 - 1)
+    println("test: ", ((optimizer.adv_predictions_s[:, 1] - optimizer.solution_states_s[:, 1]) / 0.25).^2 + 
+                      ((optimizer.adv_predictions_s[:, 2] - optimizer.solution_states_s[:, 2]) / 0.25).^2 - 1)
+
+    #=
+    if sol_status == :Error
+        exit()
+    end
+    =#
+
+    publish_prediction(optimizer)
+    publish_prediction_for_opponent_obs(m, optimizer, agent)
 
     nothing
 end
@@ -1435,33 +1452,61 @@ function solveMpcProblem_obstacle(m::MpcModel_obstacle, optimizer::Optimizer,
                                   agent::Agent, track::Track, leading::Bool)
     if leading 
         obstacle_weight = 1.0 * 0.1
+        safety_weight = 1.0
     else 
         obstacle_weight = 0.5
+        safety_weight = 0.5
     end
 
     setvalue(m.weights_obstacle, obstacle_weight)
+    setvalue(m.safety_weight, safety_weight)
 
     solveMpcProblem_obstacle(m, optimizer, agent, track)
 end
 
+function publish_prediction_for_opponent_pf(m::MpcModel_pF, 
+                                         optimizer::Optimizer, agent::Agent)
+    propagated_prediction = zeros(optimizer.solution_states_s)
+    propagated_prediction[1 : end - 1, :] = optimizer.solution_states_s[2 : end, :]
+    propagated_prediction[end, :] = optimizer.solution_states_s[end, :]
+
+    optimizer.prediction_for_opp.header.stamp = get_rostime()
+    optimizer.prediction_for_opp.s = propagated_prediction[:, 1]
+    optimizer.prediction_for_opp.ey = propagated_prediction[:, 2]
+    optimizer.prediction_for_opp.epsi = propagated_prediction[:, 3]
+    optimizer.prediction_for_opp.psidot = zeros(propagated_prediction[:, 4])
+    optimizer.prediction_for_opp.vx = propagated_prediction[:, 4]
+    optimizer.prediction_for_opp.vy = zeros(propagated_prediction[:, 4])
+    optimizer.prediction_for_opp.current_lap = optimizer.agent.current_lap
+
+    publish(optimizer.prediction_opponent_pub, optimizer.prediction_for_opp)
+end
+
+
 function publish_prediction_for_opponent(m::MpcModel_convhull, 
                                          optimizer::Optimizer, agent::Agent)
-    # Already propagated prediction
+    # Publish already propagated prediction for the opponent
     selected_laps = agent.selected_laps
-    indeces = agent.closest_indeces + 1
+    indeces = agent.closest_indeces
     propagated_states = zeros(agent.selected_states_s)
 
     index = 1
-    for i = 1 : NUM_CONSIDERED_LAPS
+    for i = 1 : size(selected_laps, 1)
         propagated_states[index : index + NUM_HORIZONS * HORIZON - 1, :] = squeeze(agent.trajectories_s[selected_laps[i], indeces[i] : indeces[i] + NUM_HORIZONS * HORIZON - 1, :], 1)
         index += NUM_HORIZONS * HORIZON
     end
 
-    # terminal_state = sum(getvalue(m.alpha) .* getvalue(m.selStates), 1)
     propagated_state = sum(getvalue(m.alpha) .* propagated_states, 1)
     propagated_prediction = zeros(optimizer.solution_states_s)
     propagated_prediction[1 : end - 1, :] = optimizer.solution_states_s[2 : end, :]
-    propagated_prediction[end, :] = propagated_state
+    
+    threshold = 0.1
+
+    if abs(propagated_state[1] - optimizer.solution_states_s[end, 1]) < abs(optimizer.solution_states_s[end - 1, 1] - optimizer.solution_states_s[end, 1]) + threshold
+        propagated_prediction[end, :] = propagated_state
+    else
+        propagated_prediction[end, :] = optimizer.solution_states_s[end, :]
+    end
 
     optimizer.prediction_for_opp.header.stamp = get_rostime()
     optimizer.prediction_for_opp.s = propagated_prediction[:, 1]
@@ -1472,9 +1517,42 @@ function publish_prediction_for_opponent(m::MpcModel_convhull,
     optimizer.prediction_for_opp.vy = propagated_prediction[:, 6]
     optimizer.prediction_for_opp.current_lap = optimizer.agent.current_lap
 
-    # optimizer.first_input.motor = optimizer.solution_inputs[1, 1]
-    # optimizer.first_input.servo = optimizer.solution_inputs[1, 2]
+    publish(optimizer.prediction_opponent_pub, optimizer.prediction_for_opp)
+end
+
+function publish_prediction_for_opponent_obs(m::MpcModel_obstacle, 
+                                         optimizer::Optimizer, agent::Agent)
+    # Publish already propagated prediction for the opponent
+    selected_laps = agent.selected_laps
+    indeces = agent.closest_indeces
+    propagated_states = zeros(agent.selected_states_s)
+
+    index = 1
+    for i = 1 : size(selected_laps, 1)
+        propagated_states[index : index + NUM_HORIZONS * HORIZON - 1, :] = squeeze(agent.trajectories_s[selected_laps[i], indeces[i] : indeces[i] + NUM_HORIZONS * HORIZON - 1, :], 1)
+        index += NUM_HORIZONS * HORIZON
+    end
+
+    propagated_state = sum(getvalue(m.alpha) .* propagated_states, 1)
+    propagated_prediction = zeros(optimizer.solution_states_s)
+    propagated_prediction[1 : end - 1, :] = optimizer.solution_states_s[2 : end, :]
+    
+    threshold = 0.1
+
+    if abs(propagated_state[1] - optimizer.solution_states_s[end, 1]) < abs(optimizer.solution_states_s[end - 1, 1] - optimizer.solution_states_s[end, 1]) + threshold
+        propagated_prediction[end, :] = propagated_state
+    else
+        propagated_prediction[end, :] = optimizer.solution_states_s[end, :]
+    end
+
+    optimizer.prediction_for_opp.header.stamp = get_rostime()
+    optimizer.prediction_for_opp.s = propagated_prediction[:, 1]
+    optimizer.prediction_for_opp.ey = propagated_prediction[:, 2]
+    optimizer.prediction_for_opp.epsi = propagated_prediction[:, 3]
+    optimizer.prediction_for_opp.psidot = propagated_prediction[:, 4]
+    optimizer.prediction_for_opp.vx = propagated_prediction[:, 5]
+    optimizer.prediction_for_opp.vy = propagated_prediction[:, 6]
+    optimizer.prediction_for_opp.current_lap = optimizer.agent.current_lap
 
     publish(optimizer.prediction_opponent_pub, optimizer.prediction_for_opp)
-    # publish(optimizer.input_pub, optimizer.first_input)
 end

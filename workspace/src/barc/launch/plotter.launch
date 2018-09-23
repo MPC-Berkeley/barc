@@ -1,7 +1,0 @@
-<launch>
-    <!-- MACHINES -->
-    <machine name="yoga" address="127.0.0.1" user="lukas" timeout="20.0" env-loader="/home/lukas/barc/env_loader_yoga.sh" />
-
-    <!-- VISUALIZATION -->
-    <node machine="yoga" pkg="barc" type="plotting_test.py" name="plotter" />
-</launch>

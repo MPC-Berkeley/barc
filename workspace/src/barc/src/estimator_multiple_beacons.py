@@ -19,7 +19,7 @@ import rospy
 # from Localization_helpers import Track
 from barc.msg import ECU, pos_info, Vel_est
 from sensor_msgs.msg import Imu
-from marvelmind_nav.msg import hedge_imu_fusion, hedge_pos
+from marvelmind_nav.msg import hedge_imu_fusion, hedge_pos_ang
 from std_msgs.msg import Header
 from numpy import eye, zeros, diag, tan, cos, sin, vstack, linalg
 from numpy import ones, polyval, size, dot, add
@@ -37,9 +37,9 @@ def main():
     loop_rate   = 50.0
 
             # x,  y,  vx, vy,   ax,   ay,  psi,  psidot
-    Q = diag([0., 0., 0., 0.,   1.,   1.,  0.,   1., 0.0])
+    Q = diag([0., 0., 0., 0.,   1.,   1.,  0.,   1.])
             # x_meas, y_meas, vel_meas, a_x_meas, a_y_meas, psiDot_meas, vy_meas   
-    R = diag([0.2 * 10.,    0.2 * 10.,    0.1,      10.,         1.,      0.1,      100 * 0.01])
+    R = diag([0.2 * 10.,    0.2 * 10.,    0.1,      10.,         1.,      0.1,      10 * 0.01])
 
     """
             # x,  y,  vx, vy,   ax,   ay,  psi,  psidot
@@ -67,10 +67,14 @@ def main():
     estMsg = pos_info()
     
     while not rospy.is_shutdown():
+        """
         if ecu.a != 0:
             est.estimateState(imu,gps,enc,ecu,est.ukf)
         else:
             est.x_est = 0.1
+        """
+
+        est.estimateState(imu,gps,enc,ecu,est.ekf)
 
 
         # estMsg.s, estMsg.ey, estMsg.epsi = track.Localize(est.x_est, est.y_est, est.yaw_est)
@@ -94,6 +98,7 @@ def main():
         gps.saveHistory()
         enc.saveHistory()
         ecu.saveHistory()
+
         est.saveHistory()
         est.rate.sleep()
 
@@ -107,7 +112,20 @@ def main():
                       vy_est_his        = est.vy_est_his,
                       ax_est_his        = est.ax_est_his,
                       ay_est_his        = est.ay_est_his,
-                      estimator_time    = est.time_his)
+                      estimator_time    = est.time_his,
+                      x_his_sync        = gps.x_his_sync,
+                      y_his_sync        = gps.y_his_sync,
+                      angle_his_sync    = gps.angle_his_sync,
+                      v_fl_his_sync     = enc.v_fl_his_sync,
+                      v_fr_his_sync     = enc.v_fr_his_sync,
+                      v_rl_his_sync     = enc.v_rl_his_sync,
+                      v_rr_his_sync     = enc.v_rr_his_sync,
+                      v_meas_his_sync   = enc.v_meas_his_sync,
+                      ax_his_sync       = imu.ax_his_sync,
+                      ay_his_sync       = imu.ay_his_sync,
+                      psiDot_his_sync   = imu.psiDot_his_sync,
+                      a_his_sync        = ecu.a_his_sync,
+                      df_his_sync       = ecu.df_his_sync)
 
     pathSave = os.path.join(homedir,"barc_debugging/estimator_imu.npz")
     np.savez(pathSave,psiDot_his    = imu.psiDot_his,
@@ -121,7 +139,14 @@ def main():
     pathSave = os.path.join(homedir,"barc_debugging/estimator_gps.npz")
     np.savez(pathSave,x_his         = gps.x_his,
                       y_his         = gps.y_his,
-                      gps_time      = gps.time_his)
+                      angle_his     = gps.angle_his,
+                      gps_time      = gps.time_his,
+                      x_his_1       = gps.x_his_1,
+                      y_his_1       = gps.y_his_1,
+                      x_his_2       = gps.x_his_2,
+                      y_his_2       = gps.y_his_2,
+                      gps_time_1    = gps.time_his_1,
+                      gps_time_2    = gps.time_his_2)
 
     pathSave = os.path.join(homedir,"barc_debugging/estimator_enc.npz")
     np.savez(pathSave,v_fl_his          = enc.v_fl_his,
@@ -227,6 +252,21 @@ class Estimator(object):
         
         bta = 0.5 * u[1]
         y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot, sin(bta)*enc.v_meas])
+
+        gps.x_his_sync = np.append(gps.x_his_sync, y[0])
+        gps.y_his_sync = np.append(gps.y_his_sync, y[1])
+        gps.angle_his_sync = np.append(gps.angle_his_sync, gps.angle)
+        enc.v_fl_his_sync.append(enc.v_fl)
+        enc.v_fr_his_sync.append(enc.v_fr)
+        enc.v_rl_his_sync.append(enc.v_rl)
+        enc.v_rr_his_sync.append(enc.v_fr)
+        enc.v_meas_his_sync.append(y[2])
+        imu.ax_his_sync.append(y[3])
+        imu.ay_his_sync.append(y[4])
+        imu.psiDot_his_sync.append(y[5])
+        ecu.a_his_sync.append(u[0])
+        ecu.df_his_sync.append(u[1])
+
         # y = np.array([gps.x, gps.y, enc.v_meas, imu.ax, imu.ay, imu.psiDot])
 
         KF(y,u)
@@ -266,7 +306,7 @@ class Estimator(object):
         self.z  = mx_kp1 + dot(K,(y - my_kp1))
         self.P  = dot(dot(K,self.R),K.T) + dot( dot( (eye(xDim) - dot(K,H)) , P_kp1)  ,  (eye(xDim) - dot(K,H)).T )
 
-        (self.x_est, self.y_est, self.vx_est, self.vy_est, self.ax_est, self.ay_est, self.yaw_est, self.psiDot_est, _) = self.z
+        (self.x_est, self.y_est, self.vx_est, self.vy_est, self.ax_est, self.ay_est, self.yaw_est, self.psiDot_est) = self.z
 
 
     def ukf(self, y, u):
@@ -339,7 +379,7 @@ class Estimator(object):
     def f(self, z, u):
         """ This Sensor model contains a pure Sensor-Model and a Kinematic model. They're independent from each other."""
         dt = self.dt
-        zNext = [0]*9
+        zNext = [0]*8
         zNext[0] = z[0] + dt*(cos(z[6])*z[2] - sin(z[6])*z[3])  # x
         zNext[1] = z[1] + dt*(sin(z[6])*z[2] + cos(z[6])*z[3])  # y
         zNext[2] = z[2] + dt*(z[4]+z[7]*z[3])                   # v_x
@@ -348,7 +388,7 @@ class Estimator(object):
         zNext[5] = z[5]                                         # a_y
         zNext[6] = z[6] + dt*(z[7])                             # psi
         zNext[7] = z[7]                                         # psidot
-        zNext[8] = z[8]                                         # psidot_drift
+        # zNext[8] = z[8]                                         # psidot_drift
         return np.array(zNext)
 
     def h(self, x, u):
@@ -359,7 +399,7 @@ class Estimator(object):
         y[2] = x[2]   # vx
         y[3] = x[4]   # a_x
         y[4] = x[5]   # a_y
-        y[5] = x[7]+x[8] # psiDot
+        y[5] = x[7]   # psiDot
         y[6] = x[3]   # vy
         return np.array(y)
 
@@ -375,6 +415,9 @@ class Estimator(object):
         self.ay_est_his.append(self.ay_est)
         self.yaw_est_his.append(self.yaw_est)
         self.psiDot_est_his.append(self.psiDot_est)
+
+        
+
 
 class ImuClass(object):
     """ Object collecting GPS measurement data
@@ -409,6 +452,11 @@ class ImuClass(object):
         self.ay_his      = [0.0]
         self.roll_his    = [0.0]
         self.pitch_his   = [0.0]
+
+        # Imu measurement history synchronized to estimator
+        self.psiDot_his_sync  = [0.0]
+        self.ax_his_sync      = [0.0]
+        self.ay_his_sync      = [0.0]
         
         # time stamp
         self.t0          = t0
@@ -474,27 +522,64 @@ class GpsClass(object):
             t0: starting measurement time
         """
 
-        rospy.Subscriber('hedge_imu_fusion', hedge_imu_fusion, self.gps_callback, queue_size=1)
+        rospy.Subscriber('hedge_pos_ang', hedge_pos_ang, self.gps_callback, queue_size=1)
+        # rospy.Subscriber('hedge_imu_fusion_2', hedge_imu_fusion, self.gps_callback_2, queue_size=1)
 
         # GPS measurement
-        self.x      = 0.0
-        self.y      = 0.0
-        
-        # GPS measurement history
+        self.x_1      = 0.0
+        self.y_1      = 0.0
+        self.x_2      = 0.0
+        self.y_2      = 0.0
+
+        self.x = 0.0
+        self.y = 0.0
+        self.angle = 0.0
+
+        self.curr_time  = 0.0
+        self.time_his   = np.array([0.0])
         self.x_his  = np.array([0.0])
         self.y_his  = np.array([0.0])
+        self.angle_his = np.array([0.0])
+
+        self.x_his_sync  = np.array([0.0])
+        self.y_his_sync_  = np.array([0.0])
+        self.angle_his_sync = np.array([0.0])
+        
+        # GPS measurement history
+        self.x_his_1  = np.array([0.0])
+        self.y_his_1  = np.array([0.0])
+
+        self.x_his_2  = np.array([0.0])
+        self.y_his_2  = np.array([0.0])
         
         # time stamp
-        self.t0         = t0
-        self.time_his   = np.array([0.0])
-        self.curr_time  = 0.0
+        self.t0           = t0
+        self.time_his_1   = np.array([0.0])
+        self.curr_time_1  = 0.0
+        self.time_his_2   = np.array([0.0])
+        self.curr_time_2  = 0.0
 
     def gps_callback(self,data):
         """Unpack message from sensor, GPS"""
+        
+        if data.address == 16:
+            self.curr_time_1 = rospy.get_rostime().to_sec() - self.t0
+
+            self.x_1 = data.x_m
+            self.y_1 = data.y_m
+
+            self.angle = data.angle
+
+        if data.address == 26:
+            self.curr_time_2 = rospy.get_rostime().to_sec() - self.t0
+
+            self.x_2 = data.x_m
+            self.y_2 = data.y_m
+
         self.curr_time = rospy.get_rostime().to_sec() - self.t0
 
-        self.x = data.x_m
-        self.y = data.y_m
+        self.x = 0.5 * (self.x_1 + self.x_2)
+        self.y = 0.5 * (self.y_1 + self.y_2)
 
         # 1) x(t) ~ c0x + c1x * t + c2x * t^2
         # 2) y(t) ~ c0y + c1y * t + c2y * t^2
@@ -511,7 +596,19 @@ class GpsClass(object):
         #     self.y = polyval(self.c_Y, self.curr_time)
 
     def saveHistory(self):
-        self.time_his = np.append(self.time_his,self.curr_time)
+        self.time_his_1 = np.append(self.time_his_1, self.curr_time_1)
+
+        self.x_his_1 = np.append(self.x_his_1,self.x_1)
+        self.y_his_1 = np.append(self.y_his_1,self.y_1)
+
+        self.angle_his = np.append(self.angle_his, self.angle)
+
+        self.time_his_2 = np.append(self.time_his_2,self.curr_time_2)
+
+        self.x_his_2 = np.append(self.x_his_2,self.x_2)
+        self.y_his_2 = np.append(self.y_his_2,self.y_2)
+
+        self.time_his = np.append(self.time_his, self.curr_time)
 
         self.x_his = np.append(self.x_his,self.x)
         self.y_his = np.append(self.y_his,self.y)
@@ -553,6 +650,13 @@ class EncClass(object):
         self.v_rl_his    = [0.0]
         self.v_rr_his    = [0.0]
         self.v_meas_his  = [0.0]
+
+        # ENC measurement history synchronized to estimator
+        self.v_fl_his_sync    = [0.0]
+        self.v_fr_his_sync    = [0.0]
+        self.v_rl_his_sync    = [0.0]
+        self.v_rr_his_sync    = [0.0]
+        self.v_meas_his_sync  = [0.0]
         
         # time stamp
         self.v_count    = 0
@@ -618,6 +722,10 @@ class EcuClass(object):
         # ECU measurement history
         self.a_his  = []
         self.df_his = []
+
+        # ECU measurement history synchronized to estimator
+        self.a_his_sync  = []
+        self.df_his_sync = []
         
         # time stamp
         self.t0         = t0

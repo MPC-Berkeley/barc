@@ -28,7 +28,7 @@ using marvelmind_nav.msg
 using JLD
 
 include("barc_lib/classes.jl")
-include("barc_lib/simModel.jl")
+include("barc_lib/simModel_lukas.jl")
 
 # This type contains measurement data (time, values and a counter)
 type Measurements{T}
@@ -73,12 +73,8 @@ function main()
     s1  = Subscriber("ecu", ECU, ECU_callback, (u_current,cmd_log,), queue_size=1)::RobotOS.Subscriber{barc.msg.ECU}
 
     z_current = zeros(60000,8)
-    if get_param("feature_flag")
-        z_current[1,:] = [0.02 0.0 0.0 0.0 pi/4 0.0 0.0 0.0]
-    else
-        z_current[1,:] = [0.02 0.0 0.0 0.0 0.0 0.0 0.0 0.0]
-    end
-
+    z_current[1,:] = [0.02 0.0 0.0 0.0 0.0 0.0 0.0 0.0]
+    # z_current[1,:] = [0.1 0.0 0.0 0.0 pi/6 0.0 0.0 0.0]
     slip_ang = zeros(60000,2)
 
     dt = 0.01
@@ -100,9 +96,14 @@ function main()
     # modelParams.m   = copy(get_param("m"))
     # modelParams.I_z = copy(get_param("I_z"))
 
+    node_name = get_name()
+    if node_name[end] == "2"
+        modelParams.m   = 1.75
+    else
+        modelParams.m   = 1.98
+    end
     modelParams.l_A = 0.125
     modelParams.l_B = 0.125
-    modelParams.m   = 1.98
     modelParams.I_z = 0.03#0.24             # using homogenous distributed mass over a cuboid
 
     println("Publishing sensor information. Simulator running.")
@@ -128,9 +129,9 @@ function main()
         t_ros   = get_rostime()
         t       = to_sec(t_ros)
         # # print(t)
-        if sizeof(cmd_log.z[t.>cmd_log.t+0.2,2]) >= 1
-           u_current[2] = cmd_log.z[t.>=cmd_log.t+0.2,2][end]       # artificial steering input delay
-        end
+        #if sizeof(cmd_log.z[t.>cmd_log.t+0.2,2]) >= 1
+        #   u_current[2] = cmd_log.z[t.>=cmd_log.t+0.2,2][end]       # artificial steering input delay
+        #end
         # update current state with a new row vector
         
         # z_current[i,:],slip_ang[i,:]  = simDynModel_exact_xy(z_current[i-1,:], u_current', dt, modelParams)
@@ -154,7 +155,7 @@ function main()
         slip_a.t[i]     = t
 
         # IMU measurements
-        if i%1 == 0                 # 100 Hz
+        if i%2 == 0                 # 50 Hz
             imu_drift   = 0#1+(t-t0)/100#sin(t/100*pi/2)     # drifts to 1 in 100 seconds (and add random start value 1)
             rand_yaw = 0.05*randn()
             if rand_yaw > 0.1
@@ -163,9 +164,9 @@ function main()
                 rand_yaw=-0.1
             end
 
-            yaw         = z_current[i,5] + imu_drift # + rand_yaw#+ 0.002*randn() 
+            yaw         = z_current[i,5] + imu_drift + rand_yaw#+ 0.002*randn() 
 
-            rand_psiDot = 0.05*randn()
+            rand_psiDot = 0.01*randn()
             if rand_psiDot > 0.1
                 rand_psiDot = 0.1
             elseif rand_psiDot<-0.1
@@ -180,20 +181,20 @@ function main()
             imu_data.angular_velocity = Vector3(0,0,psiDot)
             imu_data.header.stamp = t_ros
 
-            rand_accX = 1.0*randn()
-            if rand_accX > 1.5
-                rand_accX = 1.5
-            elseif rand_accX<-1.5
-                rand_accX=-1.5
+            rand_accX = 0.01*randn()
+            if rand_accX > 0.1
+                rand_accX = 0.1
+            elseif rand_accX<-0.1
+                rand_accX=-0.1
             end
 
             imu_data.linear_acceleration.x = diff(z_current[i-1:i,3])[1]/dt - z_current[i-1,6]*z_current[i-1,4] +rand_accX#+ randn()*0.3*1.0
 
-            rand_accY = 1.0*randn()
-            if rand_accY > 1.5
-                rand_accY = 1.5
-            elseif rand_accY<-1.5
-                rand_accY=-1.5
+            rand_accY = 0.01*randn()
+            if rand_accY > 0.1
+                rand_accY = 0.1
+            elseif rand_accY<-0.1
+                rand_accY=-0.1
             end
 
             # imu_data.linear_acceleration.y = diff(z_current[i-1:i,4])[1]/dt + z_current[i,6]*z_current[i,3] +rand_accY#+ randn()*0.3*1.0
@@ -242,22 +243,22 @@ function main()
         end
 
         # GPS measurements
-        if i%1 == 0               # 100 Hz
+        if i%6 == 0               # 16 Hz
 
-            rand_x = 0.02*randn()
-            if rand_x > 0.04
-                rand_x = 0.04
-            elseif rand_x<-0.04
-                rand_x=-0.04
+            rand_x = 0.01*randn()
+            if rand_x > 0.1
+                rand_x = 0.1
+            elseif rand_x<-0.1
+                rand_x=-0.1
             end
 
             x = round(z_current[i,1] +  rand_x,2)#0.002*randn(),2)       # Indoor gps measures, rounded on cm
 
-            rand_y = 0.02*randn()
-            if rand_y > 0.04
-                rand_y = 0.04
-            elseif rand_y<-0.04
-                rand_y=-0.04
+            rand_y = 0.01*randn()
+            if rand_y > 0.1
+                rand_y = 0.1
+            elseif rand_y<-0.1
+                rand_y=-0.1
             end
 
             y = round(z_current[i,2] + rand_y,2)#0.002*randn(),2)

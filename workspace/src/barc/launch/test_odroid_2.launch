@@ -7,25 +7,24 @@
     <param name="m" type="double" value="1.98" />
     <param name="I_z" type="double" value="0.24" />
     <param name="dt" type="double" value="0.1" />
-    <param name="num_agents" type="int" value="1" />
+    <param name="num_agents" type="int" value="2" />
 
     <!-- MACHINES -->
     <machine name="yoga" address="127.0.0.1" user="lukas" timeout="20.0" env-loader="/home/lukas/barc/env_loader_yoga.sh" />
     <!-- <machine name="yoga" address="192.168.10.74" user="lukas" timeout="20.0" env-loader="/home/lukas/barc/env_loader_yoga.sh" /> -->
-    <machine name="ubuntu-pc" address="127.0.0.1" user="mpcubuntu" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc_vis.sh"/>
+    <machine name="ubuntu-pc" address="192.168.10.147" user="mpcubuntu" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc_vis.sh"/>
+    <machine name="odroid_2" address="192.168.10.101" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid.sh"/>
 
-    <machine name="odroid" address="192.168.10.213" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid.sh"/>
-
-    <!-- AGENT 1 NODES-->
-    <!-- AGENT-NODE 1-->
+    <!-- AGENT 2 NODES-->
+    <!-- AGENT-NODE 2-->
     <node machine="ubuntu-pc" pkg="barc" type="agent_node.jl" name="agent_2" output="screen">
         <param name="index" type="int" value="2" />
         <param name="color" type="str" value="blue" />
-        <param name="mass" type="double" value="1.75" />
+        <param name="mass" type="double" value="1.98" />
         <param name="time_offset" type="double" value="0.0" />
         <param name="delay_a" type="int" value="1" />
         <param name="delay_df" type="int" value="1" />
-        <param name="sim" type="str" value="simulation" />
+        <param name="sim" type="str" value="estimation" />
 
         <remap from="pos_info" to="agent_2/pos_info" />
         <remap from="real_val" to="agent_2/real_val" />
@@ -33,7 +32,8 @@
         <remap from="xy_prediction" to="agent_2/xy_prediction" />
         <remap from="selected_states" to="agent_2/selected_states" />
         <remap from="prediction" to="agent_2/prediction" />
-        <remap from="adv_prediction" to="agent_2/prediction" />
+        <remap from="adv_prediction" to="agent_1/prediction_for_adv" />
+        <remap from="prediction_for_adv" to="agent_2/prediction_for_adv" />
         <remap from="ecu_pwm" to="agent_2/ecu_pwm" />
     </node>
 
@@ -47,28 +47,50 @@
         <param name="ang_v_std" type="double" value="0.8" />
         <param name="est_mode" type="double" value="1" />
 
-        <remap from="hedge_imu_fusion" to="agent_2/hedge_imu_fusion" />
+        <remap from="hedge_pos" to="agent_2/hedge_pos" />
         <remap from="imu/data" to="agent_2/imu/data" />
         <remap from="vel_est" to="agent_2/vel_est" />
         <remap from="pos_info" to="agent_2/pos_info" />
         <remap from="ecu" to="agent_2/ecu" />
+        <remap from="hedge_imu_fusion" to="agent_2/hedge_imu_fusion" />
     </node>
 
-    <!-- SIMULATOR -->
-    <node machine="ubuntu-pc" pkg="barc" type="barc_simulator_dyn_lukas.jl" name="barc_sim_2" output="screen">
-        <remap from="hedge_imu_fusion" to="agent_2/hedge_imu_fusion" />
+
+    <!-- IMU -->
+    <node machine="odroid_2" pkg="myahrs_driver" type="myahrs_driver" name="myahrs_driver_2">
+        <param name="port" value="/dev/ttyACM0" />
+        <param name="baud_rate" value="115200" />
+
         <remap from="imu/data" to="agent_2/imu/data" />
+        <remap from="imu/data_raw" to="agent_2/imu/data_raw" />
+        <remap from="imu/mag" to="agent_2/imu/mag" />
+        <remap from="imu/temperature" to="agent_2/imu/temperature" />
+        <remap from="tf" to="agent_2/tf" />
+    </node>
+
+    <!-- GPS -->
+    <node machine="odroid_2" pkg="marvelmind_nav" type="hedge_rcv_bin" name="indoor_gps_2" args="/dev/ttyACM1" >
+        <remap from="beacons_pos_a" to="agent_2/beacons_pos_a" />
+        <remap from="hedge_pos" to="agent_2/hedge_pos" />
+        <remap from="hedge_pos_a" to="agent_2/hedge_pos_a" />
+        <remap from="hedge_imu_fusion" to="agent_2/hedge_imu_fusion" />
+    </node>
+    
+    <!-- ARDUINO -->
+    <!--  * encoders and ultrasound sensors -->
+    <node machine="odroid_2" pkg="rosserial_python" type="serial_node.py" name="arduino_node_2" >
+        <param name="port" value="/dev/ttyUSB0" />
         <remap from="vel_est" to="agent_2/vel_est" />
-        <remap from="real_val" to="agent_2/real_val" />
-        <remap from="ecu" to="agent_2/ecu" />
-    </node>   
-    <!-- AGENT 1 NODES-->
+        <remap from="ecu_pwm" to="agent_2/ecu_pwm" />
+        <remap from="diagnostics" to="agent_2/diagnostics" />
+    </node>
+    <!-- AGENT 2 NODES-->
 
     <!-- VISUALIZATION -->
     <node machine="ubuntu-pc" pkg="barc" type="plotter.py" name="visualization" output="screen">
         <param name="num_agents" type="int" value="1" />
         <param name="index" type="int" value="2" />
-        <param name="agent_2" type="str" value="simulation" />
-    </node>  
+        <param name="agent_2" type="str" value="estimation" />
+    </node>
 
 </launch>

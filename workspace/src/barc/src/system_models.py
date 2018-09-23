@@ -79,7 +79,7 @@ def f_SensorKinematicModel(z, u, vhMdl, dt, est_mode):
     (l_A,l_B) = vhMdl
     bta = math.atan2(l_A*tan(u[1]),l_A+l_B)
     zNext = [0]*14
-    zNext = [0]*8
+    zNext = [0]*9
     zNext[0] = z[0] + dt*(cos(z[6])*z[2] - sin(z[6])*z[3])          # x
     zNext[1] = z[1] + dt*(sin(z[6])*z[2] + cos(z[6])*z[3])          # y
     zNext[2] = z[2] + dt*(z[4]+z[7]*z[3])                           # v_x
@@ -88,7 +88,7 @@ def f_SensorKinematicModel(z, u, vhMdl, dt, est_mode):
     zNext[5] = z[5]                                                 # a_y
     zNext[6] = z[6] + dt*(z[7])                                     # psi
     zNext[7] = z[7]                                                 # psidot
-    # zNext[8] = z[8]                                                 # drift_psi
+    zNext[8] = z[8]                                                 # drift_psi
 
 
     # zNext[9] = z[9] + dt*(z[12]*cos(z[11] + bta))                   # x
@@ -101,18 +101,18 @@ def f_SensorKinematicModel(z, u, vhMdl, dt, est_mode):
 def h_SensorKinematicModel(x, u, vhMdl, dt, est_mode):
     """ This is the measurement model to the kinematic<->sensor model above """
     y = [0]*9
-    y = [0]*7
+    y = [0]*8
     y[0] = x[0]                     # x
     y[1] = x[1]                     # y
     # y[2] = sqrt(x[2]**2+x[3]**2)    # v
     y[2] = x[2]                     # vx
-    # y[3] = x[6]+x[8]                # psi
+    y[3] = x[6]+x[8]                # psi
     # y[3] = x[6]                # psi
-    y[3] = x[7]                     # psiDot
-    y[4] = x[4]                     # a_x
-    y[5] = x[5]                     # a_y
+    y[4] = x[7]                     # psiDot
+    y[5] = x[4]                     # a_x
+    y[6] = x[5]                     # a_y
     # y[7] = x[2]                      # vx
-    y[6] = x[3]                      # vy
+    y[7] = x[3]                      # vy
 
     # y[7] = x[9]                     # x
     # y[8] = x[10]                    # y

@@ -9,7 +9,7 @@
 
 
 function get_most_recent_file()
-	cd("/home/lukas/simulations")
+	cd("/home/mpcubuntu/simulations/lukas")
 
 	folders = []
 	# Get all the folders
@@ -41,7 +41,7 @@ function get_most_recent_file()
 end
 
 function find_file(time_stamp_string)
-	cd("/home/lukas/simulations")
+	cd("/home/mpcubuntu/simulations/lukas")
 
 	if length(time_stamp_string) == 4
 		# Take most recently recorded file from the folder indicated by the 
@@ -112,7 +112,7 @@ end
 
 
 function get_most_recent(node_name, mode, initialization)
-	cd("/home/lukas/simulations")
+	cd("/home/mpcubuntu/simulations/lukas")
 
 	folders = []
 	# Get all the folders

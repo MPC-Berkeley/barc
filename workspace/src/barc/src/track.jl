@@ -50,20 +50,20 @@ function init!(track::Track)  # Standard Constructor
 	track.xy_outer = [0.0 0.0]
 	track.xy_inner = [0.0 0.0]
 
-	println("Creating track $(track.shape)")
-	create_track!(track)
+	tracks_dir = ""
 
-	#=
-	tracks_dir = readdir(TRACK_DIR)
-	if track.shape * ".jld" in tracks_dir
+	try 
+		tracks_dir = readdir(TRACK_DIR)
+	end
+
+	if contains(tracks_dir, track.shape * ".jld")
 		println("Loading track $(track.shape)")
 		load_track!(track)
 	else
 		println("Creating track $(track.shape)")
 		create_track!(track)
-		save_track(track)
+		# save_track(track)
 	end
-	=#
 	println("total length: ", track.total_length)
 end
 
@@ -96,7 +96,7 @@ function create_track!(track::Track)
 
 		# TODO: Consider the transition from one radius to another 
 		# radius
-		if abs(delta_theta) > 0. && get_curvature_check(track, track.s_coord[i]) > 1e-3
+		if abs(delta_theta) > 1e-5 && get_curvature_check(track, track.s_coord[i]) > 1e-5
 			radius = 1 / get_curvature_check(track, track.s_coord[i])
 
 			# TODO: Should be absolute radius??
@@ -124,8 +124,6 @@ function create_track!(track::Track)
 		track.xy_coords[161 : end, 2] -= 0.0505319492481863
 	end
 
-	println(track.xy_coords)
-
 	# track.xy_coords = cumsum(track.xy_coords)
 	track.xy_outer += track.xy_coords
 	track.xy_inner += track.xy_coords
@@ -152,13 +150,11 @@ function create_track!(track::Track)
 end
 
 function oval_track!(track::Track)
-	#=
-	add_segment!(track, 1.0, 0.0)
-	add_segment!(track, 4.5, 1.0 * pi)
-	add_segment!(track, 2.0, 0.0)
-	add_segment!(track, 4.5, 1.0 * pi)
-	add_segment!(track, 1.0, 0.0)
-	=#
+	# add_segment!(track, 1.0, 0.0)
+	# add_segment!(track, 4.5, 1.0 * pi)
+	# add_segment!(track, 2.0, 0.0)
+	# add_segment!(track, 4.5, 1.0 * pi)
+	# add_segment!(track, 1.0, 0.0)
 
 	add_segment!(track, 1.0, 0.0)
 	add_segment!(track, 6.0, 1.0 * pi)
@@ -192,19 +188,35 @@ function oval_track!(track::Track)
 end
 
 function l_shape!(track::Track)
-    add_segment!(track, 1.5, 0.0)
-    add_segment!(track, 2.2, 1.0 * pi / 2)
-    add_segment!(track, 0.1, 0.0)
-    add_segment!(track, 2.2, 1.0 * pi / 2)
-    add_segment!(track, 0.1, 0.0)
-    add_segment!(track, 2.2, - 1.0 * pi / 2)
-    add_segment!(track, 0.1, 0.0)
-    add_segment!(track, 2.2, 1.0 * pi / 2)
-    add_segment!(track, 0.1, 0.0)
-    add_segment!(track, 2.2, 1.0 * pi / 2)
-    add_segment!(track, 3.0, 0.0)
-    add_segment!(track, 2.2, 1.0 * pi / 2)
-    add_segment!(track, 1.5, 0.0)
+	#=
+	add_segment!(track, 1.5, 0.0)
+	add_segment!(track, 2.2, 1.0 * pi / 2)
+	add_segment!(track, 0.1, 0.0)
+	add_segment!(track, 2.2, 1.0 * pi / 2)
+	add_segment!(track, 0.1, 0.0)
+	add_segment!(track, 2.2, - 1.0 * pi / 2)
+	add_segment!(track, 0.1, 0.0)
+	add_segment!(track, 2.2, 1.0 * pi / 2)
+	add_segment!(track, 0.1, 0.0)
+	add_segment!(track, 2.2, 1.0 * pi / 2)
+	add_segment!(track, 3.0, 0.0)
+	add_segment!(track, 2.2, 1.0 * pi / 2)
+	add_segment!(track, 1.5, 0.0)
+	=#
+
+	add_segment!(track, 1.5, 0.0)
+	add_segment!(track, 2.2, pi / 2)
+	add_segment!(track, 0.1, 0.0)
+	add_segment!(track, 2.2, pi / 2)
+	add_segment!(track, 0.1, 0.0)
+	add_segment!(track, 2.2, - pi / 2)
+	add_segment!(track, 0.1, 0.0)
+	add_segment!(track, 2.2, pi / 2)
+	add_segment!(track, 0.1, 0.0)
+	add_segment!(track, 2.2, pi / 2)
+	add_segment!(track, 3.0, 0.0)
+	add_segment!(track, 2.2, pi / 2)
+	add_segment!(track, 1.5, 0.0)
 end
 
 function track_3!(track::Track)
@@ -224,15 +236,15 @@ function track_3!(track::Track)
 	    add_segment!(track, 2.0, - pi / 2)
 	    add_segment!(track, 1.8, 0.0)
   	else
-  		add_segment!(track, 1.5, 0.0)
-	    add_segment!(track, 2.0, - pi / 2)
-	    add_segment!(track, 1.5, 0.0)
-	    add_segment!(track, 2.0, - pi / 2)
-	    add_segment!(track, 3.0, 0.0)
-	    add_segment!(track, 2.0, - pi / 2)
-	    add_segment!(track, 1.5, 0.0)
-	    add_segment!(track, 2.0, - pi / 2)
-	    add_segment!(track, 1.5, 0.0)
+  		add_segment!(track, 1.0, 0.0)
+	    add_segment!(track, 3.0, 1.0 * pi / 2)
+	    add_segment!(track, 1.0, 0.0)
+	    add_segment!(track, 3.0, 1.0 * pi / 2)
+	    add_segment!(track, 2.0, 0.0)
+	    add_segment!(track, 3.0, 1.0 * pi / 2)
+	    add_segment!(track, 1.0, 0.0)
+	    add_segment!(track, 3.0, 1.0 * pi / 2)
+	    add_segment!(track, 1.0, 0.0)
 
   		#=
 		add_segment!(track, 3.0, 0.0)

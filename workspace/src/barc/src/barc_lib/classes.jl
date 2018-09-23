@@ -14,44 +14,44 @@ end
 # 3th dimension specifies one of the two lap numbers between which are iterated
 
 type MpcCoeff           # coefficients for trajectory approximation
-    coeffCost::Array{Float64}
-    coeffConst::Array{Float64}
-    order::Int64
-    pLength::Int64      # small values here may lead to numerical problems since the functions are only approximated in a short horizon
-                        # "small" values are about 2*N, good values about 4*N
-                        # numerical problems occur at the edges (s=0, when v is almost 0 and s does not change fast and at s=s_target)
-    c_Vx::Array{Float64,1}
-    c_Vy::Array{Float64,1}
-    c_Psi::Array{Float64,1}
-    MpcCoeff(coeffCost=Float64[], coeffConst=Float64[], order=4, pLength=0,c_Vx=Float64[],c_Vy=Float64[],c_Psi=Float64[]) = new(coeffCost, coeffConst, order, pLength, c_Vx, c_Vy, c_Psi)
+    c_Vx::Array{Float64,2}
+    c_Vy::Array{Float64,2}
+    c_Psi::Array{Float64,2}
+    MpcCoeff(c_Vx=zeros(10,6),c_Vy=zeros(10,4),c_Psi=zeros(10,3)) = new(c_Vx, c_Vy, c_Psi)
+    # c_Vx::Array{Float64,2}
+    # c_Vy::Array{Float64,1}
+    # c_Psi::Array{Float64,1}
+    # MpcCoeff(c_Vx=zeros(10,3),c_Vy=zeros(10),c_Psi=zeros(10)) = new(c_Vx, c_Vy, c_Psi)
 end
 
 type OldTrajectory      # information about previous trajectories
     oldTraj::Array{Float64}             # contains all states over all laps
-    oldInput::Array{Float64}            # contains all inputs
-    oldTimes::Array{Float64}            # contains times related to states and inputs
-    oldCost::Array{Int64}               # contains costs of laps
     count::Array{Int64}                 # contains the counter for each lap
-    prebuf::Int64
-    postbuf::Int64
-    idx_start::Array{Int64}             # index of the first measurement with s > 0
-    idx_end::Array{Int64}               # index of the last measurement with s < s_target
-    OldTrajectory(oldTraj=Float64[],oldInput=Float64[],oldTimes=Float64[],oldCost=Float64[],count=Int64[],prebuf=50,postbuf=50,idx_start=Int64[],idx_end=Int64[]) = new(oldTraj,oldInput,oldTimes,oldCost,count,prebuf,postbuf,idx_start,idx_end)
+    OldTrajectory(oldTraj=Float64[],count=Int64[]) = new(oldTraj,count)
 end
 
+type SolHistory
+    u::Array{Float64,4}
+    z::Array{Float64,4}
+    cost::Array{Float64,1}
+    function SolHistory(bufferSize::Int64,N::Int64,n_state::Int64,n_lap::Int64)
+        solHistory=new()
+        solHistory.u=zeros(bufferSize,n_lap,N,2)
+        solHistory.z=zeros(bufferSize,n_lap,N+1,n_state)
+        solHistory.cost=2*ones(n_lap)
+        return solHistory
+    end
+end
+
+# To make the data structure to be compatible with my own simulation code, idx_start and idx_end in SafeSetData are acturally not used, since I am using other way to cantacate the laps.
 type SafeSetData
     oldSS::Array{Float64}           # contains data from previous laps usefull to build the safe set
     cost2target::Array{Float64}     # cost to arrive at the target, i.e. how many iterations from the start to the end of the lap
     oldCost::Array{Int64}               # contains costs of laps
     count::Array{Int64}                 # contains the counter for each lap
-    prebuff::Int64
-    postbuff::Int64
-    idx_start::Array{Int64}             # index of the first measurement with s > 0
-    idx_end::Array{Int64}               # index of the last measurement with s < s_target
     oldSS_xy::Array{Float64}
-
-    SafeSetData(oldSS=Float64[],cost2target=Float64[],oldCost=Int64[],count=Int64[],prebuf=50,postbuf=50,idx_start=Int64[],idx_end=Int64[],oldSS_xy=Float64[]) =
-    new(oldSS,cost2target,oldCost,count,prebuf,postbuf,idx_start,idx_end,oldSS_xy)
+    SafeSetData(oldSS=Float64[],cost2target=Float64[],oldCost=Int64[],count=Int64[],oldSS_xy=Float64[]) =
+    new(oldSS,cost2target,oldCost,count,oldSS_xy)
 end
 
 type SelectedStates                 # Values needed for the convex hull formulation
@@ -59,20 +59,14 @@ type SelectedStates                 # Values needed for the convex hull formulat
     statesCost::Array{Float64}      # ... and their related costs
     Np::Int64                       # number of states to select from each previous lap
     Nl::Int64                       # number of previous laps to include in the convex hull
-    version::Bool                   # false if you want to use convex hull
-    simulator::Bool                 # true to use tuning made for simulator,  false to use tuning made for BARC
-    shift::Int64
-    Nl_sID::Int64
-    lambda1::Int64 
-    lambda2::Int64 
-    lambda3::Int64 
-    SelectedStates(selStates=Float64[],statesCost=Float64[],Np=6,Nl=2,version=false, simulator=true,shift=3,Nl_sID=3,lambda1=1,lambda2=1,lambda3=1) = new(selStates,statesCost,Np,Nl,version,simulator,shift,Nl_sID,lambda1,lambda2,lambda3)
+    feature_Np::Int64               # this is for feature points selcted from history
+    feature_Nl::Int64               # this is for feature points selected from history
+    SelectedStates(selStates=Float64[],statesCost=Float64[],Np=10,Nl=2,feature_Np=30,feature_Nl=5) = new(selStates,statesCost,Np,Nl,feature_Np,feature_Nl)
 end
 
 type MpcParams          # parameters for MPC solver
     N::Int64
     nz::Int64
-    OrderCostCons::Int64
     Q::Array{Float64,1}
     Q_term::Array{Float64,1}
     R::Array{Float64,1}
@@ -86,10 +80,8 @@ type MpcParams          # parameters for MPC solver
     Q_vel::Float64                 # weight on the soft constraint for the maximum velocity
     Q_slack::Array{Float64,1}               # weight on the slack variables for the terminal constraint
     Q_obs::Array{Float64}          # weight used to esclude some of the old trajectories from the optimization problem
-
-
-
-    MpcParams(N=0,nz=0,OrderCostCons=0,Q=Float64[],Q_term=Float64[],R=Float64[],vPathFollowing=1.0,QderivZ=Float64[],QderivU=Float64[],Q_term_cost=1.0,delay_df=0,delay_a=0,Q_lane=1.0,Q_vel=1.0,Q_slack=Float64[],Q_obs=Float64[]) = new(N,nz,OrderCostCons,Q,Q_term,R,vPathFollowing,QderivZ,QderivU,Q_term_cost,delay_df,delay_a,Q_lane,Q_vel,Q_slack,Q_obs)
+    MpcParams(N=0,nz=0,Q=Float64[],Q_term=Float64[],R=Float64[],vPathFollowing=1.0,QderivZ=Float64[],QderivU=Float64[],Q_term_cost=1.0,delay_df=0,delay_a=0,Q_lane=1.0,Q_vel=1.0,Q_slack=Float64[],Q_obs=Float64[])=
+    new(N,nz,Q,Q_term,R,vPathFollowing,QderivZ,QderivU,Q_term_cost,delay_df,delay_a,Q_lane,Q_vel,Q_slack,Q_obs)
 end
 
 type PosInfo            # current position information
@@ -107,15 +99,9 @@ type MpcSol             # MPC solution output
     cost::Array{Float64}
     eps_alpha::Array{Float64}
     costSlack::Array{Float64}
-    MpcSol(a_x=0.0,d_f=0.0,solverStatus=Symbol(),u=Float64[],z=Float64[],cost=Float64[],eps_alpha=Float64[],costSlack=Float64[]) = new(a_x,d_f,solverStatus,u,z,cost,eps_alpha,costSlack)
-end
-
-type TrackCoeff         # coefficients of track
-    coeffAngle::Array{Float64,1}
-    coeffCurvature::Array{Float64,1}
-    nPolyCurvature::Int64      # order of the interpolation polynom
-    width::Float64               # lane width -> is used in cost function as soft constraints (to stay on track)
-    TrackCoeff(coeffAngle=Float64[],coeffCurvature=Float64[],nPolyCurvature=4,width=1.0) = new(coeffAngle,coeffCurvature,nPolyCurvature,width)
+    df_his::Array{Float64,1}
+    a_his::Array{Float64,1}
+    MpcSol(a_x=0.0,d_f=0.0,solverStatus=Symbol(),u=Float64[],z=Float64[],cost=Float64[],eps_alpha=Float64[],costSlack=Float64[],df_his=Float64[],a_his=Float64[]) = new(a_x,d_f,solverStatus,u,z,cost,eps_alpha,costSlack,df_his,a_his)
 end
 
 type ModelParams
@@ -124,8 +110,8 @@ type ModelParams
     m::Float64
     I_z::Float64
     dt::Float64
-    u_lb::Array{Float64}        # lower bounds for u
-    u_ub::Array{Float64}        # upper bounds
+    u_lb::Array{Float64}  
+    u_ub::Array{Float64}
     z_lb::Array{Float64}
     z_ub::Array{Float64}
     c0::Array{Float64}
@@ -133,25 +119,82 @@ type ModelParams
     ModelParams(l_A=0.25,l_B=0.25,m=1.98,I_z=0.24,dt=0.1,u_lb=Float64[],u_ub=Float64[],z_lb=Float64[],z_ub=Float64[],c0=Float64[],c_f=0.0) = new(l_A,l_B,m,I_z,dt,u_lb,u_ub,z_lb,z_ub,c0,c_f)
 end
 
-type Obstacle
-    obstacle_active::Bool       # true if we have to consider the obstacles in the optimization problem
-    lap_deactivate::Int64       # number of the lap in which to stop using obstacles
-    lap_active::Int64           # number of the first lap in which the obstacles are used
-    obs_detect::Float64         # maximum distance at which we can detect obstacles (in terms of s!!)
-    n_obs::Int64                # number of obstacles in the track
-    s_obs_init::Array{Float64}  # initial s coordinate of each obstacle
-    ey_obs_init::Array{Float64} # initial ey coordinate of each obstacle
-    v_obs_init::Array{Float64}  # initial velocity of each obstacles
-    r_s::Float64                # radius on the s coordinate of the ellipse describing the obstacles
-    r_ey::Float64               # radius on the ey coordinate of the ellipse describing the obstacle 
-    inv_step::Int64             # number of step of invariance required for the safe set
-    obstacle_tuning::Bool       # true if we are using the tuning made for obstacle avoidance
-    prediction::Array{Float64}
+# THIS IS THE CORRESPONDING TRACK DATA IN JULIA
+# WE NEED TO DEFINE THEM BOTH IN PYTHON AND JULIA
 
-    Obstacle(obstacle_active=false, lap_deactivate=12, lap_active=10, obs_detect=1.0,
-             n_obs=1, s_obs_init=Float64[], ey_obs_init=Float64[], v_obs_init=Float64[],
-             r_s=0.5, r_ey=0.3, inv_step=1, obstacle_tuning=false, 
-             prediction=Float64[]) = new(obstacle_active,
-             lap_deactivate, lap_active, obs_detect, n_obs, s_obs_init, ey_obs_init,
-             v_obs_init, r_s, r_ey, inv_step, obstacle_tuning, prediction)
+function add_curve(theta::Array{Float64,1},curvature::Array{Float64,1},num_point,angle::Float64,ds::Float64)
+    d_theta = 0
+    curve = 2*sum(1:num_point/2)#+num_point/2
+    for i=1:num_point
+        if i <= num_point/2
+            d_theta = d_theta + angle / curve
+        elseif i == num_point/2+1
+            d_theta = d_theta
+        else
+            d_theta = d_theta - angle / curve
+        end
+        append!(theta,[theta[end]+d_theta])
+        curv_curr = d_theta/ds
+        append!(curvature,[curv_curr])
+    end
+    return theta,curvature
 end
+
+type Track
+    xy::Array{Float64,2}
+    idx     # not dummy idx vector, which will be useful when finding the nearest point in function "find_idx()"
+    bound1xy::Array{Float64,2} # bound data are only for plotting visualization
+    bound2xy::Array{Float64,2} # bound data are only for plotting visualization
+    curvature::Array{Float64,1}
+    max_curvature::Float64
+    theta::Array{Float64,1}
+    ds::Float64 # track discretization distance
+    n_node::Int64 # number of points in the track
+    w::Float64  # track width
+    s::Float64  # track total length
+    function Track(track_data::Array{Float64,2})
+        # object Initialization
+        track=new()
+
+        xy=[0.0 0.0] # 1.x 2.y
+        if get_param("feature_flag")
+            theta=[pi/4]
+        else
+            theta=[0.0]
+        end
+            
+        curvature=[0.0]
+        ds=0.01 # length of each segment
+        width=0.8
+        # bound1xy=[0.0 width/2]
+        # bound2xy=[0.0 -width/2]
+        bound1xy = xy + width/2*[cos(theta[1]+pi/2) sin(theta[1]+pi/2)]
+        bound2xy = xy - width/2*[cos(theta[1]+pi/2) sin(theta[1]+pi/2)]
+
+        # create the track segment angle
+        for i=1:size(track_data,1)
+            (theta,curvature)=add_curve(theta,curvature,track_data[i,1],track_data[i,2],ds)
+        end
+        max_curvature=maximum(abs(curvature))
+        # create the track segment by segment using the angle just calculated
+        for i=2:size(theta,1) # we will have one more point at the end of the array, which is the same as the original starting point
+            xy_next=[xy[end,1]+ds*cos(theta[i]) xy[end,2]+ds*sin(theta[i])]
+            bound1xy_next = xy_next + width/2*[cos(theta[i]+pi/2) sin(theta[i]+pi/2)]
+            bound2xy_next = xy_next - width/2*[cos(theta[i]+pi/2) sin(theta[i]+pi/2)]
+            xy=vcat(xy,xy_next)
+            bound1xy=vcat(bound1xy,bound1xy_next)
+            bound2xy=vcat(bound2xy,bound2xy_next)
+        end
+
+        # object construction
+        track.xy=xy; track.bound1xy=bound1xy; track.bound2xy=bound2xy;
+        track.curvature=curvature; track.max_curvature=max_curvature;
+        track.theta=theta; track.ds=ds; track.w=width
+        track.n_node=size(xy,1); track.idx=1:size(xy,1)
+        track.s=(track.n_node-1)*track.ds # Important: exclude the last point from the track length!
+        return track
+    end
+    # The last point of this function is actually a dummy point
+end
+
+
