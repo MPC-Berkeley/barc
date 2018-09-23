@@ -24,7 +24,7 @@ This package requires access to the function get_name() from RobotOS, which is n
 ```
 cd ~/.julia/v0.4/RobotOS/src
 ```
-Using your favorite editor add "get_name" to
+Using your favorite editor add "expot ... get_name" to rospy.jl
 ```
 export init_node, is_shutdown, spin,
        get_param, has_param, set_param, delete_param,
