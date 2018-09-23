@@ -79,6 +79,7 @@ def f_SensorKinematicModel(z, u, vhMdl, dt, est_mode):
     (l_A,l_B) = vhMdl
     bta = math.atan2(l_A*tan(u[1]),l_A+l_B)
     zNext = [0]*14
+    zNext = [0]*8
     zNext[0] = z[0] + dt*(cos(z[6])*z[2] - sin(z[6])*z[3])          # x
     zNext[1] = z[1] + dt*(sin(z[6])*z[2] + cos(z[6])*z[3])          # y
     zNext[2] = z[2] + dt*(z[4]+z[7]*z[3])                           # v_x
@@ -87,28 +88,54 @@ def f_SensorKinematicModel(z, u, vhMdl, dt, est_mode):
     zNext[5] = z[5]                                                 # a_y
     zNext[6] = z[6] + dt*(z[7])                                     # psi
     zNext[7] = z[7]                                                 # psidot
-    zNext[8] = z[8]                                                 # drift_psi
-    zNext[9] = z[9] + dt*(z[12]*cos(z[11] + bta))                   # x
-    zNext[10] = z[10] + dt*(z[12]*sin(z[11] + bta))                 # y
-    zNext[11] = z[11] + dt*(z[12]/l_B*sin(bta))                     # psi
-    zNext[12] = z[12] + dt*(u[0] - 0.5*z[12])                       # v
-    zNext[13] = z[13]                                               # drift_psi_2
+    # zNext[8] = z[8]                                                 # drift_psi
+
+
+    # zNext[9] = z[9] + dt*(z[12]*cos(z[11] + bta))                   # x
+    # zNext[10] = z[10] + dt*(z[12]*sin(z[11] + bta))                 # y
+    # zNext[11] = z[11] + dt*(z[12]/l_B*sin(bta))                     # psi
+    # zNext[12] = z[12] + dt*(u[0] - 0.5*z[12])                       # v
+    # zNext[13] = z[13]                                               # drift_psi_2
     return array(zNext)
 
 def h_SensorKinematicModel(x, u, vhMdl, dt, est_mode):
     """ This is the measurement model to the kinematic<->sensor model above """
-    y = [0]*13
+    y = [0]*9
+    y = [0]*7
     y[0] = x[0]                     # x
     y[1] = x[1]                     # y
-    y[2] = sqrt(x[2]**2+x[3]**2)    # v
-    y[3] = x[6]+x[8]                # psi
-    y[4] = x[7]                     # psiDot
-    y[5] = x[4]                     # a_x
-    y[6] = x[5]                     # a_y
-    y[7] = x[9]                     # x
-    y[8] = x[10]                    # y
-    y[9] = x[11]+x[13]              # psi
-    y[10] = x[12]                   # v
-    y[11] = x[2]                    # v_x
-    y[12] = x[3]                    # v_y
+    # y[2] = sqrt(x[2]**2+x[3]**2)    # v
+    y[2] = x[2]                     # vx
+    # y[3] = x[6]+x[8]                # psi
+    # y[3] = x[6]                # psi
+    y[3] = x[7]                     # psiDot
+    y[4] = x[4]                     # a_x
+    y[5] = x[5]                     # a_y
+    # y[7] = x[2]                      # vx
+    y[6] = x[3]                      # vy
+
+    # y[7] = x[9]                     # x
+    # y[8] = x[10]                    # y
+    # y[9] = x[11]+x[13]              # psi
+    # y[10] = x[12]                   # v
+    # y[11] = x[2]                    # v_x
+    # y[12] = x[3]                    # v_y
+
+    # # this is for 12 measurement, which does not use yaw_meas from imu
+    # y[0] = x[0]                     # x
+    # y[1] = x[1]                     # y
+    # # y[2] = sqrt(x[2]**2+x[3]**2)    # v
+    # y[2] = x[2]                     # vx
+    # # y[3] = x[6]+x[8]                # psi
+    # # y[3] = x[6]                # psi
+    # y[3 ] = x[7]                     # psiDot
+    # y[4 ] = x[4]                     # a_x
+    # y[5 ] = x[5]                     # a_y   
+    
+    # y[6 ] = x[9]                     # x
+    # y[7 ] = x[10]                    # y
+    # y[8 ] = x[11]+x[13]              # psi
+    # y[9 ] = x[12]                   # v
+    # y[10] = x[2]                    # v_x
+    # y[11] = x[3]                    # v_y
     return array(y)

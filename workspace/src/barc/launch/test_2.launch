@@ -32,7 +32,7 @@
         <remap from="xy_prediction" to="agent_2/xy_prediction" />
         <remap from="selected_states" to="agent_2/selected_states" />
         <remap from="prediction" to="agent_2/prediction" />
-        <remap from="adv_prediction" to="agent_1/prediction" />
+        <remap from="adv_prediction" to="agent_2/prediction" />
         <remap from="ecu_pwm" to="agent_2/ecu_pwm" />
     </node>
 

@@ -7,15 +7,15 @@
     Julia Version: 0.4.7
 =#
 
-# const MODE = "path_following"
-const MODE = "learning"
+const MODE = "path_following"
+# const MODE = "learning"
 # const MODE = "racing"
 
 # const SYS_ID = true
 
 const INITIALIZATION_TYPE = "center"
 
-const NUM_PF_LAPS = 1
+const NUM_PF_LAPS = 5
 
 if MODE == "path_following"
 	const LEARNING = false
@@ -27,17 +27,17 @@ elseif MODE == "learning"
 	const NUM_LOADED_LAPS = 5
 elseif MODE == "racing"
 	const LEARNING = true
-	const NUM_LAPS = 10
-	const NUM_LOADED_LAPS = 5 + 10 + 10 + 10
+	const NUM_LAPS = 30
+	const NUM_LOADED_LAPS = 5 + 30 + 30 + 30
 end
 
 const NUM_AGENTS = 1
 
-const HORIZON = 12
-const NUM_CONSIDERED_LAPS = 3
-const NUM_HORIZONS = 1
+const HORIZON = 10
+const NUM_CONSIDERED_LAPS = 4
+const NUM_HORIZONS = 2
 # const SELECTION_SHIFT = 0
-const SELECTION_SHIFT = round(Int64, 1 * HORIZON) # Int64(HORIZON / 2)
+const SELECTION_SHIFT = Int64(HORIZON / 2) # round(Int64, 1 * HORIZON) 
 # const NUM_CONSIDERED_STATES = 2 * HORIZON * NUM_CONSIDERED_LAPS
 const NUM_CONSIDERED_STATES = NUM_HORIZONS * HORIZON * NUM_CONSIDERED_LAPS
 const NUM_STATES_BUFFER = 30
@@ -51,8 +51,9 @@ const INIT_STATES = [0.0 0.0 0.0 0.0 0.0 0.0]
 const V_MAX = [2.0; 2.5]
 const COLOR = ["red"; "blue"]
 # const TRACK_NAME = "track_3"
-const TRACK_NAME = "oval"
-const TRACK_WIDTH = 0.8
+const TRACK_NAME = "l_shape"
+# const TRACK_NAME = "oval"
+const TRACK_WIDTH = 1.0
 const TRACK_DIR = "/home/lukas/tracks/"
 const POLYNOMIAL_CURVATURE = false
 
@@ -69,7 +70,7 @@ elseif INITIALIZATION_TYPE == "inner"
 elseif INITIALIZATION_TYPE == "outer"
 	const CURRENT_REFERENCE = [0.0 EY_OUTER 0.0 V_INIT]
 else
-	error("INITIALIZATION_TYPE $(INITIALIZATION_TYPE) not avialable.")
+	error("INITIALIZATION_TYPE $(INITIALIZATION_TYPE) not available.")
 end
 
 const FOCUSED_PLOT = false

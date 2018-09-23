@@ -55,10 +55,15 @@ function race(num_laps::Int64)
 
     xy_pub = Publisher("xy_prediction", xy_prediction, 
     				   queue_size=1)::RobotOS.Publisher{barc.msg.xy_prediction}
-    xy_sub = Subscriber("pos_info", pos_info, xy_callback, (agent, track), 
+
+    if get_param(node_name * "/sim") == "simulation"
+    	xy_sub = Subscriber("real_val", pos_info, xy_callback, (agent, track), 
+   						queue_size=1)::RobotOS.Subscriber{barc.msg.pos_info}
+    else 
+   		xy_sub = Subscriber("pos_info", pos_info, xy_callback, (agent, track), 
     					queue_size=1)::RobotOS.Subscriber{barc.msg.pos_info}
-    #xy_sub = Subscriber("real_val", pos_info, xy_callback, (agent, track), 
-    #					queue_size=1)::RobotOS.Subscriber{barc.msg.pos_info}
+   	end
+    
     theta_pub = Publisher("theta", theta, queue_size=1)::RobotOS.Publisher{barc.msg.theta}
     selection_pub = Publisher("selected_states", selected_states, queue_size=1)::RobotOS.Publisher{barc.msg.selected_states}
 
@@ -269,6 +274,7 @@ function publish_inputs(optimizer::Optimizer, input_pub, agent::Agent)
 	current_time = to_sec(get_rostime())
 	optimizer.first_input.motor = optimizer.solution_inputs[1, 1]
 	optimizer.first_input.servo = optimizer.solution_inputs[1, 2]
+	println(optimizer.solution_inputs)
     publish(input_pub, optimizer.first_input)
     # println("Input time: ", current_time)
     # println("Input delta: ", current_time - agent.time_inputs)
@@ -504,8 +510,10 @@ function race_iteration!(agent::Agent, optimizer::Optimizer,
 
 	# Reset the weights and the predicted states
 	# num_considered_states = size(agent.selected_states_s)[1]
-	agent.weights_states = ones(num_buffer)
+	agent.weights_states = ones(NUM_CONSIDERED_STATES)
 	agent.predicted_xy = zeros(agent.predicted_xy)
+
+	# println("adv predictions: ", optimizer.adv_predictions_s)
 
 	if LEARNING
 		# TODO: Figure out a different way to know how many agents there are
@@ -513,12 +521,17 @@ function race_iteration!(agent::Agent, optimizer::Optimizer,
 		if NUM_AGENTS > 1
 			current_s = agent.states_s[agent.current_iteration, 1]
 			adv_s = optimizer.adv_predictions_s[1, 1]
-			distance = abs((agent.current_lap * track.total_length + current_s) - 
-					   (optimizer.adv_current_lap * track.total_length + adv_s))
-			# println("DISTANCE: ", distance)
+			# distance = abs((agent.current_lap * track.total_length + current_s) - 
+			#		   (optimizer.adv_current_lap * track.total_length + adv_s))
+			distance = abs(current_s - adv_s)
+			if distance > track.total_length / 2.0
+				distance = distance - track.total_length / 2.0
+			end
+			println("DISTANCE: ", distance)
 			# if get_total_distance(simulator.optimizers[i], simulator.track.total_length) >= 0
 			# println("direct distance on track: ", get_leading_agent_on_track(simulator, i))
 			leading = get_leading_agent_on_track(track, agent, optimizer)
+			println("Leading " * string(agent.index) * ": ", leading)
 		end
 
 		publish_selection(selection_pub, agent)
@@ -531,19 +544,25 @@ function race_iteration!(agent::Agent, optimizer::Optimizer,
 		else 
 			if NUM_AGENTS == 1
 				select_states(agent)
-			elseif distance > 2 * HORIZON * track.ds || leading
+			elseif distance > NUM_HORIZONS * HORIZON * track.ds || leading
 				chosen_lap = NUM_LOADED_LAPS
 				select_states(agent)
 			else
-				adv_agent_e_y = adv_predictions_s[end, 2]
+				adv_agent_e_y = optimizer.adv_predictions_s[end, 2]
 				# adv_agent_e_y = adv_agent.predicted_s[end, 2]
-				adv_agent_v = adv_predictions_s[end, 5]
+				
+				#=
+				adv_agent_v = optimizer.adv_predictions_s[end, 5]
 				if adv_agent_v > agent.states_s[current_iteration, 5]
 					select_states(agent)
 				else
 					select_states_smartly(agent, adv_agent_e_y, track)
 					adjust_convex_hull(agent, optimizer)
 				end
+				=#
+
+				select_states_smartly(agent, adv_agent_e_y, track)
+				adjust_convex_hull(agent, optimizer)
 			end
 
 			if NUM_AGENTS == 2

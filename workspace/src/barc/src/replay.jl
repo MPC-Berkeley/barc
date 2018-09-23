@@ -18,6 +18,8 @@ using QuickHull
 @pyimport matplotlib.animation as animation
 @pyimport matplotlib as mpl
 @pyimport matplotlib.collections as collections
+@pyimport matplotlib2tikz
+@pyimport matplotlib.cm as cm
 
 # cv2 = pyimport("cv2")
 
@@ -357,7 +359,7 @@ function replay_prediction(file, track::Track)
 	prev_curvature_dots, prev_curvature_lines = plot_propagated_curvature(ax_s_c, track, 
 															   predicted_s,
 													 		   predicted_s, color)
-
+	#=
 	for iteration = 2 : start_index
 		predicted_s = squeeze(all_predictions[iteration, :, :], 1)
 
@@ -369,6 +371,7 @@ function replay_prediction(file, track::Track)
 
 		plt[:pause](0.001)
 	end
+	=#
 
 	test_selection = all_selected_states[start_index]
 	selected_states = zeros(1, 6)
@@ -462,7 +465,7 @@ function replay_prediction(file, track::Track)
 
 		prev_s = predicted_s[1, 1]
 
-		fig[:savefig]("/home/lukas/predictions/iteration_$(iteration).jpg", dpi=100)
+		# fig[:savefig]("/home/lukas/predictions/iteration_$(iteration).jpg", dpi=100)
 		plt[:pause](0.1)
 	end
 end
@@ -552,28 +555,14 @@ function replay_data(file)
 		plot_lap_indicators(ax[i], states_s[:, i], cumsum(end_indeces))
 	end	
 
+	#=
 	ax[5][:plot](sum(end_indeces[1 : 7]) + 1 - NUM_STATES_BUFFER : sum(end_indeces[1 : 8]) + NUM_STATES_BUFFER, 
 				 # trajectories_s[7, 1 : end_indeces[7] + NUM_STATES_BUFFER, 5]', "r-")
 				 data["trajectories_s"][8, 1 : end_indeces[8] + 2 * NUM_STATES_BUFFER, 5]', "r-")
+	=#
 	
 	for i = 1 : 6
 		ax[i][:set_xlim]([1, sum(end_indeces)])
-	end
-
-	fig_s_vx = figure("Velocity " * figure_string)
-	ax_svx = fig_s_vx[:add_subplot](1, 1, 1)
-	xlabel("s [m]")
-	ylabel("v_x [m / s]")
-
-	for i = 1 : size(trajectories_s, 1)
-		# s = data["trajectories_s"][i, NUM_STATES_BUFFER + 1 : end_indeces[i] + NUM_STATES_BUFFER, 1]
-		# vx = data["trajectories_s"][i, NUM_STATES_BUFFER + 1 : end_indeces[i] + NUM_STATES_BUFFER, 5]
-
-		s = data["trajectories_s"][i, 1 : end_indeces[i] + 2 * NUM_STATES_BUFFER, 1]
-		vx = data["trajectories_s"][i, 1 : end_indeces[i] + 2 * NUM_STATES_BUFFER, 5]
-
-		ax_svx[:plot](s', vx', "-", label="lap $(i)")
-		ax_svx[:legend](loc="bottom right")
 	end
 
 	theta_vx = data["theta_vx"]
@@ -606,6 +595,52 @@ function replay_data(file)
 		ax[i][:set_xlim]([1, sum(end_indeces)])
 	end
 
+	fig_s_vx = figure("Velocity " * figure_string)
+	ax_svx = fig_s_vx[:add_subplot](1, 1, 1)
+	xlabel("s [m]")
+	ylabel("v_x [m / s]")
+
+	for i = 1 : 4 : size(trajectories_s, 1)
+		# s = data["trajectories_s"][i, NUM_STATES_BUFFER + 1 : end_indeces[i] + NUM_STATES_BUFFER, 1]
+		# vx = data["trajectories_s"][i, NUM_STATES_BUFFER + 1 : end_indeces[i] + NUM_STATES_BUFFER, 5]
+
+		if i == 6
+			j = 1
+		else
+			j = i
+		end
+		if i in [1, 5, 35]
+			iterations = 1 : end_indeces[i] + 1 * NUM_STATES_BUFFER
+		else 
+			iterations = 1 : end_indeces[i] + 2 * NUM_STATES_BUFFER
+		end
+		s = data["trajectories_s"][j, iterations, 1]
+		vx = data["trajectories_s"][j, iterations, 5]
+
+		ax_svx[:plot](s', vx', "-", label="lap $(i)")
+		ax_svx[:legend](loc="bottom right")
+	end
+
+	plt[:show]()
+
+	#=
+	s = data["trajectories_s"][35, 1 : end_indeces[35] + 1 * NUM_STATES_BUFFER, 1]
+	vx = data["trajectories_s"][35, 1 : end_indeces[35] + 1 * NUM_STATES_BUFFER, 5]
+
+	ax_svx[:plot](s', vx', "-", label="lap $(35)")
+	ax_svx[:legend](loc="bottom right")
+	=#
+
+	fig_iter = figure("Iterations " * figure_string)
+	ax_iter = fig_iter[:add_subplot](1, 1, 1)
+	xlabel("lap")
+	ylabel("iterations")
+	end_indeces[6] = end_indeces[1]
+	ax_iter[:plot]((1 : size(end_indeces)[1]), end_indeces, color * "o")
+	ax_iter[:plot]((1 : size(end_indeces)[1]), end_indeces, color * "-")
+
+	matplotlib2tikz.save("agent_1_lmpc_inner_iter.tex", figureheight="10cm", figurewidth="10cm")
+
 	plt[:show]()
 end
 
@@ -635,18 +670,23 @@ function plot_trajectories(track::Track, laps::Array{Int64},
 	plot(track.xy_coords[:, 1], track.xy_coords[:, 2], "k--")
 	plot(track.xy_outer[:, 1], track.xy_outer[:, 2], "k-", lw=2.0)
 	plot(track.xy_inner[:, 1], track.xy_inner[:, 2], "k-", lw=2.0)
+	plot([0 0]', [(track.width / 2) (- track.width / 2)]', "k--", lw=4.0)
 
 	once = true
 
 	v_x_min = findmin(trajectories_xy[laps, :, 3])[1]
 	v_y_min = findmin(trajectories_xy[laps, :, 4])[1]
 	v_min = sqrt(v_x_min^2 + v_y_min^2)
-	v_min = 1.0
+	v_min = 0.0
 	v_x_max = findmax(trajectories_xy[laps, :, 3])[1]
 	v_y_max = findmax(trajectories_xy[laps, :, 4])[1]
 	v_max = sqrt(v_x_max^2 + v_y_max^2)
+	
+	v_max = 2.9
+	println("v_max: ", v_max)
 
-	for lap in reverse(laps)
+	# for lap in reverse(laps)
+	for lap in laps
 		if sumabs(trajectories_s[lap, :, :], (2, 3))[1] == 0.
 			# println("No data for lap $(lap) available")
 			continue
@@ -665,18 +705,30 @@ function plot_trajectories(track::Track, laps::Array{Int64},
 				 squeeze(trajectory[1, 1 : needed_iters, 4]', 2).^2)
 
 		points = reshape([x y], (size(x)[1], 1, 2))
-		points_1 = points[1 : end - 1, :, :]
-		points_2 = points[2 : end, :, :]
-		segments = cat(2, points_1, points_2)
+		# points_1 = points[1 : end - 1, :, :]
+		# points_2 = points[2 : end, :, :]
+		points_1 = points[1 : 5 : end - 1, :, :]
+		points_2 = points[6 : 5 : end, :, :]
+		num_points = min(size(points_1)[1], size(points_2)[1])
+		segments = cat(2, points_1[1 : num_points, :, :], points_2[1 : num_points, :, :])
 
 		# max should max(V_MAX), min = 0
 		norm = plt[:Normalize](v_min, v_max)  
+		cmap = cm.get_cmap("jet")
 
+		# lc = collections.LineCollection(segments, colors=cmap(norm(v[1 : 3 : num_points])))
 		lc = collections.LineCollection(segments, cmap="jet", norm=norm)
 		# Set the values used for colormapping
-		lc[:set_array](v)
+		# lc[:set_array](v)
+		lc[:set_array](v[1 : 3 : num_points])
+		lc[:set_edgecolors](cmap(norm(v[1 : 3 : num_points])))
 		lc[:set_linewidth](2)
 		line = axs[:add_collection](lc)
+
+		# println(keys(line))
+		# println(lc[:get_edgecolor]())
+		# println(lc[:get_edgecolors]())
+		# exit()
 
 		if once 
 			fig[:colorbar](line, ax=axs, label="v [m / s]")
@@ -691,6 +743,8 @@ function plot_trajectories(track::Track, laps::Array{Int64},
 
 	xlabel("x [m]")
 	ylabel("y [m]")
+
+	matplotlib2tikz.save("agent_1_lmpc_inner.tex", figureheight="10cm", figurewidth="10cm")
 
 	plt[:show]()
 	plt[:pause](0.5)
@@ -726,13 +780,10 @@ function replay_recording(file)
 		start_lap = 1
 	end
 
-	# start_lap = 1 
-	# num_laps = 5
-
-	# start_lap = 6
-	# num_laps = 6
-
 	laps = collect(start_lap : num_laps)
+	# laps = collect(start_lap + 2 : 35)
+	# laps = append!(laps, collect(3 : 30) + 35)
+	# laps = append!(laps, collect(3 : 30) + 65)
 	plot_trajectories(track, laps, trajectories_s, trajectories_xy, file)
 
 end
@@ -747,7 +798,8 @@ function replay()
 	    For <argument>, try one of: prediction, recording or data.
 	    For <file>, specify the file by giving the date of the recording: 
 	    e. g. 0503 (replays most recent file from that folder) or 
-	    0503115854 (replays the file with this timestamp).
+	    0503115854 (replays the file with this timestamp). Default is the 
+	    most recent file.
 	    ")
 	elseif length(ARGS) > 2
 		error("Too many arguments given. To start the replay specify the argument like this:
@@ -757,7 +809,8 @@ function replay()
 		For <argument>, try one of: prediction, recording or data.
 		For <file>, specify the file by giving the date of the recording: 
 		e. g. 0503 (replays most recent file from that folder) or 
-   	    0503115854 (replays the file with this timestamp).
+   	    0503115854 (replays the file with this timestamp).Default is the 
+	    most recent file.
    	    ")
 	end
 

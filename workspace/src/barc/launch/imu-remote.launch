@@ -1,26 +1,41 @@
 <launch>
+	<!-- SYSTEM MODEL -->
+    <!-- vehicle parameters -->
+    <param name="L_a" type="double" value="0.125" />
+    <param name="L_b" type="double" value="0.125" />
+    <param name="m" type="double" value="1.98" />
+    <param name="I_z" type="double" value="0.24" />
+    <param name="dt" type="double" value="0.1" />
+    <param name="num_agents" type="int" value="1" />
+    
     <!-- Machines -->
-    <machine name="odroid_ego" address="192.168.10.176" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid.sh"/>
-    <machine name="odroid_obs" address="192.168.10.238" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid.sh"/>
-    <machine name="this-pc" address="192.168.10.147" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc.sh"/>
+    <machine name="odroid" address="192.168.10.213" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_yoga.sh"/>
+    <machine name="yoga" address="127.0.0.1" user="lukas" timeout="20.0" env-loader="/home/lukas/barc/env_loader_yoga.sh" />
     
        <!-- IMU -->
-    <node machine="odroid_ego" pkg="myahrs_driver" type="myahrs_driver" name="imu_ego">
-    	<remap from="/imu/data" to="imu1/data" />
-    	<remap from="/imu/data_raw" to="imu1/raw" />
-    	<remap from="/imu/mag" to="imu1/mag" />
-    	<remap from="/imu/temperature" to="imu1/temp" />
+    <node machine="odroid" pkg="myahrs_driver" type="myahrs_driver" name="imu_ego">
         <param name="port" value="/dev/ttyACM0" />
         <param name="baud_rate" value="115200" />
     </node>
 
-    <node machine="odroid_obs" pkg="myahrs_driver" type="myahrs_driver" name="imu_obs">
-    	<remap from="/imu/data" to="imu2/data" />
-    	<remap from="/imu/data_raw" to="imu2/raw" />
-    	<remap from="/imu/mag" to="imu2/mag" />
-    	<remap from="/imu/temperature" to="imu2/temp" />
-        <param name="port" value="/dev/ttyACM0" />
-        <param name="baud_rate" value="115200" />
+    <node machine="yoga" pkg="barc" type="state_estimation_SensorKinematicModel.py" name="state_estimation_dynamic_1" output="screen">
+        <!-- ekf properties -->
+        <param name="q_std" type="double" value="0.1" />
+        <param name="psi_std" type="double" value="0.5" />
+        <param name="v_std" type="double" value="0.5" />
+        <param name="gps_std" type="double" value="0.8" />
+        <param name="ang_v_std" type="double" value="0.8" />
+        <param name="est_mode" type="double" value="1" />
+    </node>
+
+    <!-- GPS -->
+    <node machine="odroid" pkg="marvelmind_nav" type="hedge_rcv_bin" name="indoor_gps" args="/dev/ttyACM1" >
+    </node>
+    
+    <!-- ARDUINO -->
+    <!--  * encoders and ultrasound sensors -->
+    <node machine="odroid" pkg="rosserial_python" type="serial_node.py" name="arduino_node" >
+        <param name="port" value="/dev/ttyUSB0" />
     </node>
 
 </launch>

@@ -50,6 +50,10 @@ function init!(track::Track)  # Standard Constructor
 	track.xy_outer = [0.0 0.0]
 	track.xy_inner = [0.0 0.0]
 
+	println("Creating track $(track.shape)")
+	create_track!(track)
+
+	#=
 	tracks_dir = readdir(TRACK_DIR)
 	if track.shape * ".jld" in tracks_dir
 		println("Loading track $(track.shape)")
@@ -59,6 +63,7 @@ function init!(track::Track)  # Standard Constructor
 		create_track!(track)
 		save_track(track)
 	end
+	=#
 	println("total length: ", track.total_length)
 end
 
@@ -69,6 +74,8 @@ function create_track!(track::Track)
 		track_2!(track)
 	elseif track.shape == "track_3"
 		track_3!(track)
+	elseif track.shape == "l_shape"
+		l_shape!(track)
 	else
 		error("Track $(track.shape) is not available.")
 	end
@@ -89,8 +96,8 @@ function create_track!(track::Track)
 
 		# TODO: Consider the transition from one radius to another 
 		# radius
-		if abs(delta_theta) > 0. && get_curvature(track, track.s_coord[i]) > 1e-3
-			radius = 1 / get_curvature(track, track.s_coord[i])
+		if abs(delta_theta) > 0. && get_curvature_check(track, track.s_coord[i]) > 1e-3
+			radius = 1 / get_curvature_check(track, track.s_coord[i])
 
 			# TODO: Should be absolute radius??
 			chord = 2 * radius * sin(delta_theta / 2)
@@ -111,6 +118,13 @@ function create_track!(track::Track)
 		track.xy_inner[i, :] = track.width / 2 * [cos(theta - pi / 2) 
 		  					   sin(theta - pi / 2)]
 	end
+
+	if track.shape == "l_shape"
+		track.xy_coords[140 : 160, 2] -= cumsum(0.0505319492481863 / 21 * ones(21))
+		track.xy_coords[161 : end, 2] -= 0.0505319492481863
+	end
+
+	println(track.xy_coords)
 
 	# track.xy_coords = cumsum(track.xy_coords)
 	track.xy_outer += track.xy_coords
@@ -138,10 +152,18 @@ function create_track!(track::Track)
 end
 
 function oval_track!(track::Track)
+	#=
 	add_segment!(track, 1.0, 0.0)
-	add_segment!(track, 7.0, - pi)
+	add_segment!(track, 4.5, 1.0 * pi)
 	add_segment!(track, 2.0, 0.0)
-	add_segment!(track, 7.0, - pi)
+	add_segment!(track, 4.5, 1.0 * pi)
+	add_segment!(track, 1.0, 0.0)
+	=#
+
+	add_segment!(track, 1.0, 0.0)
+	add_segment!(track, 6.0, 1.0 * pi)
+	add_segment!(track, 2.0, 0.0)
+	add_segment!(track, 6.0, 1.0 * pi)
 	add_segment!(track, 1.0, 0.0)
 
 	#=
@@ -167,6 +189,22 @@ function oval_track!(track::Track)
 	add_segment!(track, 14.0, - pi)
 	add_segment!(track, 6.0, 0.0)
 	=#
+end
+
+function l_shape!(track::Track)
+    add_segment!(track, 1.5, 0.0)
+    add_segment!(track, 2.2, 1.0 * pi / 2)
+    add_segment!(track, 0.1, 0.0)
+    add_segment!(track, 2.2, 1.0 * pi / 2)
+    add_segment!(track, 0.1, 0.0)
+    add_segment!(track, 2.2, - 1.0 * pi / 2)
+    add_segment!(track, 0.1, 0.0)
+    add_segment!(track, 2.2, 1.0 * pi / 2)
+    add_segment!(track, 0.1, 0.0)
+    add_segment!(track, 2.2, 1.0 * pi / 2)
+    add_segment!(track, 3.0, 0.0)
+    add_segment!(track, 2.2, 1.0 * pi / 2)
+    add_segment!(track, 1.5, 0.0)
 end
 
 function track_3!(track::Track)
@@ -255,6 +293,24 @@ function get_curvature(track::Track, s::Float64)
 		if s >= start_interval && s < end_interval
 			return track.curvature[2, i]
 		end
+		if s <= start_interval && abs(track.curvature[2, i]) > 1e-5
+			return track.curvature[2, i]
+		end
+	end
+end
+
+function get_curvature_check(track::Track, s::Float64)
+	delta = 1e-5
+	s_plus = s + delta
+	s_minus = s - delta
+
+	curvature_plus = get_curvature(track, s_plus)
+	curvature_minus = get_curvature(track, s_minus)
+
+	if abs(curvature_plus) > abs(curvature_minus)
+		return curvature_plus
+	else
+		return curvature_minus
 	end
 end
 

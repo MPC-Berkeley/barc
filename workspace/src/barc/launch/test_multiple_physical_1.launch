@@ -10,9 +10,10 @@
     <param name="num_agents" type="int" value="2" />
 
     <!-- MACHINES -->
-    <machine name="yoga" address="127.0.0.1" user="lukas" timeout="20.0" env-loader="/home/lukas/barc/env_loader_yoga.sh" />
+    <machine name="yoga" address="192.168.10.74" user="lukas" timeout="20.0" env-loader="/home/lukas/barc/env_loader_yoga.sh" />
     <!-- <machine name="yoga" address="192.168.10.74" user="lukas" timeout="20.0" env-loader="/home/lukas/barc/env_loader_yoga.sh" /> -->
     <machine name="ubuntu-pc" address="192.168.10.147" user="mpcubuntu" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc_vis.sh"/>
+    <machine name="odroid" address="192.168.10.213" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid.sh"/>
 
     <!-- AGENT 1 NODES-->
     <!-- AGENT-NODE 1-->
@@ -22,8 +23,8 @@
         <param name="mass" type="double" value="1.98" />
         <param name="time_offset" type="double" value="0.0" />
         <param name="delay_a" type="int" value="1" />
-        <param name="delay_df" type="int" value="1" />
-        <param name="sim" type="str" value="simulation" />
+        <param name="delay_df" type="int" value="3" />
+        <param name="sim" type="str" value="estimation" />
 
         <remap from="pos_info" to="agent_1/pos_info" />
         <remap from="real_val" to="agent_1/real_val" />
@@ -52,14 +53,34 @@
         <remap from="ecu" to="agent_1/ecu" />
     </node>
 
-    <!-- SIMULATOR -->
-    <node machine="yoga" pkg="barc" type="barc_simulator_dyn.jl" name="barc_sim_1" output="screen">
-        <remap from="hedge_imu_fusion" to="agent_1/hedge_imu_fusion" />
+    <!-- IMU -->
+    <node machine="odroid" pkg="myahrs_driver" type="myahrs_driver" name="myahrs_driver">
+        <param name="port" value="/dev/ttyACM0" />
+        <param name="baud_rate" value="115200" />
+
         <remap from="imu/data" to="agent_1/imu/data" />
+        <remap from="imu/data_raw" to="agent_1/imu/data_raw" />
+        <remap from="imu/mag" to="agent_1/imu/mag" />
+        <remap from="imu/temperature" to="agent_1/imu/temperature" />
+        <remap from="tf" to="agent_1/tf" />
+    </node>
+
+    <!-- GPS -->
+    <node machine="odroid" pkg="marvelmind_nav" type="hedge_rcv_bin" name="indoor_gps" args="/dev/ttyACM1" >
+        <remap from="beacons_pos_a" to="agent_1/beacons_pos_a" />
+        <remap from="hedge_pos" to="agent_1/hedge_pos" />
+        <remap from="hedge_pos_a" to="agent_1/hedge_pos_a" />
+        <remap from="hedge_imu_fusion" to="agent_1/hedge_imu_fusion" />
+    </node>
+    
+    <!-- ARDUINO -->
+    <!--  * encoders and ultrasound sensors -->
+    <node machine="odroid" pkg="rosserial_python" type="serial_node.py" name="arduino_node" >
+        <param name="port" value="/dev/ttyUSB0" />
         <remap from="vel_est" to="agent_1/vel_est" />
-        <remap from="real_val" to="agent_1/real_val" />
-        <remap from="ecu" to="agent_1/ecu" />
-    </node>   
+        <remap from="ecu_pwm" to="agent_1/ecu_pwm" />
+        <remap from="diagnostics" to="agent_1/diagnostics" />
+    </node>
     <!-- AGENT 1 NODES-->
 
     <!-- AGENT 2 NODES-->
@@ -68,13 +89,13 @@
         <param name="index" type="int" value="2" />
         <param name="color" type="str" value="blue" />
         <param name="mass" type="double" value="1.98" />
-        <param name="time_offset" type="double" value="3.0" />
+        <param name="time_offset" type="double" value="12.0" />
         <param name="delay_a" type="int" value="1" />
         <param name="delay_df" type="int" value="1" />
         <param name="sim" type="str" value="simulation" />
 
-        <remap from="pos_info" to="agent_2/pos_info" />
-        <remap from="real_val" to="agent_2/real_val" />
+        <remap from="real_val" to="agent_2/pos_info" />
+        <!-- <remap from="real_val" to="agent_2/real_val" /> -->
         <remap from="ecu" to="agent_2/ecu" />
         <remap from="xy_prediction" to="agent_2/xy_prediction" />
         <remap from="selected_states" to="agent_2/selected_states" />
@@ -113,13 +134,15 @@
     <!-- VISUALIZATION -->
     <node machine="ubuntu-pc" pkg="barc" type="plotter.py" name="visualization" output="screen">
         <param name="num_agents" type="int" value="2" />
+        <param name="index" type="int" value="2" />
         <param name="agent_1" type="str" value="simulation" />
         <param name="agent_2" type="str" value="simulation" />
     </node>
 
     <!-- VISUALIZATION -->
-    <!-- <node machine="yoga" pkg="barc" type="plotter.py" name="visualization" output="screen"> -->
-    <!--    <param name="num_agents" type="int" value="2" /> -->
+    <!-- <node machine="ubuntu-pc" pkg="barc" type="plotter.py" name="visualization" output="screen"> -->
+    <!--    <param name="num_agents" type="int" value="1" /> -->
+    <!--    <param name="index" type="int" value="1" /> -->
     <!-- </node> -->
 
 </launch>

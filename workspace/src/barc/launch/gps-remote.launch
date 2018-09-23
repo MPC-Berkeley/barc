@@ -3,8 +3,15 @@
     <machine name="odroid" address="192.168.10.213" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid.sh"/>
     <machine name="this-pc" address="10.0.0.14" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc.sh"/>
     <machine name="yoga" address="127.0.0.1" user="lukas" timeout="20.0" env-loader="/home/lukas/barc/env_loader_yoga.sh" />
+    <machine name="odroid_2" address="192.168.10.101" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid.sh"/>
 
     <!-- GPS -->
-    <node machine="odroid" pkg="marvelmind_nav" type="hedge_rcv_bin" name="indoor_gps" args="/dev/ttyACM0" />
+    <node machine="odroid_2" pkg="marvelmind_nav" type="hedge_rcv_bin" name="indoor_gps" args="/dev/ttyACM1" />
+
+    <!-- GPS -->
+    <!-- <node machine="odroid" pkg="marvelmind_nav" type="hedge_rcv_bin" name="indoor_gps2" args="/dev/ttyACM2" > -->
+    <!-- 	<remap from="hedge_pos_ang" to="hedge_pos_ang_2" /> -->
+    <!-- 	<remap from="hedge_imu_fusion" to="hedge_imu_fusion_2" /> -->
+    <!-- </node> -->
     
 </launch>

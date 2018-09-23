@@ -1,0 +1,39 @@
+<launch>
+
+    <!-- SYSTEM MODEL -->
+    <!-- vehicle parameters -->
+    <param name="L_a" type="double" value="0.125" />
+    <param name="L_b" type="double" value="0.125" />
+    <param name="m" type="double" value="1.98" />
+    <param name="I_z" type="double" value="0.24" />
+    <param name="dt" type="double" value="0.1" />
+    <param name="num_agents" type="int" value="1" />
+
+    <!-- MACHINES -->
+    <machine name="yoga" address="127.0.0.1" user="lukas" timeout="20.0" env-loader="/home/lukas/barc/env_loader_yoga.sh" />
+    <!-- <machine name="yoga" address="192.168.10.74" user="lukas" timeout="20.0" env-loader="/home/lukas/barc/env_loader_yoga.sh" /> -->
+    <machine name="this-pc" address="192.168.10.147" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc.sh"/>
+    <machine name="odroid" address="192.168.10.213" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid.sh"/>
+    <machine name="odroid_2" address="192.168.10.101" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid_lukas.sh"/>
+
+    <!-- LOW LEVEL CONTROLLER -->
+    <node machine="yoga" pkg="barc" type="controller_low_level.py" name="low_level_controller" >
+        <param name="mode" type="str" value="acceleration" />
+        <param name="steering_pwm" type="int" value="83" />
+        <param name="acceleration_pwm" type="int" value="93" />
+        <param name="acceleration_neg_pwm" type="int" value="40" />
+    </node>
+
+    <!-- IMU -->
+    <node machine="odroid_2" pkg="myahrs_driver" type="myahrs_driver" name="myahrs_driver" >
+        <param name="port" value="/dev/ttyACM0" />
+        <param name="baud_rate" value="115200" />
+    </node>
+
+    <!-- ARDUINO -->
+    <!--  * encoders and ultrasound sensors -->
+    <node machine="odroid_2" pkg="rosserial_python" type="serial_node.py" name="arduino_node" >
+        <param name="port" value="/dev/ttyUSB0" />
+    </node>
+
+</launch>

@@ -25,6 +25,7 @@
         <param name="time_offset" type="double" value="0.0" />
         <param name="delay_a" type="int" value="1" />
         <param name="delay_df" type="int" value="1" />
+        <param name="sim" type="str" value="simulation" />
 
         <remap from="pos_info" to="agent_1/pos_info" />
         <remap from="real_val" to="agent_1/real_val" />
@@ -67,6 +68,7 @@
     <node machine="yoga" pkg="barc" type="plotter.py" name="visualization" output="screen">
         <param name="num_agents" type="int" value="1" />
         <param name="index" type="int" value="1" />
+        <param name="agent_1" type="str" value="simulation" />
     </node>  
 
 </launch>

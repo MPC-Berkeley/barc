@@ -28,7 +28,7 @@ type MpcModel_pF
 
         N = size(agent.optimal_inputs, 1)
         # Q = [5.0, 0.0, 0.0, 0.1, 50.0, 0.0]  # Q (only for path following mode)
-        Q = [0.0, 20.0, 10.0, 10.0]  # Q (only for path following mode)
+        Q = [0.0, 20.0, 1.0, 10.0]  # Q (only for path following mode)
         R = 2 * [1.0, 1.0]  # put weights on a and d_f
         # QderivZ = 10.0 * [1, 1, 1, 1, 1, 1]  # cost matrix for derivative cost of states
         QderivZ = 0.1 * [0, 1, 1, 1, 1, 1]  # cost matrix for derivative cost of states
@@ -285,7 +285,8 @@ type MpcModel_convhull
         Q_lane = 16.0
         # Q_vel = 1  # weight on the soft constraint for the maximum velocity
         # Q_slack = 1 * [20.0, 1.0, 10.0, 30.0, 80.0, 50.0]  #[20.0,10.0,10.0,30.0,80.0,50.0]  #vx,vy,psiDot,ePsi,eY,s
-        Q_slack = 1.1 * [40.0, 1.0, 10.0, 30.0, 80.0, 50.0]
+        # Q_slack = 1.1 * [40.0, 1.0, 10.0, 30.0, 80.0, 50.0]
+        Q_slack = 2.0 * [160.0, 1.0, 10.0, 30.0, 80.0, 50.0]
         # Q_obs = ones(Nl * selectedStates.Np)  # weight to esclude some of the old trajectories
 
         println("prediction horizon = ", N)
@@ -310,7 +311,7 @@ type MpcModel_convhull
 
         z_lb_6s = ones(N + 1, 1) * [0.1 -Inf -Inf -Inf -Inf -Inf -Inf]  # lower bounds on states
         z_ub_6s = ones(N + 1, 1) * [3.5  Inf Inf  Inf  Inf  Inf Inf]  # upper bounds
-        u_lb_6s = ones(N, 1) * [-1.3  -0.3]  # lower bounds on steering
+        u_lb_6s = ones(N, 1) * [-2.0  -0.3]  # lower bounds on steering
         u_ub_6s = ones(N, 1) * [2.0   0.3]  # upper bounds
 
         for i = 1 : 2
@@ -404,38 +405,6 @@ type MpcModel_convhull
                                                      c_Psi[2] * z_Ol[i, 2] / z_Ol[i, 1] + 
                                                      c_Psi[3] * u_Ol[i - delay_df, 2])                    
             end
-
-            #=
-            if i <= delay_a
-                # xDot
-                #@NLconstraint(mdl, z_Ol[i+1,1]  == z_Ol[i,1] + dt*(uPrev[delay_a+1-i,1] - 0.5*z_Ol[i,1]))
-                #@NLconstraint(mdl, z_Ol[i+1,1]  == z_Ol[i,1] + c_Vx[1]*z_Ol[i,2] + c_Vx[2]*z_Ol[i,3] + c_Vx[3]*z_Ol[i,1] + c_Vx[4]*u_Ol[i,1])                              
-                @NLconstraint(mdl, z_Ol[i + 1, 7] == z_Ol[i, 7] + dt * 
-                                                     (uPrev[delay_a + 1 - i, 1] -
-                                                      z_Ol[i, 7]) * acc_f)
-                # @NLconstraint(mdl, z_Ol[i + 1, 7] == z_Ol[i, 7] + dt * uPrev[delay_a + 1 - i, 1])
-                # @NLconstraint(mdl, u_Ol[i + 1, 1] == u_Ol[i, 1] + dt * uPrev[delay_a + 1 - i, 1])
-            else
-                #@NLconstraint(mdl, z_Ol[i+1,1]  == z_Ol[i,1] + c_Vx[1]*z_Ol[i,2] + c_Vx[2]*z_Ol[i,3] + c_Vx[3]*z_Ol[i,1] + c_Vx[4]*u_Ol[i,1])                              # xDot
-                @NLconstraint(mdl, z_Ol[i + 1, 7] == z_Ol[i, 7] + dt * 
-                                                     (u_Ol[i - delay_a, 1] - 
-                                                      z_Ol[i, 7]) * acc_f)
-                # @NLconstraint(mdl, z_Ol[i + 1, 7] == z_Ol[i, 7] + dt * u_Ol[i - delay_a, 1])
-                # @NLconstraint(mdl, u_Ol[i + 1, 1] == u_Ol[i, 1] + dt * u_Ol[i - delay_a, 1])
-            end
-            =#
-
-            #@NLconstraint(mdl, z_Ol[i+1,1]  == z_Ol[i,1] + c_Vx[1]*z_Ol[i,2] + c_Vx[2]*z_Ol[i,3] + c_Vx[3]*z_Ol[i,1] + c_Vx[4]*z_Ol[i,7])                               # xDot
-            #@NLconstraint(mdl, z_Ol[i+1,1]  == z_Ol[i,1] + dt*(z_Ol[i,7] - 0.5*z_Ol[i,1]))                     
-            # xDot 
-            #=         
-            @NLconstraint(mdl, z_Ol[i + 1, 1] == z_Ol[i, 1] + 
-                                                 c_Vx[1] * z_Ol[i, 2] * z_Ol[i, 3] + 
-                                                 c_Vx[2] * z_Ol[i, 1] + 
-                                                 # c_Vx[3] * z_Ol[i, 7]) 
-                                                 c_Vx[3] * u_Ol[i, 1]) 
-            =#
-
             # xDot 
             if i <= delay_a
                 @NLconstraint(mdl, z_Ol[i + 1, 1] == z_Ol[i, 1] + 
@@ -459,15 +428,6 @@ type MpcModel_convhull
             # s                                           
             @NLconstraint(mdl, z_Ol[i + 1, 6] == z_Ol[i, 6] + dt * dsdt[i])                                                                                                
         end
-
-        #=
-        @NLconstraint(mdl, u_Ol[1, 1] - uPrev[1, 1] <= 0.05)
-        @NLconstraint(mdl, u_Ol[1, 1] - uPrev[1, 1] >= - 0.2)
-        for i = 1 : N - 1 # Constraints on u:
-            @NLconstraint(mdl, u_Ol[i + 1, 1] - u_Ol[i, 1] <= 0.05)
-            @NLconstraint(mdl, u_Ol[i + 1, 1] - u_Ol[i, 1] >= - 0.2)
-        end
-        =#
 
         @NLconstraint(mdl, u_Ol[1, 2] - uPrev[1, 2] <= 0.12)
         @NLconstraint(mdl, u_Ol[1, 2] - uPrev[1, 2] >= - 0.12)
@@ -638,21 +598,21 @@ type MpcModel_obstacle
         Q = [0.0, 10.0, 1.0, 10.0]  # Q (only for path following mode)
         R = 0 * [1.0, 1.0]  # put weights on a and d_f
         # R = 0.0 * [0.05, 1.0]  # put weights on a and d_f
-        QderivZ = 1.0 * [1, 1, 1, 1, 1, 1]  # cost matrix for derivative cost of states
-        # QderivZ = 10.0 * [0, 0, 1, 1, 1, 1.0]  # cost matrix for derivative cost of states
+        # QderivZ = 1.0 * [1, 1, 1, 1, 1, 1]  # cost matrix for derivative cost of states
+        QderivZ = 10.0 * [0, 0, 1, 1, 1, 1.0]  # cost matrix for derivative cost of states
         # QderivU = 0.1 * [1, 1]  #NOTE Set this to [5.0, 0/40.0]              # cost matrix for derivative cost of inputs
-        QderivU = 4.0 * [2.0, 1.0]
-
+        QderivU = 5.0 * 5.0 * 4.0 * [4.0, 1.0]
+        
         vPathFollowing = 1.0  # reference speed for first lap of path following
         # Q_term = 1.0 * [20.0, 1.0, 10.0, 20.0, 50.0]  # weights for terminal constraints (LMPC, for xDot,yDot,psiDot,ePsi,eY).Not used if using convex hull
         
-        Q_term_cost = 1.8  # scaling of Q-function
+        Q_term_cost = 3.0  # scaling of Q-function
         # Q_lane = 100.0  # weight on the soft constraint for the lane
         # Q_lane = 4.0
-        Q_lane = 10.0
+        Q_lane = 16.0
         # Q_vel = 1  # weight on the soft constraint for the maximum velocity
         # Q_slack = 1 * [20.0, 1.0, 10.0, 30.0, 80.0, 50.0]  #[20.0,10.0,10.0,30.0,80.0,50.0]  #vx,vy,psiDot,ePsi,eY,s
-        Q_slack = 1 * [20.0, 1.0, 10.0, 30.0, 80.0, 50.0]
+        Q_slack = 1.1 * [40.0, 1.0, 10.0, 30.0, 80.0, 50.0]
         # Q_obs = ones(Nl * selectedStates.Np)  # weight to esclude some of the old trajectories
 
         weights_progress = 0.5 * (- 1.0 * ones(N + 1))
@@ -706,7 +666,7 @@ type MpcModel_obstacle
         @NLparameter(mdl, selStates[1 : num_considered_states, 1 : 6] == 0)  # states from the previous trajectories selected in "convhullStates"
         @NLparameter(mdl, statesCost[1 : num_considered_states] == 0)  # costs of the states selected in "convhullStates"
         @NLparameter(mdl, progress[1 : N + 1] == 0)
-        @NLparameter(mdl, weights_obstacles[1 : num_considered_states] == 0)
+        @NLparameter(mdl, weights_obstacles[1 : num_considered_states] == 1)
         @NLparameter(mdl, weights_obstacle == 0)
         @NLparameter(mdl, adv_states_s[1 : (N + 1), 1 : 6] == 0)
         @NLparameter(mdl, current_lap == 0)
@@ -734,6 +694,7 @@ type MpcModel_obstacle
         #@NLconstraint(mdl,[i = 1:(N+1)], z_Ol[i,4] <= v_max + eps_vel[i] )  # soft constraint on maximum velocity
         @NLconstraint(mdl, sum{alpha[i], i = 1 : num_considered_states} == 1)  # constraint on the coefficients of the convex hull
 
+        
         @NLexpression(mdl, dsdt[i = 1 : N], (z_Ol[i, 1] * cos(z_Ol[i, 4]) - 
                                              z_Ol[i, 2] * sin(z_Ol[i, 4])) /
                                              (1 - z_Ol[i, 5] * curvature[i]))
@@ -767,7 +728,6 @@ type MpcModel_obstacle
                                                      c_Psi[2] * z_Ol[i, 2] / z_Ol[i, 1] + 
                                                      c_Psi[3] * u_Ol[i - delay_df, 2])                    
             end
-
             # xDot 
             if i <= delay_a
                 @NLconstraint(mdl, z_Ol[i + 1, 1] == z_Ol[i, 1] + 
@@ -792,15 +752,6 @@ type MpcModel_obstacle
             @NLconstraint(mdl, z_Ol[i + 1, 6] == z_Ol[i, 6] + dt * dsdt[i])                                                                                                
         end
 
-        #=
-        @NLconstraint(mdl, u_Ol[1, 1] - uPrev[1, 1] <= 0.05)
-        @NLconstraint(mdl, u_Ol[1, 1] - uPrev[1, 1] >= - 0.2)
-        for i = 1 : N - 1 # Constraints on u:
-            @NLconstraint(mdl, u_Ol[i + 1, 1] - u_Ol[i, 1] <= 0.05)
-            @NLconstraint(mdl, u_Ol[i + 1, 1] - u_Ol[i, 1] >= - 0.2)
-        end
-        =#
-
         @NLconstraint(mdl, u_Ol[1, 2] - uPrev[1, 2] <= 0.12)
         @NLconstraint(mdl, u_Ol[1, 2] - uPrev[1, 2] >= - 0.12)
 
@@ -813,7 +764,7 @@ type MpcModel_obstacle
         # Derivative cost
         @NLexpression(mdl, derivCost, sum{QderivZ[j] * (sum{(z_Ol[i, j] - z_Ol[i + 1, j])^2, i = 1 : N}), j = 1 : 6} +
                                           QderivU[1] * ((uPrev[1, 1] - u_Ol[1, 1])^2 + 
-                                          sum{(u_Ol[i, 1] - u_Ol[i + 1, 1])^2, i = 1 : N - 1}) +
+                                          sum{(u_Ol[i, 1] - u_Ol[i + 1, 1])^2, i = 1 : N - delay_a - 1}) +
                                           QderivU[2] * ((uPrev[1, 2] - u_Ol[1, 2])^2 + 
                                           sum{(u_Ol[i, 2] - u_Ol[i + 1, 2])^2, i = 1 : N - delay_df - 1}))        
 
@@ -823,7 +774,7 @@ type MpcModel_obstacle
 
         # Lane cost (soft)
         @NLexpression(mdl, laneCost, Q_lane * sum{1.0 * eps_lane[i] + 
-                                                  10.0 * eps_lane[i]^2, 
+                                                  20.0 * eps_lane[i]^2, 
                                                   i = 2 : N + 1})
         # @NLexpression(mdl, laneCost, Q_lane * sum{10.0 * eps_lane[i] + 
         #                                          100.0 * eps_lane[i]^2, 
@@ -865,15 +816,14 @@ type MpcModel_obstacle
             radius_e_y[i] = 2 * L_b / 2
         end
 
-        @NLexpression(mdl, obstacle_cost, weights_obstacle * sum{- log(
-                      ((z_Ol[j, 6] - adv_states_s[j, 1]) / 
-                      radius_s[1])^2 + ((z_Ol[j, 5] - 
-                      adv_states_s[j, 2]) / radius_e_y[1])^2 - 1),
-                      j = 1 : (N + 1)})
+        @NLexpression(mdl, obstacle_cost, weights_obstacle * 
+                      sum{- log(((z_Ol[j, 6] - adv_states_s[j, 1]) / radius_s[1])^2 + 
+                                ((z_Ol[j, 5] - adv_states_s[j, 2]) / radius_e_y[1])^2 - 1), 
+                          j = 1 : (N + 1)})
 
         @NLexpression(mdl, progress_cost, sum{weights_progress[i] * 
-                      ((z_Ol[i, 6] + current_lap * track.total_length) - 
-                       (adv_states_s[i, 1] + adv_lap * track.total_length)), i = 2 : N + 1})
+                      ((z_Ol[i, 6] + (current_lap - 1) * track.total_length) - 
+                       (adv_states_s[i, 1] + (adv_lap - 1) * track.total_length)), i = 2 : N + 1})
 
         # Overall Cost function (objective of the minimization)
         #@NLobjective(mdl, Min, derivCost + laneCost + controlCost + terminalCost )#+ slackCost)#+ velocityCost)
@@ -911,6 +861,7 @@ type MpcModel_obstacle
         m.selStates   = selStates    # selected states
         m.statesCost  = statesCost   # cost of the selected states
         m.alpha       = alpha        # parameters of the convex hull
+        m.obstacle_cost = obstacle_cost
 
         m.adv_states_s = adv_states_s
         m.current_lap = current_lap
@@ -918,6 +869,7 @@ type MpcModel_obstacle
         m.obstacle_cost = obstacle_cost
         m.progress_cost = progress_cost
         m.weights_obstacle = weights_obstacle
+        m.weights_obstacles = weights_obstacles
 
         m.slackVx     = slackVx
         m.slackVy     = slackVy
@@ -975,7 +927,7 @@ function solveMpcProblem_pathFollow(mdl::MpcModel_pF, optimizer::Optimizer, agen
         end
     else
         u_prev = agent.inputs[iteration - 1 : - 1 : iteration - u_length, :]
-    end        
+    end         
     #=
     lap = agent.current_lap
     indeces = num_considered_states + iteration - 1 : - 1 : iteration - u_length + num_considered_states
@@ -1362,6 +1314,7 @@ function solveMpcProblem_convhull(m::MpcModel_convhull, optimizer::Optimizer,
     println("Solved, status = $sol_status")
 
     publish_prediction(optimizer)
+    publish_prediction_for_opponent(m, optimizer, agent)
 
     nothing
 end
@@ -1395,7 +1348,7 @@ function solveMpcProblem_obstacle(m::MpcModel_obstacle, optimizer::Optimizer,
     v_x = current_s[5]
     v_y = current_s[6]
 
-    println("INITIAL STATE: ", current_s)
+    # println("INITIAL STATE: ", current_s)
     zCurr = [v_x, v_y, psi_dot, e_psi, e_y, s]
 
     u_length = 10
@@ -1416,15 +1369,8 @@ function solveMpcProblem_obstacle(m::MpcModel_obstacle, optimizer::Optimizer,
 
     uPrev = u_prev
 
-    for i = 1 : N - 1
+    for i = 1 : N
         kappa[i] = get_curvature(track, agent.predicted_s[i + 1, 1])
-    end
-    if size(agent.predicted_s, 2) == 6
-        kappa[end] = get_curvature(track, agent.predicted_s[end, 1] +
-                                   dt * agent.predicted_s[end, 5])
-    else
-        kappa[end] = get_curvature(track, agent.predicted_s[end, 1] +
-                                   dt * agent.predicted_s[end, 4])
     end
 
     # Update current initial condition, curvature and System ID coefficients
@@ -1437,6 +1383,8 @@ function solveMpcProblem_obstacle(m::MpcModel_obstacle, optimizer::Optimizer,
     setvalue(m.selStates, selected_states)
     setvalue(m.statesCost, selected_cost)
 
+    setvalue(m.weights_obstacles, agent.weights_states)
+    # println("ADV PREDICTIONS: ", optimizer.adv_predictions_s)
     setvalue(m.adv_states_s, optimizer.adv_predictions_s)
     setvalue(m.current_lap, agent.current_lap)
     setvalue(m.adv_lap, optimizer.adv_current_lap)
@@ -1462,18 +1410,22 @@ function solveMpcProblem_obstacle(m::MpcModel_obstacle, optimizer::Optimizer,
 
     # mpcSol.costSlack = zeros(6)
     # mpcSol.costSlack = [getvalue(m.slackVx),getvalue(m.slackVy),getvalue(m.slackPsidot),getvalue(m.slackEpsi),getvalue(m.slackEy),getvalue(m.slackS)]
-    println("slack values: ", [getvalue(m.slackVx), getvalue(m.slackVy), 
-                               getvalue(m.slackPsidot), getvalue(m.slackEpsi), 
-                               getvalue(m.slackEy), getvalue(m.slackS)])
+    # println("slack values: ", [getvalue(m.slackVx), getvalue(m.slackVy), 
+    #                           getvalue(m.slackPsidot), getvalue(m.slackEpsi), 
+    #                           getvalue(m.slackEy), getvalue(m.slackS)])
 
     println(size(getvalue(m.alpha)))
     println(size(getvalue(m.selStates)))
     terminal_state = sum(getvalue(m.alpha) .* getvalue(m.selStates), 1)
-    println("terminal state:  ", terminal_state[backward_mapping])
+    # println("terminal state:  ", terminal_state[backward_mapping])
 
     println("Solved, status = $sol_status")
 
     publish_prediction(optimizer)
+
+    println("obstacle cost: ", getvalue(m.obstacle_cost))
+
+    println("test: ", ((optimizer.adv_predictions_s[:, 1] - optimizer.solution_states_s[:, 1])/ 0.25).^2 - 1)
 
     nothing
 end
@@ -1482,12 +1434,47 @@ end
 function solveMpcProblem_obstacle(m::MpcModel_obstacle, optimizer::Optimizer, 
                                   agent::Agent, track::Track, leading::Bool)
     if leading 
-        obstacle_weight = 1.0 * 0.01
+        obstacle_weight = 1.0 * 0.1
     else 
-        obstacle_weight = 0.1
+        obstacle_weight = 0.5
     end
 
     setvalue(m.weights_obstacle, obstacle_weight)
 
-    solveMpcProblem_obstacle(m, optimizer, agent, track, leading)
+    solveMpcProblem_obstacle(m, optimizer, agent, track)
+end
+
+function publish_prediction_for_opponent(m::MpcModel_convhull, 
+                                         optimizer::Optimizer, agent::Agent)
+    # Already propagated prediction
+    selected_laps = agent.selected_laps
+    indeces = agent.closest_indeces + 1
+    propagated_states = zeros(agent.selected_states_s)
+
+    index = 1
+    for i = 1 : NUM_CONSIDERED_LAPS
+        propagated_states[index : index + NUM_HORIZONS * HORIZON - 1, :] = squeeze(agent.trajectories_s[selected_laps[i], indeces[i] : indeces[i] + NUM_HORIZONS * HORIZON - 1, :], 1)
+        index += NUM_HORIZONS * HORIZON
+    end
+
+    # terminal_state = sum(getvalue(m.alpha) .* getvalue(m.selStates), 1)
+    propagated_state = sum(getvalue(m.alpha) .* propagated_states, 1)
+    propagated_prediction = zeros(optimizer.solution_states_s)
+    propagated_prediction[1 : end - 1, :] = optimizer.solution_states_s[2 : end, :]
+    propagated_prediction[end, :] = propagated_state
+
+    optimizer.prediction_for_opp.header.stamp = get_rostime()
+    optimizer.prediction_for_opp.s = propagated_prediction[:, 1]
+    optimizer.prediction_for_opp.ey = propagated_prediction[:, 2]
+    optimizer.prediction_for_opp.epsi = propagated_prediction[:, 3]
+    optimizer.prediction_for_opp.psidot = propagated_prediction[:, 4]
+    optimizer.prediction_for_opp.vx = propagated_prediction[:, 5]
+    optimizer.prediction_for_opp.vy = propagated_prediction[:, 6]
+    optimizer.prediction_for_opp.current_lap = optimizer.agent.current_lap
+
+    # optimizer.first_input.motor = optimizer.solution_inputs[1, 1]
+    # optimizer.first_input.servo = optimizer.solution_inputs[1, 2]
+
+    publish(optimizer.prediction_opponent_pub, optimizer.prediction_for_opp)
+    # publish(optimizer.input_pub, optimizer.first_input)
 end

@@ -62,6 +62,9 @@ class PlottedAgent:
     center_rear_wheel_left = np.array([0.0, 0.0])
     center_rear_wheel_right = np.array([0.0, 0.0])
 
+    trajectory_xy = np.zeros((500, 2))
+    traj_counter = 0
+
     num_points = 500
     theta_vx = np.zeros((num_points, 3))
     theta_vy = np.zeros((num_points, 4))
@@ -82,7 +85,15 @@ class PlottedAgent:
 
     def __init__(self, color_string, ax, track):
         node_name = color_string.split("/")[0]
-        xy_sub = rospy.Subscriber(node_name + "/pos_info", pos_info, self.xy_callback)
+
+        # index = rospy.get_param(node_name + "/index") 
+        sim_string = rospy.get_param(rospy.get_name() + "/" + node_name)
+
+        if sim_string == "simulation":
+            xy_sub = rospy.Subscriber(node_name + "/real_val", pos_info, self.xy_callback)
+        else:
+            xy_sub = rospy.Subscriber(node_name + "/pos_info", pos_info, self.xy_callback)
+        
         prediction_sub = rospy.Subscriber(node_name + "/xy_prediction", xy_prediction, 
                                           self.prediction_callback)
         selection_sub = rospy.Subscriber(node_name + "/selected_states", selected_states, 
@@ -134,33 +145,9 @@ class PlottedAgent:
                                           self.center_of_mass[1] * np.ones(HORIZON + 1), 
                                           self.line)
 
+        self.trajectory, = ax.plot(self.trajectory_xy[:, 0], self.trajectory_xy[:, 1], self.line)
+
         self.current_lap = 0
-
-        # self.vx_plot_1, = ax_2.plot(np.arange(self.num_points), self.theta_vx[:, 0], "r-")
-        # self.vx_plot_2, = ax_2.plot(np.arange(self.num_points), self.theta_vx[:, 1], "b-")
-        # self.vx_plot_3, = ax_2.plot(np.arange(self.num_points), self.theta_vx[:, 2], "g-")
-        
-        # self.vy_plot_1, = ax_2.plot(np.arange(self.num_points), self.theta_vy[:, 0], "r-")
-        # self.vy_plot_2, = ax_2.plot(np.arange(self.num_points), self.theta_vy[:, 1], "b-")
-        # self.vy_plot_3, = ax_2.plot(np.arange(self.num_points), self.theta_vy[:, 2], "g-")
-        # self.vy_plot_4, = ax_2.plot(np.arange(self.num_points), self.theta_vy[:, 3], "k-")
-
-        # self.psi_plot_1, = ax_2.plot(np.arange(self.num_points), self.theta_psi_dot[:, 0], "r-")
-        # self.psi_plot_2, = ax_2.plot(np.arange(self.num_points), self.theta_psi_dot[:, 1], "b-")
-        # self.psi_plot_3, = ax_2.plot(np.arange(self.num_points), self.theta_psi_dot[:, 2], "g-")
-
-        """
-        self.selected_states =
-        self.sel_states_connected =
-        self.predicted_xy =
-        self.predicted_xy_con =
-        self.predicted_true_xy =
-        self.predicted_true_xy_con =
-        self.trajectory =
-        self.center_of_mass =
-        self.deleted_states =
-        self.com = np.zeros(length(agents), 2)  # center of mass
-        """
 
         self.rect = patch.Rectangle([- self.l_rear - self.wheel_length / 2 - self.bumper,
                                      - self.width / 2 - self.wheel_width / 2],
@@ -194,7 +181,7 @@ class PlottedAgent:
 
     def xy_callback(self, msg):
         self.center_of_mass = np.array([msg.x, msg.y])
-        # print("COM: ", xy_to_s(np.array([msg.x, msg.y, 0.0, 0.0, 0.0, 0.0]), self.track))
+        
         self.psi = msg.psi
         self.psi_and_steering = self.psi + msg.u_df
 
@@ -256,6 +243,14 @@ class PlottedAgent:
             self.prediction_xy.set_data(np.zeros(HORIZON), np.zeros(HORIZON))
             self.prediction_xy_line.set_data(np.zeros(HORIZON), np.zeros(HORIZON))
 
+        if msg.current_lap > self.current_lap:
+            self.trajectory_xy = np.zeros_like(self.trajectory_xy)
+            self.traj_counter = 0
+
+        self.trajectory_xy[self.traj_counter, :] = np.array([np.array(msg.x)[0], np.array(msg.y)[0]])
+        self.trajectory_xy[self.traj_counter:, :] = np.array([np.array(msg.x)[0], np.array(msg.y)[0]])
+        self.traj_counter += 1
+
         self.current_lap = msg.current_lap
 
         if self.time_start is None:
@@ -289,6 +284,9 @@ class PlottedAgent:
                                      self.center_front_wheel[:, 1])
         self.plt_rear_axis.set_data(self.center_rear_wheel[:, 0],
                                     self.center_rear_wheel[:, 1])
+
+
+        self.trajectory.set_data(self.trajectory_xy[:, 0], self.trajectory_xy[:, 1])
 
         self.transform(ax)
 
@@ -478,8 +476,9 @@ if __name__ == "__main__":
     try:
         rospy.init_node("plotting_stuff")
         colors = ["blue"]
-        # track = Track(ds=0.1, shape="test", width=1.0)
-        track = Track(ds=0.1, shape="oval", width=0.8)
+        # track = Track(ds=0.1, shape="test", width=0.8)
+        # track = Track(ds=0.1, shape="oval", width=1.2)
+        track = Track(ds=0.1, shape="l_shape", width=1.0)
         plotter = Plotter(track, colors)
 
         loop_rate = 20

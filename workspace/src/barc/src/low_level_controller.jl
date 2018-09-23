@@ -34,7 +34,7 @@ type LowLevelController
 end
 
 function init!(low_level_controller::LowLevelController)
-	low_level_controller.motor_pwm = 90
+	low_level_controller.motor_pwm = 80
     low_level_controller.servo_pwm = 90
     low_level_controller.ecu_pub = Publisher("ecu_pwm", ECU, 
     										 queue_size = 1)::RobotOS.Publisher{barc.msg.ECU}
@@ -47,7 +47,14 @@ function pwm_converter!(low_level_controller::LowLevelController,
     # to pwm angle units (i.e. to send command signal to actuators)
     # convert desired steering angle to degrees, saturate based on input limits
 
-    low_level_controller.servo_pwm = 90.0 + 89.0 * Float64(steering_angle)
+    node_name = get_name()
+
+    if node_name == "/agent_1"
+        low_level_controller.servo_pwm = 90.0 + 89.0 * Float64(steering_angle)
+    else
+        println("AGENT 2 STEERING!!!!")
+        low_level_controller.servo_pwm = 87.4 - 129.9 * Float64(steering_angle)
+    end
 
     # compute motor command
     FxR = Float64(acceleration)
@@ -72,7 +79,7 @@ function neutralize!(low_level_controller::LowLevelController)
     update_arduino!(low_level_controller)
     sleep(1)  # slow down for 1 sec
     println("Stopping.")
-    low_level_controller.motor_pwm = 90
+    low_level_controller.motor_pwm = 40
     update_arduino!(low_level_controller)
 end
 

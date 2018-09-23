@@ -14,7 +14,6 @@ from track import Track
 
 
 def s_to_xy(s_coord, track):
-    last_index = False
     s, e_y, e_psi, psi_dot, v_x, v_y = s_coord
 
     s = track.get_s(s)
@@ -23,39 +22,20 @@ def s_to_xy(s_coord, track):
                                    for i in range(len(track.s_coords))])
     two_closest_indices = np.argsort(distances_to_track)[: 2]
 
-    # if 0 in two_closest_indices:
-    #    if s <= track.ds:
-    #        xy1_index = 0
-    #    else:
-    #        xy1_index = track.s_coords.shape[0] - 2
-    # if s > track.s_coords[- 1]:
-    #    last_index = True
-    #    xy1_index = track.s_coords.shape[0] - 1
-    #else:
-    xy1_index = np.min(two_closest_indices)
+    if distances_to_track[np.max(two_closest_indices)] < 1e-5:
+        xy1_index = np.max(two_closest_indices)
+    else:
+        xy1_index = np.min(two_closest_indices)
+
     s1_xy = track.xy_coords[xy1_index, :]
-
-    # plt.plot(s1_xy[0], s1_xy[1], "r*")
-    # plt.plot(track.xy_coords[xy1_index + 1, 0], track.xy_coords[xy1_index + 1, 1], "b*")
-
-    # if last_index:
-    #    theta = track.thetas[xy1_index]
-    #    delta_theta = 0.0
-    #else:
+    
     theta = track.thetas[xy1_index]
     abs_delta_theta = abs(track.thetas[xy1_index + 1] - theta)
-    delta_s = s - track.s_coords[xy1_index]    
+    delta_s = s - track.s_coords[xy1_index]
 
-    if abs(abs_delta_theta) > 1e-5 and abs(track.get_curvature(track.s_coords[xy1_index + 1])) > 1e-5:
-        if abs(track.get_curvature(track.s_coords[xy1_index])) < 1e-5 and \
-                abs(track.get_curvature(track.s_coords[xy1_index + 1])) > 1e-5:
-            curvature = track.get_curvature(track.s_coords[xy1_index + 1])
-        elif abs(track.get_curvature(track.s_coords[xy1_index])) > 1e-5 and \
-                abs(track.get_curvature(track.s_coords[xy1_index + 1])) > 1e-5 and \
-                abs(track.get_curvature(track.s_coords[xy1_index]) - track.get_curvature(track.s_coords[xy1_index + 1])) < 1e-5:
-            curvature = track.get_curvature(track.s_coords[xy1_index + 1])
-        else:
-            curvature = track.get_curvature(track.s_coords[xy1_index + 1])
+    # if abs(abs_delta_theta) > 1e-5 and abs(track.get_curvature(track.s_coords[xy1_index + 1])) > 1e-5:
+    if abs_delta_theta > 1e-5 and abs(track.get_curvature(s)) > 1e-5:
+        curvature = track.get_curvature(s)
 
         if curvature < 0.0:
             delta_theta = - abs_delta_theta
@@ -64,13 +44,28 @@ def s_to_xy(s_coord, track):
 
         delta_theta_prime = delta_theta / track.ds * delta_s
 
-        r = 1. / curvature
-        chord = 2.0 * r * np.sin(delta_theta_prime / 2.)
+        r = 1.0 / curvature + e_y
+        chord = 2.0 * abs(r) * np.sin(abs(delta_theta_prime) / 2.0)
     else:
         chord = delta_s
         delta_theta = abs_delta_theta
         delta_theta_prime = delta_theta / track.ds * delta_s
 
+    theta_prime = theta + delta_theta_prime / 2.0
+
+    # delta_xy = chord * np.array([np.cos(theta_prime), np.sin(theta_prime)])
+
+    initial_point = track.xy_coords[0, :]
+    e_y_direction = np.array([initial_point[0], initial_point[1] - e_y])
+    e_y_rotated = rotate_around_z(e_y_direction, theta)
+    xy_from_origin = s1_xy + e_y_rotated
+
+    s_direction = np.array([initial_point[0] + chord, initial_point[1]])
+    s_rotated = rotate_around_z(s_direction, theta_prime)
+                
+    e_y_prime = xy_from_origin + s_rotated
+
+    """
     theta_prime = theta + delta_theta_prime
 
     delta_xy = chord * np.array([np.cos(theta_prime), np.sin(theta_prime)])
@@ -81,6 +76,8 @@ def s_to_xy(s_coord, track):
 
     xy_from_origin = s1_xy + delta_xy
     e_y_prime = e_y_rotated + xy_from_origin
+    """
+
     x = e_y_prime[0]
     y = e_y_prime[1]
 
@@ -223,13 +220,16 @@ if __name__ == "__main__":
     import pdb
     import matplotlib.pyplot as plt
 
-    track = Track(0.1, "test", 1.0)
+    # track = Track(0.1, "test", 1.0)
     # track = Track(0.1, "oval", 1.0)
+    track = Track(0.1, "l_shape", 1.0)
+
+    pdb.set_trace()
 
     fig = plt.figure("Race")
-    # ax = fig.add_subplot(1, 1, 1)
-    ax = fig.add_subplot(2, 1, 1)
-    ax_2 = fig.add_subplot(2, 1, 2)
+    ax = fig.add_subplot(1, 1, 1)
+    # ax = fig.add_subplot(2, 1, 1)
+    # ax_2 = fig.add_subplot(2, 1, 2)
 
     # fig_2 = plt.figure("Angles")
     # axis = fig_2.add_subplot(1, 1, 1)
@@ -255,14 +255,14 @@ if __name__ == "__main__":
     test = np.array([ 3.0114, - 0.4, 0., 0., 0., 0.])
     """
 
-    num_points = 500
+    num_points = 850
     # delta_s = 0.02  # track.total_length / num_points
     delta_s = track.total_length / num_points
 
     # run_s = 3.0592
     # run_s = 23.8044
-    # run_s = 5.49
-    run_s = 1.9
+    # run_s = 4.68
+    run_s = 0.0
 
     # plt.plot(track.xy_coords[89:99, 0], track.xy_coords[89:99, 1], "ko")
     ss_state = np.zeros((num_points, 6))
@@ -270,28 +270,56 @@ if __name__ == "__main__":
     theta_log = np.zeros((num_points))
     center_of_segment_log = np.zeros((num_points, 2))
 
+    e_y = - 0.5
+
+    r = 2 / np.pi * 2
+    alpha = np.arange(- np.pi, np.pi, 0.005)
+    ax.plot(r * np.cos(alpha), r * np.sin(alpha) - r, "k-")
+    ax.plot(r * np.cos(alpha) + 1.5, r * np.sin(alpha) - r, "k-")
+    ax.plot(r * np.cos(alpha) + 1.5, r * np.sin(alpha) - r - 1.5, "k-")
+    ax.plot(r * np.cos(alpha) - 1.5, r * np.sin(alpha) - r - 1.5, "k-")
+    ax.plot(r * np.cos(alpha) - 1.5, r * np.sin(alpha) - r, "k-")
+
+    ax.plot(1.5, - r, "k*")
+    ax.plot(1.5, - r - 1.5, "k*")
+    ax.plot(- 1.5, - r - 1.5, "k*")
+    ax.plot(- 1.5, - r, "k*")
+
+    ax.plot([1.5, 1.5], [- 4 * r, r], "k--")
+    ax.plot([1.5 + r, 1.5 + r], [- 4 * r, r], "k--")
+    ax.plot([- 1.5, - 1.5], [- 4 * r, r], "k--")
+    ax.plot([- 1.5 - r, - 1.5 - r], [- 4 * r, r], "k--")
+    ax.plot([- 3 * r, 3 * r], [-r, -r], "k--")
+    ax.plot([- 3 * r, 3 * r], [-r - 1.5, -r - 1.5], "k--")
+    ax.plot([- 3 * r, 3 * r], [- 2 * r - 1.5, - 2 * r - 1.5], "k--")
+    ax.plot([- 3 * r, 3 * r], [0.0, 0.0], "k--")
+
+    ax.plot((r - e_y) * np.cos(alpha) + 1.5, (r - e_y) * np.sin(alpha) - r, "r-")
+    ax.plot((r - e_y) * np.cos(alpha) + 1.5, (r - e_y) * np.sin(alpha) - r - 1.5, "r-")
+    ax.plot((r - e_y) * np.cos(alpha) - 1.5, (r - e_y) * np.sin(alpha) - r - 1.5, "r-")
+    ax.plot((r - e_y) * np.cos(alpha) - 1.5, (r - e_y) * np.sin(alpha) - r, "r-")
+
     for i in range(num_points):
+    # for i in range(5):
         print("i: ", i, run_s)
-        state = np.array([run_s, 0.4, 0.0, 0.0, 0.0, 0.0])
+        state = np.array([run_s, e_y, 0.0, 0.0, 0.0, 0.0])
         # state = np.array([run_s, - 0.02, 0.0, 0.0, 0.0, 0.0])
         print("S: ", state)
         xy_state = s_to_xy(state, track)
         print("XY: ", xy_state)
-        print("S: ", ss_state[i, :])
+        # print("S: ", ss_state[i, :])
         xxyy_state = s_to_xy(ss_state[i, :], track)
-        print("XY: ", xxyy_state)
+        # print("XY: ", xxyy_state)
         ax.plot(xy_state[0], xy_state[1], "ro")
         ax.plot(xxyy_state[0], xxyy_state[1], "bo")
-        ax_2.plot(state[0], 0.0, "ro")
+        # ax_2.plot(state[0], 0.0, "ro")
+
+        if run_s == 4.6:
+            ax.plot([xy_state[0], 1.5], [xy_state[1], - r], "k--")
 
         run_s += delta_s
 
     ax.plot(center_of_segment_log[:, 0], center_of_segment_log[:, 1], "b*")
-
-    r = 4.5 / np.pi
-    alpha = np.arange(0.0, 2 * np.pi, 0.01)
-    ax.plot(r * np.cos(alpha) + 2, r * np.sin(alpha) - r, "g-")
-    ax.plot(r * np.cos(alpha) - 2, r * np.sin(alpha) - r, "g-")
 
     ax.plot(track.xy_coords[:, 0], track.xy_coords[:, 1], "ko")
 
@@ -320,7 +348,7 @@ if __name__ == "__main__":
     # axis.plot(ss_state[:, 0], curvature_log, "b-")
     # axis.plot(ss_state[:, 0], theta_log, "r-")
 
-    ax_2.plot(ss_state[:, 0], ss_state[:, 1], "bo")
+    # ax_2.plot(ss_state[:, 0], ss_state[:, 1], "bo")
 
     s = track.s_coords
 
@@ -338,6 +366,8 @@ if __name__ == "__main__":
     # ax.plot(track.xy_coords[s_index + 1, 0], track.xy_coords[s_index + 1, 1], "bo")
     
     plt.axis("equal")
+    plt.grid()
     plt.show()
+
 
     # pdb.set_trace()
