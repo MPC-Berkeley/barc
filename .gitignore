@@ -66,3 +66,8 @@ Dator/db.sqlite3
 workspace/src/barc/rosbag/
 *.ropeproject/
 .DS_Store
+
+# recordings and images
+images/
+recordings/
+predictions/

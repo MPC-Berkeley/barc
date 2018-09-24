@@ -192,9 +192,6 @@ function init!(agent::Agent, index::Int64, track::Track,
 	if MODE == "learning"
 		filename = ascii(get_most_recent(node_name[2 : end], "path_following", 
 								   INITIALIZATION_TYPE))
-		# filename = "/home/lukas/simulations/" * get_name() * 
-		#		   "_path_following_" * INITIALIZATION_TYPE * ".jld"
-		# filename = "/home/lukas/simulations/lmpc_test.jld"
 		println("LOADING: ", filename)
 		load_trajectories!(agent, filename)
 	elseif MODE == "racing"

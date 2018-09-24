@@ -51,19 +51,10 @@ function init!(track::Track)  # Standard Constructor
 	track.xy_inner = [0.0 0.0]
 
 	tracks_dir = ""
+	
+	println("Creating track $(track.shape)")
+	create_track!(track)
 
-	try 
-		tracks_dir = readdir(TRACK_DIR)
-	end
-
-	if contains(tracks_dir, track.shape * ".jld")
-		println("Loading track $(track.shape)")
-		load_track!(track)
-	else
-		println("Creating track $(track.shape)")
-		create_track!(track)
-		# save_track(track)
-	end
 	println("total length: ", track.total_length)
 end
 

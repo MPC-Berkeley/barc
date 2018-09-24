@@ -7,9 +7,9 @@
     Julia Version: 0.4.7
 =#
 
-# const MODE = "path_following"
+const MODE = "path_following"
 # const MODE = "learning"
-const MODE = "racing"
+# const MODE = "racing"
 
 if MODE == "racing"
 	# const NUM_AGENTS = 1
@@ -63,7 +63,6 @@ const COLOR = ["red"; "blue"]
 # const TRACK_NAME = "oval"
 const TRACK_NAME = "l_shape"
 const TRACK_WIDTH = 1.2
-const TRACK_DIR = "/home/lukas/tracks/"
 const POLYNOMIAL_CURVATURE = false
 
 const V_INIT = 1.2

@@ -205,7 +205,7 @@ def main():
 
         if est.vx_est > 0.5:
             est.z = est_dyn.z
-            print "DYNAMIC ESTIMATOR"
+            # print "DYNAMIC ESTIMATOR"
             estMsg.v        = np.sqrt(est_dyn.vx_est**2 + est_dyn.vy_est**2)
             estMsg.x        = est_dyn.x_est 
             estMsg.y        = est_dyn.y_est

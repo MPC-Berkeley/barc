@@ -17,7 +17,7 @@
         <param name="mass" type="double" value="1.98" />
         <param name="time_offset" type="double" value="0.0" />
         <param name="delay_a" type="int" value="1" />
-        <param name="delay_df" type="int" value="1" />
+        <param name="delay_df" type="int" value="3" />
         <param name="sim" type="str" value="simulation" />
 
         <remap from="pos_info" to="agent_1/pos_info" />

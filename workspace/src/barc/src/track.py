@@ -27,22 +27,14 @@ class Track:
     xy_outer = np.zeros(2)
     xy_inner = np.zeros(2)
 
-    # tracks_dir = os.listdir(os.getcwd() + "/../tracks")
-    tracks_dir = "/home/lukas/barc/workspace/src/barc/tracks"
-
     def __init__(self, ds, shape, width):
         self.ds = ds
         assert self.ds > 0.
         self.shape = shape
         self.width = width
 
-        if self.shape + ".npy" in self.tracks_dir:
-            print "Loading track " + self.shape
-        # self.load_track()
-        else:
-            print "Creating track " + self.shape
-            self.create_track()
-        # self.save_track()
+        print "Creating track " + self.shape
+        self.create_track()
 
         print "Total length of track: " + str(self.total_length)
 

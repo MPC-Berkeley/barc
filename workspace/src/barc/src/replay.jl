@@ -21,7 +21,7 @@ using QuickHull
 
 # cv2 = pyimport("cv2")
 
-include("config_2.jl")
+include("config.jl")
 include("filesystem_helpers.jl")
 # include("plotter.jl")
 include("track.jl")
@@ -463,7 +463,7 @@ function replay_prediction(file, track::Track)
 
 		prev_s = predicted_s[1, 1]
 
-		fig[:savefig]("/home/mpcubuntu/lukas/prediction/iteration_$(iteration).png", dpi=100)
+		fig[:savefig](ENV["HOME_DIR"] * "/barc/predictions/iteration_$(iteration).png", dpi=100)
 		plt[:pause](0.1)
 	end
 end
@@ -799,6 +799,9 @@ function replay()
 	end
 
 	if ARGS[1] == "prediction"
+		if !isdir(ENV["HOME_DIR"] * "/barc/predictions")
+			mkdir(ENV["HOME_DIR"] * "/barc/predictions")
+		end
 		track = Track()
    		init!(track)
 		replay_prediction(file, track)

@@ -12,6 +12,7 @@
 if string(VERSION)[1:3] != "0.4"
     error("Julia version 0.4.x is needed. Please install a different julia 
     	   version.")
+end
 
 # Install required packages
 # Enable the use of python in julia

@@ -20,7 +20,7 @@ using sensor_msgs.msg
 using marvelmind_nav.msg
 using std_msgs.msg
 
-include("config_2.jl")
+include("config.jl")
 include("track.jl")
 include("transformations.jl")
 include("agent.jl")
@@ -155,28 +155,29 @@ function race(num_laps::Int64)
 	# Set motor to neutral on shutdown. Stopping the Barc.
     neutralize!(low_level_controller)
 
+    if !isdir(ENV["HOME_DIR"] * "/barc/recordings")
+    	mkdir(ENV["HOME_DIR"] * "/barc/recordings")
+    end
 	# Create a folder for every day, if it does not exist yet: 
-	cd("/home/mpcubuntu/simulations/lukas")  # move into simulations folder
-	try 
+	cd(ENV["HOME_DIR"] * "/barc/recordings")  # move into recordings folder
+	if isdir(month_day) 
 		cd(month_day)
-	catch
+	else
 		println("Creating a new folder for today: ", month_day)
 		mkdir(month_day)
 	end
 
 	node_name = (get_name())[2 : end]
 	if MODE == "path_following"
-		save_trajectories(agent, "/home/mpcubuntu/simulations/lukas/" * month_day * "/" * 
+		save_trajectories(agent, ENV["HOME_DIR"] * "/barc/recordings/" * month_day * "/" * 
 								 hour_minute_second * "_" * node_name * 
 								 "_path_following_" * INITIALIZATION_TYPE * ".jld")
-		# save_trajectories(agent, "/home/lukas/simulations/lmpc.jld")
 	elseif MODE == "learning"
-		save_trajectories(agent, "/home/mpcubuntu/simulations/lukas/" * month_day * "/" * 
+		save_trajectories(agent, ENV["HOME_DIR"] * "/barc/recordings/" * month_day * "/" * 
 								 hour_minute_second * "_" * node_name * 
 								 "_lmpc_" * INITIALIZATION_TYPE * ".jld")
-		# save_trajectories(agent, "/home/lukas/simulations/lmpc_2.jld")
 	elseif MODE == "racing"
-		save_trajectories(agent, "/home/mpcubuntu/simulations/lukas/" * month_day * "/" * 
+		save_trajectories(agent, ENV["HOME_DIR"] * "/barc/recordings/" * month_day * "/" * 
 								 hour_minute_second * "_" * node_name * 
 								 "_racing_" * INITIALIZATION_TYPE  * ".jld")
 	else 

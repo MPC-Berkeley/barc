@@ -18,6 +18,7 @@ import matplotlib.transforms as transforms
 import matplotlib.animation as animation
 import matplotlib as mpl
 import matplotlib.collections as collections
+import os
 import pdb
 
 from track import Track
@@ -491,8 +492,7 @@ class Plotter:
         # self.ax_2.set_xlim(0.0, track.total_length)
         # self.ax_2.set_ylim(- np.pi / 3, np.pi / 3)
 
-        # plt.savefig("/home/lukas/images/image_" + str(self.count) + ".png")
-        plt.savefig("/home/mpcubuntu/lukas/images/image_" + str(self.count) + ".png")
+        plt.savefig("~/images/image_" + str(self.count) + ".png")
 
         # print("STEERING: ", self.plotted_agents[0].steering_angles[np.max(self.plotted_agents[0].counter - 1, 0)])
         # print("MAX STEERING: ", np.max(self.plotted_agents[0].steering_angles))
@@ -507,8 +507,11 @@ class Plotter:
 
 
 if __name__ == "__main__":
-
+    if not os.path.isdir("~/images"):
+        os.makedirs("~/images")
+        
     try:
+
         rospy.init_node("plotting_stuff")
         colors = ["blue"]
         # track = Track(ds=0.1, shape="test", width=1.2)
