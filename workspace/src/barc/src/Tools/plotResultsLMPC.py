@@ -433,6 +433,8 @@ def plotClosedLoopLMPC(LMPController, map, LapToPlot):
     plt.plot(Points1[:, 0], Points1[:, 1], '-b')
     plt.plot(Points2[:, 0], Points2[:, 1], '-b')
 
+    plt.show()
+
     counter = 0
     for i in LapToPlot:
         plt.plot(SS_glob[0:LapCounter[i], 4, i], SS_glob[0:LapCounter[i], 5, i], '-o', color=plotColors[counter], label=i)
@@ -441,9 +443,9 @@ def plotClosedLoopLMPC(LMPController, map, LapToPlot):
     plt.xlabel("x [m]")
     plt.ylabel("y [m]")
 
-    # i = 37
-    # sio.savemat('States.mat', {'globalStates':SS_glob[0:LapCounter[i], :, i], 'localStates':SS[0:LapCounter[i], :, i]})
-    # sio.savemat('Input.mat', {'input':uSS[0:LapCounter[i], :, i]})
+    i = 1
+    sio.savemat('States.mat', {'globalStates':SS_glob[0:LapCounter[i], :, i], 'localStates':SS[0:LapCounter[i], :, i]})
+    sio.savemat('Input.mat', {'input':uSS[0:LapCounter[i], :, i]})
 
 
     plt.figure()

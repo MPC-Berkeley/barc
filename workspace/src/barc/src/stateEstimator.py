@@ -36,8 +36,9 @@ import math
 import numpy as np
 
 def srvOutput2Angle(fbk_srv):
-    # angle_rad =  -0.0033597966955940897 *fbk_srv +  1.0990602157436302
-    angle_rad =  -0.003369111897931554 *fbk_srv +  1.1421487960691172
+    # angle_rad =  -0.003369111897931554 *fbk_srv +  1.1421487960691172
+    # angle_rad =  -0.003284862925676692 *fbk_srv +  1.112064557074576 # new barc
+    angle_rad =  -0.003284862925676692 *fbk_srv +  1.112064557074576 #old barc
     return angle_rad
 
 

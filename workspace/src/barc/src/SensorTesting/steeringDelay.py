@@ -23,7 +23,8 @@ def input_thread(a_list):
     
 def srvOutput2Angle(fbk_srv):
     # angle_rad =  -0.0033597966955940897 *fbk_srv +  1.0990602157436302
-    angle_rad =  -0.003369111897931554 *fbk_srv +  1.1421487960691172
+    # angle_rad =  -0.003284862925676692 *fbk_srv +  1.112064557074576 # new barc
+    angle_rad =  -0.003284862925676692 *fbk_srv +  1.112064557074576 # old barc
     return angle_rad
 
 
@@ -56,11 +57,11 @@ def main():
             print "Enter rad for Steering 1"
             rad_Steering_1 = raw_input()
             print "Enter Acceleration 1"
-            acc_Input_1 = raw_input()
+            acc_Input_1 = np.min(raw_input(), 1)
             print "Enter rad for Steering 2"
             rad_Steering_2 = raw_input()
             print "Enter Acceleration 2"
-            acc_Input_2 = raw_input()
+            acc_Input_2 = np.min(raw_input(), 1)
 
             print "Now enter ok to continue the test or q to exit"
             confirmInput = raw_input()
