@@ -97,6 +97,14 @@
 
          <param name="Rvy_hs" type="double" value="100.01" />
          <param name="Rvy_ls" type="double" value="100.01" />
+
+         <remap from="hedge_pos" to="agent_1/hedge_pos" />
+        <remap from="imu/data" to="agent_1/imu/data" />
+        <remap from="vel_est" to="agent_1/vel_est" />
+        <remap from="srv_fbk" to="agent_1/srv_fbk" />
+        <remap from="ecu" to="agent_1/ecu" />
+        <remap from="pos_info" to="agent_1/pos_info" />
+
     </node>
 
     <!-- LMPC CONTROL -->
@@ -104,6 +112,8 @@
         <param name="mode" type="str" value="experiments" />
         <param name="saveData" type="bool" value="true" />
         <param name="car" type="str" value="OldBARC" />
+        <remap from="pos_info" to="agent_1/pos_info" />
+        <remap from="ecu" to="agent_1/ecu" />
     </node>
 
     <!-- VISUALIZATION -->
@@ -115,6 +125,7 @@
     <node machine="odroid" pkg="myahrs_driver" type="myahrs_driver" name="myahrs_driver">
         <param name="port" value="/dev/ttyACM0" />
         <param name="baud_rate" value="115200" />
+        <remap from="imu/data" to="agent_1/imu/data"/>
     </node>
 <!--     <node machine="odroid" pkg="xsens_driver" type="mtnode.py" name="xsens_driver" output="screen" >
         <param name="device" value="$(arg device)"/>
@@ -129,12 +140,16 @@
     </node> -->
 
     <!-- GPS -->
-    <node machine="odroid" pkg="marvelmind_nav" type="hedge_rcv_bin" name="indoor_gps" args="/dev/ttyACM1"/>
+    <node machine="odroid" pkg="marvelmind_nav" type="hedge_rcv_bin" name="indoor_gps" args="/dev/ttyACM1" >
+        <remap from="hedge_pos_a" to="agent_1/hedge_pos_a" />
+    </node> 
     
     <!-- ARDUINO -->
     <!--  * encoders and ultrasound sensors -->
     <node machine="odroid" pkg="rosserial_python" type="serial_node.py" name="arduino_node" >
         <param name="port" value="/dev/ttyUSB0" />
+        <remap from="vel_est" to="agent_1/vel_est" />
+        <remap from="ecu" to="agent_1/ecu" />
     </node>
 
 </launch>
