@@ -628,7 +628,8 @@ class ImuClass(object):
         # Ask Ugo's notes for transformation 
 
         # self.psiDot = w_z
-        self.psiDot = sin(roll_raw) / cos(pitch_raw) * w_y + cos(roll_raw) / cos(pitch_raw) * w_z
+        # self.psiDot = sin(roll_raw) / cos(pitch_raw) * w_y + cos(roll_raw) / cos(pitch_raw) * w_z
+        self.psiDot = -w_x*sin(pitch_raw) + w_y*sin(roll_raw)*cos(pitch_raw) + w_z*cos(roll_raw)*cos(pitch_raw)
 
         # self.ax = cos(-pitch_raw)*a_x + sin(-pitch_raw)*sin(-roll_raw)*a_y - sin(-pitch_raw)*cos(-roll_raw)*a_z
         self.ax = cos(pitch_raw)*a_x + sin(pitch_raw)*sin(roll_raw)*a_y + sin(pitch_raw)*cos(roll_raw)*a_z
