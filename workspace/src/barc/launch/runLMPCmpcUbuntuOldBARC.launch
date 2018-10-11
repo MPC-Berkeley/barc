@@ -30,7 +30,7 @@
     <machine name="odroid" address="192.168.10.213" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid.sh"/>
 
     <!-- <machine name="this-pc" address="10.0.0.72" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc.sh"/> -->
-    <machine name="this-pc" address="192.168.10.147" user="mpcubuntu" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc_mpc_ubuntu.sh"/>
+    <machine name="this-pc" address="192.168.10.147" user="mpc-ubuntu" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc_mpc_ubuntu.sh"/>
     
     <!-- START NODES -->
     <!-- LOW LEVEL CONTROLLER -->
@@ -43,8 +43,9 @@
     </node>
 
     <!-- Estimator -->
-    <node machine="odroid" pkg="barc" type="stateEstimator.py" name="state_estimator" output="screen">
+    <node machine="this-pc" pkg="barc" type="stateEstimatorMultiple.py" name="state_estimator" output="screen">
     <!-- delay in state estuiamtor -->
+        <param name="beacon" type="int" value="26" />
         <param name="delay_df" type="double" value="0.0" />
         <param name="delay_a" type="double" value="0.0" />
         <!-- ekf properties -->

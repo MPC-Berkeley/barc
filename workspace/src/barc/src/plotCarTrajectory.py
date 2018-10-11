@@ -35,7 +35,8 @@ def main():
     vSwitch      = rospy.get_param("/state_estimator/vSwitch")       # 1.0
     psiSwitch    = rospy.get_param("/state_estimator/psiSwitch")       # 0.5 * 2.0
 
-    data = EstimationAndMesuredData(mode, plotGPS)        
+    data_agent_1 = EstimationAndMesuredData(mode, plotGPS, "agent_1/")        
+    data_agent_2 = EstimationAndMesuredData(mode, plotGPS, "agent_2/")        
 
     map = Map()
 
@@ -43,9 +44,9 @@ def main():
     rate = rospy.Rate(loop_rate)
 
     if StateView == True:
-        fig, linevx, linevy, linewz, lineepsi, lineey, line_tr, line_pred = _initializeFigure(map)
+        fig, linevx, linevy, linewz, lineepsi, lineey, line_tr, line_pred, rec_agent_2 = _initializeFigure(map)
     else:
-        fig, axtr, line_tr, line_pred, line_SS, line_cl, line_gps_cl, rec, rec_sim = _initializeFigure_xy(map, mode)
+        fig, axtr, line_tr, line_pred, line_SS, line_cl, line_gps_cl, rec, rec_sim, rec_agent_2 = _initializeFigure_xy(map, mode)
 
     ClosedLoopTraj_gps_x = []
     ClosedLoopTraj_gps_y = []
@@ -56,7 +57,8 @@ def main():
     flagHalfLap = False
 
     while not rospy.is_shutdown():
-        estimatedStates = data.readEstimatedData()
+        # This is for agent 1
+        estimatedStates = data_agent_1.readEstimatedData()
         s, ey, epsi, insideMap = map.getLocalPosition(estimatedStates[4], estimatedStates[5], estimatedStates[3])
 
         if s > map.TrackLength / 2:
@@ -73,8 +75,8 @@ def main():
         y = estimatedStates[5]
 
         if plotGPS == True:
-            ClosedLoopTraj_gps_x.append(data.MeasuredData[0]) 
-            ClosedLoopTraj_gps_y.append(data.MeasuredData[1])
+            ClosedLoopTraj_gps_x.append(data_agent_1.MeasuredData[0]) 
+            ClosedLoopTraj_gps_y.append(data_agent_1.MeasuredData[1])
 
         ClosedLoopTraj_x.append(x) 
         ClosedLoopTraj_y.append(y)
@@ -83,21 +85,21 @@ def main():
         l = 0.4; w = 0.2
 
 
-        if (data.s != []):
-            if (data.s > 0) :
-                xPredicted = np.zeros((len(data.s), 1))
-                yPredicted = np.zeros((len(data.s), 1))
-                for j in range(0, len(data.s)):
-                    sPred    = data.s[j]
-                    eyPred   = data.ey[j]
-                    epsiPred = data.epsi[j]
+        if (data_agent_1.s != []):
+            if (data_agent_1.s > 0) :
+                xPredicted = np.zeros((len(data_agent_1.s), 1))
+                yPredicted = np.zeros((len(data_agent_1.s), 1))
+                for j in range(0, len(data_agent_1.s)):
+                    sPred    = data_agent_1.s[j]
+                    eyPred   = data_agent_1.ey[j]
+                    epsiPred = data_agent_1.epsi[j]
                     xPredicted[j], yPredicted[j] = map.getGlobalPosition(sPred, eyPred)
                 # print "sPred is: ", sPred
                 # print "eyPred is: ", eyPred
                 line_pred.set_data(xPredicted, yPredicted)
 
-        if data.SSx != []:            
-            line_SS.set_data(data.SSx, data.SSy)
+        if data_agent_1.SSx != []:            
+            line_SS.set_data(data_agent_1.SSx, data_agent_1.SSy)
 
         line_cl.set_data(ClosedLoopTraj_x, ClosedLoopTraj_y)
         if plotGPS == True:
@@ -117,11 +119,21 @@ def main():
         rec.set_xy(np.array([car_x, car_y]).T)
         
         if mode == "simulations":
-            x_sim   = data.sim_x[-1]
-            y_sim   = data.sim_y[-1]
-            psi_sim = data.sim_psi[-1]
+            x_sim   = data_agent_1.sim_x[-1]
+            y_sim   = data_agent_1.sim_y[-1]
+            psi_sim = data_agent_1.sim_psi[-1]
             car_sim_x, car_sim_y = getCarPosition(x_sim, y_sim, psi_sim, w, l)
             rec_sim.set_xy(np.array([car_sim_x, car_sim_y]).T)
+
+        # Plot agent 2
+        estimatedStates_agent_2 = data_agent_2.readEstimatedData()
+        x_agent_2 = estimatedStates_agent_2[4]
+        y_agent_2 = estimatedStates_agent_2[5]
+        psi_agent_2 = estimatedStates_agent_2[3]
+
+
+        car_x_agent_2, car_y_agent_2 = getCarPosition(x_agent_2, y_agent_2, psi_agent_2, w, l)
+        rec_agent_2.set_xy(np.array([car_x_agent_2, car_y_agent_2]).T)
 
         maxVx = np.maximum(maxVx, estimatedStates[0])
         flagVy = (estimatedStates[0] > vSwitch or np.abs(estimatedStates[2]) > psiSwitch) == False
@@ -145,19 +157,19 @@ class EstimationAndMesuredData():
     Attributes:
         updateInitialConditions: function which updates initial conditions and clear the memory
     """
-    def __init__(self, mode, plotGPS):
+    def __init__(self, mode, plotGPS, car_selected):
         """Initialization
         Arguments:
             
         """
         if mode == "simulations":
-            rospy.Subscriber("simulatorStates", simulatorStates, self.simState_callback)
+            rospy.Subscriber(car_selected + "simulatorStates", simulatorStates, self.simState_callback)
 
         if plotGPS == True:
-            rospy.Subscriber("hedge_pos", hedge_pos, self.gps_callback)
-        rospy.Subscriber("pos_info", pos_info, self.pos_info_callback)
-        rospy.Subscriber("OL_predictions", prediction, self.prediction_callback)
-        rospy.Subscriber('SS', SafeSetGlob, self.SS_callback)
+            rospy.Subscriber(car_selected + "hedge_pos", hedge_pos, self.gps_callback)
+        rospy.Subscriber(car_selected + "pos_info", pos_info, self.pos_info_callback)
+        rospy.Subscriber(car_selected + "OL_predictions", prediction, self.prediction_callback)
+        rospy.Subscriber(car_selected + 'SS', SafeSetGlob, self.SS_callback)
 
         self.s    = []
         self.ey   = []
@@ -234,6 +246,9 @@ def _initializeFigure_xy(map, mode):
     rec = patches.Polygon(v, alpha=0.7,closed=True, fc='r', ec='k',zorder=10)
     axtr.add_patch(rec)
 
+    rec_agent_2 = patches.Polygon(v, alpha=0.7,closed=True, fc='b', ec='k',zorder=10)
+    axtr.add_patch(rec_agent_2)
+
     rec_sim = patches.Polygon(v, alpha=0.7,closed=True, fc='G', ec='k',zorder=10)
 
     if mode == "simulations":
@@ -241,7 +256,7 @@ def _initializeFigure_xy(map, mode):
 
     plt.show()
 
-    return fig, axtr, line_tr, line_pred, line_SS, line_cl, line_gps_cl, rec, rec_sim
+    return fig, axtr, line_tr, line_pred, line_SS, line_cl, line_gps_cl, rec, rec_sim, rec_agent_2
 
 
 def _initializeFigure(map):

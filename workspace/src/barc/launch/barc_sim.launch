@@ -20,7 +20,7 @@
 
 
     <!-- SIMULATOR -->
-    <node pkg="barc" type="vehicleSimulator.py" name="simulator" output="screen">
+    <node pkg="barc" type="vehicleSimulator.py" name="simulator_1" output="screen">
         <!-- sensor freq update -->
         <param name="gps_freq_update" type="double" value="100.0" />
         <!-- delay in the simulator -->
@@ -43,62 +43,52 @@
         <param name="ax_std" type="double" value="0.05" />
         <param name="ay_std" type="double" value="0.05" />
         <param name="psiDot_std" type="double" value="0.0001" />
+
+        <remap from="hedge_pos" to="agent_1/hedge_pos" />
+        <remap from="imu/data" to="agent_1/imu/data" />
+        <remap from="vel_est" to="agent_1/vel_est" />
+        <remap from="ecu" to="agent_1/ecu" />
+        <remap from="simulatorStates" to="agent_1/simulatorStates" />
+
+    </node>
+
+    <!-- SIMULATOR -->
+    <node pkg="barc" type="vehicleSimulator.py" name="simulator_2" output="screen">
+        <!-- sensor freq update -->
+        <param name="gps_freq_update" type="double" value="100.0" />
+        <!-- delay in the simulator -->
+        <param name="lowLevelDyn" type="bool" value="false" />
+        <param name="delay_df" type="double" value="0.0" />
+        <param name="delay_a" type="double" value="0.0" />
+        <!-- simulator model parameters -->
+        <param name="c_f" type="double" value="0.05" />
+        <param name="dt" type="double" value="0.01" />
+        <!-- Tire model parameters -->
+        <param name="B" type="double" value="6.0" />
+        <param name="C" type="double" value="1.6" />
+        <param name="mu" type="double" value="0.8" />
+        <param name="g" type="double" value="9.81" />
+        <!-- simulator sensor noise -->
+        <param name="n_bound" type="double" value="1.5" />
+        <param name="x_std" type="double" value="0.002" />
+        <param name="y_std" type="double" value="0.002" />    
+        <param name="v_std" type="double" value="0.001" />    
+        <param name="ax_std" type="double" value="0.05" />
+        <param name="ay_std" type="double" value="0.05" />
+        <param name="psiDot_std" type="double" value="0.0001" />
+
+        <remap from="hedge_pos" to="agent_2/hedge_pos" />
+        <remap from="imu/data" to="agent_2/imu/data" />
+        <remap from="vel_est" to="agent_2/vel_est" />
+        <remap from="ecu" to="agent_2/ecu" />
+        <remap from="simulatorStates" to="agent_2/simulatorStates" />
+
     </node>
     
     <!--DYNAMIC OBSERVER-->  
     <!-- <node pkg="barc" type="stateEstimatorNoVx.py" name="state_estimator" output="screen"> -->
-    <node pkg="barc" type="stateEstimator.py" name="state_estimator" output="screen">
-    <!-- delay in state estuiamtor -->
-          <!-- <param name="delay_df" type="double" value="0.0" />
-          <param name="delay_a" type="double" value="0.0" />
-          <param name="thReset" type="double" value="0.5" />
-          <param name="vSwitch" type="double" value="1.3" />
-          <param name="psiSwitch" type="double" value="1.2" />
- 
-          <param name="Qx_hs" type="double" value="0.01" />
-          <param name="Qx_ls" type="double" value="0.01" />
-      
-          <param name="Qy_hs" type="double" value="0.01" />
-          <param name="Qy_ls" type="double" value="0.01" />
-      
-          <param name="Qvx_hs" type="double" value="0.5" />
-          <param name="Qvx_ls" type="double" value="0.5" />
-      
-          <param name="Qvy_hs" type="double" value="0.5" />
-          <param name="Qvy_ls" type="double" value="0.5" />
-      
-          <param name="Qax_hs" type="double" value="1.0" />
-          <param name="Qax_ls" type="double" value="1.0" />
-      
-          <param name="Qay_hs" type="double" value="10.0" />
-          <param name="Qay_ls" type="double" value="1.0" />
-      
-          <param name="Qpsi_hs" type="double" value="10.0" />
-          <param name="Qpsi_ls" type="double" value="10.0" />
-      
-          <param name="QpsiDot_hs" type="double" value="1.0" />
-          <param name="QpsiDot_ls" type="double" value="0.01" />
-      
-          <param name="Rx_hs" type="double" value="1.0" />
-          <param name="Rx_ls" type="double" value="40.0" />
-      
-          <param name="Ry_hs" type="double" value="1.0" />
-          <param name="Ry_ls" type="double" value="40.0" />
-      
-          <param name="Rvx_hs" type="double" value="0.1" />
-          <param name="Rvx_ls" type="double" value="0.1" />
-      
-          <param name="Rax_hs" type="double" value="10.0" />
-          <param name="Rax_ls" type="double" value="10.0" />
-      
-          <param name="Ray_hs" type="double" value="30.0" />
-          <param name="Ray_ls" type="double" value="10.0" />
-     
-          <param name="RpsiDot_hs" type="double" value="0.1" />
-          <param name="RpsiDot_ls" type="double" value="0.1" />
-     
-          <param name="Rvy_hs" type="double" value="0.01" />
-          <param name="Rvy_ls" type="double" value="0.01" />   -->
+    <node pkg="barc" type="stateEstimator.py" name="state_estimator_1" output="screen">
+    
          <param name="delay_df" type="double" value="0.0" />
          <param name="delay_a" type="double" value="0.0" />
         <!-- ekf properties -->
@@ -150,16 +140,98 @@
 
          <param name="Rvy_hs" type="double" value="100.01" />
          <param name="Rvy_ls" type="double" value="100.01" />
+
+        <remap from="hedge_pos" to="agent_1/hedge_pos" />
+        <remap from="imu/data" to="agent_1/imu/data" />
+        <remap from="vel_est" to="agent_1/vel_est" />
+        <remap from="srv_fbk" to="agent_1/srv_fbk" />
+        <remap from="ecu" to="agent_1/ecu" />
+        <remap from="pos_info" to="agent_1/pos_info" />
+    </node>
+
+     <!--DYNAMIC OBSERVER-->  
+    <!-- <node pkg="barc" type="stateEstimatorNoVx.py" name="state_estimator" output="screen"> -->
+    <node pkg="barc" type="stateEstimator.py" name="state_estimator_2" output="screen">
+    
+         <param name="delay_df" type="double" value="0.0" />
+         <param name="delay_a" type="double" value="0.0" />
+        <!-- ekf properties -->
+         <param name="thReset" type="double" value="0.1" />
+         <param name="vSwitch" type="double" value="5.5" />
+         <param name="psiSwitch" type="double" value="0.5" />
+
+         <param name="Qx_hs" type="double" value="0.01" />
+         <param name="Qx_ls" type="double" value="0.01" />
+
+         <param name="Qy_hs" type="double" value="0.01" />
+         <param name="Qy_ls" type="double" value="0.01" />
+
+         <param name="Qvx_hs" type="double" value="50.0" />
+         <param name="Qvx_ls" type="double" value="50.0" />
+
+         <param name="Qvy_hs" type="double" value="50.0" />
+         <param name="Qvy_ls" type="double" value="50.0" />
+
+         <param name="Qax_hs" type="double" value="100.0" />
+         <param name="Qax_ls" type="double" value="100.0" />
+
+         <param name="Qay_hs" type="double" value="100.0" />
+         <param name="Qay_ls" type="double" value="100.0" />
+
+         <param name="Qpsi_hs" type="double" value="0.1" />
+         <param name="Qpsi_ls" type="double" value="0.1" />
+
+         <param name="QpsiDot_hs" type="double" value="1.0" />
+         <param name="QpsiDot_ls" type="double" value="0.01" />
+
+         <param name="Rx_hs" type="double" value="1.0" />
+         <param name="Rx_ls" type="double" value="1.0" />
+
+         <param name="Ry_hs" type="double" value="1.0" />
+         <param name="Ry_ls" type="double" value="1.0" />
+
+         <param name="Rvx_hs" type="double" value="100.01" />
+         <param name="Rvx_ls" type="double" value="100.01" />
+
+         <param name="Rax_hs" type="double" value="1.0" />
+         <param name="Rax_ls" type="double" value="1.0" />
+
+         <param name="Ray_hs" type="double" value="1.0" />
+         <param name="Ray_ls" type="double" value="1.0" />
+
+         <param name="RpsiDot_hs" type="double" value="0.1" />
+         <param name="RpsiDot_ls" type="double" value="0.1" />
+
+         <param name="Rvy_hs" type="double" value="100.01" />
+         <param name="Rvy_ls" type="double" value="100.01" />
+
+        <remap from="hedge_pos" to="agent_2/hedge_pos" />
+        <remap from="imu/data" to="agent_2/imu/data" />
+        <remap from="vel_est" to="agent_2/vel_est" />
+        <remap from="srv_fbk" to="agent_2/srv_fbk" />
+        <remap from="ecu" to="agent_2/ecu" />
+        <remap from="pos_info" to="agent_2/pos_info" />
     </node>
 
     <!-- LOW LEVEL CONTROLLER -->
     <!--<node pkg="barc" type="controller_low_level.py" name="low_level_controller" /> -->
 
      <!-- CONTROL -->
-    <node pkg="barc" type="controllerMain.py" name="control" output="screen">
+    <node pkg="barc" type="controllerMain.py" name="control_1" output="screen">
         <param name="mode" type="str" value="simulations" />
         <param name="saveData" type="bool" value="true" />
         <param name="car" type="str" value="NewBARC" />
+        <remap from="pos_info" to="agent_1/pos_info" />
+        <remap from="ecu" to="agent_1/ecu" />
+    </node>
+
+     <!-- CONTROL -->
+    <node pkg="barc" type="controllerMain.py" name="control_2" output="screen">
+        <param name="mode" type="str" value="simulations" />
+        <param name="saveData" type="bool" value="true" />
+        <param name="car" type="str" value="NewBARC" />
+        <remap from="pos_info" to="agent_2/pos_info" />
+        <remap from="ecu" to="agent_2/ecu" />
     </node>
 
 <!--     <node pkg="rosbag" type="record" name="record" output="screen" args="-a"/> -->

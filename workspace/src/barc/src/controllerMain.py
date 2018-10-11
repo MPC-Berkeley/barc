@@ -365,8 +365,8 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
         Controller = PID(vt, PIDnoise, mode)
                                         # PID controller
     elif PickController == "TI_MPC":
-        # file_data = open(homedir+'/barc_data/'+'/ClosedLoopDataPID.obj', 'rb')
-        file_data = open(homedir+'/barc_data/'+'/ClosedLoopDataPIDforLMPC.obj', 'rb')
+        file_data = open(homedir+'/barc_data/'+'/ClosedLoopDataPID.obj', 'rb')
+        # file_data = open(homedir+'/barc_data/'+'/ClosedLoopDataPIDforLMPC.obj', 'rb')
         ClosedLoopDataPID = pickle.load(file_data)
         file_data.close()     
         Controller = PathFollowingLTI_MPC(A, B, Q, R, N, vt, TI_Qlane)
