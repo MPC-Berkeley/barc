@@ -45,7 +45,7 @@ def srvOutput2Angle(fbk_srv):
 
 def main():
     # node initialization
-    rospy.init_node("state_estimation")
+    rospy.init_node("state_estimator_LMPC")
     a_delay     = 0.0
     df_delay    = 0.0
     loop_rate   = 100.0

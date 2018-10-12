@@ -27,27 +27,35 @@
     <!-- <param name="trackShape" type="str" value="L_shape" /> -->
 
     <!-- Machines -->
-    <machine name="odroid" address="192.168.10.213" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid.sh"/>
+    <machine name="odroid_1" address="192.168.10.213" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid.sh"/>
+    <machine name="odroid_2" address="192.168.10.101" user="odroid" timeout="20.0" env-loader="/home/odroid/barc/env_loader_odroid.sh"/>
 
-    <!-- <machine name="this-pc" address="10.0.0.72" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc.sh"/> -->
     <machine name="this-pc" address="192.168.10.147" user="mpc-ubuntu" timeout="20.0" env-loader="/home/mpcubuntu/barc/env_loader_pc_mpc_ubuntu.sh"/>
     
     <!-- START NODES -->
+
+    <!-- VISUALIZATION -->
+    <node machine="this-pc" pkg="barc" type="plotCarTrajectory.py" name="visualization" >
+        <param name="plotGPS" type="bool" value="true" />
+    </node>
+
+    <!-- AGENT 1 NODES -->
+
     <!-- LOW LEVEL CONTROLLER -->
-    <node machine="odroid" pkg="barc" type="controllerLowLevel.py" name="low_level_controller" >
+    <node machine="odroid_1" pkg="barc" type="controllerLowLevel.py" name="low_level_controller_1" >
         <param name="car" type="str" value="NewBARC" />
         <remap from="ecu" to="agent_1/ecu"/>
         <remap from="ecu_pwm" to="agent_1/ecu_pwm"/>
     </node>
 
-    <node machine="this-pc" pkg="barc" type="lowLevelPub.py" name="low_level_controller_publisher" >
+    <node machine="this-pc" pkg="barc" type="lowLevelPub.py" name="low_level_controller_publisher_1" >
         <param name="car" type="str" value="NewBARC" />
         <remap from="ecu_LMPC" to="agent_1/ecu_LMPC"/>
         <remap from="ecu" to="agent_1/ecu"/>
     </node>
 
     <!-- Estimator -->
-    <node machine="this-pc" pkg="barc" type="stateEstimatorMultiple.py" name="state_estimator_1" output="screen">
+    <node machine="this-pc" pkg="barc" type="stateEstimatorMultiple.py" name="state_estimator" output="screen">
     <!-- delay in state estuiamtor -->
         <param name="beacon" type="int" value="26" />
         <param name="delay_df" type="double" value="0.0" />
@@ -120,13 +128,9 @@
         <remap from="ecu_LMPC" to="agent_1/ecu_LMPC" />
     </node>
 
-    <!-- VISUALIZATION -->
-    <node machine="this-pc" pkg="barc" type="plotCarTrajectory.py" name="visualization" >
-        <param name="plotGPS" type="bool" value="true" />
-    </node>
 
     <!-- IMU -->
-    <node machine="odroid" pkg="myahrs_driver" type="myahrs_driver" name="myahrs_driver">
+    <node machine="odroid_1" pkg="myahrs_driver" type="myahrs_driver" name="myahrs_driver_1">
         <param name="port" value="/dev/ttyACM0" />
         <param name="baud_rate" value="115200" />
         <remap from="imu/data" to="agent_1/imu/data"/>
@@ -145,18 +149,135 @@
     </node>  -->
 
     <!-- GPS -->
-    <node machine="odroid" pkg="marvelmind_nav" type="hedge_rcv_bin" name="indoor_gps" args="/dev/ttyACM1" >
+    <node machine="odroid_1" pkg="marvelmind_nav" type="hedge_rcv_bin" name="indoor_gps_1" args="/dev/ttyACM1" >
         <remap from="hedge_pos_a" to="agent_1/hedge_pos_a" />
         <remap from="hedge_pos" to="agent_1/hedge_pos"/>
     </node> 
     
     <!-- ARDUINO -->
     <!--  * encoders and ultrasound sensors -->
-    <node machine="odroid" pkg="rosserial_python" type="serial_node.py" name="arduino_node" >
+    <node machine="odroid_1" pkg="rosserial_python" type="serial_node.py" name="arduino_node_1" >
         <param name="port" value="/dev/ttyUSB0" />
         <remap from="vel_est" to="agent_1/vel_est" />
         <remap from="srv_fbk" to="agent_1/srv_fbk"/>
         <remap from="ecu_pwm" to="agent_1/ecu_pwm" />
     </node>
+
+    <!-- AGENT 2 NODEs --> 
+
+    <node machine="odroid_2" pkg="barc" type="controllerLowLevel.py" name="low_level_controller_2" >
+        <param name="car" type="str" value="NewBARC" />
+        <remap from="ecu" to="agent_2/ecu"/>
+        <remap from="ecu_pwm" to="agent_2/ecu_pwm"/>
+    </node>
+
+    <node machine="this-pc" pkg="barc" type="lowLevelPub.py" name="low_level_controller_publisher_2" >
+        <param name="car" type="str" value="NewBARC" />
+        <remap from="ecu_LMPC" to="agent_2/ecu_LMPC"/>
+        <remap from="ecu" to="agent_2/ecu"/>
+    </node>
+
+    <!-- Estimator -->
+    <node machine="this-pc" pkg="barc" type="stateEstimatorMultiple.py" name="state_estimator_2" output="screen">
+    <!-- delay in state estuiamtor -->
+        <param name="beacon" type="int" value="16" />
+        <param name="delay_df" type="double" value="0.0" />
+        <param name="delay_a" type="double" value="0.0" />
+        <!-- ekf properties -->
+         <param name="thReset" type="double" value="0.1" />
+         <param name="vSwitch" type="double" value="5.5" />
+         <param name="psiSwitch" type="double" value="0.5" />
+
+         <param name="Qx_hs" type="double" value="0.01" />
+         <param name="Qx_ls" type="double" value="0.01" />
+
+         <param name="Qy_hs" type="double" value="0.01" />
+         <param name="Qy_ls" type="double" value="0.01" />
+
+         <param name="Qvx_hs" type="double" value="50.0" />
+         <param name="Qvx_ls" type="double" value="50.0" />
+
+         <param name="Qvy_hs" type="double" value="50.0" />
+         <param name="Qvy_ls" type="double" value="50.0" />
+
+         <param name="Qax_hs" type="double" value="1.0" />
+         <param name="Qax_ls" type="double" value="1.0" />
+
+         <param name="Qay_hs" type="double" value="100.0" />
+         <param name="Qay_ls" type="double" value="100.0" />
+
+         <param name="Qpsi_hs" type="double" value="0.1" />
+         <param name="Qpsi_ls" type="double" value="0.1" />
+
+         <param name="QpsiDot_hs" type="double" value="1.0" />
+         <param name="QpsiDot_ls" type="double" value="0.01" />
+
+         <param name="Rx_hs" type="double" value="1.0" />
+         <param name="Rx_ls" type="double" value="1.0" />
+
+         <param name="Ry_hs" type="double" value="1.0" />
+         <param name="Ry_ls" type="double" value="1.0" />
+
+         <param name="Rvx_hs" type="double" value="100.01" />
+         <param name="Rvx_ls" type="double" value="100.01" />
+
+         <param name="Rax_hs" type="double" value="100.0" />
+         <param name="Rax_ls" type="double" value="100.0" />
+
+         <param name="Ray_hs" type="double" value="1.0" />
+         <param name="Ray_ls" type="double" value="1.0" />
+
+         <param name="RpsiDot_hs" type="double" value="0.1" />
+         <param name="RpsiDot_ls" type="double" value="0.1" />
+
+         <param name="Rvy_hs" type="double" value="100.01" />
+         <param name="Rvy_ls" type="double" value="100.01" />
+
+         <remap from="hedge_pos_a" to="agent_2/hedge_pos_a" />
+        <remap from="imu/data" to="agent_2/imu/data" />
+        <remap from="vel_est" to="agent_2/vel_est" />
+        <remap from="ecu" to="agent_2/ecu"/>
+        <remap from="pos_info" to="agent_2/pos_info" />
+        <remap from="srv_fbk" to="agent_2/srv_fbk"/>
+
+    </node>
+
+    <!-- LMPC CONTROL -->
+    <node machine="this-pc" pkg="barc" type="controllerMain.py" name="control_2" output="screen">
+        <param name="mode" type="str" value="experiments" />
+        <param name="saveData" type="bool" value="true" />
+        <param name="car" type="str" value="OldBARC" />
+        <remap from="pos_info" to="agent_2/pos_info" />
+        <remap from="ecu_LMPC" to="agent_2/ecu_LMPC" />
+    </node>
+
+    <node machine="odroid_2" pkg="xsens_driver" type="mtnode.py" name="xsens_driver_2" output="screen" >
+        <param name="device" value="$(arg device)"/>
+        <param name="baudrate" value="$(arg baudrate)"/>
+        <param name="timeout" value="$(arg timeout)"/>
+        <param name="frame_id" value="$(arg frame_id)"/>
+        <param name="frame_local" value="$(arg frame_local)"/>
+        <param name="no_rotation_duration" value="$(arg no_rotation_duration)"/>
+        <rosparam param="angular_velocity_covariance_diagonal" subst_value="True">$(arg angular_velocity_covariance_diagonal)</rosparam>
+        <rosparam param="linear_acceleration_covariance_diagonal" subst_value="True">$(arg linear_acceleration_covariance_diagonal)</rosparam>
+        <rosparam param="orientation_covariance_diagonal" subst_value="True">$(arg orientation_covariance_diagonal)</rosparam>
+        <remap from="imu/data" to="agent_2/imu/data"/>
+    </node> 
+
+    <!-- GPS -->
+    <node machine="odroid_2" pkg="marvelmind_nav" type="hedge_rcv_bin" name="indoor_gps_2" args="/dev/ttyACM0" >
+        <remap from="hedge_pos_a" to="agent_2/hedge_pos_a" />
+        <remap from="hedge_pos" to="agent_2/hedge_pos"/>
+    </node> 
+    
+    <!-- ARDUINO -->
+    <!--  * encoders and ultrasound sensors -->
+    <node machine="odroid_2" pkg="rosserial_python" type="serial_node.py" name="arduino_node_2" >
+        <param name="port" value="/dev/ttyUSB0" />
+        <remap from="vel_est" to="agent_2/vel_est" />
+        <remap from="srv_fbk" to="agent_2/srv_fbk"/>
+        <remap from="ecu_pwm" to="agent_2/ecu_pwm" />
+    </node>
+
 
 </launch>
