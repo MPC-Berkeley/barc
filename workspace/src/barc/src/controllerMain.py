@@ -32,13 +32,13 @@ homedir = os.path.expanduser("~")
 def main():
     # Initializa ROS node
     rospy.init_node("LMPC")
-
+    node_name = rospy.get_name()
     pred_treajecto = rospy.Publisher('OL_predictions', prediction, queue_size=1)
     sel_safe_set   = rospy.Publisher('SS', SafeSetGlob, queue_size=1)
 
-    mode = rospy.get_param("/control/mode")
-    saveData = rospy.get_param("/control/saveData")
-    sel_car = rospy.get_param("/control/car")
+    mode = rospy.get_param(node_name + "/mode")
+    saveData = rospy.get_param(node_name + "/saveData")
+    sel_car = rospy.get_param(node_name+ "/car")
 
     if mode=="simulations":
         input_commands = rospy.Publisher('ecu', ECU, queue_size=1)

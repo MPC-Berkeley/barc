@@ -33,9 +33,10 @@ from tf import transformations
 
 def main():
     rospy.init_node("simulator")
-    gps_freq_update = rospy.get_param("simulator/gps_freq_update")
-    simulator_dt    = rospy.get_param("simulator/dt")
-    lowLevelDyn     = rospy.get_param("simulator/lowLevelDyn")
+	node_name = rospy.get_name()
+	gps_freq_update = rospy.get_param(node_name + "/gps_freq_update")
+	simulator_dt = rospy.get_param(node_name + "/dt")
+	lowLevelDyn = rospy.get_param(node_name + "/lowLevelDyn")
 
     print "Low Level Dynamics is active: ", lowLevelDyn
         
@@ -47,12 +48,12 @@ def main():
 
     counter = 0
 
-    a_his 	= [0.0]*int(rospy.get_param("simulator/delay_a")/rospy.get_param("simulator/dt"))
-    df_his 	= [0.0]*int(rospy.get_param("simulator/delay_df")/rospy.get_param("simulator/dt"))
+    a_his 	= [0.0]*int(rospy.get_param(node_name + "/delay_a")/rospy.get_param(node_name + "/dt"))
+    df_his 	= [0.0]*int(rospy.get_param(node_name + "/delay_df")/rospy.get_param(node_name + "/dt"))
 
-    print rospy.get_param("simulator/delay_df")
-    print rospy.get_param("simulator/dt")
-    print int(rospy.get_param("simulator/delay_df")/rospy.get_param("simulator/dt"))
+    print rospy.get_param(node_name + "/delay_df")
+    print rospy.get_param(node_name + "/dt")
+    print int(rospy.get_param(node_name + "/delay_df")/rospy.get_param(node_name + "/dt"))
 
     print "a_his is: ", df_his
     pub_simulatorStates = rospy.Publisher('simulatorStates', simulatorStates, queue_size=1)
@@ -122,17 +123,17 @@ class Simulator(object):
 			Pacejka lateral tire modeling
     """
 	def __init__(self):
-
+		self.node_name = rospy.get_name()
 		self.L_f = rospy.get_param("L_a")
 		self.L_r = rospy.get_param("L_b") 
 		self.m 	= rospy.get_param("m")
 		self.I_z = rospy.get_param("I_z")
-		self.c_f = rospy.get_param("simulator/c_f")
+		self.c_f = rospy.get_param(self.node_name + "/c_f")
 
-		self.B = rospy.get_param("simulator/B")
-		self.C = rospy.get_param("simulator/C")
-		self.mu= rospy.get_param("simulator/mu")
-		self.g = rospy.get_param("simulator/g")
+		self.B = rospy.get_param(self.node_name + "/B")
+		self.C = rospy.get_param(self.node_name + "/C")
+		self.mu= rospy.get_param(self.node_name + "/mu")
+		self.g = rospy.get_param(self.node_name + "/g")
 
 		self.x 		= 0.02
 		self.y 		= 0.0
@@ -153,7 +154,7 @@ class Simulator(object):
 		self.ay_his 	= []
 		self.psiDot_his = []
 
-		self.dt 		= rospy.get_param("simulator/dt")
+		self.dt 		= rospy.get_param(self.node_name + "/dt")
 		self.rate 		= rospy.Rate(1.0/self.dt)
 		self.time_his 	= []
 
@@ -209,14 +210,15 @@ class Simulator(object):
 class ImuClass(object):
 	def __init__(self):
 		self.pub  = rospy.Publisher("imu/data", Imu, queue_size=1)
+		self.node_name = rospy.get_name()
 		self.ax 	= 0.0
 		self.ay 	= 0.0
 		self.yaw 	= 0.0
 		self.psiDot = 0.0
-		self.ax_std 	= rospy.get_param("simulator/ax_std")
-		self.ay_std 	= rospy.get_param("simulator/ay_std")
-		self.psiDot_std = rospy.get_param("simulator/psiDot_std")
-		self.n_bound 	= rospy.get_param("simulator/n_bound")
+		self.ax_std 	= rospy.get_param(self.node_name + "/ax_std")
+		self.ay_std 	= rospy.get_param(self.node_name + "/ay_std")
+		self.psiDot_std = rospy.get_param(self.node_name + "/psiDot_std")
+		self.n_bound 	= rospy.get_param(self.node_name + "/n_bound")
 
 		self.msg = Imu()
 
@@ -248,11 +250,12 @@ class ImuClass(object):
 class GpsClass(object):
 	def __init__(self, gps_freq_update, simulator_dt):
 		self.pub  = rospy.Publisher("hedge_pos", hedge_pos, queue_size=1)
+		self.node_name = rospy.get_name()
 		self.x = 0.0
 		self.y = 0.0
-		self.x_std 	 = rospy.get_param("simulator/x_std")
-		self.y_std 	 = rospy.get_param("simulator/y_std")
-		self.n_bound = rospy.get_param("simulator/n_bound")
+		self.x_std 	 = rospy.get_param(self.node_name + "/x_std")
+		self.y_std 	 = rospy.get_param(self.node_name + "/y_std")
+		self.n_bound = rospy.get_param(self.node_name + "/n_bound")
 
 		self.msg = hedge_pos()
 		self.counter  = 0
@@ -283,9 +286,10 @@ class GpsClass(object):
 class EncClass(object):
 	def __init__(self):
 		self.pub  = rospy.Publisher("vel_est", Vel_est, queue_size=1)
+		self.node_name = rospy.get_name()
 		self.v = 0.0
-		self.v_std 	 = rospy.get_param("simulator/v_std")
-		self.n_bound = rospy.get_param("simulator/n_bound")
+		self.v_std 	 = rospy.get_param(self.node_name + "/v_std")
+		self.n_bound = rospy.get_param(self.node_name + "/n_bound")
 
 		self.msg = Vel_est()
 
