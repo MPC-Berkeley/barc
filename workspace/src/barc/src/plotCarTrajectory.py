@@ -30,10 +30,10 @@ def main():
     rospy.init_node("realTimePlotting")
     StateView = False
 
-    mode = rospy.get_param("/control/mode")
+    mode = rospy.get_param("/control_1/mode")
     plotGPS = rospy.get_param("/visualization/plotGPS")
-    vSwitch      = rospy.get_param("/state_estimator/vSwitch")       # 1.0
-    psiSwitch    = rospy.get_param("/state_estimator/psiSwitch")       # 0.5 * 2.0
+    vSwitch      = rospy.get_param("/state_estimator_1/vSwitch")       # 1.0
+    psiSwitch    = rospy.get_param("/state_estimator_1/psiSwitch")       # 0.5 * 2.0
 
     data_agent_1 = EstimationAndMesuredData(mode, plotGPS, "agent_1/")        
     data_agent_2 = EstimationAndMesuredData(mode, plotGPS, "agent_2/")        

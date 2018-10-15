@@ -33,10 +33,10 @@ from tf import transformations
 
 def main():
     rospy.init_node("simulator")
-	node_name = rospy.get_name()
-	gps_freq_update = rospy.get_param(node_name + "/gps_freq_update")
-	simulator_dt = rospy.get_param(node_name + "/dt")
-	lowLevelDyn = rospy.get_param(node_name + "/lowLevelDyn")
+    node_name = rospy.get_name()
+    gps_freq_update = rospy.get_param(node_name + "/gps_freq_update")
+    simulator_dt = rospy.get_param(node_name + "/dt")
+    lowLevelDyn = rospy.get_param(node_name + "/lowLevelDyn")
 
     print "Low Level Dynamics is active: ", lowLevelDyn
         
