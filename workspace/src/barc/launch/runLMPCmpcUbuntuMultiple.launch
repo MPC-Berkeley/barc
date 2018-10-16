@@ -42,7 +42,7 @@
     <!-- AGENT 1 NODES -->
 
     <!-- LOW LEVEL CONTROLLER -->
-    <node machine="odroid_1" pkg="barc" type="controllerLowLevel.py" name="low_level_controller_1" >
+    <node machine="odroid_1" pkg="barc" type="controllerLowLevelMultiple.py" name="low_level_controller_1" >
         <param name="car" type="str" value="NewBARC" />
         <remap from="ecu" to="agent_1/ecu"/>
         <remap from="ecu_pwm" to="agent_1/ecu_pwm"/>
@@ -55,9 +55,9 @@
     </node>
 
     <!-- Estimator -->
-    <node machine="this-pc" pkg="barc" type="stateEstimatorMultiple.py" name="state_estimator" output="screen">
+    <node machine="odroid_1" pkg="barc" type="stateEstimatorMultiple.py" name="state_estimator_1" output="screen">
     <!-- delay in state estuiamtor -->
-        <param name="beacon" type="int" value="26" />
+        <param name="beacon" type="int" value="16" />
         <param name="delay_df" type="double" value="0.0" />
         <param name="delay_a" type="double" value="0.0" />
         <!-- ekf properties -->
@@ -165,7 +165,7 @@
 
     <!-- AGENT 2 NODEs --> 
 
-    <node machine="odroid_2" pkg="barc" type="controllerLowLevel.py" name="low_level_controller_2" >
+    <node machine="odroid_2" pkg="barc" type="controllerLowLevelMultiple.py" name="low_level_controller_2" >
         <param name="car" type="str" value="NewBARC" />
         <remap from="ecu" to="agent_2/ecu"/>
         <remap from="ecu_pwm" to="agent_2/ecu_pwm"/>
@@ -178,9 +178,9 @@
     </node>
 
     <!-- Estimator -->
-    <node machine="this-pc" pkg="barc" type="stateEstimatorMultiple.py" name="state_estimator_2" output="screen">
+    <node machine="odroid_2" pkg="barc" type="stateEstimatorMultiple.py" name="state_estimator_2" output="screen">
     <!-- delay in state estuiamtor -->
-        <param name="beacon" type="int" value="16" />
+        <param name="beacon" type="int" value="26" />
         <param name="delay_df" type="double" value="0.0" />
         <param name="delay_a" type="double" value="0.0" />
         <!-- ekf properties -->

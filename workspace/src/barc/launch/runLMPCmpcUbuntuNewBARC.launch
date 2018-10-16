@@ -44,7 +44,7 @@
     </node>
 
     <!-- Estimator -->
-    <node machine="odroid" pkg="barc" type="stateEstimator.py" name="state_estimator" output="screen">
+    <node machine="odroid" pkg="barc" type="stateEstimator.py" name="state_estimator_1" output="screen">
     <!-- delay in state estuiamtor -->
         <param name="delay_df" type="double" value="0.0" />
         <param name="delay_a" type="double" value="0.0" />
