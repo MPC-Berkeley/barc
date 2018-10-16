@@ -46,47 +46,48 @@ def srvOutput2Angle(fbk_srv):
 def main():
     # node initialization
     rospy.init_node("state_estimation")
+    node_name = rospy.get_name()
     a_delay     = 0.0
     df_delay    = 0.0
     loop_rate   = 100.0
    	
     # Tuning for estimator at high speed
     Q_hs = eye(7)
-    Q_hs[0,0]  =  rospy.get_param("/state_estimator/Qx_hs") # 0.5     # x
-    Q_hs[1,1]  =  rospy.get_param("/state_estimator/Qy_hs") # 0.5     # y
-    Q_hs[2,2]  =  rospy.get_param("/state_estimator/Qvx_hs") #10.0     # vx
-    Q_hs[3,3]  =  rospy.get_param("/state_estimator/Qvy_hs") #10.0     # vy
-    Q_hs[4,4]  =  rospy.get_param("/state_estimator/Qax_hs") #1.0      # ax
-    Q_hs[5,5]  =  rospy.get_param("/state_estimator/Qay_hs") #1.0      # ay 
-    Q_hs[6,6]  =  rospy.get_param("/state_estimator/Qpsi_hs") #10 + 80.0      # psi
+    Q_hs[0,0]  =  rospy.get_param(node_name + "/Qx_hs") # 0.5     # x
+    Q_hs[1,1]  =  rospy.get_param(node_name + "/Qy_hs") # 0.5     # y
+    Q_hs[2,2]  =  rospy.get_param(node_name + "/Qvx_hs") #10.0     # vx
+    Q_hs[3,3]  =  rospy.get_param(node_name + "/Qvy_hs") #10.0     # vy
+    Q_hs[4,4]  =  rospy.get_param(node_name + "/Qax_hs") #1.0      # ax
+    Q_hs[5,5]  =  rospy.get_param(node_name + "/Qay_hs") #1.0      # ay 
+    Q_hs[6,6]  =  rospy.get_param(node_name + "/Qpsi_hs") #10 + 80.0      # psi
     R_hs = eye(6)
-    R_hs[0,0]  = rospy.get_param("/state_estimator/Rx_hs")      # 10 + 40.0      # x
-    R_hs[1,1]  = rospy.get_param("/state_estimator/Ry_hs")      #10 + 40.0      # y
-    R_hs[2,2]  = rospy.get_param("/state_estimator/Rvx_hs")     # 0.1      # vx
-    R_hs[3,3]  = rospy.get_param("/state_estimator/Rax_hs")     #30 + 10.0      # ax 
-    R_hs[4,4]  = rospy.get_param("/state_estimator/Ray_hs")     #40.0      # ay 
-    R_hs[5,5]  = rospy.get_param("/state_estimator/Rvy_hs")     # 0.01    # vy
+    R_hs[0,0]  = rospy.get_param(node_name + "/Rx_hs")      # 10 + 40.0      # x
+    R_hs[1,1]  = rospy.get_param(node_name + "/Ry_hs")      #10 + 40.0      # y
+    R_hs[2,2]  = rospy.get_param(node_name + "/Rvx_hs")     # 0.1      # vx
+    R_hs[3,3]  = rospy.get_param(node_name + "/Rax_hs")     #30 + 10.0      # ax 
+    R_hs[4,4]  = rospy.get_param(node_name + "/Ray_hs")     #40.0      # ay 
+    R_hs[5,5]  = rospy.get_param(node_name + "/Rvy_hs")     # 0.01    # vy
 
     # Tuning for estimator at low speed
     Q_ls = eye(7)
-    Q_ls[0,0]  =  rospy.get_param("/state_estimator/Qx_ls") # 0.5     # x
-    Q_ls[1,1]  =  rospy.get_param("/state_estimator/Qy_ls") #0.5     # y
-    Q_ls[2,2]  =  rospy.get_param("/state_estimator/Qvx_ls") #10.0     # vx
-    Q_ls[3,3]  =  rospy.get_param("/state_estimator/Qvy_ls") #10.0     # vy
-    Q_ls[4,4]  =  rospy.get_param("/state_estimator/Qax_ls") #1.0      # ax
-    Q_ls[5,5]  =  rospy.get_param("/state_estimator/Qay_ls") #1.0      # ay 
-    Q_ls[6,6]  =  rospy.get_param("/state_estimator/Qpsi_ls") #10 + 80.0      # psi
+    Q_ls[0,0]  =  rospy.get_param(node_name + "/Qx_ls") # 0.5     # x
+    Q_ls[1,1]  =  rospy.get_param(node_name + "/Qy_ls") #0.5     # y
+    Q_ls[2,2]  =  rospy.get_param(node_name + "/Qvx_ls") #10.0     # vx
+    Q_ls[3,3]  =  rospy.get_param(node_name + "/Qvy_ls") #10.0     # vy
+    Q_ls[4,4]  =  rospy.get_param(node_name + "/Qax_ls") #1.0      # ax
+    Q_ls[5,5]  =  rospy.get_param(node_name + "/Qay_ls") #1.0      # ay 
+    Q_ls[6,6]  =  rospy.get_param(node_name + "/Qpsi_ls") #10 + 80.0      # psi
     R_ls = eye(6)
-    R_ls[0,0]  = rospy.get_param("/state_estimator/Rx_ls")       # 10 + 40.0      # x
-    R_ls[1,1]  = rospy.get_param("/state_estimator/Ry_ls")       # 10 + 40.0      # y
-    R_ls[2,2]  = rospy.get_param("/state_estimator/Rvx_ls")      # 0.1      # vx
-    R_ls[3,3]  = rospy.get_param("/state_estimator/Rax_ls")      # 30 + 10.0      # ax 
-    R_ls[4,4]  = rospy.get_param("/state_estimator/Ray_ls")      # 40.0      # ay 
-    R_ls[5,5]  = rospy.get_param("/state_estimator/Rvy_ls")      #  0.01    # vy    
+    R_ls[0,0]  = rospy.get_param(node_name + "/Rx_ls")       # 10 + 40.0      # x
+    R_ls[1,1]  = rospy.get_param(node_name + "/Ry_ls")       # 10 + 40.0      # y
+    R_ls[2,2]  = rospy.get_param(node_name + "/Rvx_ls")      # 0.1      # vx
+    R_ls[3,3]  = rospy.get_param(node_name + "/Rax_ls")      # 30 + 10.0      # ax 
+    R_ls[4,4]  = rospy.get_param(node_name + "/Ray_ls")      # 40.0      # ay 
+    R_ls[5,5]  = rospy.get_param(node_name + "/Rvy_ls")      #  0.01    # vy    
 
-    thReset      = rospy.get_param("/state_estimator/thReset")       # 0.4
-    vSwitch      = rospy.get_param("/state_estimator/vSwitch")       # 1.0
-    psiSwitch    = rospy.get_param("/state_estimator/psiSwitch")       # 0.5 * 2.0
+    thReset      = rospy.get_param(node_name + "/thReset")       # 0.4
+    vSwitch      = rospy.get_param(node_name + "/vSwitch")       # 1.0
+    psiSwitch    = rospy.get_param(node_name + "/psiSwitch")       # 0.5 * 2.0
 
 
     # Q = eye(7)
