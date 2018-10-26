@@ -63,7 +63,7 @@ def main():
     
     # Choose Controller and Number of Laps
 
-    PickController = "TI_MPC"
+    PickController = rospy.get_param(node_name + "/control_mode")
     NumberOfLaps   = 40
     vt = 1.2
     PathFollowingLaps = 2
