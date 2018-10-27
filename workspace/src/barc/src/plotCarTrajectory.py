@@ -46,7 +46,7 @@ def main():
     if StateView == True:
         fig, linevx, linevy, linewz, lineepsi, lineey, line_tr, line_pred, rec_agent_2 = _initializeFigure(map)
     else:
-        fig, axtr, line_tr, line_pred, line_SS, line_cl, line_gps_cl, rec, rec_sim, rec_agent_2 = _initializeFigure_xy(map, mode)
+        fig, axtr, line_tr, line_pred, line_pred2, line_SS, line_cl, line_gps_cl, rec, rec_sim, rec_agent_2 = _initializeFigure_xy(map, mode)
 
     ClosedLoopTraj_gps_x = []
     ClosedLoopTraj_gps_y = []
@@ -94,8 +94,6 @@ def main():
                     eyPred   = data_agent_1.ey[j]
                     epsiPred = data_agent_1.epsi[j]
                     xPredicted[j], yPredicted[j] = map.getGlobalPosition(sPred, eyPred)
-                # print "sPred is: ", sPred
-                # print "eyPred is: ", eyPred
                 line_pred.set_data(xPredicted, yPredicted)
 
         if data_agent_1.SSx != []:            
@@ -135,6 +133,17 @@ def main():
         car_x_agent_2, car_y_agent_2 = getCarPosition(x_agent_2, y_agent_2, psi_agent_2, w, l)
         rec_agent_2.set_xy(np.array([car_x_agent_2, car_y_agent_2]).T)
 
+        if (data_agent_2.s != []):
+            if (data_agent_2.s > 0) :
+                xPredicted2 = np.zeros((len(data_agent_2.s), 1))
+                yPredicted2 = np.zeros((len(data_agent_2.s), 1))
+                for j in range(0, len(data_agent_2.s)):
+                    sPred2    = data_agent_2.s[j]
+                    eyPred2   = data_agent_2.ey[j]
+                    epsiPred2 = data_agent_2.epsi[j]
+                    xPredicted2[j], yPredicted2[j] = map.getGlobalPosition(sPred2, eyPred2)
+                line_pred2.set_data(xPredicted2, yPredicted2)
+
         maxVx = np.maximum(maxVx, estimatedStates[0])
         flagVy = (estimatedStates[0] > vSwitch or np.abs(estimatedStates[2]) > psiSwitch) == False
         StringValue = "vx: "+str(estimatedStates[0])+" max vx: "+str(maxVx)+" psiDot: "+str(estimatedStates[2])+" Use vy: "+str(flagVy)
@@ -168,7 +177,10 @@ class EstimationAndMesuredData():
         if plotGPS == True:
             rospy.Subscriber(car_selected + "hedge_pos", hedge_pos, self.gps_callback)
         rospy.Subscriber(car_selected + "pos_info", pos_info, self.pos_info_callback)
-        rospy.Subscriber(car_selected + "OL_predictions", prediction, self.prediction_callback)
+        if car_selected == "agent_2/":
+            rospy.Subscriber("agent_1/other_agent_predictions", prediction, self.prediction_callback)
+        else: 
+            rospy.Subscriber(car_selected + "OL_predictions", prediction, self.prediction_callback)
         rospy.Subscriber(car_selected + 'SS', SafeSetGlob, self.SS_callback)
 
         self.s    = []
@@ -237,6 +249,7 @@ def _initializeFigure_xy(map, mode):
     line_tr, = axtr.plot(xdata, ydata, '-or')
     line_SS, = axtr.plot(xdata, ydata, 'og')
     line_pred, = axtr.plot(xdata, ydata, '-or')
+    line_pred2, = axtr.plot(xdata, ydata, '-ok')
     
     v = np.array([[ 1.,  1.],
                   [ 1., -1.],
@@ -256,7 +269,7 @@ def _initializeFigure_xy(map, mode):
 
     plt.show()
 
-    return fig, axtr, line_tr, line_pred, line_SS, line_cl, line_gps_cl, rec, rec_sim, rec_agent_2
+    return fig, axtr, line_tr, line_pred, line_pred2, line_SS, line_cl, line_gps_cl, rec, rec_sim, rec_agent_2
 
 
 def _initializeFigure(map):

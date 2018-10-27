@@ -29,10 +29,11 @@ def main():
 	olSub = rospy.Subscriber(this_agent + "/OL_predictions", prediction,  traj_predictor.OLcallback)
 	trajSub = rospy.Subscriber(other_agent + "/pos_info", pos_info, traj_collector.posCallback)
 
-	pub = rospy.Publisher(node_name + "/stuff", prediction, queue_size=1)
+	pub = rospy.Publisher(this_agent + "/other_agent_predictions", prediction, queue_size=1)
 	# subscribe to stuff
 	# publish inequality constraints
 	startTime = time.time()
+	other_pred = prediction()
 
 	while(not rospy.is_shutdown()):
 
@@ -41,8 +42,12 @@ def main():
 			startTime = time.time()
 			# Collect trajectories from the other car
 			traj_collector.updateTrajectories()
-			if traj_collector.lap_num >= 1: 
+			if traj_collector.lap_num >= 2: 
 				pred = traj_collector.getPrediction(traj_predictor.horizon)
+				other_pred.s = pred[0,:]
+				other_pred.ey = pred[1,:]
+				other_pred.epsi = pred[2,:]
+				pub.publish(other_pred)
 			
 
 			# take collected tragectories from other car
