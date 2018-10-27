@@ -243,6 +243,7 @@
     <node pkg="barc" type="predictor.py" name="predictor" output="screen">
         <param name="this_agent" type="str" value="agent_1"/>
         <param name="other_agent" type="str" value= "agent_2"/>
+        <param name="frequency" type="double" value="10" />
     </node>
 
 <!--     <node pkg="rosbag" type="record" name="record" output="screen" args="-a"/> -->
