@@ -2,6 +2,7 @@
 
 import os
 import sys
+import copy
 sys.path.append(sys.path[0]+'/ControllersObject')
 sys.path.append(sys.path[0]+'/Utilities')
 import numpy as np
@@ -42,6 +43,7 @@ def main():
 			traj_collector.updateTrajectories()
 			if traj_collector.lap_num >= 1: 
 				pred = traj_collector.getPrediction(traj_predictor.horizon)
+			
 
 			# take collected tragectories from other car
 			# take current state from other car
@@ -90,7 +92,7 @@ class Trajectory:
 			self.first_quad_flag = False
 			self.lap_num += 1
 			# create new lap
-			self.most_recent_trajectory = self.current_trajectory
+			self.most_recent_trajectory = copy.copy(self.current_trajectory)
 			self.current_trajectory = []
 			self.current_trajectory.append(state)			
 
@@ -100,14 +102,14 @@ class Trajectory:
 
 			if state[0] >= self.track.TrackLength / 4 and self.first_quad_flag == False: 
 				self.first_quad_flag = True
-				self.first_quad_traj = self.current_trajectory
+				self.first_quad_traj = copy.copy(self.current_trajectory)
 
 			if state[0] >= self.track.TrackLength / 2 and self.half_flag == False: 
 				self.half_flag = True
 
 	def getTrajectory(self):
 		s = self.getCurrentPosition()[0] 
-		if s >= self.track.TrackLength * (3/4): 
+		if s >= self.track.TrackLength * (0.75): 
 			traj = self.most_recent_trajectory + self.first_quad_traj
 			return traj
 		else:
@@ -121,10 +123,12 @@ class Trajectory:
 		start_index = np.argmin(norms)
 		traj = np.transpose(traj)
 		pred = traj[:, start_index + 1 :start_index + horizon +1]
-		print("number of states in traj = " + str(traj.shape))
-		print("index bounds = " + str(start_index) + ", " + str(start_index + horizon))
-		print("shape of prediction array" + str(pred.shape))
-		print("horizon length in pred = " + str(horizon))
+		# print("number of states in traj = " + str(traj.shape))
+		# print("index bounds = " + str(start_index) + ", " + str(start_index + horizon))
+		# print("shape of prediction array" + str(pred.shape))
+		# print("horizon length in pred = " + str(horizon))
+		# if pred.shape[1] == 0:
+		# 	print("BOOOOO!!!!")
 		return pred
 
 if __name__ == "__main__":
