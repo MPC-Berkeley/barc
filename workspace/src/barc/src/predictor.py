@@ -47,15 +47,7 @@ def main():
 				other_pred.s = pred[0,:]
 				other_pred.ey = pred[1,:]
 				other_pred.epsi = pred[2,:]
-				pub.publish(other_pred)
-			
-
-			# take collected tragectories from other car
-			# take current state from other car
-			# work out predicted trajectory
-
-			# Get open loop predicted trajectory
-			# formulate box constraints based on predicted trajectory 
+				pub.publish(other_pred) 
 
 
 class Predictor:
@@ -127,7 +119,7 @@ class Trajectory:
 		norms = np.linalg.norm(traj - state, axis = 1)
 		start_index = np.argmin(norms)
 		traj = np.transpose(traj)
-		pred = traj[:, start_index + 1 :start_index + horizon +1]
+		pred = traj[:, start_index + 1 :start_index + horizon]
 		# print("number of states in traj = " + str(traj.shape))
 		# print("index bounds = " + str(start_index) + ", " + str(start_index + horizon))
 		# print("shape of prediction array" + str(pred.shape))

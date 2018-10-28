@@ -19,10 +19,9 @@ import pdb
 import sys
 import pickle
 from utilities import Regression
-from dataStructures import LMPCprediction, EstimatorData, ClosedLoopDataObj
+from dataStructures import LMPCprediction, EstimatorData, ClosedLoopDataObj, AvoidanceTrajectory
 from PathFollowingLTI_MPC import PathFollowingLTI_MPC
 from PathFollowingLTVMPC import PathFollowingLTV_MPC
-from dataStructures import LMPCprediction, EstimatorData, ClosedLoopDataObj
 from LMPC import ControllerLMPC
 from ZeroStepLMPC import ControllerZeroStepLMPC
 import time
@@ -58,6 +57,8 @@ def main():
     ClosedLoopData = ClosedLoopDataObj(0.1, 6000, 0)         # Closed-Loop Data
     estimatorData  = EstimatorData()
     map = Map()                                              # Map
+    
+    avoidanceTrajectory = AvoidanceTrajectory.setHorizon(12).setCarSize(0.25, 0.15).setSafeZone(2).setTrackWidth(map.halfWidth)
 
     print "Track Length: ", map.TrackLength 
     

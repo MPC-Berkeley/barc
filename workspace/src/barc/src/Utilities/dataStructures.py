@@ -35,6 +35,7 @@ class EstimatorData(object):
         """
         self.CurrentState = [msg.v_x, msg.v_y, msg.psiDot, msg.psi, msg.x, msg.y]
         self.CurrentAppliedSteeringInput = msg.u_df
+
 class ClosedLoopDataObj():
     """Object collecting closed loop data points
     Attributes:
@@ -87,4 +88,60 @@ class ClosedLoopDataObj():
         self.sysIDTime[self.SimTime, :]   = sysIDTime
         self.contrTime[self.SimTime, :]   = contrTime
         self.measSteering[self.SimTime, :]      = measSteering
+
+class AvoidanceTrajectory():
+    def __init__(self):
+        rospy.Subscriber("other_agent_predicitons", prediction, self.traj_callback)
+        self.s = []
+        self.ey = []
+        self.epsi = []
+        self.length = 0.3
+        self.width = 0.15
+        self.safeZone = 2
+        self.trackWidth = 1
+        self.N = N
+
+    def setHorizon(self, N): 
+        self.N = N
+        return self
+
+    def setCarSize(self, length, width):
+        self.length = length
+        self.width = width
+        return self 
+
+    def setSafeZone(self, carWidths): 
+        self.safeZone = carWidths
+        return self
+
+    def setTrackWidth(self, trackWidth):
+        self.trackWidth = trackWidth
+        return self
+
+    def traj_callback(self, traj_msg): 
+        self.s = traj_msg.s
+        self.ey = traj_msg.ey
+        self.epsi = traj_msg.epsi
+
+    def computeConstraints(self, s, ey, epsi):
+        bx = []
+        if self.s[0] > s and np.norm(self.s[0] - s) <= self.safeZone*self.length: 
+            # add collision constraints
+            for i in range(N):
+                ey = self.ey[i]
+                if ey >= 0: 
+                    upBound = ey - self.width/2
+                    lowBound = self.trackWidth
+                else: 
+                    upBound = self.trackWidth
+                    lowBound = -1.0 * (ey + self.width/2)
+                bx.append(np.array([[upBound], [lowBound]]))
+        else: 
+            # add box track constraints
+            for i in range(N):
+                bx.append(np.array([[self.trackWidth], [self.trackWidth]]))
+
+        bx = np.vstack(bx)
+        return bx
+
 
