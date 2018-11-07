@@ -42,7 +42,7 @@ def main():
 			startTime = time.time()
 			# Collect trajectories from the other car
 			traj_collector.updateTrajectories()
-			if traj_collector.lap_num >= 2: 
+			if traj_collector.lap_num >= 1: 
 				pred = traj_collector.getPrediction(traj_predictor.horizon)
 				other_pred.s = pred[0,:]
 				other_pred.ey = pred[1,:]

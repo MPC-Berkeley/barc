@@ -94,7 +94,9 @@ class ControllerLMPC():
         # self.p = Pool(4)
 
         # Build matrices for inequality constraints
-        self.F, self.b = _LMPC_BuildMatIneqConst(self)
+        bx = np.array([[self.halfWidth],   # max ey
+                     [self.halfWidth]])  # min ey
+        self.F, self.b = _LMPC_BuildMatIneqConst(self, np.tile(np.squeeze(bx), N))
 
         self.LapTime = 0.0
 
@@ -116,7 +118,7 @@ class ControllerLMPC():
     def resetTime(self):
         self.LapTime = 0.0
 
-    def solve(self, x0, uOld = np.zeros([0, 0])):
+    def solve(self, x0 ,bx, uOld = np.zeros([0, 0])):
         """Computes control action
         Arguments:
             x0: current state position
@@ -135,6 +137,8 @@ class ControllerLMPC():
         LinPoints    = self.LinPoints
         LinInput     = self.LinInput
         map          = self.map
+
+        self.F, self.b = _LMPC_BuildMatIneqConst(self,bx)
 
         # Select laps from SS based on LapTime, always keep the last lap
         sortedLapTime = np.argsort(self.Qfun[0, 0:it])
@@ -433,7 +437,7 @@ def _LMPC_BuildMatCost(LMPC):
 
     return M_return, q
 
-def _LMPC_BuildMatIneqConst(LMPC):
+def _LMPC_BuildMatIneqConst(LMPC, bx):
     N = LMPC.N
     n = LMPC.n
     numSS_Points = LMPC.numSS_Points
@@ -441,8 +445,8 @@ def _LMPC_BuildMatIneqConst(LMPC):
     Fx = np.array([[0., 0., 0., 0., 0.,  1.],
                    [0., 0., 0., 0., 0., -1.]])
 
-    bx = np.array([[LMPC.halfWidth],   # max ey
-                   [LMPC.halfWidth]])  # min ey
+    # bx = np.array([[LMPC.halfWidth],   # max ey
+    #                [LMPC.halfWidth]])  # min ey
 
     # Buil the matrices for the input constraint in each region. In the region i we want Fx[i]x <= bx[b]
     Fu = np.array([[ 1.,  0.],
@@ -463,7 +467,8 @@ def _LMPC_BuildMatIneqConst(LMPC):
     Mat = linalg.block_diag(*rep_a)
     NoTerminalConstr = np.zeros((np.shape(Mat)[0], n))  # No need to constraint also the terminal point
     Fxtot = np.hstack((Mat, NoTerminalConstr))
-    bxtot = np.tile(np.squeeze(bx), N)
+    # bxtot = np.tile(np.squeeze(bx), N)
+    bxtot = np.squeeze(bx)
 
     # Let's start by computing the submatrix of F relates with the input
     rep_b = [Fu] * (N)
@@ -487,7 +492,7 @@ def _LMPC_BuildMatIneqConst(LMPC):
     # This has hard constraints on the lane boundaries
     # Opt Variables: [x, u, lambda, slackTermConstr]
     FslackSS = np.zeros((F_StateInputSS.shape[0], n))
-    F_hard = np.hstack((F_StateInputSS, FslackSS))     
+    F_hard = np.hstack((F_StateInputSS, FslackSS))  
     b_hard = np.hstack((bxtot, butot, np.zeros(numSS_Points)))
 
     # KEEP CLEAN UP

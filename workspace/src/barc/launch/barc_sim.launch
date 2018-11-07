@@ -6,7 +6,7 @@
     <param name="L_b" type="double" value="0.125" />
     <param name="m" type="double" value="1.98" />
     <param name="I_z" type="double" value="0.03" />
-    <param name="W" type="double" value="0.15"
+    <param name="W" type="double" value="0.15" />
         
     <!-- Track parameters -->
     <!-- <param name="trackShape" type="str" value="L_shape" /> -->
@@ -227,7 +227,7 @@
         <remap from="ecu" to="agent_1/ecu" />
         <remap from="SS" to="agent_1/SS" />
         <remap from="OL_predictions" to="agent_1/OL_predictions" />
-        <remap from="other_agent_predictions" to="agent1/other_agent_predictions" />
+        <remap from="other_agent_predictions" to="agent_1/other_agent_predictions" />
     </node>
 
      <!-- CONTROL -->

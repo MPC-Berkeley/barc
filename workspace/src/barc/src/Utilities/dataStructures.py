@@ -90,33 +90,16 @@ class ClosedLoopDataObj():
         self.measSteering[self.SimTime, :]      = measSteering
 
 class AvoidanceTrajectory():
-    def __init__(self):
-        rospy.Subscriber("other_agent_predicitons", prediction, self.traj_callback)
+    def __init__(self, N, length, width, carWidths, trackWidth):
+        rospy.Subscriber("other_agent_predictions", prediction, self.traj_callback)
         self.s = []
         self.ey = []
         self.epsi = []
-        self.length = 0.3
-        self.width = 0.15
-        self.safeZone = 2
-        self.trackWidth = 1
-        self.N = N
-
-    def setHorizon(self, N): 
-        self.N = N
-        return self
-
-    def setCarSize(self, length, width):
         self.length = length
         self.width = width
-        return self 
-
-    def setSafeZone(self, carWidths): 
         self.safeZone = carWidths
-        return self
-
-    def setTrackWidth(self, trackWidth):
         self.trackWidth = trackWidth
-        return self
+        self.N = N
 
     def traj_callback(self, traj_msg): 
         self.s = traj_msg.s
@@ -125,20 +108,20 @@ class AvoidanceTrajectory():
 
     def computeConstraints(self, s, ey, epsi):
         bx = []
-        if self.s[0] > s and np.norm(self.s[0] - s) <= self.safeZone*self.length: 
+        if len(self.s) > 0 and np.linalg.norm(self.s[0] - s) <= self.safeZone*self.length: 
             # add collision constraints
-            for i in range(N):
-                ey = self.ey[i]
-                if ey >= 0: 
-                    upBound = ey - self.width/2
+            for i in range(self.N):
+                eyO = self.ey[i]
+                if eyO >= ey: 
+                    upBound = eyO - self.width/2
                     lowBound = self.trackWidth
                 else: 
                     upBound = self.trackWidth
-                    lowBound = -1.0 * (ey + self.width/2)
+                    lowBound = -1.0 * (eyO + self.width/2)
                 bx.append(np.array([[upBound], [lowBound]]))
         else: 
             # add box track constraints
-            for i in range(N):
+            for i in range(self.N):
                 bx.append(np.array([[self.trackWidth], [self.trackWidth]]))
 
         bx = np.vstack(bx)

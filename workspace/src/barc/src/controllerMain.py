@@ -58,7 +58,7 @@ def main():
     estimatorData  = EstimatorData()
     map = Map()                                              # Map
     
-    avoidanceTrajectory = AvoidanceTrajectory.setHorizon(12).setCarSize(0.25, 0.15).setSafeZone(2).setTrackWidth(map.halfWidth)
+    avoidanceTrajectory = AvoidanceTrajectory(12, 1, .8, 3, map.halfWidth)
 
     print "Track Length: ", map.TrackLength 
     
@@ -248,7 +248,11 @@ def main():
                 oneStepPrediction, oneStepPredictionTime = Controller.oneStepPrediction(LocalState, uAppliedDelay, 0)
                 
                 startTimer = datetime.datetime.now()
-                Controller.solve(oneStepPrediction)
+                if PickController == "LMPC":
+                    Controller.solve(oneStepPrediction, avoidanceTrajectory.computeConstraints(LocalState[4], LocalState[5], LocalState[3]))
+                else:
+                    Controller.solve(oneStepPrediction)
+
                 endTimer = datetime.datetime.now(); deltaTimer = endTimer - startTimer
                 if PickController == "LMPC":
                     cmd.servo = Controller.uPred[0 + Controller.steeringDelay, 0]
