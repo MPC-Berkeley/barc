@@ -232,7 +232,7 @@
 
      <!-- CONTROL -->
     <node pkg="barc" type="controllerMain.py" name="control_2" output="screen">
-        <param name="control_mode" type="str" value="TI_MPC"/>
+        <param name="control_mode" type="str" value="PID"/>
         <param name="mode" type="str" value="simulations" />
         <param name="saveData" type="bool" value="false" />
         <param name="car" type="str" value="NewBARC" />

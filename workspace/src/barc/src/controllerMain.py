@@ -397,7 +397,7 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
         Laps       = NumberOfLaps+2   # Total LMPC laps
         # Safe Set Parameters
         flag_LTV = True
-        TimeLMPC   = 70              # Simulation time
+        TimeLMPC   = 700              # Simulation time
         LMPC_Solver = "OSQP"          # Can pick CVX for cvxopt or OSQP. For OSQP uncomment line 14 in LMPC.py
         SysID_Solver = "scipy"        # Can pick CVX, OSQP or scipy. For OSQP uncomment line 14 in LMPC.py  
         numSS_it = 2                  # Number of trajectories used at each iteration to build the safe set

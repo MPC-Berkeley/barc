@@ -122,13 +122,21 @@
     <!-- LMPC CONTROL -->
     <node machine="this-pc" pkg="barc" type="controllerMain.py" name="control_1" output="screen">
         <param name="mode" type="str" value="experiments" />
-        <param name="control_mode" type="str" value="TI_MPC"/>
+        <param name="control_mode" type="str" value="LMPC"/>
         <param name="saveData" type="bool" value="true" />
         <param name="car" type="str" value="OldBARC" />
         <remap from="pos_info" to="agent_1/pos_info" />
         <remap from="ecu_LMPC" to="agent_1/ecu_LMPC" />
+        <remap from="SS" to="agent_1/SS" />
+        <remap from="OL_predictions" to="agent_1/OL_predictions" />
+        <remap from="other_agent_predictions" to="agent_1/other_agent_predictions" />
     </node>
 
+    <node machine="this-pc" pkg="barc" type="predictor.py" name="predictor" output="screen">
+        <param name="this_agent" type="str" value="agent_1"/>
+        <param name="other_agent" type="str" value= "agent_2"/>
+        <param name="frequency" type="double" value="10" />
+    </node>
 
     <!-- IMU -->
     <node machine="odroid_1" pkg="myahrs_driver" type="myahrs_driver" name="myahrs_driver_1">
@@ -251,6 +259,8 @@
         <param name="car" type="str" value="OldBARC" />
         <remap from="pos_info" to="agent_2/pos_info" />
         <remap from="ecu_LMPC" to="agent_2/ecu_LMPC" />
+        <remap from="SS" to="agent_2/SS" />
+        <remap from="OL_predictions" to="agent_2/OL_predictions" />
     </node>
 
     <node machine="odroid_2" pkg="xsens_driver" type="mtnode.py" name="xsens_driver_2" output="screen" >
