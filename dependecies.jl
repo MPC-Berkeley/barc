@@ -40,6 +40,8 @@ Pkg.add("Distances")
 # Enable the use of ROS in julia
 Pkg.add("RobotOS")
 Pkg.pin("RobotOS", v"0.4.2")
+# YAML-reader
+Pkg.add("YAML")
 
 
 

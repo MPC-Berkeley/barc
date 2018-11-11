@@ -1,0 +1,45 @@
+#    File name: config.yaml
+#    Author: Lukas Brunke
+#    Email: lukas.brunke@tuhh.de
+#    Julia Version: 0.4.7
+
+mode: path_following  # path_following, learning, racing
+
+# number of agents, 2 agents are needed for racing
+# num_agents: 1  # 1, 2
+
+# initialize with following a path on the center of the track, the inside of 
+# the track or the outside of the track
+initialization: center  # center, inner, outer
+
+# number of laps for path following
+num_pf_laps: 5
+# number of laps for learning and racing
+num_laps: 30
+
+# prediction length for the MPC 
+horizon: 10
+
+# number of laps considered in the creation of the safe set
+num_considered_laps: 4
+# number of states per lap considered in relation to the horizon
+num_horizons: 2.0
+
+# number of states added to the beginning and end of each lap
+num_states_buffer: 30
+# number of states taken into account for the system id before and after the 
+# current state
+sys_id_before: 15
+sys_id_after: 15
+
+maximum_num_iterations: 2000
+
+init_states: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+v_max: [2.0, 2.5]
+v_init: 1.2
+color: [red, blue]
+track_name: l_shape  # oval, l_shape
+track_width: 1.2
+
+focused_plot: False
+save_plots: False

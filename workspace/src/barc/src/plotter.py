@@ -19,14 +19,23 @@ import matplotlib.animation as animation
 import matplotlib as mpl
 import matplotlib.collections as collections
 import os
+import yaml
 import pdb
 
 from track import Track
 from transformations import rotate_around_z, s_to_xy, xy_to_s
 
-HORIZON = 10
-NUM_CONSIDERED_STATES = 100
-NUM_LAPS = 10
+
+dir_path = os.path.dirname(os.path.realpath(__file__))
+config_file = open(dir_path + "/config.yaml", "r")
+config = yaml.load(config_file)
+
+HORIZON = config["horizon"]
+NUM_CONSIDERED_LAPS = config["num_considered_laps"]
+NUM_HORIZONS = config["num_horizons"]
+NUM_CONSIDERED_STATES = int(round(NUM_HORIZONS * HORIZON)) * NUM_CONSIDERED_LAPS
+TRACK_NAME = config["track_name"]
+TRACK_WIDTH = config["track_width"]
 
 
 def set_transformation(axis, angle, translate):
@@ -509,14 +518,10 @@ class Plotter:
 if __name__ == "__main__":
     if not os.path.isdir("~/images"):
         os.makedirs("~/images")
-        
     try:
-
         rospy.init_node("plotting_stuff")
         colors = ["blue"]
-        # track = Track(ds=0.1, shape="test", width=1.2)
-        # track = Track(ds=0.1, shape="oval", width=1.2)
-        track = Track(ds=0.1, shape="l_shape", width=1.2)
+        track = Track(ds=0.1, shape=TRACK_NAME, width=TRACK_WIDTH)
         plotter = Plotter(track, colors)
 
         loop_rate = 20

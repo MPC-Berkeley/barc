@@ -32,10 +32,10 @@ ENV["HOME_DIR"] = <path_to_your_home_folder>
 ```
 
 ### Config file
-The config.jl file allows for multiple different settings. 
-* MODE: One of ["path_following", "learning", "racing"]
-* INITIALIZATION_TYPE: One of ["inner", "center", "outer"]
-* TRACK_NAME: One of ["oval", "l_shape"]
+The config.yaml file allows for multiple different settings. 
+* mode: One of ["path_following", "learning", "racing"]
+* initialization: One of ["inner", "center", "outer"]
+* track_name: One of ["oval", "l_shape"]
 
 ### Launch file
 The parameters delay_df and delay_a specifiy the delay for the steering and the acceleration in the controller and in the estimator. For the controller they are given in time steps (value="1") and for the estimator in seconds (value="0.1"). The parameters time_offset specify how long after the initialization the agent should wait before applying control inputs. This allows the two agents to start at different times. 
