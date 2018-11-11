@@ -135,7 +135,7 @@ function init!(agent::Agent, index::Int64, track::Track,
 			   maximum_num_iterations::Int64, horizon::Int64, num_laps::Int64, 
 			   num_considered_states::Int64, num_loaded_laps::Int64, 
 			   v_max::Float64, color::AbstractString)
-	node_name = get_name()
+	node_name = RobotOS.get_name()
 	agent.index = get_param(node_name * "/index")
 	# agent.index = index
 	agent.dt = 0.1  # TODO: define somewhere else!? maybe config file?

@@ -268,7 +268,7 @@ function add_segment!(track::Track, length::Float64, angle::Float64)
 	end_interval = start_interval + length
 	kappa = [(start_interval, end_interval), curvature]
 	if size(track.curvature, 1) == 0
-		track.curvature = [kappa]
+		track.curvature = collect(kappa)
 	else
 		track.curvature = [track.curvature kappa]
 	end

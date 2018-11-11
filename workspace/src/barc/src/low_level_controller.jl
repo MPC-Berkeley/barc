@@ -47,7 +47,7 @@ function pwm_converter!(low_level_controller::LowLevelController,
     # to pwm angle units (i.e. to send command signal to actuators)
     # convert desired steering angle to degrees, saturate based on input limits
 
-    node_name = get_name()[2 : end]
+    node_name = RobotOS.get_name()[2 : end]
 
     if node_name == "agent_1"
         # println("AGENT 1 STEERING!!!!")

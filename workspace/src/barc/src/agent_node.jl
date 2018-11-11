@@ -38,7 +38,7 @@ function race(num_laps::Int64)
 	# Initialize ROS node"
 	init_node("agent_node")
     # init_node("agent_node_" * string(agent.index))
-    node_name = get_name()
+    node_name = RobotOS.get_name()
 
 	# Initialization
 	init_states = INIT_STATES
@@ -167,7 +167,7 @@ function race(num_laps::Int64)
 		mkdir(month_day)
 	end
 
-	node_name = (get_name())[2 : end]
+	node_name = (RobotOs.get_name())[2 : end]
 	if MODE == "path_following"
 		save_trajectories(agent, ENV["HOME_DIR"] * "/barc/recordings/" * month_day * "/" * 
 								 hour_minute_second * "_" * node_name * 

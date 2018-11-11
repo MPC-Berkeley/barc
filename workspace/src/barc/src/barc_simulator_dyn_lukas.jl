@@ -96,7 +96,7 @@ function main()
     # modelParams.m   = copy(get_param("m"))
     # modelParams.I_z = copy(get_param("I_z"))
 
-    node_name = get_name()
+    node_name = RobotOS.get_name()
     if node_name[end] == "2"
         modelParams.m   = 1.75
     else
