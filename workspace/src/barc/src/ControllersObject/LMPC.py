@@ -145,6 +145,7 @@ class ControllerLMPC():
         # Select points to be used in LMPC as Terminal Constraint
         SS_PointSelectedTot      = np.empty((n, 0))
         Succ_SS_PointSelectedTot = np.empty((n, 0))
+        Succ_uSS_PointSelectedTot = np.empty((d, 0))
         SS_glob_PointSelectedTot = np.empty((n, 0))
         Qfun_SelectedTot         = np.empty((0))
 
@@ -152,9 +153,10 @@ class ControllerLMPC():
             self.zVector[4] = self.zVector[4] - map.TrackLength
 
         for jj in self.lapSelected[0:self.numSS_it]:
-            SS_PointSelected, SS_glob_PointSelected, Qfun_Selected = _SelectPoints(self, jj, self.zVector, numSS_Points / self.numSS_it + 1)
+            SS_PointSelected, uSS_PointSelected, SS_glob_PointSelected, Qfun_Selected = _SelectPoints(self, jj, self.zVector, numSS_Points / self.numSS_it + 1)
             SS_PointSelectedTot      =  np.append(SS_PointSelectedTot, SS_PointSelected[:,0:-1], axis=1)
-            Succ_SS_PointSelectedTot =  np.append(Succ_SS_PointSelectedTot, SS_PointSelected[:,0:-1], axis=1)
+            Succ_SS_PointSelectedTot =  np.append(Succ_SS_PointSelectedTot, SS_PointSelected[:,1:], axis=1)
+            Succ_uSS_PointSelectedTot=  np.append(Succ_uSS_PointSelectedTot, uSS_PointSelected[:,1:], axis=1)
             SS_glob_PointSelectedTot =  np.append(SS_glob_PointSelectedTot, SS_glob_PointSelected[:,0:-1], axis=1)
             Qfun_SelectedTot         =  np.append(Qfun_SelectedTot, Qfun_Selected[0:-1], axis=0)
 
@@ -201,6 +203,8 @@ class ControllerLMPC():
 
         # Extract solution and set linerizations points
         xPred, uPred, lambd, slack = _LMPC_GetPred(Solution, n, d, N, np)
+        self.zVector = np.dot(Succ_SS_PointSelectedTot, lambd)
+        self.uVector = np.dot(Succ_uSS_PointSelectedTot, lambd)
 
         self.xPred = xPred.T
         if self.N == 1:
@@ -208,10 +212,9 @@ class ControllerLMPC():
             self.LinInput =  np.array([[uPred[0], uPred[1]]])
         else:
             self.uPred = uPred.T
-            self.LinInput = np.vstack((uPred.T[1:, :], uPred.T[-1, :]))
+            self.LinInput = np.vstack((uPred.T[1:, :], self.uVector))
 
-        self.LinPoints = np.vstack((xPred.T[1:,:], xPred.T[-1,:]))
-        self.zVector = np.dot(Succ_SS_PointSelectedTot, lambd)
+        self.LinPoints = np.vstack((xPred.T[1:,:], self.zVector))
         # self.OldInput = uPred.T[0,:]
         
         # self.OldSteering.pop(0)
@@ -233,7 +236,7 @@ class ControllerLMPC():
         # print self.TimeSS[it], it 
         self.SS[0:(self.TimeSS[it] + 1), :, it] = ClosedLoopData.x[0:(self.TimeSS[it] + 1), :]
         self.SS_glob[0:(self.TimeSS[it] + 1), :, it] = ClosedLoopData.x_glob[0:(self.TimeSS[it] + 1), :]
-        self.uSS[0:(self.TimeSS[it]+ 1), :, it]      = ClosedLoopData.u[0:(self.TimeSS[it] + 1), :]
+        self.uSS[0:(self.TimeSS[it]), :, it]      = ClosedLoopData.u[0:(self.TimeSS[it]), :]
         self.Qfun[0:(self.TimeSS[it] + 1), it]  = _ComputeCost(ClosedLoopData.x[0:(self.TimeSS[it] + 1), :],
                                                                ClosedLoopData.u[0:(self.TimeSS[it]), :], self.map.TrackLength)
         for i in np.arange(0, self.Qfun.shape[0]):
@@ -257,14 +260,14 @@ class ControllerLMPC():
             u: current input
             i: at the j-th iteration i is the time at which (x,u) are recorded
         """
-        self.TimeSS[self.it - 1] = self.TimeSS[self.it - 1] + 1
         Counter = self.TimeSS[self.it - 1]
         self.SS[Counter, :, self.it - 1] = x + np.array([0, 0, 0, 0, self.map.TrackLength, 0])
         self.SS_glob[Counter, :, self.it - 1] = x_glob
         self.uSS[Counter, :, self.it - 1] = u
         if self.Qfun[Counter, self.it - 1] == 0:
             self.Qfun[Counter, self.it - 1] = self.Qfun[Counter + i - 1, self.it - 1] - 1        
-        
+        self.TimeSS[self.it - 1] = self.TimeSS[self.it - 1] + 1
+
     def update(self, SS, uSS, Qfun, TimeSS, it, LinPoints, LinInput):
         """update controller parameters. This function is useful to transfer information among LMPC controller
            with different tuning
@@ -537,27 +540,36 @@ def _LMPC_BuildMatIneqConst(LMPC):
 
 def _SelectPoints(LMPC, it, x0, numSS_Points):
     SS          = LMPC.SS
+    uSS         = LMPC.uSS
     SS_glob     = LMPC.SS_glob
     Qfun        = LMPC.Qfun
     xPred       = LMPC.xPred
     map         = LMPC.map
     TrackLength = map.TrackLength
     currIt      = LMPC.it
-    LapCounter  = LMPC.LapCounter
+    TimeSS  = LMPC.TimeSS
 
-    x = SS[0:(LapCounter[it]+20), :, it]
+    x = SS[0:TimeSS[it], :, it]
+    u = uSS[0:TimeSS[it], :, it]
     oneVec = np.ones((x.shape[0], 1))
     x0Vec = (np.dot(np.array([x0]).T, oneVec.T)).T
     diff = x - x0Vec
     norm = la.norm(diff, 1, axis=1)
     MinNorm = np.argmin(norm)
 
-    if (MinNorm - numSS_Points/2 >= 0):
+    if (MinNorm - numSS_Points/2 >= 0) and (MinNorm + numSS_Points/2 < TimeSS[it]):
         indexSSandQfun = range(-numSS_Points/2 + MinNorm, MinNorm + numSS_Points/2)
+    elif (MinNorm - numSS_Points/2 < 0):
+        indexSSandQfun = range(0,0 + numSS_Points)
     else:
-        indexSSandQfun = range(MinNorm,MinNorm + numSS_Points)
+        indexSSandQfun = range(TimeSS[it]-numSS_Points ,TimeSS[it])
+
 
     SS_Points = SS[indexSSandQfun, :, it].T
+    uSS_Points= uSS[indexSSandQfun, :, it].T
+    if uSS_Points[0,-1]<-10:
+        print "Error a point not yet assigned has been used"
+
     SS_glob_Points = SS_glob[indexSSandQfun, :, it].T
     Sel_Qfun = Qfun[indexSSandQfun, it]
 
@@ -575,7 +587,7 @@ def _SelectPoints(LMPC, it, x0, numSS_Points):
         currLapTime = LMPC.LapTime
         Sel_Qfun = Qfun[indexSSandQfun, it] + currLapTime + predCurrLap
 
-    return SS_Points, SS_glob_Points, Sel_Qfun
+    return SS_Points, uSS_Points, SS_glob_Points, Sel_Qfun
 
 def _ComputeCost(x, u, TrackLength):
     Cost = 10000 * np.ones((x.shape[0]))  # The cost has the same elements of the vector x --> time +1
