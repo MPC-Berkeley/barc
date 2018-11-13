@@ -63,7 +63,7 @@ def main():
     
     # Choose Controller and Number of Laps
 
-    PickController = "TI_MPC"
+    PickController = "LMPC"
     NumberOfLaps   = 40
     vt = 1.2
     PathFollowingLaps = 2
@@ -397,7 +397,6 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
         SysID_Solver = "scipy"        # Can pick CVX, OSQP or scipy. For OSQP uncomment line 14 in LMPC.py  
         numSS_it = 2                  # Number of trajectories used at each iteration to build the safe set
         numSS_Points = 42 + N         # Number of points to select from each trajectory to build the safe set
-        shift = N / 2                     # Given the closed point, x_t^j, to the x(t) select the SS points from x_{t+shift}^j
         # Tuning Parameters
         if mode == "simulations":
             N = 12
@@ -430,7 +429,7 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
             aConstr = np.array([0.7, 2.0]) # aConstr = [amin, amax]
             steeringDelay = 1
             idDelay       = 0          
-        Controller = ControllerLMPC(numSS_Points, numSS_it, N, Qslack, Qlane, Q_LMPC, R_LMPC, dR_LMPC, 6, 2, shift, 
+        Controller = ControllerLMPC(numSS_Points, numSS_it, N, Qslack, Qlane, Q_LMPC, R_LMPC, dR_LMPC, 
                                         dt, map, Laps, TimeLMPC, LMPC_Solver, SysID_Solver, flag_LTV, steeringDelay, idDelay, aConstr)
         # Controller.addTrajectory(ClosedLoopDataPID)
         Controller.addTrajectory(ClosedLoopDataTI_MPC)
