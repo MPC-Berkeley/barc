@@ -60,18 +60,20 @@ class PathFollowingLTI_MPC:
         N = self.N
 
         reference = self.reference
-        rB = np.zeros((n + 1, 1))
-        rB[n] = reference
-        # print(self.B.shape)
-        # print(self.A.shape)
-        # print(self.C.shape)
-        # print(np.zeros((1,d)).shape)
-        rA = np.vstack((np.hstack((np.eye(n) - self.A, -self.B )), np.hstack((self.C.reshape(1,n), np.zeros((1,d))))))
-        bar = np.linalg.lstsq(rA, rB)
-        xBar = np.array(bar[0][0:n]).reshape(1,n)
-        uBar = np.array(bar[0][n:]).reshape(1,d)
-        qxBar = -2 * np.dot(xBar, self.Q)
-        quBar = -2 * np.dot(uBar, self.R)
+        # rB = np.zeros((n + 1, 1))
+        # rB[n] = reference
+        # # print(self.B.shape)
+        # # print(self.A.shape)
+        # # print(self.C.shape)
+        # # print(np.zeros((1,d)).shape)
+        # rA = np.vstack((np.hstack((np.eye(n) - self.A, -self.B )), np.hstack((self.C.reshape(1,n), np.zeros((1,d))))))
+        # bar = np.linalg.lstsq(rA, rB)
+        # xBar = np.array(bar[0][0:n]).reshape(1,n)
+        # uBar = np.array(bar[0][n:]).reshape(1,d)
+        # print(xBar)
+        # print(uBar)
+        qxBar = -2 * np.dot(np.array([0,0,0,0,0,reference]).reshape(1,n), self.Q) # -2 * np.dot(xBar, self.Q)
+        quBar =  np.zeros((1,d))# -2 * np.dot(uBar, self.R)
 
         qBar = np.hstack((np.tile(qxBar, N + 1), np.tile(quBar, N)))
         

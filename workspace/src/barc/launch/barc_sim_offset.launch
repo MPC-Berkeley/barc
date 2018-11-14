@@ -219,7 +219,7 @@
 
      <!-- CONTROL -->
     <node pkg="barc" type="controllerMain.py" name="control_1" output="screen">
-        <param name="control_mode" type="str" value="TI_MPC"/>
+        <param name="control_mode" type="str" value="LMPC"/>
         <param name="mode" type="str" value="simulations" />
         <param name="saveData" type="bool" value="true" />
         <param name="car" type="str" value="NewBARC" />
@@ -228,11 +228,12 @@
         <remap from="SS" to="agent_1/SS" />
         <remap from="OL_predictions" to="agent_1/OL_predictions" />
         <remap from="other_agent_predictions" to="agent_1/other_agent_predictions" />
+        <remap from="key_input" to="agent_1/key_input" />
     </node>
 
      <!-- CONTROL -->
     <node pkg="barc" type="controllerMain.py" name="control_2" output="screen">
-        <param name="control_mode" type="str" value="LMPC"/>
+        <param name="control_mode" type="str" value="TI_MPC"/>
         <param name="mode" type="str" value="simulations" />
         <param name="saveData" type="bool" value="false" />
         <param name="car" type="str" value="NewBARC" />
@@ -249,9 +250,9 @@
         <param name="frequency" type="double" value="10" />
     </node>
 
-    <node pkg="barc" type="keyboard_controller.py" name="key_node_2" output="screen">
+   <!--  <node pkg="barc" type="keyboard_controller.py" name="key_node_2" output="screen">
         <remap from="key_input" to="agent_2/key_input"/>
-    </node>
+    </node> -->
 
 <!--     <node pkg="rosbag" type="record" name="record" output="screen" args="-a"/> -->
 
