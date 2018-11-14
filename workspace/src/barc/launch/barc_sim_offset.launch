@@ -240,13 +240,17 @@
         <remap from="ecu" to="agent_2/ecu" />
         <remap from="SS" to="agent_2/SS" />
         <remap from="OL_predictions" to="agent_2/OL_predictions" />
-        <remap from="other_agent_predictions" to="agent_2/other_agent_predictions" />
+        <remap from="key_input" to="agent_2/key_input" />
     </node>
 
     <node pkg="barc" type="predictor.py" name="predictor" output="screen">
-        <param name="this_agent" type="str" value="agent_2"/>
-        <param name="other_agent" type="str" value= "agent_1"/>
+        <param name="this_agent" type="str" value="agent_1"/>
+        <param name="other_agent" type="str" value= "agent_2"/>
         <param name="frequency" type="double" value="10" />
+    </node>
+
+    <node pkg="barc" type="keyboard_controller.py" name="key_node_2" output="screen">
+        <remap from="key_input" to="agent_2/key_input"/>
     </node>
 
 <!--     <node pkg="rosbag" type="record" name="record" output="screen" args="-a"/> -->

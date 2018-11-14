@@ -3,10 +3,12 @@ import numpy as np
 from cvxopt.solvers import qp
 from cvxopt import spmatrix, matrix, solvers
 import datetime
-import pdb
+import ipdb
 from numpy import hstack, inf, ones
 from scipy.sparse import vstack
 from osqp import OSQP
+import rospy
+from std_msgs.msg import Float32
 
 solvers.options['show_progress'] = False
 
@@ -15,7 +17,7 @@ class PathFollowingLTI_MPC:
     Attributes:
         solve: given x0 computes the control action
     """
-    def __init__(self, A, B, Q, R, N, vt, Qlane):
+    def __init__(self, A, B, C, Q, R, N, vt, Qlane):
         """Initialization
         A, B: Liner Time Invariant (LTI) system dynamics
         Q, R: weights to build the cost function h(x,u) = ||x||_Q + ||u||_R
@@ -24,6 +26,7 @@ class PathFollowingLTI_MPC:
         """
         self.A = A         # n x n matrix
         self.B = B         # n x d matrix
+        self.C = C
         self.n = A.shape[0]   # number of states
         self.d = B.shape[1]   # number of inputs
         self.N = N
@@ -39,6 +42,9 @@ class PathFollowingLTI_MPC:
         self.M, self.q = _buildMatCost(self)
         self.F, self.b = _buildMatIneqConst(self)
         self.G, self.E = _buildMatEqConst(self)
+        self.reference = 0
+
+        self.sub = rospy.Subscriber('key_input', Float32, self.reference_callback)
 
     def solve(self, x0):
         """Solve the finite time optimal control problem
@@ -52,6 +58,22 @@ class PathFollowingLTI_MPC:
         b = self.b
         n, d = self.n, self.d
         N = self.N
+
+        reference = self.reference
+        rB = np.zeros((1, n + 1))
+        rB[n] = reference
+        rA = np.vstack((np.hstack((np.eye(n) - self.A, -self.B )), np.hstack((self.C, np.zeros((1,d))))))
+        bar = np.linalg.solve(rA, rB)
+        xBar = bar[0:n]
+        uBar = bar[n:]
+
+        qxBar = -2 * xBar * self.Q
+        quBar = -2 * uBar * self.R
+
+        qBar = np.hstack((np.tile(qxBar, N + 1), np.tile(quBar, N)))
+
+        print('qBar = ' + str(qBar.shape))
+        print('q = ' + str(q.shape))
 
         startTimer = datetime.datetime.now()
 #        sol = qp(M, matrix(q), F, matrix(b), G, E * matrix(x0))
@@ -262,3 +284,6 @@ def _buildMatCost(Controller):
     M = 2 * M0  # Need to multiply by two because CVX considers 1/2 in front of quadratic cost
 
     return M, q
+
+def reference_callback(self, reference):
+    self.reference = reference.data

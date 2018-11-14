@@ -3,10 +3,12 @@ import numpy as np
 from cvxopt.solvers import qp
 from cvxopt import spmatrix, matrix, solvers
 import datetime
-import pdb
+import ipdb
 from numpy import hstack, inf, ones
 from scipy.sparse import vstack
 from osqp import OSQP
+import rospy
+from std_msgs.msg import Float32
 
 solvers.options['show_progress'] = False
 
@@ -15,7 +17,7 @@ class PathFollowingLTI_MPC:
     Attributes:
         solve: given x0 computes the control action
     """
-    def __init__(self, A, B, Q, R, N, vt, Qlane):
+    def __init__(self, A, B, C, Q, R, N, vt, Qlane):
         """Initialization
         A, B: Liner Time Invariant (LTI) system dynamics
         Q, R: weights to build the cost function h(x,u) = ||x||_Q + ||u||_R
@@ -24,6 +26,7 @@ class PathFollowingLTI_MPC:
         """
         self.A = A         # n x n matrix
         self.B = B         # n x d matrix
+        self.C = C
         self.n = A.shape[0]   # number of states
         self.d = B.shape[1]   # number of inputs
         self.N = N
@@ -39,6 +42,9 @@ class PathFollowingLTI_MPC:
         self.M, self.q = _buildMatCost(self)
         self.F, self.b = _buildMatIneqConst(self)
         self.G, self.E = _buildMatEqConst(self)
+        self.reference = 0
+
+        self.sub = rospy.Subscriber('key_input', Float32, self.reference_callback)
 
     def solve(self, x0):
         """Solve the finite time optimal control problem
@@ -53,14 +59,34 @@ class PathFollowingLTI_MPC:
         n, d = self.n, self.d
         N = self.N
 
+        reference = self.reference
+        rB = np.zeros((n + 1, 1))
+        rB[n] = reference
+        # print(self.B.shape)
+        # print(self.A.shape)
+        # print(self.C.shape)
+        # print(np.zeros((1,d)).shape)
+        rA = np.vstack((np.hstack((np.eye(n) - self.A, -self.B )), np.hstack((self.C.reshape(1,n), np.zeros((1,d))))))
+        bar = np.linalg.lstsq(rA, rB)
+        xBar = np.array(bar[0][0:n]).reshape(1,n)
+        uBar = np.array(bar[0][n:]).reshape(1,d)
+        qxBar = -2 * np.dot(xBar, self.Q)
+        quBar = -2 * np.dot(uBar, self.R)
+
+        qBar = np.hstack((np.tile(qxBar, N + 1), np.tile(quBar, N)))
+        
+        qBar = np.hstack((qBar, np.zeros((1,q.shape[0] - qBar.shape[1]))))
+        qBar.flatten()
+        
         startTimer = datetime.datetime.now()
 #        sol = qp(M, matrix(q), F, matrix(b), G, E * matrix(x0))
-        res_cons, feasible = osqp_solve_qp(sparse.csr_matrix(M), q, sparse.csr_matrix(F), b, sparse.csr_matrix(G), np.dot(E,x0))
+        res_cons, feasible = osqp_solve_qp(sparse.csr_matrix(M), (q + qBar).flatten(), sparse.csr_matrix(F), b, sparse.csr_matrix(G), np.dot(E,x0))
         endTimer = datetime.datetime.now(); deltaTimer = endTimer - startTimer
         self.solverTime = deltaTimer
 
         Solution = res_cons.x
 
+        self.feasible = feasible
         self.xPred = np.squeeze(np.transpose(np.reshape(Solution[np.arange(n * (N + 1))], (N + 1, n)))).T
         self.uPred = np.squeeze(np.transpose(np.reshape(Solution[n * (N + 1) + np.arange(d * N)], (N, d)))).T
 
@@ -75,6 +101,9 @@ class PathFollowingLTI_MPC:
 
         x_next = np.dot(self.A, x) + np.dot(self.B, u)
         return x_next, deltaTimer
+
+    def reference_callback(self, reference):
+        self.reference = reference.data
 
 # ======================================================================================================================
 # ======================================================================================================================
@@ -261,3 +290,5 @@ def _buildMatCost(Controller):
     M = 2 * M0  # Need to multiply by two because CVX considers 1/2 in front of quadratic cost
 
     return M, q
+
+

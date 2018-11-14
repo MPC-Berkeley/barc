@@ -362,8 +362,9 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
             lamb = 0.0000001    
         A, B, Error = Regression(ClosedLoopDataPID.x, ClosedLoopDataPID.u, lamb)
         print "A matrix: \n", A
-        print "B matrix: \n", B      
-        ControllerLap0 = PathFollowingLTI_MPC(A, B, Q, R, N, vt, TI_Qlane)
+        print "B matrix: \n", B 
+        C = np.array([0,0,0,0,0,1])     
+        ControllerLap0 = PathFollowingLTI_MPC(A, B, C, Q, R, N, vt, TI_Qlane)
         # ControllerLap0 = PID(vt, PIDnoise)
 
     if PickController == 'PID':
@@ -374,7 +375,8 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
         # file_data = open(homedir+'/barc_data/'+'/ClosedLoopDataPIDforLMPC.obj', 'rb')
         ClosedLoopDataPID = pickle.load(file_data)
         file_data.close()     
-        Controller = PathFollowingLTI_MPC(A, B, Q, R, N, vt, TI_Qlane)
+        C = np.array([0,0,0,0,0,1])
+        Controller = PathFollowingLTI_MPC(A, B, C, Q, R, N, vt, TI_Qlane)
 
     elif PickController == "TV_MPC":
         # file_data = open(homedir+'/barc_data/'+'/ClosedLoopDataPIDforLMPC.obj', 'rb')

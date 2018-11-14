@@ -177,8 +177,8 @@ class EstimationAndMesuredData():
         if plotGPS == True:
             rospy.Subscriber(car_selected + "hedge_pos", hedge_pos, self.gps_callback)
         rospy.Subscriber(car_selected + "pos_info", pos_info, self.pos_info_callback)
-        if car_selected == "agent_2/":
-            rospy.Subscriber("agent_1/other_agent_predictions", prediction, self.prediction_callback)
+        if car_selected == "agent_1/":
+            rospy.Subscriber("agent_2/other_agent_predictions", prediction, self.prediction_callback)
         else: 
             rospy.Subscriber(car_selected + "OL_predictions", prediction, self.prediction_callback)
         rospy.Subscriber(car_selected + 'SS', SafeSetGlob, self.SS_callback)
