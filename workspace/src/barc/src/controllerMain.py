@@ -386,7 +386,7 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
         if mode == "simulations":
             file_data = open(homedir+'/barc_data/'+'/ClosedLoopDataTI_MPC.obj', 'rb')
         else:
-            file_data = open(homedir+'/barc_data/'+'/ClosedLoopDataPIDforLMPC.obj', 'rb')
+            file_data = open(homedir+'/barc_data/'+'/ClosedLoopDataPID.obj', 'rb')
         ClosedLoopDataTI_MPC = pickle.load(file_data)
         file_data.close()
         Laps       = NumberOfLaps+2   # Total LMPC laps

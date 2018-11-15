@@ -25,8 +25,8 @@ import rospy
 import numpy as np
 
 def srvOutput2Angle(fbk_srv):
-    # angle_rad =  -0.003530958631043808 *fbk_srv +  1.0861319262672648
-    angle_rad =  -0.003325686873493677 *fbk_srv +  1.1045130391911997
+    # angle_rad =  -0.003325686873493677 *fbk_srv +  1.1045130391911997
+    angle_rad =  -0.0034462155644454794 *fbk_srv +  1.138918034535559
     return angle_rad
 
 
@@ -174,111 +174,103 @@ class low_level_control(object):
 
             # self.servo_pwm = 81.4 + 89.1*float(msg.servo)
         elif self.sel_car == "NewBARC":
-            #     self.servo_pwm = (float(msg.servo) +  -0.32193278464528574 ) /  -0.004654119341458697
-            # if msg.servo >=  0.2566846775465117 :
-            #     self.servo_pwm = (float(msg.servo) +  -0.6772137645871529 ) /  -0.0072505015007007095
-            # elif msg.servo <=  0.25668467754650887  and msg.servo >=  0.23146756582979477 :
-            #     self.servo_pwm = (float(msg.servo) +  -0.6223327974388628 ) /  -0.006304277929178517
-            # elif msg.servo <=  0.23146756582980016  and msg.servo >=  0.20829424369308602 :
-            #     self.servo_pwm = (float(msg.servo) +  -0.7103828899885596 ) /  -0.007724440712238055
-            # elif msg.servo <=  0.2082942436930889  and msg.servo >=  0.18468046651630532 :
-            #     self.servo_pwm = (float(msg.servo) +  -0.7199260825233992 ) /  -0.00787125905892785
-            # elif msg.servo <=  0.18468046651629766  and msg.servo >=  0.1529475905995923 :
-            #     self.servo_pwm = (float(msg.servo) +  -0.7241393571002901 ) /  -0.007933218979176359
-            # elif msg.servo <=  0.15294759059959273  and msg.servo >=  0.12628127241126386 :
-            #     self.servo_pwm = (float(msg.servo) +  -0.792939227119488 ) /  -0.00888877272944299
-            # elif msg.servo <=  0.12628127241126985  and msg.servo >=  0.10497656163730706 :
-            #     self.servo_pwm = (float(msg.servo) +  -0.6588990417603376 ) /  -0.007101570257987571
-            # elif msg.servo <=  0.10497656163730629  and msg.servo >=  0.08214429016307656 :
-            #     self.servo_pwm = (float(msg.servo) +  -0.6986156199672782 ) /  -0.007610757158076563
-            # elif msg.servo <=  0.08214429016307923  and msg.servo >=  0.05702763786489473 :
-            #     self.servo_pwm = (float(msg.servo) +  -0.7602939022140623 ) /  -0.008372217432728186
-            # elif msg.servo <=  0.05702763786489684  and msg.servo >=  0.036869070854447794 :
-            #     self.servo_pwm = (float(msg.servo) +  -0.6214675141574701 ) /  -0.0067195223368163495
-            # elif msg.servo <=  0.03686907085444058  and msg.servo >=  0.0078028366744673505 :
-            #     self.servo_pwm = (float(msg.servo) +  -0.8797898620736663 ) /  -0.009688744726657766
-            # elif msg.servo <=  0.007802836674472138  and msg.servo >=  0.007246066618238282 :
-            #     self.servo_pwm = (float(msg.servo) +  -0.05791214173551918 ) /  -0.0005567700562338561
-            # elif msg.servo <=  0.0072460666182367905  and msg.servo >=  0.0010465538152072407 :
-            #     self.servo_pwm = (float(msg.servo) +  -0.5714017316939339 ) /  -0.006199512803029638
-            # elif msg.servo <=  0.0010465538152094611  and msg.servo >=  -0.010414027483334864 :
-            #     self.servo_pwm = (float(msg.servo) +  -0.5282332935482473 ) /  -0.005730290649272151
-            # elif msg.servo <=  -0.010414027483335975  and msg.servo >=  -0.03287794221959617 :
-            #     self.servo_pwm = (float(msg.servo) +  -0.6934553009194863 ) /  -0.0074879715787534275
-            # elif msg.servo <=  -0.03287794221959872  and msg.servo >=  -0.05696110792723241 :
-            #     self.servo_pwm = (float(msg.servo) +  -0.7458110823272258 ) /  -0.008027721902544582
-            # elif msg.servo <=  -0.05696110792722808  and msg.servo >=  -0.07419607614956403 :
-            #     self.servo_pwm = (float(msg.servo) +  -0.5175378328173046 ) /  -0.0057449894074453264
-            # elif msg.servo <=  -0.07419607614956558  and msg.servo >=  -0.10402343878170728 :
-            #     self.servo_pwm = (float(msg.servo) +  -0.9498767075539637 ) /  -0.009942454210713877
-            # elif msg.servo <=  -0.1040234387817085  and msg.servo >=  -0.12676022263258424 :
-            #     self.servo_pwm = (float(msg.servo) +  -0.6993429239492363 ) /  -0.007578927950291931
-            # elif msg.servo <=  -0.12676022263258357  and msg.servo >=  -0.14476343130612246 :
-            #     self.servo_pwm = (float(msg.servo) +  -0.5273563591726613 ) /  -0.006001069557846283
-            # elif msg.servo <=  -0.14476343130612335  and msg.servo >=  -0.16352724485132175 :
-            #     self.servo_pwm = (float(msg.servo) +  -0.5557522743812868 ) /  -0.006254604515066162
-            # elif msg.servo <=  -0.16352724485132186  and msg.servo >=  -0.1874521557128075 :
-            #     self.servo_pwm = (float(msg.servo) +  -0.7535943381722943 ) /  -0.007974970287161879
-            # elif msg.servo <=  -0.18745215571281282  and msg.servo >=  -0.20082531326732567 :
-            #     self.servo_pwm = (float(msg.servo) +  -0.601564140003442 ) /  -0.006686578777256398
-            # elif msg.servo <=  -0.2008253132673209  and msg.servo >=  -0.2079742960520491 :
-            #     self.servo_pwm = (float(msg.servo) +  -0.65705262090007 ) /  -0.007148982784728257
-            # elif msg.servo <=  -0.20797429605204176  and msg.servo >=  -0.2291596853957738 :
-            #     self.servo_pwm = (float(msg.servo) +  -0.6465030741451508 ) /  -0.007061796447910683
-            # elif msg.servo <=  -0.22915968539578335  and msg.servo >=  -0.25069948491193395 :
-            #     self.servo_pwm = (float(msg.servo) +  -0.6611520279384434 ) /  -0.0071799331720502155
-            # elif msg.servo <=  -0.2506994849119306 :
-            #     self.servo_pwm = (float(msg.servo) +  -0.37048861145868683 ) /  -0.004891244853311948
-            if msg.servo >=  0.24396781438941717 :
-                self.servo_pwm = (float(msg.servo) +  -0.6187211730321502 ) /  -0.006245889310712218
-            elif msg.servo <=  0.24396781438941406  and msg.servo >=  0.2154451419199651 :
-                self.servo_pwm = (float(msg.servo) +  -0.8144212637783942 ) /  -0.009507557489816335
-            elif msg.servo <=  0.215445141919968  and msg.servo >=  0.19216279578901918 :
-                self.servo_pwm = (float(msg.servo) +  -0.704374410669893 ) /  -0.007760782043649604
-            elif msg.servo <=  0.19216279578902457  and msg.servo >=  0.17003317666065743 :
-                self.servo_pwm = (float(msg.servo) +  -0.6790144166131025 ) /  -0.007376539709455726
-            elif msg.servo <=  0.17003317666065343  and msg.servo >=  0.14761156515126062 :
-                self.servo_pwm = (float(msg.servo) +  -0.6857302413766886 ) /  -0.007473870503130944
-            elif msg.servo <=  0.14761156515125945  and msg.servo >=  0.12968864683298476 :
-                self.servo_pwm = (float(msg.servo) +  -0.5777616047898516 ) /  -0.005974306106091558
-            elif msg.servo <=  0.12968864683298542  and msg.servo >=  0.10388288612938268 :
-                self.servo_pwm = (float(msg.servo) +  -0.7748326644230534 ) /  -0.00860192023453424
-            elif msg.servo <=  0.10388288612937902  and msg.servo >=  0.0788549992913039 :
-                self.servo_pwm = (float(msg.servo) +  -0.7546079439193332 ) /  -0.008342628946025053
-            elif msg.servo <=  0.07885499929130724  and msg.servo >=  0.05516531925878143 :
-                self.servo_pwm = (float(msg.servo) +  -0.718476360169502 ) /  -0.007896560010841911
-            elif msg.servo <=  0.05516531925877899  and msg.servo >=  0.030517441919448052 :
-                self.servo_pwm = (float(msg.servo) +  -0.7453058847600441 ) /  -0.008215959113110299
-            elif msg.servo <=  0.030517441919454047  and msg.servo >=  0.008601570925738544 :
-                self.servo_pwm = (float(msg.servo) +  -0.6660777007372036 ) /  -0.007305290331238501
-            elif msg.servo <=  0.008601570925736435  and msg.servo >=  0.004733325935688204 :
-                self.servo_pwm = (float(msg.servo) +  -0.35674362003008 ) /  -0.0038682449900482615
-            elif msg.servo <=  0.004733325935688759  and msg.servo >=  -0.0036296349608303524 :
-                self.servo_pwm = (float(msg.servo) +  -0.7657627675189297 ) /  -0.00836296089651913
-            elif msg.servo <=  -0.0036296349608341827  and msg.servo >=  -0.016905375256274058 :
-                self.servo_pwm = (float(msg.servo) +  -0.40349306743265634 ) /  -0.004425246765146636
-            elif msg.servo <=  -0.016905375256274002  and msg.servo >=  -0.04239931961214882 :
-                self.servo_pwm = (float(msg.servo) +  -0.7904028626797629 ) /  -0.008497981451958283
-            elif msg.servo <=  -0.042399319612149045  and msg.servo >=  -0.06666123895258835 :
-                self.servo_pwm = (float(msg.servo) +  -0.750156712175536 ) /  -0.008087306446813113
-            elif msg.servo <=  -0.0666612389525878  and msg.servo >=  -0.08712360799504626 :
-                self.servo_pwm = (float(msg.servo) +  -0.6222385188101781 ) /  -0.006820789680819465
-            elif msg.servo <=  -0.08712360799504681  and msg.servo >=  -0.10926583384872612 :
-                self.servo_pwm = (float(msg.servo) +  -0.6804735549325027 ) /  -0.007380741951226438
-            elif msg.servo <=  -0.10926583384872579  and msg.servo >=  -0.13342783092445865 :
-                self.servo_pwm = (float(msg.servo) +  -0.7525120618524108 ) /  -0.008053999025244268
-            elif msg.servo <=  -0.13342783092445487  and msg.servo >=  -0.15476284092275028 :
-                self.servo_pwm = (float(msg.servo) +  -0.6488558690130434 ) /  -0.007111669999431802
-            elif msg.servo <=  -0.15476284092275416  and msg.servo >=  -0.17392452107077327 :
-                self.servo_pwm = (float(msg.servo) +  -0.5669937779859677 ) /  -0.006387226716006388
-            elif msg.servo <=  -0.17392452107077416  and msg.servo >=  -0.19505609019212078 :
-                self.servo_pwm = (float(msg.servo) +  -0.6431628182879614 ) /  -0.007043856373782203
-            elif msg.servo <=  -0.19505609019211811  and msg.servo >=  -0.21426460178645013 :
-                self.servo_pwm = (float(msg.servo) +  -0.566881536383053 ) /  -0.006402837198110682
-            elif msg.servo <=  -0.2142646017864509  and msg.servo >=  -0.23014057657300258 :
-                self.servo_pwm = (float(msg.servo) +  -0.43135837286664946 ) /  -0.0052919915955172165
-            elif msg.servo <=  -0.23014057657300013 :
-                self.servo_pwm = (float(msg.servo) +  -0.7129576917783476 ) /  -0.007544786146810782
+            # if msg.servo >=  0.24396781438941717 :
+            #     self.servo_pwm = (float(msg.servo) +  -0.6187211730321502 ) /  -0.006245889310712218
+            # elif msg.servo <=  0.24396781438941406  and msg.servo >=  0.2154451419199651 :
+            #     self.servo_pwm = (float(msg.servo) +  -0.8144212637783942 ) /  -0.009507557489816335
+            # elif msg.servo <=  0.215445141919968  and msg.servo >=  0.19216279578901918 :
+            #     self.servo_pwm = (float(msg.servo) +  -0.704374410669893 ) /  -0.007760782043649604
+            # elif msg.servo <=  0.19216279578902457  and msg.servo >=  0.17003317666065743 :
+            #     self.servo_pwm = (float(msg.servo) +  -0.6790144166131025 ) /  -0.007376539709455726
+            # elif msg.servo <=  0.17003317666065343  and msg.servo >=  0.14761156515126062 :
+            #     self.servo_pwm = (float(msg.servo) +  -0.6857302413766886 ) /  -0.007473870503130944
+            # elif msg.servo <=  0.14761156515125945  and msg.servo >=  0.12968864683298476 :
+            #     self.servo_pwm = (float(msg.servo) +  -0.5777616047898516 ) /  -0.005974306106091558
+            # elif msg.servo <=  0.12968864683298542  and msg.servo >=  0.10388288612938268 :
+            #     self.servo_pwm = (float(msg.servo) +  -0.7748326644230534 ) /  -0.00860192023453424
+            # elif msg.servo <=  0.10388288612937902  and msg.servo >=  0.0788549992913039 :
+            #     self.servo_pwm = (float(msg.servo) +  -0.7546079439193332 ) /  -0.008342628946025053
+            # elif msg.servo <=  0.07885499929130724  and msg.servo >=  0.05516531925878143 :
+            #     self.servo_pwm = (float(msg.servo) +  -0.718476360169502 ) /  -0.007896560010841911
+            # elif msg.servo <=  0.05516531925877899  and msg.servo >=  0.030517441919448052 :
+            #     self.servo_pwm = (float(msg.servo) +  -0.7453058847600441 ) /  -0.008215959113110299
+            # elif msg.servo <=  0.030517441919454047  and msg.servo >=  0.008601570925738544 :
+            #     self.servo_pwm = (float(msg.servo) +  -0.6660777007372036 ) /  -0.007305290331238501
+            # elif msg.servo <=  0.008601570925736435  and msg.servo >=  0.004733325935688204 :
+            #     self.servo_pwm = (float(msg.servo) +  -0.35674362003008 ) /  -0.0038682449900482615
+            # elif msg.servo <=  0.004733325935688759  and msg.servo >=  -0.0036296349608303524 :
+            #     self.servo_pwm = (float(msg.servo) +  -0.7657627675189297 ) /  -0.00836296089651913
+            # elif msg.servo <=  -0.0036296349608341827  and msg.servo >=  -0.016905375256274058 :
+            #     self.servo_pwm = (float(msg.servo) +  -0.40349306743265634 ) /  -0.004425246765146636
+            # elif msg.servo <=  -0.016905375256274002  and msg.servo >=  -0.04239931961214882 :
+            #     self.servo_pwm = (float(msg.servo) +  -0.7904028626797629 ) /  -0.008497981451958283
+            # elif msg.servo <=  -0.042399319612149045  and msg.servo >=  -0.06666123895258835 :
+            #     self.servo_pwm = (float(msg.servo) +  -0.750156712175536 ) /  -0.008087306446813113
+            # elif msg.servo <=  -0.0666612389525878  and msg.servo >=  -0.08712360799504626 :
+            #     self.servo_pwm = (float(msg.servo) +  -0.6222385188101781 ) /  -0.006820789680819465
+            # elif msg.servo <=  -0.08712360799504681  and msg.servo >=  -0.10926583384872612 :
+            #     self.servo_pwm = (float(msg.servo) +  -0.6804735549325027 ) /  -0.007380741951226438
+            # elif msg.servo <=  -0.10926583384872579  and msg.servo >=  -0.13342783092445865 :
+            #     self.servo_pwm = (float(msg.servo) +  -0.7525120618524108 ) /  -0.008053999025244268
+            # elif msg.servo <=  -0.13342783092445487  and msg.servo >=  -0.15476284092275028 :
+            #     self.servo_pwm = (float(msg.servo) +  -0.6488558690130434 ) /  -0.007111669999431802
+            # elif msg.servo <=  -0.15476284092275416  and msg.servo >=  -0.17392452107077327 :
+            #     self.servo_pwm = (float(msg.servo) +  -0.5669937779859677 ) /  -0.006387226716006388
+            # elif msg.servo <=  -0.17392452107077416  and msg.servo >=  -0.19505609019212078 :
+            #     self.servo_pwm = (float(msg.servo) +  -0.6431628182879614 ) /  -0.007043856373782203
+            # elif msg.servo <=  -0.19505609019211811  and msg.servo >=  -0.21426460178645013 :
+            #     self.servo_pwm = (float(msg.servo) +  -0.566881536383053 ) /  -0.006402837198110682
+            # elif msg.servo <=  -0.2142646017864509  and msg.servo >=  -0.23014057657300258 :
+            #     self.servo_pwm = (float(msg.servo) +  -0.43135837286664946 ) /  -0.0052919915955172165
+            # elif msg.servo <=  -0.23014057657300013 :
+            #     self.servo_pwm = (float(msg.servo) +  -0.7129576917783476 ) /  -0.007544786146810782
+            if msg.servo >=  0.23744584534569063 :
+                self.servo_pwm = (float(msg.servo) +  -0.6978531525811319 ) /  -0.007938057021300711
+            elif msg.servo <=  0.23744584534569502  and msg.servo >=  0.21402289288204168 :
+                self.servo_pwm = (float(msg.servo) +  -0.6902895929763264 ) /  -0.007807650821217782
+            elif msg.servo <=  0.2140228928820463  and msg.servo >=  0.19075724073912154 :
+                self.servo_pwm = (float(msg.servo) +  -0.6870911531215168 ) /  -0.007755217380974926
+            elif msg.servo <=  0.1907572407391236  and msg.servo >=  0.16336543986790109 :
+                self.servo_pwm = (float(msg.servo) +  -0.7751156593252043 ) /  -0.009130600290407511
+            elif msg.servo <=  0.16336543986789853  and msg.servo >=  0.13451363698616448 :
+                self.servo_pwm = (float(msg.servo) +  -0.8077223708932928 ) /  -0.00961726762724469
+            elif msg.servo <=  0.13451363698616292  and msg.servo >=  0.10872698333872599 :
+                self.servo_pwm = (float(msg.servo) +  -0.7362022220930238 ) /  -0.008595551215812298
+            elif msg.servo <=  0.10872698333871766  and msg.servo >=  0.08986143323744267 :
+                self.servo_pwm = (float(msg.servo) +  -0.5677887024697426 ) /  -0.0062885167004249985
+            elif msg.servo <=  0.08986143323744333  and msg.servo >=  0.06158040230456863 :
+                self.servo_pwm = (float(msg.servo) +  -0.806314216870268 ) /  -0.00942701031095822
+            elif msg.servo <=  0.061580402304571846  and msg.servo >=  0.03933071193745008 :
+                self.servo_pwm = (float(msg.servo) +  -0.6474889153054452 ) /  -0.007416563455707257
+            elif msg.servo <=  0.039330711937453966  and msg.servo >=  0.01622361398877692 :
+                self.servo_pwm = (float(msg.servo) +  -0.670924722534626 ) /  -0.007702365982892341
+            elif msg.servo <=  0.01622361398877392  and msg.servo >=  -0.005419140916257281 :
+                self.servo_pwm = (float(msg.servo) +  -0.6294350029646568 ) /  -0.007214251635010388
+            elif msg.servo <=  -0.005419140916258058  and msg.servo >=  -0.027201968419417133 :
+                self.servo_pwm = (float(msg.servo) +  -0.6335437991764102 ) /  -0.007260942501053048
+            elif msg.servo <=  -0.027201968419419464  and msg.servo >=  -0.053059455628582386 :
+                self.servo_pwm = (float(msg.servo) +  -0.7571418102585213 ) /  -0.008619162403054294
+            elif msg.servo <=  -0.05305945562857978  and msg.servo >=  -0.06789008495567239 :
+                self.servo_pwm = (float(msg.servo) +  -0.4116335966203227 ) /  -0.004943543109030877
+            elif msg.servo <=  -0.06789008495566917  and msg.servo >=  -0.09219566851490058 :
+                self.servo_pwm = (float(msg.servo) +  -0.7179904501261443 ) /  -0.008101861186410448
+            elif msg.servo <=  -0.09219566851490657  and msg.servo >=  -0.11370271191291681 :
+                self.servo_pwm = (float(msg.servo) +  -0.6247057780854353 ) /  -0.007169014466003418
+            elif msg.servo <=  -0.11370271191291292  and msg.servo >=  -0.14173339949535946 :
+                self.servo_pwm = (float(msg.servo) +  -0.848684228417752 ) /  -0.009343562527482184
+            elif msg.servo <=  -0.1417333994953638  and msg.servo >=  -0.1643041052792572 :
+                self.servo_pwm = (float(msg.servo) +  -0.6557648715355339 ) /  -0.00752356859463111
+            elif msg.servo <=  -0.16430410527925554  and msg.servo >=  -0.1881244194171675 :
+                self.servo_pwm = (float(msg.servo) +  -0.7011673083982143 ) /  -0.007940104712637338
+            elif msg.servo <=  -0.18812441941716362  and msg.servo >=  -0.21035586047626664 :
+                self.servo_pwm = (float(msg.servo) +  -0.6418493801226827 ) /  -0.007410480353034342
+            elif msg.servo <=  -0.21035586047627064  and msg.servo >=  -0.23236320983508552 :
+                self.servo_pwm = (float(msg.servo) +  -0.6332591982782981 ) /  -0.007335783119604946
+            elif msg.servo <=  -0.23236320983508474  and msg.servo >=  -0.2534124637488341 :
+                self.servo_pwm = (float(msg.servo) +  -0.5955741107723873 ) /  -0.007016417971249763
+            elif msg.servo <=  -0.25341246374883 :
+                self.servo_pwm = (float(msg.servo) +  -0.4520528240985041 ) /  -0.005830291635101935
+
 
 
 

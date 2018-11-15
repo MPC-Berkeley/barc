@@ -73,7 +73,7 @@ def main():
             vx_his.append(enc.v_meas)
 
             if enc.v_meas>0.8:
-                steering = np.arctan(imu.psiDot*(0.25)/enc.v_meas)
+                steering = np.arctan(imu.psiDot*(0.262)/enc.v_meas)
                 steering_his.append(steering)
                 PWMsteering_his.append(PWM_Steering)
                 fbk_srv_his.append(fbk_srv.value)
