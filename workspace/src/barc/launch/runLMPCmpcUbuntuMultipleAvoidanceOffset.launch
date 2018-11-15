@@ -130,6 +130,7 @@
         <remap from="SS" to="agent_1/SS" />
         <remap from="OL_predictions" to="agent_1/OL_predictions" />
         <remap from="other_agent_predictions" to="agent_1/other_agent_predictions" />
+        <remap from="key_input" to="agent_1/key_input" />
     </node>
 
     <node machine="this-pc" pkg="barc" type="predictor.py" name="predictor" output="screen">
@@ -140,7 +141,7 @@
 
     <!-- IMU -->
     <node machine="odroid_1" pkg="myahrs_driver" type="myahrs_driver" name="myahrs_driver_1">
-        <param name="port" value="/dev/ttyACM1" />
+        <param name="port" value="/dev/ttyACM0" />
         <param name="baud_rate" value="115200" />
         <remap from="imu/data" to="agent_1/imu/data"/>
     </node>
@@ -158,7 +159,7 @@
     </node>  -->
 
     <!-- GPS -->
-    <node machine="odroid_1" pkg="marvelmind_nav" type="hedge_rcv_bin" name="indoor_gps_1" args="/dev/ttyACM0" >
+    <node machine="odroid_1" pkg="marvelmind_nav" type="hedge_rcv_bin" name="indoor_gps_1" args="/dev/ttyACM1" >
         <remap from="hedge_pos_a" to="agent_1/hedge_pos_a" />
         <remap from="hedge_pos" to="agent_1/hedge_pos"/>
     </node> 
