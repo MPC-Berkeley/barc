@@ -116,7 +116,7 @@
         <param name="port" value="/dev/ttyACM0" />
         <param name="baud_rate" value="115200" />
     </node>-->
-    <node machine="odroid" pkg="xsens_driver" type="mtnode.py" name="xsens_driver" output="screen" >
+    <node machine="odroid" pkg="xsens_driver" type="mtnode1.py" name="xsens_driver" output="screen" >
         <param name="device" value="$(arg device)"/>
         <param name="baudrate" value="$(arg baudrate)"/>
         <param name="timeout" value="$(arg timeout)"/>
