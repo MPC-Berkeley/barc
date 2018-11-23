@@ -58,10 +58,11 @@ def main():
     # Plot First Path Following Lap and Learning laps
     LapToPlotLearningProcess = [2, 4, 7, 15, 24]
     # LapToPlotLearningProcess = [1]
+    
     plotClosedLoopLMPC(LMPController, map, LapToPlotLearningProcess)
     plt.show()
     
-    LapToPlot = range(20,28)
+    LapToPlot = range(30,37)
 
     plotMeasuredAndAppliedSteering(LMPController, map, LapToPlotLearningProcess)
     plt.show()
@@ -71,12 +72,14 @@ def main():
     SortedTimes    = np.sort(LMPController.LapCounter[1:LMPController.it])
     LapToPlot      = np.argsort(LMPController.LapCounter[1:LMPController.it])[0:BestNunberLaps]
     # LapToPlot = range(15,19)
-    LapToPlot = range(23,28)
+    LapToPlot = range(30,37)
     
     print SortedTimes
     print "Lap Plotted: ", LapToPlot, " Lap Time: ", LMPController.LapCounter[LapToPlot]
     plotClosedLoopColorLMPC(LMPController, map, LapToPlot)
     
+    pdb.set_trace()
+
     plotClosedLoopLMPC(LMPController, map, LapToPlot)
     # Plot Acceleration
     plotAccelerations(LMPController, LapToPlot, map)
@@ -400,12 +403,14 @@ def plotClosedLoopColorLMPC(LMPController, map, LapToPlot):
             yPlot.append(SS_glob[0:LapCounter[i], 5, i].tolist()[j])
             Color.append(np.sqrt( (SS_glob[0:LapCounter[i], 0, i].tolist()[j])**2 +  (SS_glob[0:LapCounter[i], 0, i].tolist()[j]) ) )
 
+    pdb.set_trace()
     plt.scatter(xPlot, yPlot, alpha=1.0, c = Color, s = 100)
     plt.xlabel("x [m]")
     plt.ylabel("y [m]")
 
     # plt.scatter(SS_glob[0:LapCounter[i], 4, i], SS_glob[0:LapCounter[i], 5, i], alpha=0.8, c = SS_glob[0:LapCounter[i], 0, i])
     plt.colorbar()
+    plt.show()
 
 
 def plotClosedLoopLMPC(LMPController, map, LapToPlot):
@@ -432,8 +437,6 @@ def plotClosedLoopLMPC(LMPController, map, LapToPlot):
     plt.plot(Points0[:, 0], Points0[:, 1], '--')
     plt.plot(Points1[:, 0], Points1[:, 1], '-b')
     plt.plot(Points2[:, 0], Points2[:, 1], '-b')
-
-    plt.show()
 
     counter = 0
     for i in LapToPlot:

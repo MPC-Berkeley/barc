@@ -72,18 +72,18 @@ def main():
 
     # ============================= Plot evolution closed-loop trajectory through iterations: Figure 2 and 3 =============================
     # O-shaped track
-    LapToPlotLearningProcessOval = [5, 15, 25,26,28,34, 35, 36,37]
+    LapToPlotLearningProcessOval = [2, 5, 15, 35, 36,37]
     print "Oval Lap Plotted: ", LapToPlotLearningProcessOval, " Lap Time: ", LMPController_Oshape.LapCounter[LapToPlotLearningProcessOval]
     plotClosedLoopLMPC(LMPController_Oshape, LMPController_Oshape.map, LapToPlotLearningProcessOval)
     plt.show()
     # L-shaped track
-    LapToPlotLearningProcessLshaped = [5, 15, 25,26,28,34, 35, 36,37]
+    LapToPlotLearningProcessLshaped = [2, 5, 15, 35, 36,37]
     print "L-shaped Lap Plotted: ", LapToPlotLearningProcessLshaped, " Lap Time: ", LMPController_Lshape.LapCounter[LapToPlotLearningProcessLshaped]
     plotClosedLoopLMPC(LMPController_Lshape, LMPController_Lshape.map, LapToPlotLearningProcessLshaped)
     plt.show()
     
-    LapToPlotFirst       = [2, 3] 
-    LapToPlotConvergence = LapToPlotLearningProcessLshaped#[34, 35, 36,37]
+    LapToPlotFirst       = [2, 6, 15] 
+    LapToPlotConvergence = [35, 36,37]
     plotBigFigure(LMPController_Oshape, LMPController_Lshape, LMPController_Oshape.map, LMPController_Lshape.map, LapToPlotFirst, LapToPlotConvergence)
     plt.show()
     # ============================= Plot accelerations and velocies =============================
@@ -93,7 +93,6 @@ def main():
     s_Lshaped, ay_Lshaped, ax_Lshaped, pitch_Lshaped, roll_Lshaped, LapCounter_Lshaped = plotAccelerations(LMPController_Lshape, LapToPlotConvergence, LMPController_Lshape.map, L_shapedPath)
 
     plt.figure()
-    LapToPlot = range(20,28)
     LapToPlot = LapToPlotConvergence
 
     plt.subplot(211)

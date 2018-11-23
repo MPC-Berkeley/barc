@@ -369,7 +369,8 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
                                         # PID controller
     elif PickController == "TI_MPC":
         # file_data = open(homedir+'/barc_data/'+'/ClosedLoopDataPID.obj', 'rb')
-        file_data = open(homedir+'/barc_data/'+'/ClosedLoopDataPIDforLMPC.obj', 'rb')
+        # file_data = open(homedir+'/barc_data/'+'/ClosedLoopDataPIDforLMPC.obj', 'rb')
+        file_data = open(homedir+'/barc_data/'+'/ClosedLoopDataPID_Exp.obj', 'rb')
         ClosedLoopDataPID = pickle.load(file_data)
         file_data.close()     
         Controller = PathFollowingLTI_MPC(A, B, Q, R, N, vt, TI_Qlane)
@@ -418,8 +419,8 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
             Qlane   = 0.1 * 0.5 * 10 * np.array([50, 10]) # Quadratic slack lane cost
             Q_LMPC  =  0 * np.diag([0.0, 0.0, 10.0, 0.0, 0.0, 0.0])  # State cost x = [vx, vy, wz, epsi, s, ey]
             R_LMPC  =  0 * np.diag([1.0, 1.0])                      # Input cost u = [delta, a]
-            dR_LMPC =  2* 1 * np.array([ 0.5 * 5 * 0.5 * 10.0, 0.5 * 8 * 20.0]) # Input rate cost u
-            aConstr = np.array([2 * 0.7, 2.0]) # aConstr = [amin, amax]
+            dR_LMPC =  2* 1 * np.array([ 0.5 * 5 * 0.5 * 10.0, 0.5 * 0.5 * 8 * 20.0]) # Input rate cost u
+            aConstr = np.array([2*2*2 * 0.7, 2*2.0]) # aConstr = [amin, amax]
             steeringDelay = 2
             idDelay       = 0
             print "New BARC tuning selected"
