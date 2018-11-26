@@ -28,12 +28,12 @@ def main():
     inputKeyBoard = raw_input()
     fromLMPC = inputKeyBoard == "y"
 
-    L_shapedPath = '/paper_data/L_shaped/'
+    L_shapedPath = '/paper_data/L_shaped_Option1/'
     O_shapedPath = '/paper_data/oval_shaped/'
 
     if fromLMPC == True:
         # L-shaped track
-        file_data = open(homedir+'/paper_data/L_shaped/ClosedLoopDataLMPC.obj', 'rb')    
+        file_data = open(homedir+'/paper_data/L_shaped_Option1/ClosedLoopDataLMPC.obj', 'rb')    
         ClosedLoopData_Lshape = pickle.load(file_data)
         LMPController_Lshape = pickle.load(file_data)
         LMPCOpenLoopData_Lshape = pickle.load(file_data)    
@@ -45,7 +45,7 @@ def main():
         LMPCOpenLoopData_Oshape = pickle.load(file_data)    
     else:
         # L-shaped track
-        file_data = open(homedir+'/paper_data/L_shaped/ClosedLoopDataZeroStep.obj', 'rb')    
+        file_data = open(homedir+'/paper_data/L_shaped_Option1/ClosedLoopDataZeroStep.obj', 'rb')    
         ClosedLoopData_Lshape = pickle.load(file_data)
         LMPController_Lshape = pickle.load(file_data)
         LMPCOpenLoopData_Lshape = pickle.load(file_data)    
@@ -62,10 +62,10 @@ def main():
     #  ============================= Fist Plot Lap Time: This is Figure 1 =============================
     plt.figure()
     # O-shaped track
-    lastLapToPlot = 35 # LMPController_Oshape.it
+    lastLapToPlot = 36 # LMPController_Oshape.it
     plt.plot([i*LMPController_Oshape.dt for i in LMPController_Oshape.LapCounter[1:lastLapToPlot]], '-o', label="Oval-shaped")
     # L-shaped track
-    lastLapToPlot = 35 # LMPController_Lshape.it
+    lastLapToPlot = 36 # LMPController_Lshape.it
     plt.plot([i*LMPController_Lshape.dt for i in LMPController_Lshape.LapCounter[1:lastLapToPlot]], '-s', label="L-shaped")
     plt.xlabel("Lap Number")
     plt.ylabel("Lap Time [s]")
@@ -74,12 +74,12 @@ def main():
 
     # ============================= Plot evolution closed-loop trajectory through iterations: Figure 2 and 3 =============================
     # O-shaped track
-    LapToPlotLearningProcessOval = [2, 5, 15, 30,31,32,33,34]
+    LapToPlotLearningProcessOval = [2, 5, 15,30,31,32,33,34]
     print "Oval Lap Plotted: ", LapToPlotLearningProcessOval, " Lap Time: ", LMPController_Oshape.LapCounter[LapToPlotLearningProcessOval]
     plotClosedLoopLMPC(LMPController_Oshape, LMPController_Oshape.map, LapToPlotLearningProcessOval)
     plt.show()
     # L-shaped track
-    LapToPlotLearningProcessLshaped = [2, 5, 15,  30,31,32, 33]
+    LapToPlotLearningProcessLshaped = [2, 5, 15,30,31,32, 33,34]
     print "L-shaped Lap Plotted: ", LapToPlotLearningProcessLshaped, " Lap Time: ", LMPController_Lshape.LapCounter[LapToPlotLearningProcessLshaped]
     plotClosedLoopLMPC(LMPController_Lshape, LMPController_Lshape.map, LapToPlotLearningProcessLshaped)
     plt.show()
@@ -154,9 +154,25 @@ def main():
     plt.show()
 
     # ============================= Plot computational time =============================
-    plotComputationalTime(LMPController_Oshape, LapToPlotLearningProcessOval, LMPController_Oshape.map)
-    plotComputationalTime(LMPController_Lshape, LapToPlotLearningProcessLshaped, LMPController_Lshape.map)
+    plotComputationalTime(LMPController_Oshape, LapToPlotConvergence, LMPController_Oshape.map)
+    plotComputationalTime(LMPController_Lshape, LapToPlotConvergence, LMPController_Lshape.map)
 
+    
+    # Color Plot
+    plt.figure()
+    plt.subplot(221)
+    plotClosedLoopColorLMPCFirstLap(LMPController_Oshape, LMPController_Oshape.map, LapToPlotFirst)
+    plt.subplot(222)
+    plotClosedLoopColorLMPCFirstLap(LMPController_Lshape, LMPController_Lshape.map, LapToPlotFirst)
+    cbar = plt.colorbar(label = 'Velocity [m/s]')
+    # cbar.set_label('Velocity [m/s]', rotation=270)
+    plt.subplot(223)
+    plotClosedLoopColorLMPCConvergence(LMPController_Oshape, LMPController_Oshape.map, LapToPlotConvergence)
+    plt.subplot(224)
+    plotClosedLoopColorLMPCConvergence(LMPController_Lshape, LMPController_Lshape.map, LapToPlotConvergence)
+    cbar = plt.colorbar(label = 'Velocity [m/s]')
+    # cbar.set_label('Velocity [m/s]', rotation=270)
+    plt.show()
     pdb.set_trace()
     # print "Track length is: ", map.TrackLength
 
@@ -481,6 +497,80 @@ def plotTrajectory(map, ClosedLoop):
     plt.ylabel('acc')
     plt.show()
 
+def plotClosedLoopColorLMPCFirstLap(LMPController, map, LapToPlot):
+    SS_glob = LMPController.SS_glob
+    LapCounter  = LMPController.LapCounter
+    SS      = LMPController.SS
+    uSS     = LMPController.uSS
+
+    TotNumberIt = LMPController.it
+
+    print "Number iterations: ", TotNumberIt
+    Points = np.floor(10 * (map.PointAndTangent[-1, 3] + map.PointAndTangent[-1, 4]))
+    Points1 = np.zeros((int(Points), 2))
+    Points2 = np.zeros((int(Points), 2))
+    Points0 = np.zeros((int(Points), 2))
+    for i in range(0, int(Points)):
+        Points1[i, :] = map.getGlobalPosition(i * 0.1, map.halfWidth)
+        Points2[i, :] = map.getGlobalPosition(i * 0.1, -map.halfWidth)
+        Points0[i, :] = map.getGlobalPosition(i * 0.1, 0)
+
+    plt.plot(map.PointAndTangent[:, 0], map.PointAndTangent[:, 1], 'o')
+    plt.plot(Points0[:, 0], Points0[:, 1], '--')
+    plt.plot(Points1[:, 0], Points1[:, 1], '-b')
+    plt.plot(Points2[:, 0], Points2[:, 1], '-b')
+
+    xPlot = []
+    yPlot = []
+    Color = []
+    for i in LapToPlot:
+        for j in range(0, len(SS_glob[0:LapCounter[i], 4, i].tolist())):
+            xPlot.append(SS_glob[0:LapCounter[i], 4, i].tolist()[j])
+            yPlot.append(SS_glob[0:LapCounter[i], 5, i].tolist()[j])
+            Color.append(np.sqrt( (SS_glob[0:LapCounter[i], 0, i].tolist()[j])**2 +  (SS_glob[0:LapCounter[i], 0, i].tolist()[j]) ) )
+
+    plt.scatter(xPlot, yPlot, alpha=1.0, c = Color, s = 50, vmin=1.2, vmax=3.2)
+    plt.xlabel("x [m]")
+    plt.ylabel("y [m]")
+
+def plotClosedLoopColorLMPCConvergence(LMPController, map, LapToPlot):
+    SS_glob = LMPController.SS_glob
+    LapCounter  = LMPController.LapCounter
+    SS      = LMPController.SS
+    uSS     = LMPController.uSS
+
+    TotNumberIt = LMPController.it
+
+    print "Number iterations: ", TotNumberIt
+    Points = np.floor(10 * (map.PointAndTangent[-1, 3] + map.PointAndTangent[-1, 4]))
+    Points1 = np.zeros((int(Points), 2))
+    Points2 = np.zeros((int(Points), 2))
+    Points0 = np.zeros((int(Points), 2))
+    for i in range(0, int(Points)):
+        Points1[i, :] = map.getGlobalPosition(i * 0.1, map.halfWidth)
+        Points2[i, :] = map.getGlobalPosition(i * 0.1, -map.halfWidth)
+        Points0[i, :] = map.getGlobalPosition(i * 0.1, 0)
+
+    plt.plot(map.PointAndTangent[:, 0], map.PointAndTangent[:, 1], 'o')
+    plt.plot(Points0[:, 0], Points0[:, 1], '--')
+    plt.plot(Points1[:, 0], Points1[:, 1], '-b')
+    plt.plot(Points2[:, 0], Points2[:, 1], '-b')
+
+    xPlot = []
+    yPlot = []
+    Color = []
+    for i in LapToPlot:
+        for j in range(0, len(SS_glob[0:LapCounter[i], 4, i].tolist())):
+            xPlot.append(SS_glob[0:LapCounter[i], 4, i].tolist()[j])
+            yPlot.append(SS_glob[0:LapCounter[i], 5, i].tolist()[j])
+            Color.append(np.sqrt( (SS_glob[0:LapCounter[i], 0, i].tolist()[j])**2 +  (SS_glob[0:LapCounter[i], 0, i].tolist()[j]) ) )
+
+    plt.scatter(xPlot, yPlot, alpha=1.0, c = Color, s = 50, vmin=3.1, vmax=4.0)
+    plt.xlabel("x [m]")
+    plt.ylabel("y [m]")
+
+    # plt.scatter(SS_glob[0:LapCounter[i], 4, i], SS_glob[0:LapCounter[i], 5, i], alpha=0.8, c = SS_glob[0:LapCounter[i], 0, i])
+
 
 def plotClosedLoopColorLMPC(LMPController, map, LapToPlot):
     SS_glob = LMPController.SS_glob
@@ -500,7 +590,6 @@ def plotClosedLoopColorLMPC(LMPController, map, LapToPlot):
         Points2[i, :] = map.getGlobalPosition(i * 0.1, -map.halfWidth)
         Points0[i, :] = map.getGlobalPosition(i * 0.1, 0)
 
-    plt.figure()
     plt.plot(map.PointAndTangent[:, 0], map.PointAndTangent[:, 1], 'o')
     plt.plot(Points0[:, 0], Points0[:, 1], '--')
     plt.plot(Points1[:, 0], Points1[:, 1], '-b')
@@ -515,7 +604,7 @@ def plotClosedLoopColorLMPC(LMPController, map, LapToPlot):
             yPlot.append(SS_glob[0:LapCounter[i], 5, i].tolist()[j])
             Color.append(np.sqrt( (SS_glob[0:LapCounter[i], 0, i].tolist()[j])**2 +  (SS_glob[0:LapCounter[i], 0, i].tolist()[j]) ) )
 
-    plt.scatter(xPlot, yPlot, alpha=1.0, c = Color, s = 100)
+    plt.scatter(xPlot, yPlot, alpha=1.0, c = Color, s = 50, vmin=1, vmax=4)
     plt.xlabel("x [m]")
     plt.ylabel("y [m]")
 

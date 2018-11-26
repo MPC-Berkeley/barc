@@ -828,7 +828,7 @@ def RegressionAndLinearization(ControllerLMPC, i):
     Ci = np.zeros((n, 1))
 
     # Compute Index to use
-    h = 2 * 5
+    h = 1.5 * 2 * 5
     lamb = 0.0
     stateFeatures = [0, 1, 2]
     ConsiderInput = 1

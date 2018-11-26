@@ -28,12 +28,12 @@ def main():
     inputKeyBoard = raw_input()
     fromLMPC = inputKeyBoard == "y"
 
-    L_shapedPath = '/paper_data/L_shaped/'
+    L_shapedPath = '/paper_data/L_shaped_Option2/'
     O_shapedPath = '/paper_data/oval_shaped/'
 
     if fromLMPC == True:
         # L-shaped track
-        file_data = open(homedir+'/paper_data/L_shaped/ClosedLoopDataLMPC.obj', 'rb')    
+        file_data = open(homedir+'/paper_data/L_shaped_Option2/ClosedLoopDataLMPC.obj', 'rb')    
         ClosedLoopData_Lshape = pickle.load(file_data)
         LMPController_Lshape = pickle.load(file_data)
         LMPCOpenLoopData_Lshape = pickle.load(file_data)    
@@ -45,7 +45,7 @@ def main():
         LMPCOpenLoopData_Oshape = pickle.load(file_data)    
     else:
         # L-shaped track
-        file_data = open(homedir+'/paper_data/L_shaped/ClosedLoopDataZeroStep.obj', 'rb')    
+        file_data = open(homedir+'/paper_data/L_shaped_Option2/ClosedLoopDataZeroStep.obj', 'rb')    
         ClosedLoopData_Lshape = pickle.load(file_data)
         LMPController_Lshape = pickle.load(file_data)
         LMPCOpenLoopData_Lshape = pickle.load(file_data)    
@@ -62,10 +62,10 @@ def main():
     #  ============================= Fist Plot Lap Time: This is Figure 1 =============================
     plt.figure()
     # O-shaped track
-    lastLapToPlot = 35 # LMPController_Oshape.it
+    lastLapToPlot = 37 # LMPController_Oshape.it
     plt.plot([i*LMPController_Oshape.dt for i in LMPController_Oshape.LapCounter[1:lastLapToPlot]], '-o', label="Oval-shaped")
     # L-shaped track
-    lastLapToPlot = 35 # LMPController_Lshape.it
+    lastLapToPlot = 37 # LMPController_Lshape.it
     plt.plot([i*LMPController_Lshape.dt for i in LMPController_Lshape.LapCounter[1:lastLapToPlot]], '-s', label="L-shaped")
     plt.xlabel("Lap Number")
     plt.ylabel("Lap Time [s]")
@@ -74,18 +74,18 @@ def main():
 
     # ============================= Plot evolution closed-loop trajectory through iterations: Figure 2 and 3 =============================
     # O-shaped track
-    LapToPlotLearningProcessOval = [2, 5, 15, 30,31,32,33,34]
+    LapToPlotLearningProcessOval = [2, 5, 15,34,35,36,37]
     print "Oval Lap Plotted: ", LapToPlotLearningProcessOval, " Lap Time: ", LMPController_Oshape.LapCounter[LapToPlotLearningProcessOval]
     plotClosedLoopLMPC(LMPController_Oshape, LMPController_Oshape.map, LapToPlotLearningProcessOval)
     plt.show()
     # L-shaped track
-    LapToPlotLearningProcessLshaped = [2, 5, 15,  30,31,32, 33]
+    LapToPlotLearningProcessLshaped = [2, 5, 15, 34,35,36,37]
     print "L-shaped Lap Plotted: ", LapToPlotLearningProcessLshaped, " Lap Time: ", LMPController_Lshape.LapCounter[LapToPlotLearningProcessLshaped]
     plotClosedLoopLMPC(LMPController_Lshape, LMPController_Lshape.map, LapToPlotLearningProcessLshaped)
     plt.show()
     
     LapToPlotFirst       = [2, 7, 15] 
-    LapToPlotConvergence = [30,31,32, 33,34]
+    LapToPlotConvergence = [34,35,36,37]
     plotBigFigure(LMPController_Oshape, LMPController_Lshape, LMPController_Oshape.map, LMPController_Lshape.map, LapToPlotFirst, LapToPlotConvergence)
     plt.show()
     # ============================= Plot accelerations and velocies =============================
