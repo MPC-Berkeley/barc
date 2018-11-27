@@ -113,12 +113,24 @@ class AvoidanceTrajectory():
             for i in range(self.N):
                 eyO = self.ey[i]
                 if eyO >= ey: 
-                    upBound = eyO - self.width/2
-                    lowBound = self.trackWidth
+                    if np.linalg.norm(- self.trackWidth - eyO) >= self.width:
+                        upBound = eyO - self.width
+                        lowBound = - self.trackWidth
+                        #print('right1')
+                    else: 
+                        upBound = self.trackWidth
+                        lowBound = (eyO + self.width)
+                        #print('left2')
                 else: 
-                    upBound = self.trackWidth
-                    lowBound = -1.0 * (eyO + self.width/2)
-                bx.append(np.array([[upBound], [lowBound]]))
+                    if np.linalg.norm(self.trackWidth - eyO) >= self.width:
+                        upBound = self.trackWidth
+                        lowBound = (eyO + self.width)
+                        #print('left1')
+                    else: 
+                        upBound = eyO - self.width
+                        lowBound = - self.trackWidth
+                        #print('right2')
+                bx.append(np.array([[upBound], [- 1.0 * lowBound]]))
         else: 
             # add box track constraints
             for i in range(self.N):

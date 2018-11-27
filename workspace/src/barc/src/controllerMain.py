@@ -58,7 +58,7 @@ def main():
     estimatorData  = EstimatorData()
     map = Map()                                              # Map
     
-    avoidanceTrajectory = AvoidanceTrajectory(12, 1, .8, 2, map.halfWidth)
+    avoidanceTrajectory = AvoidanceTrajectory(12, 1, .4, 2, map.halfWidth)
 
     print "Track Length: ", map.TrackLength 
     
