@@ -55,7 +55,7 @@
     </node>
 
     <!-- Estimator -->
-    <node machine="odroid_1" pkg="barc" type="stateEstimatorMultiple.py" name="state_estimator_1" output="screen">
+    <node machine="odroid_1" pkg="barc" type="stateEstimatorMultipleFusion.py" name="state_estimator_1" output="screen">
     <!-- delay in state estuiamtor -->
         <param name="beacon" type="int" value="26" />
         <param name="delay_df" type="double" value="0.0" />
@@ -110,7 +110,7 @@
          <param name="Rvy_hs" type="double" value="100.01" />
          <param name="Rvy_ls" type="double" value="100.01" />
 
-         <remap from="hedge_pos_a" to="agent_1/hedge_pos_a" />
+         <remap from="hedge_imu_fusion" to="agent_1/hedge_imu_fusion" />
         <remap from="imu/data" to="agent_1/imu/data" />
         <remap from="vel_est" to="agent_1/vel_est" />
         <remap from="ecu" to="agent_1/ecu"/>
@@ -189,7 +189,7 @@
     </node>
 
     <!-- Estimator -->
-    <node machine="odroid_2" pkg="barc" type="stateEstimatorMultiple.py" name="state_estimator_2" output="screen">
+    <node machine="odroid_2" pkg="barc" type="stateEstimatorMultipleFusion.py" name="state_estimator_2" output="screen">
     <!-- delay in state estuiamtor -->
         <param name="beacon" type="int" value="16" />
         <param name="delay_df" type="double" value="0.0" />
@@ -244,7 +244,7 @@
          <param name="Rvy_hs" type="double" value="100.01" />
          <param name="Rvy_ls" type="double" value="100.01" />
 
-         <remap from="hedge_pos_a" to="agent_2/hedge_pos_a" />
+         <remap from="hedge_imu_fusion" to="agent_2/hedge_imu_fusion" />
         <remap from="imu/data" to="agent_2/imu/data" />
         <remap from="vel_est" to="agent_2/vel_est" />
         <remap from="ecu" to="agent_2/ecu"/>
