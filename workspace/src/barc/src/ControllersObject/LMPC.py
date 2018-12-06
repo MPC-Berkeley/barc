@@ -76,16 +76,17 @@ class ControllerLMPC():
 
         # Initialize the following quantities to avoid dynamic allocation
         NumPoints = int(TimeLMPC / dt) + 1
-        self.TimeSS      = -10000 * np.ones(Laps).astype(int)        # Number of points in j-th iterations (counts also points after finisch line)
-        self.LapCounter  = -10000 * np.ones(Laps).astype(int)        # Time at which each j-th iteration is completed
-        self.SS          = -10000 * np.ones((NumPoints, 6, Laps))    # Sampled Safe SS
-        self.uSS         = -10000 * np.ones((NumPoints, 2, Laps))    # Input associated with the points in SS
-        self.Qfun        =      0 * np.ones((NumPoints, Laps))       # Qfun: cost-to-go from each point in SS
-        self.SS_glob     = -10000 * np.ones((NumPoints, 6, Laps))    # SS in global (X-Y) used for plotting
-        self.qpTime      = -10000 * np.ones((NumPoints, Laps))    # Input associated with the points in SS
-        self.sysIDTime   = -10000 * np.ones((NumPoints, Laps))    # Input associated with the points in SS
-        self.contrTime   = -10000 * np.ones((NumPoints, Laps))    # Input associated with the points in SS
-        self.measSteering= -10000 * np.ones((NumPoints, 1, Laps))    # Input associated with the points in SS
+        self.TimeSS        = -10000 * np.ones(Laps).astype(int)        # Number of points in j-th iterations (counts also points after finisch line)
+        self.LapCounter    = -10000 * np.ones(Laps).astype(int)        # Time at which each j-th iteration is completed
+        self.SS            = -10000 * np.ones((NumPoints, 6, Laps))    # Sampled Safe SS
+        self.uSS           = -10000 * np.ones((NumPoints, 2, Laps))    # Input associated with the points in SS
+        self.Qfun          =      0 * np.ones((NumPoints, Laps))       # Qfun: cost-to-go from each point in SS
+        self.SS_glob       = -10000 * np.ones((NumPoints, 6, Laps))    # SS in global (X-Y) used for plotting
+        self.qpTime        = -10000 * np.ones((NumPoints, Laps))    # Input associated with the points in SS
+        self.sysIDTime     = -10000 * np.ones((NumPoints, Laps))    # Input associated with the points in SS
+        self.contrTime     = -10000 * np.ones((NumPoints, Laps))    # Input associated with the points in SS
+        self.measSteering  = -10000 * np.ones((NumPoints, 1, Laps))    # Input associated with the points in SS
+        self.steeringGain  = -10000 * np.ones((NumPoints, 2, Laps))    # Input associated with the points in SS
 
         # Initialize the controller iteration
         self.it      = 0
@@ -107,8 +108,6 @@ class ControllerLMPC():
         self.linearizationTime = deltaTimer
 
         self.inputPrediction = np.zeros(4)
-
-        self.meaasuredSteering = []
 
     def setTime(self, time):
         self.LapTime = time
@@ -137,10 +136,10 @@ class ControllerLMPC():
 
         # Select laps from SS based on LapTime, always keep the last lap
         sortedLapTime = np.argsort(self.Qfun[0, 0:it])
-        if sortedLapTime[0] != it-1:
-            self.lapSelected = np.hstack((it-1, sortedLapTime))
-        else:
-            self.lapSelected = sortedLapTime
+        # if sortedLapTime[0] != it-1:
+        #     self.lapSelected = np.hstack((it-1, sortedLapTime))
+        # else:
+        self.lapSelected = sortedLapTime
 
         # Select points to be used in LMPC as Terminal Constraint
         SS_PointSelectedTot      = np.empty((n, 0))
@@ -251,6 +250,7 @@ class ControllerLMPC():
         self.sysIDTime[0:(self.TimeSS[it] + 1), it]  = np.squeeze(ClosedLoopData.sysIDTime[0:(self.TimeSS[it] + 1), :])
         self.contrTime[0:(self.TimeSS[it] + 1), it]  = np.squeeze(ClosedLoopData.contrTime[0:(self.TimeSS[it] + 1), :])
         self.measSteering[0:(self.TimeSS[it] + 1),:, it] = ClosedLoopData.measSteering[0:(self.TimeSS[it] + 1), :]
+        self.steeringGain[0:(self.TimeSS[it] + 1),:, it] = ClosedLoopData.steeringGain[0:(self.TimeSS[it] + 1), :]
         self.it = self.it + 1
 
     def addPoint(self, x, x_glob, u, i):
@@ -317,6 +317,11 @@ class ControllerLMPC():
         endTimer = datetime.datetime.now(); deltaTimer = endTimer - startTimer
 
         return x_next, deltaTimer
+
+    def updateHorizonLength(self, N):
+        self.N = N
+        self.F, self.b = _LMPC_BuildMatIneqConst(self)
+
 
 # ======================================================================================================================
 # ======================================================================================================================

@@ -26,6 +26,8 @@ from dataStructures import LMPCprediction, EstimatorData, ClosedLoopDataObj
 from LMPC import ControllerLMPC
 from ZeroStepLMPC import ControllerZeroStepLMPC
 import time
+import matplotlib.pyplot as plt
+
 
 homedir = os.path.expanduser("~")    
 
@@ -85,6 +87,7 @@ def main():
 
     # Loop running at loop rate
     TimeCounter = 0
+    fig, lapTime, compTime = initializeFigure()
     KeyInput = raw_input("Press enter to start the controller... \n")
     oneStepPrediction = np.zeros(6)
     uApplied = np.array([0.0, 0.0])
@@ -94,6 +97,13 @@ def main():
 
     firtLap = True
     ChangeToZeroStep = False
+    OldLapUpdate = LapNumber
+
+    lapTimeList   = []
+    compTimeList  = [0.02]
+    lapNumberList = []
+    dummy = 0
+
     while (not rospy.is_shutdown()) and RunController == 1:    
         # == Start: Read Measurements
         GlobalState[:] = estimatorData.CurrentState
@@ -111,8 +121,37 @@ def main():
         if LocalState[4] >= 1*map.TrackLength/4 and LocalState[4] <= 3*map.TrackLength/4:
             firtLap = False
 
-        if HalfTrack == 1 and LocalState[4] <= map.TrackLength/4 and firtLap == False:
+        if (HalfTrack==1) and LocalState[4] >= 2*map.TrackLength/3 and OldLapUpdate != LapNumber:
+            OldLapUpdate = LapNumber 
+            base = 30
+            if (LapNumber == 25):
+                Controller.numSS_it = 4
+            # if (PickController=="LMPC") and ((LapNumber == base+2) or (LapNumber == base+4) or (LapNumber == base+6) or (LapNumber == base+8) or (LapNumber == base+10) or (LapNumber == base+12) or (LapNumber == base+14) or (LapNumber == base+16)):
+            if (PickController=="LMPC") and ((LapNumber == base+1) or (LapNumber == base+2) or (LapNumber == base+3) or (LapNumber == base+4) or (LapNumber == base+5) or (LapNumber == base+6) or (LapNumber == base+7) or (LapNumber == base+8) or (LapNumber == base+9)):
+                print("Change Horizon")
+            # if (LapNumber == 38) or (LapNumber == 40) or (LapNumber == 42) or (LapNumber == 44) or (LapNumber == 46):
+                if Controller.N == 6:
+                    Controller.Qslack = Controller.Qslack * 5.0
+                    # Controller.dR[1] = Controller.dR[1] * 2.0
+                    # Controller.Qslack[3] = Controller.Qslack[3] * 2
+                    # Controller.Qslack[4] = Controller.Qslack[4] * 2
+                    # Controller.Qslack[5] = Controller.Qslack[5] * 2
+                if Controller.N == 6:
+                    Controller.dR[0] = Controller.dR[0] * 0.5
+                
+                if Controller.N == 4:
+                    Controller.Qslack = Controller.Qslack * 5.0
+                    Controller.dR[0] = Controller.dR[0] * 0.5
 
+                #     Controller.Qslack = Controller.Qslack * 2
+                # if Controller.N == 10:
+                #     dR_LMPC =  2* 1 * np.array([ 5 * 0.5 * 10.0, 2 * 8 * 20.0]) # Input rate cost u
+                # Controller.dR = Controller.dR * 2
+                if Controller.N >= 3:
+                    Controller.updateHorizonLength(Controller.N - 1)
+
+
+        if HalfTrack == 1 and LocalState[4] <= map.TrackLength/4 and firtLap == False:
             # If not LMPC then reset initial conditon after Lap 0
             if LapNumber == 0 and (PickController != "LMPC" and PickController != "ZeroStep"):
                 ClosedLoopData.updateInitialConditions(LocalState, GlobalState)
@@ -120,14 +159,37 @@ def main():
             # If LMPC put in SS lap after finisching lap 1
             if LapNumber >= 1 and ((PickController == "LMPC") or (PickController == "ZeroStep")):
                 Controller.addTrajectory(ClosedLoopData)
+                # Plot 
+                dummy = LapNumber
+                lapTimeList.append(float(TimeCounter)/loop_rate)
+                lapNumberList.append(dummy)
+
+                # print ClosedLoopData.SimTime
+                # print ClosedLoopData.solverTime[0:(ClosedLoopData.SimTime + 1), :]
+
+                qpSovlerTime = np.squeeze(ClosedLoopData.solverTime[0:(ClosedLoopData.SimTime + 1), :])
+                sysIDTime    = np.squeeze(ClosedLoopData.sysIDTime[0:(ClosedLoopData.SimTime + 1), :])
+
+                avg = np.mean(qpSovlerTime + sysIDTime)
+                if LapNumber >= 2:
+                    compTimeList.append(avg)
+                lapTime.set_data(lapNumberList, lapTimeList)
+                compTime.set_data(lapNumberList, compTimeList)
+                # print(lapTimeList)
+                # print(compTimeList)
+                # print(lapNumberList)
+                fig.canvas.draw()
+
                 ClosedLoopData.updateInitialConditions(LocalState, GlobalState)
+                if PickController == "LMPC":
+                    print  "Horizon: ", Controller.N
 
             if LapNumber == (NumberOfLaps-1):
                 backPoints = 3
                 forePoints = 7
-                Laps       = NumberOfLaps+2   # Total LMPC laps
+                Laps       = NumberOfLaps   # Total LMPC laps
                 LMPControllerBeforeSwitch = Controller
-                Controller = ControllerZeroStepLMPC(Controller, backPoints, forePoints, Laps)
+                Controller = ControllerZeroStepLMPC(Controller, backPoints, forePoints, LapNumber)
                 PickController = "ZeroStep"
                 ChangeToZeroStep = True
 
@@ -144,6 +206,8 @@ def main():
 
             HalfTrack = 7
             TimeCounter = 0
+
+
         # == End: Check if the lap has finisched
 
         # If inside the track publish input
@@ -216,6 +280,12 @@ def main():
                 SS_glob_sel.SSy       = Controller.SS_glob_PointSelectedTot[5, :]
                 sel_safe_set.publish(SS_glob_sel)
 
+                OL_predictions.s    = np.zeros(stepN+1)
+                OL_predictions.ey   = -10*np.ones(stepN+1)
+                OL_predictions.epsi = np.zeros(stepN+1)
+                pred_treajecto.publish(OL_predictions)
+
+
             else:                                     # Else use the selected controller
                 if LocalState[0] < 0.5 and cmd.motor < 0.5:
                     cmd.motor = 0.5
@@ -267,17 +337,23 @@ def main():
             # == End: Computing Input
 
             # == Start: Record data
+            if (LapNumber >= PathFollowingLaps) and (PickController=="LMPC"):
+                # print Controller.B[0].shape
+                steeringGain = np.array([Controller.B[0][1, 0], Controller.B[0][1, 0]])
+            else:
+                steeringGain = np.zeros((1,2))
+
             if ((PickController != "LMPC") and (PickController != "ZeroStep")) and (LapNumber >= 1):
                 LocalState[4] = LocalState[4] + (LapNumber - 1)*map.TrackLength
                 ClosedLoopData.addMeasurement(GlobalState, LocalState, uApplied, 
                                               Controller.solverTime.total_seconds(), 
                                               Controller.linearizationTime.total_seconds() + oneStepPredictionTime.total_seconds(),
-                                              deltaTimer.total_seconds(), estimatorData.CurrentAppliedSteeringInput)
+                                              deltaTimer.total_seconds(), estimatorData.CurrentAppliedSteeringInput, steeringGain)
             elif LapNumber >= 1:
                 ClosedLoopData.addMeasurement(GlobalState, LocalState, uApplied, 
                                               Controller.solverTime.total_seconds(), 
                                               Controller.linearizationTime.total_seconds() + oneStepPredictionTime.total_seconds(),
-                                              deltaTimer.total_seconds(), estimatorData.CurrentAppliedSteeringInput)
+                                              deltaTimer.total_seconds(), estimatorData.CurrentAppliedSteeringInput, steeringGain)
             # Add data to SS and Record Prediction                    
 
             if (PickController == "LMPC") and (LapNumber >= PathFollowingLaps):
@@ -290,11 +366,13 @@ def main():
                 SS_glob_sel.SSy       = Controller.SS_glob_PointSelectedTot[5, :]
                 sel_safe_set.publish(SS_glob_sel)
 
-                OpenLoopData.oneStepPredictionError[:,TimeCounter, Controller.it]   = oneStepPredictionError               
-                OpenLoopData.PredictedStates[:,:,TimeCounter, Controller.it]        = Controller.xPred
-                OpenLoopData.PredictedInputs[:, :, TimeCounter, Controller.it]      = Controller.uPred
-                OpenLoopData.SSused[:, :, TimeCounter, Controller.it]               = Controller.SS_PointSelectedTot
-                OpenLoopData.Qfunused[:, TimeCounter, Controller.it]                = Controller.Qfun_SelectedTot
+                stepN = Controller.N
+
+                OpenLoopData.oneStepPredictionError[:,TimeCounter, Controller.it]      = oneStepPredictionError               
+                OpenLoopData.PredictedStates[0:(stepN+1),:,TimeCounter, Controller.it] = Controller.xPred
+                OpenLoopData.PredictedInputs[0:(stepN), :, TimeCounter, Controller.it] = Controller.uPred
+                OpenLoopData.SSused[:, :, TimeCounter, Controller.it]                  = Controller.SS_PointSelectedTot
+                OpenLoopData.Qfunused[:, TimeCounter, Controller.it]                   = Controller.Qfun_SelectedTot
 
                 Controller.addPoint(LocalState, GlobalState, uApplied, TimeCounter)
 
@@ -329,6 +407,28 @@ def main():
 # ===============================================================================================================================
 # ==================================================== END OF MAIN ==============================================================
 # ===============================================================================================================================
+def initializeFigure():
+    xdata = []; ydata = []
+    fig = plt.figure(figsize=(12,8))
+    plt.ion()
+    lt = fig.add_subplot(2, 1, 1)
+    lapTime, = lt.plot(xdata, ydata, '-ok')
+    plt.ylim((0, 20))
+    plt.xlim((0, 50))
+    plt.ylabel("Lap Time [s]")
+
+
+    ct = fig.add_subplot(2, 1, 2)
+    compTime, = ct.plot(xdata, ydata, '-ok')
+    plt.ylim((0, .020))
+    plt.xlim((0, 50))
+    plt.ylabel("Computational Time [s]")
+    plt.xlabel("Lap Number")
+
+    plt.show()
+
+    return fig, lapTime, compTime
+
 def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PIDnoise, sel_car):
     OpenLoopData = 0.0
 
@@ -401,19 +501,20 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
         LMPC_Solver = "OSQP"          # Can pick CVX for cvxopt or OSQP. For OSQP uncomment line 14 in LMPC.py
         SysID_Solver = "scipy"        # Can pick CVX, OSQP or scipy. For OSQP uncomment line 14 in LMPC.py  
         numSS_it = 2                  # Number of trajectories used at each iteration to build the safe set
-        numSS_Points = 42 + N         # Number of points to select from each trajectory to build the safe set
         # Tuning Parameters
         if mode == "simulations":
-            N = 12
+            numSS_Points = 40#42 + N         # Number of points to select from each trajectory to build the safe set
+            N = 11
             Qslack  =  2 * 5 * np.diag([10, 0.1, 1, 0.1, 10, 1])          # Cost on the slack variable for the terminal constraint
             Qlane   = 0.1 * 0.5 * 10 * np.array([50, 10]) # Quadratic slack lane cost
             Q_LMPC  =  0 * np.diag([0.0, 0.0, 10.0, 0.0, 0.0, 0.0])  # State cost x = [vx, vy, wz, epsi, s, ey]
-            R_LMPC  =  0 * np.diag([1.0, 1.0])                      # Input cost u = [delta, a]
-            dR_LMPC =  2* 1 * np.array([ 5 * 0.5 * 10.0, 8 * 20.0]) # Input rate cost u
+            R_LMPC  =  0.0 * np.diag([1.0, 1.0])                      # Input cost u = [delta, a]
+            dR_LMPC =  2 * 0.5 * 2* 1 * np.array([ 5 * 0.5 * 10.0, 0.25 * 8 * 20.0]) # Input rate cost u
             aConstr = np.array([0.7, 2.0]) # aConstr = [amin, amax]
             steeringDelay = 0
             idDelay       = 0
         elif sel_car == "NewBARC":
+            numSS_Points = 42 + N         # Number of points to select from each trajectory to build the safe set
             N = 12
             Qslack  =  2 * 5 * np.diag([10, 0.1, 1, 0.1, 10, 1])          # Cost on the slack variable for the terminal constraint
             Qlane   = 0.1 * 0.5 * 10 * np.array([50, 10]) # Quadratic slack lane cost
@@ -425,6 +526,7 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
             idDelay       = 0
             print "New BARC tuning selected"
         elif sel_car == "OldBARC":
+            numSS_Points = 42 + N         # Number of points to select from each trajectory to build the safe set
             N = 12
             Qslack  =  2 * 5 * np.diag([10, 0.1, 1, 0.1, 10, 1])          # Cost on the slack variable for the terminal constraint
             Qlane   = 0.1 * 0.5 * 10 * np.array([50, 10]) # Quadratic slack lane cost

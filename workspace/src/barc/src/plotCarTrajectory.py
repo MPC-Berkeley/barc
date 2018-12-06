@@ -125,8 +125,8 @@ def main():
 
         maxVx = np.maximum(maxVx, estimatedStates[0])
         flagVy = (estimatedStates[0] > vSwitch or np.abs(estimatedStates[2]) > psiSwitch) == False
-        StringValue = "vx: "+str(estimatedStates[0])+" max vx: "+str(maxVx)+" psiDot: "+str(estimatedStates[2])+" Use vy: "+str(flagVy)
-        axtr.set_title(StringValue)
+        # StringValue = "vx: "+str(estimatedStates[0])+" max vx: "+str(maxVx)+" psiDot: "+str(estimatedStates[2])+" Use vy: "+str(flagVy)
+        # axtr.set_title(StringValue)
         
         if insideMap == 1:
             fig.canvas.draw()

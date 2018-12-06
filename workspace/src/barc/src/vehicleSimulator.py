@@ -18,6 +18,7 @@
 # based on an open source project by Bruce Wootton
 #----------------------------------------------------------------------------
 
+import os
 import sys
 sys.path.append(sys.path[0]+'/ControllersObject')
 sys.path.append(sys.path[0]+'/Utilities')
@@ -30,6 +31,7 @@ from marvelmind_nav.msg import hedge_imu_fusion, hedge_pos
 from numpy import tan, arctan, cos, sin, pi
 from numpy.random import randn
 from tf import transformations
+import numpy as np
 
 def main():
     rospy.init_node("simulator")
@@ -102,6 +104,16 @@ def main():
 			counter = 0
 		sim.rate.sleep()
 
+    homedir = os.path.expanduser("~")
+    pathSave = os.path.join(homedir,"barc_data/simulator_output.npz")
+    np.savez(pathSave,FyR   = sim.FyR,
+                      FyF   = sim.FyF,
+					  slipF = sim.slipF,
+					  slipR = sim.slipR,
+					  x     = sim.x_his,
+					  y     = sim.y_his,
+					  yaw   = sim.yaw_his)
+
 class Simulator(object):
 	""" Object collecting GPS measurement data
     Attributes:
@@ -152,10 +164,16 @@ class Simulator(object):
 		self.ax_his 	= []
 		self.ay_his 	= []
 		self.psiDot_his = []
+		self.yaw_his    = []
 
 		self.dt 		= rospy.get_param("simulator/dt")
 		self.rate 		= rospy.Rate(1.0/self.dt)
 		self.time_his 	= []
+
+		self.FyF   = []
+		self.slipF = []
+		self.FyR   = []
+		self.slipR = []
 
 	def f(self,u):
 		a_F = 0.0
@@ -167,6 +185,12 @@ class Simulator(object):
 
 		FyF = -self.pacejka(a_F)
 		FyR = -self.pacejka(a_R)
+
+		self.slipF.append(a_F)
+		self.FyF.append(FyF)
+
+		self.slipR.append(a_R)
+		self.FyR.append(FyR)
 
 		if abs(a_F) > 30.0/180.0*pi or abs(a_R) > 30.0/180.0*pi:
 			print "WARNING: Large slip angles in simulation"
@@ -204,6 +228,8 @@ class Simulator(object):
 		self.ax_his.append(self.ax)
 		self.ay_his.append(self.ay)
 		self.psiDot_his.append(self.psiDot)
+		self.yaw_his.append(self.yaw)
+
 		self.time_his.append(rospy.get_rostime().to_sec()) 
 
 class ImuClass(object):

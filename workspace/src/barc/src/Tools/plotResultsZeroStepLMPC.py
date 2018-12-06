@@ -76,8 +76,8 @@ def main():
 
     LMPC = 1
     lapCounterLoop = 0
-    for i in  range(1, LMPController.it):
-        if (LMPController.LapCounter[i] > 0) and (lapCounterLoop < 40):
+    for i in  range(2, LMPController.it):
+        if (LMPController.LapCounter[i] > 0) and (lapCounterLoop < 60):
             lapCounterLoop = lapCounterLoop + 1
             if LMPC == 1:
                 lapLMPC.append(lapCounterLoop)
@@ -135,12 +135,18 @@ def main():
     # LapToPlot.append(35); LapToPlot.append(32) 
 
     # L_shape 6_LMPC_42LapsNiceVideo # Used in ACC paper
-    LapToPlot = [21, 26, 27]
+    LapToPlot = [21, 26, 27, 33]
     LapToPlot.append(35); LapToPlot.append(33) 
 
+    # New
+    LapToPlot = []
+    LapToPlot.append(38); LapToPlot.append(39)
+    LapToPlot.append(40); LapToPlot.append(41)
+    LapToPlot.append(42); LapToPlot.append(43) 
+ 
     print LapToPlot
 
-    groupFlag = 2
+    groupFlag = 0
     print "Lap Time: ", LMPController.LapCounter[LapToPlot]
     plotClosedLoopLMPC(LMPController, map, LapToPlot, groupFlag)
 
@@ -341,6 +347,7 @@ def plotComputationalTime(LMPController, LapToPlot, map, groupFlag):
 
         counter += 1
 
+
     plt.legend(prop={'size': 16})
     plt.ylabel('Computational Time [s]', fontsize = 16)
     plt.xlabel('Curvilinear Abscissa [m]', fontsize = 16)
@@ -355,7 +362,16 @@ def plotComputationalTime(LMPController, LapToPlot, map, groupFlag):
     plt.ylabel('Computational Time [s]', fontsize = 16)
     plt.xlabel('Time [s]', fontsize = 16)
 
+    avgLapTime = []
+    for i in range(0, LMPController.it):
+        # pdb.set_trace()
+        avg = np.mean(qpTime[0:LapCounter[i], i] + sysIDTime[0:LapCounter[i], i])
+        # print "Iteration: ", i, " Horizon: ", LMPController.N
+        avgLapTime.append(avg)
 
+    plt.figure()
+    plt.plot(avgLapTime, "-o", label='Avarage Computational Time [s]')
+    plt.show()
 
 def plotOneStepPreditionError(LMPController, LMPCOpenLoopData, LapToPlot):
     LapCounter  = LMPController.LapCounter
@@ -843,7 +859,7 @@ def saveGif_xyResults(map, LMPCOpenLoopData, LMPController, it):
         SS_glob_PointSelectedTot  = np.empty((n, 0))
         Qfun_SelectedTot          = np.empty((0))
 
-        for jj in [20,21,22,23,24,26,27,28,29]:
+        for jj in range(32,38):
         # for jj in range(22,29):        
             SS_PointSelected, SS_glob_PointSelected, Qfun_Selected, uSS_PointSelected = _SelectPoints(LMPController, jj, currState)
             SS_PointSelectedTot      =  np.append(SS_PointSelectedTot, SS_PointSelected, axis=1)

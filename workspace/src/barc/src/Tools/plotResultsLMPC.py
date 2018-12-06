@@ -63,6 +63,8 @@ def main():
     plt.show()
     
     LapToPlot = range(30,37)
+    plotClosedLoopLMPC(LMPController, map, LapToPlotLearningProcess)
+    plt.show()
 
     plotMeasuredAndAppliedSteering(LMPController, map, LapToPlotLearningProcess)
     plt.show()
@@ -73,9 +75,11 @@ def main():
     LapToPlot      = np.argsort(LMPController.LapCounter[1:LMPController.it])[0:BestNunberLaps]
     # LapToPlot = range(15,19)
     LapToPlot = range(30,37)
+    LapToPlot = range(30,37)
     
     print SortedTimes
     print "Lap Plotted: ", LapToPlot, " Lap Time: ", LMPController.LapCounter[LapToPlot]
+    LapToPlot = [30, 34]
     plotClosedLoopColorLMPC(LMPController, map, LapToPlot)
     
     pdb.set_trace()
@@ -230,7 +234,24 @@ def plotAccelerations(LMPController, LapToPlot, map):
         counter += 1
     plt.axvline(map.TrackLength, linewidth=4, color='g')
     plt.ylabel('psiDot [rad/s]')
-    
+
+    plt.figure()
+    plt.subplot(211)
+    counter = 0
+    for i in LapToPlot:
+        plt.plot(s[0:LapCounter[i], 0, i], ay[0:LapCounter[i], 0, i], '-o', color=plotColors[counter])
+        counter += 1
+    plt.ylabel('ay [m/s^2]')
+    plt.xlim([0, map.TrackLength])
+
+    plt.subplot(212)
+    counter = 0
+    for i in LapToPlot:
+        plt.plot(s[0:LapCounter[i], 0, i], roll[0:LapCounter[i], 0, i], '-o', color=plotColors[counter])
+        counter += 1
+    plt.xlim([0, map.TrackLength])
+    plt.ylabel('roll [rad]')    
+    plt.xlabel('s [m]')    
     
 
 def plotComputationalTime(LMPController, LapToPlot, map):
