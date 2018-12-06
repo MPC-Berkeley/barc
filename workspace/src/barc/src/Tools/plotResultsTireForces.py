@@ -40,7 +40,6 @@ def main():
         LMPCOpenLoopData = pickle.load(file_data)    
         LMPController = pickle.load(file_data)
     
-    
     file_data.close()
     map = LMPController.map
     LapToPlot = [10,18,25,32,38,39]
