@@ -43,7 +43,7 @@
         <param name="ax_std" type="double" value="0.0005" />
         <param name="ay_std" type="double" value="0.0005" />
         <param name="psiDot_std" type="double" value="0.000001" --> />
-        <param name="n_bound" type="double" value="0.0005" />
+        <param name="n_bound" type="double" value="0.5" />
         <param name="x_std" type="double" value="0.002" />
         <param name="y_std" type="double" value="0.002" />    
         <param name="v_std" type="double" value="0.001" />    

@@ -70,7 +70,7 @@ class ControllerLMPC():
         self.OldAccelera = [0.0]*int(1)
 
         self.MaxNumPoint = 40
-        self.itUsedSysID = 2
+        self.itUsedSysID = 4
 
         self.lapSelected = []
 

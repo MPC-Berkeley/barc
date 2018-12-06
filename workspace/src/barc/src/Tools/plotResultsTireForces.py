@@ -42,7 +42,7 @@ def main():
     
     file_data.close()
     map = LMPController.map
-    LapToPlot = [10,15,22,27,38,39]
+    LapToPlot = [10,18,25,32,38,39]
     plotSteeringGain(LMPController, map, LapToPlot)
     
     # Plot Acceleration

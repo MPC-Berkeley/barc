@@ -66,7 +66,7 @@ def main():
     # Choose Controller and Number of Laps
 
     PickController = "LMPC"
-    NumberOfLaps   = 40
+    NumberOfLaps   = 50
     vt = 1.2
     PathFollowingLaps = 2
     
@@ -100,7 +100,7 @@ def main():
     OldLapUpdate = LapNumber
 
     lapTimeList   = []
-    compTimeList  = [0.02]
+    compTimeList  = [0.018]
     lapNumberList = []
     dummy = 0
 
@@ -123,20 +123,22 @@ def main():
 
         if (HalfTrack==1) and LocalState[4] >= 2*map.TrackLength/3 and OldLapUpdate != LapNumber:
             OldLapUpdate = LapNumber 
-            base = 30
-            if (LapNumber == 25):
+            base = 40
+            if (LapNumber == 6):
                 Controller.numSS_it = 4
+                # Controller.itUsedSysID = 4
+
             # if (PickController=="LMPC") and ((LapNumber == base+2) or (LapNumber == base+4) or (LapNumber == base+6) or (LapNumber == base+8) or (LapNumber == base+10) or (LapNumber == base+12) or (LapNumber == base+14) or (LapNumber == base+16)):
             if (PickController=="LMPC") and ((LapNumber == base+1) or (LapNumber == base+2) or (LapNumber == base+3) or (LapNumber == base+4) or (LapNumber == base+5) or (LapNumber == base+6) or (LapNumber == base+7) or (LapNumber == base+8) or (LapNumber == base+9)):
                 print("Change Horizon")
             # if (LapNumber == 38) or (LapNumber == 40) or (LapNumber == 42) or (LapNumber == 44) or (LapNumber == 46):
-                if Controller.N == 6:
+                if Controller.N == 7:
                     Controller.Qslack = Controller.Qslack * 5.0
                     # Controller.dR[1] = Controller.dR[1] * 2.0
                     # Controller.Qslack[3] = Controller.Qslack[3] * 2
                     # Controller.Qslack[4] = Controller.Qslack[4] * 2
                     # Controller.Qslack[5] = Controller.Qslack[5] * 2
-                if Controller.N == 6:
+                if Controller.N == 7:
                     Controller.dR[0] = Controller.dR[0] * 0.5
                 
                 if Controller.N == 4:
@@ -414,14 +416,14 @@ def initializeFigure():
     lt = fig.add_subplot(2, 1, 1)
     lapTime, = lt.plot(xdata, ydata, '-ok')
     plt.ylim((0, 20))
-    plt.xlim((0, 50))
+    plt.xlim((0, 60))
     plt.ylabel("Lap Time [s]")
 
 
     ct = fig.add_subplot(2, 1, 2)
     compTime, = ct.plot(xdata, ydata, '-ok')
-    plt.ylim((0, .020))
-    plt.xlim((0, 50))
+    plt.ylim((0, .035))
+    plt.xlim((0, 60))
     plt.ylabel("Computational Time [s]")
     plt.xlabel("Lap Number")
 
@@ -500,7 +502,7 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
         TimeLMPC   = 70              # Simulation time
         LMPC_Solver = "OSQP"          # Can pick CVX for cvxopt or OSQP. For OSQP uncomment line 14 in LMPC.py
         SysID_Solver = "scipy"        # Can pick CVX, OSQP or scipy. For OSQP uncomment line 14 in LMPC.py  
-        numSS_it = 2                  # Number of trajectories used at each iteration to build the safe set
+        numSS_it = 4                  # Number of trajectories used at each iteration to build the safe set
         # Tuning Parameters
         if mode == "simulations":
             numSS_Points = 40#42 + N         # Number of points to select from each trajectory to build the safe set
@@ -539,6 +541,8 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
         Controller = ControllerLMPC(numSS_Points, numSS_it, N, Qslack, Qlane, Q_LMPC, R_LMPC, dR_LMPC, 
                                         dt, map, Laps, TimeLMPC, LMPC_Solver, SysID_Solver, flag_LTV, steeringDelay, idDelay, aConstr)
         # Controller.addTrajectory(ClosedLoopDataPID)
+        Controller.addTrajectory(ClosedLoopDataTI_MPC)
+        Controller.addTrajectory(ClosedLoopDataTI_MPC)
         Controller.addTrajectory(ClosedLoopDataTI_MPC)
         OpenLoopData = LMPCprediction(N, 6, 2, int(TimeLMPC/dt), numSS_Points, Laps)
         print "LMPC initialized!"
