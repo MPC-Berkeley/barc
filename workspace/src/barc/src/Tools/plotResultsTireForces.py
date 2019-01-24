@@ -40,10 +40,12 @@ def main():
         LMPCOpenLoopData = pickle.load(file_data)    
         LMPController = pickle.load(file_data)
     
-    
+
     file_data.close()
     map = LMPController.map
-    LapToPlot = [10,18,25,32,38,39]
+    LapToPlot = [10,18,25,32,37,38,39,40]
+
+    LapToPlot = [40, 30, 15, 5]
     plotSteeringGain(LMPController, map, LapToPlot)
     
     # Plot Acceleration
@@ -60,7 +62,7 @@ def main():
     # plt.show()
     
 def plotSteeringGain(LMPController, map, LapToPlot):
-    plotColors = ['b','g','r','c','y','k','m','b','g','r','c','y','k','m']
+    plotColors = ['b','g','r','c','y','k','k','k','k','k','k','k','k','k','k','k']
 
     SS_glob = LMPController.SS_glob
     LapCounter  = LMPController.LapCounter
@@ -68,13 +70,26 @@ def plotSteeringGain(LMPController, map, LapToPlot):
     uSS     = LMPController.uSS
 
     plt.figure()
+    plt.subplot(211)
+
     counter = 0
     for i in LapToPlot:
         plt.plot(SS[0:(LapCounter[i]-1), 4, i], LMPController.steeringGain[0:(LapCounter[i] - 1), 0, i], '-o', color=plotColors[counter], label=i)
         counter += 1
-    plt.legend()
     plt.ylabel('Steering Gain [rad]')
     plt.xlabel('s [m]')
+    plt.xlim(9.75,12.9)
+    plt.legend(bbox_to_anchor=(0,1.02,1,0.2), borderaxespad=0, ncol=len(LapToPlot))
+
+    plt.subplot(212)
+    counter = 0
+    for i in LapToPlot:
+        plt.plot(SS[0:(LapCounter[i]-1), 4, i], LMPController.steeringGain[0:(LapCounter[i] - 1), 1, i], '-o', color=plotColors[counter], label=i)
+        counter += 1
+    plt.ylabel('Velocity Gain [rad]')
+    plt.xlabel('s [m]')
+    plt.xlim(9.75,12.9)
+
 
 def plotAccelerations(LMPController, LapToPlot, map):
     n = LMPController.n
@@ -127,15 +142,15 @@ def plotAccelerations(LMPController, LapToPlot, map):
         TimeCounter += 1
 
 
-    plotColors = ['b','g','r','c','y','k','m','b','g','r','c','y','k','m']
+    plotColors = ['r','g','b','y','k','k','k','k','k','k','k','k']
 
     plt.figure()
     counter = 0
     for i in LapToPlot:
         indexToUse = np.argsort(FyF[0:LapCounter[i]-1, 0, i])
-        plt.plot(slipF[indexToUse, 0, i], FyF[indexToUse, 0, i], '-o', label=i, color=plotColors[counter])
+        plt.plot(slipF[indexToUse, 0, i], FyF[indexToUse, 0, i], '-', linewidth=7.0, color=plotColors[counter], label=i)
         counter += 1
-    plt.legend(bbox_to_anchor=(0,1.02,1,0.2), borderaxespad=0, ncol=len(LapToPlot))
+    plt.legend()
 
     plt.ylabel('Lateral Force [N]')
     plt.xlabel('Slip Angle [deg]')
@@ -144,8 +159,11 @@ def plotAccelerations(LMPController, LapToPlot, map):
     counter = 0
     for i in LapToPlot:
         indexToUse = np.argsort( FyR[0:LapCounter[i]-1, 0, i])
-        plt.plot(slipR[indexToUse, 0, i], FyR[indexToUse, 0, i], '-o', color=plotColors[counter])
+        plt.plot(slipR[indexToUse, 0, i], FyR[indexToUse, 0, i], '-', color=plotColors[counter],linewidth=7.0, label=i)
         counter += 1
+
+    plt.annotate('local max', xy=(2, 1), xytext=(3, 1.5), arrowprops=dict(facecolor='black', shrink=0.05))
+    plt.legend()
     plt.ylabel('Lateral Force [N]')
     plt.xlabel('Slip Angle [deg]')
 

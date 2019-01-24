@@ -90,6 +90,11 @@ def main():
 
     # plt.rc('text', usetex=True)
     # plt.rc('font', family='serif')
+
+    # LapToPlot = range(0,50)
+    # plotComputationalTime(LMPController, LapToPlot, map, 10)
+    # plt.show()
+    
     plt.figure()
 
     plt.plot(lapLMPC, lapTimeLMPC, 'bo', label="LMPC")
@@ -292,75 +297,76 @@ def plotComputationalTime(LMPController, LapToPlot, map, groupFlag):
     sysIDTime  = LMPController.sysIDTime
     contrTime  = LMPController.contrTime
 
-    if groupFlag == 0:
-        plotPoint = ['-o','-o','-o','-s','-s','k','m']
-        plotColors = ['b','g','r','c','y','k','m']
-        Label = LapToPlot
-    elif groupFlag == 1:
-        plotPoint = ['-o','-o','-o','-s','-s','k','m']
-        plotColors = ['b','b','r','r','k','m']
-        Label = ["LMPC", "LMPC", "Data-Based Policy", "Data-Based Policy"]
-    elif groupFlag == 2:
-        plotPoint = ['-o','-o','-o','-s','-s','k','m']
-        plotColors = ['b','b','b','r','r','k','m']
-        Label = ["LMPC", "LMPC", "LMPC", "Data-Based Policy", "Data-Based Policy"]  
+    if groupFlag < 10:
+        if groupFlag == 0:
+            plotPoint = ['-o','-o','-o','-s','-s','k','m']
+            plotColors = ['b','g','r','c','y','k','m']
+            Label = LapToPlot
+        elif groupFlag == 1:
+            plotPoint = ['-o','-o','-o','-s','-s','k','m']
+            plotColors = ['b','b','r','r','k','m']
+            Label = ["LMPC", "LMPC", "Data-Based Policy", "Data-Based Policy"]
+        elif groupFlag == 2:
+            plotPoint = ['-o','-o','-o','-s','-s','k','m']
+            plotColors = ['b','b','b','r','r','k','m']
+            Label = ["LMPC", "LMPC", "LMPC", "Data-Based Policy", "Data-Based Policy"]  
 
 
-    plt.figure()
-    plt.subplot(311)
-    counter = 0
-    for i in LapToPlot:
-        if counter != 0 and (Label[counter-1] == Label[counter]):
-            plt.plot(SS[0:LapCounter[i], 4, i], qpTime[0:LapCounter[i], i], plotPoint[counter], color=plotColors[counter%len(plotColors)])
-        else:
-            plt.plot(SS[0:LapCounter[i], 4, i], qpTime[0:LapCounter[i], i], plotPoint[counter], label=Label[counter], color=plotColors[counter%len(plotColors)])
+        plt.figure()
+        plt.subplot(311)
+        counter = 0
+        for i in LapToPlot:
+            if counter != 0 and (Label[counter-1] == Label[counter]):
+                plt.plot(SS[0:LapCounter[i], 4, i], qpTime[0:LapCounter[i], i], plotPoint[counter], color=plotColors[counter%len(plotColors)])
+            else:
+                plt.plot(SS[0:LapCounter[i], 4, i], qpTime[0:LapCounter[i], i], plotPoint[counter], label=Label[counter], color=plotColors[counter%len(plotColors)])
 
-        counter += 1
-    plt.legend(bbox_to_anchor=(0,1.02,1,0.2), borderaxespad=0, ncol=len(LapToPlot), prop={'size': 16})
+            counter += 1
+        plt.legend(bbox_to_anchor=(0,1.02,1,0.2), borderaxespad=0, ncol=len(LapToPlot), prop={'size': 16})
 
-    plt.axvline(map.TrackLength, linewidth=4, color='g')
-    plt.ylabel('QP solver time [s]')
-    plt.subplot(312)
-    counter = 0
-    for i in LapToPlot:
-        plt.plot(SS[0:LapCounter[i], 4, i], sysIDTime[0:LapCounter[i], i], plotPoint[counter], color=plotColors[counter%len(plotColors)])
-        counter += 1
-    plt.axvline(map.TrackLength, linewidth=4, color='g')
-    plt.ylabel('Sys ID time [s]')
-    plt.subplot(313)
-    counter = 0
-    for i in LapToPlot:
-        plt.plot(SS[0:LapCounter[i], 4, i], qpTime[0:LapCounter[i], i] + sysIDTime[0:LapCounter[i], i], '-o', color=plotColors[counter%len(plotColors)])
-        plt.plot(SS[0:LapCounter[i], 4, i], contrTime[0:LapCounter[i], i], '-*', color=plotColors[counter%len(plotColors)])
-        counter += 1
-    
-    plt.axvline(map.TrackLength, linewidth=4, color='g')
-    plt.ylabel('Total [s]')
+        plt.axvline(map.TrackLength, linewidth=4, color='g')
+        plt.ylabel('QP solver time [s]')
+        plt.subplot(312)
+        counter = 0
+        for i in LapToPlot:
+            plt.plot(SS[0:LapCounter[i], 4, i], sysIDTime[0:LapCounter[i], i], plotPoint[counter], color=plotColors[counter%len(plotColors)])
+            counter += 1
+        plt.axvline(map.TrackLength, linewidth=4, color='g')
+        plt.ylabel('Sys ID time [s]')
+        plt.subplot(313)
+        counter = 0
+        for i in LapToPlot:
+            plt.plot(SS[0:LapCounter[i], 4, i], qpTime[0:LapCounter[i], i] + sysIDTime[0:LapCounter[i], i], '-o', color=plotColors[counter%len(plotColors)])
+            plt.plot(SS[0:LapCounter[i], 4, i], contrTime[0:LapCounter[i], i], '-*', color=plotColors[counter%len(plotColors)])
+            counter += 1
+        
+        plt.axvline(map.TrackLength, linewidth=4, color='g')
+        plt.ylabel('Total [s]')
 
-    plt.figure()
-    counter = 0
-    for i in LapToPlot:
-        if counter != 0 and (Label[counter-1] == Label[counter]):
-            plt.plot(SS[0:LapCounter[i], 4, i], qpTime[0:LapCounter[i], i] + sysIDTime[0:LapCounter[i], i], plotPoint[counter], color=plotColors[counter%len(plotColors)])
-        else:
-            plt.plot(SS[0:LapCounter[i], 4, i], qpTime[0:LapCounter[i], i] + sysIDTime[0:LapCounter[i], i], plotPoint[counter], label=Label[counter], color=plotColors[counter%len(plotColors)])
+        plt.figure()
+        counter = 0
+        for i in LapToPlot:
+            if counter != 0 and (Label[counter-1] == Label[counter]):
+                plt.plot(SS[0:LapCounter[i], 4, i], qpTime[0:LapCounter[i], i] + sysIDTime[0:LapCounter[i], i], plotPoint[counter], color=plotColors[counter%len(plotColors)])
+            else:
+                plt.plot(SS[0:LapCounter[i], 4, i], qpTime[0:LapCounter[i], i] + sysIDTime[0:LapCounter[i], i], plotPoint[counter], label=Label[counter], color=plotColors[counter%len(plotColors)])
 
-        counter += 1
-
-
-    plt.legend(prop={'size': 16})
-    plt.ylabel('Computational Time [s]', fontsize = 16)
-    plt.xlabel('Curvilinear Abscissa [m]', fontsize = 16)
-
-    compTime = np.empty((0))
-    for i in LapToPlot:
-        compTime =  np.append(compTime, qpTime[0:LapCounter[i], i] + sysIDTime[0:LapCounter[i], i], axis=0)
+            counter += 1
 
 
-    plt.figure()
-    plt.plot(0.1*np.arange(0, np.shape(compTime)[0]), compTime,'-o')
-    plt.ylabel('Computational Time [s]', fontsize = 16)
-    plt.xlabel('Time [s]', fontsize = 16)
+        plt.legend(prop={'size': 16})
+        plt.ylabel('Computational Time [s]', fontsize = 16)
+        plt.xlabel('Curvilinear Abscissa [m]', fontsize = 16)
+
+        compTime = np.empty((0))
+        for i in LapToPlot:
+            compTime =  np.append(compTime, qpTime[0:LapCounter[i], i] + sysIDTime[0:LapCounter[i], i], axis=0)
+
+
+        plt.figure()
+        plt.plot(0.1*np.arange(0, np.shape(compTime)[0]), compTime,'-o')
+        plt.ylabel('Computational Time [s]', fontsize = 16)
+        plt.xlabel('Time [s]', fontsize = 16)
 
     avgLapTime = []
     for i in range(0, LMPController.it):
@@ -371,6 +377,8 @@ def plotComputationalTime(LMPController, LapToPlot, map, groupFlag):
 
     plt.figure()
     plt.plot(avgLapTime, "-o", label='Avarage Computational Time [s]')
+    plt.legend()
+    plt.xlabel("Lap Number")
     plt.show()
 
 def plotOneStepPreditionError(LMPController, LMPCOpenLoopData, LapToPlot):

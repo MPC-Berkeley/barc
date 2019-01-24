@@ -341,7 +341,7 @@ def main():
             # == Start: Record data
             if (LapNumber >= PathFollowingLaps) and (PickController=="LMPC"):
                 # print Controller.B[0].shape
-                steeringGain = np.array([Controller.B[0][1, 0], Controller.B[0][1, 0]])
+                steeringGain = np.array([Controller.B[0][1, 0], Controller.A[0][1, 1]])
             else:
                 steeringGain = np.zeros((1,2))
 

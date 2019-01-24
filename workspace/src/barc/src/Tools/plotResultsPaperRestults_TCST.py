@@ -24,100 +24,209 @@ from numpy import linalg as la
 
 def main():
     homedir = os.path.expanduser("~")
-    print "Do you wanna use LMPC.obj? [y/n]"
-    inputKeyBoard = raw_input()
-    fromLMPC = inputKeyBoard == "y"
 
-    if fromLMPC == True:
-        file_data = open(homedir+'/barc_data/ClosedLoopDataLMPC.obj', 'rb')    
-        ClosedLoopData = pickle.load(file_data)
-        LMPController = pickle.load(file_data)
-        LMPCOpenLoopData = pickle.load(file_data)    
-    else:
-        file_data = open(homedir+'/barc_data/ClosedLoopDataZeroStep.obj', 'rb')    
-        ClosedLoopData = pickle.load(file_data)
-        ControllerZeroStepLMPC = pickle.load(file_data)
-        LMPCOpenLoopData = pickle.load(file_data)    
-        LMPController = pickle.load(file_data)
+    L_shapedPath = '/paper_data/L_shaped_Option1/'
+    O_shapedPath = '/paper_data/oval_shaped/'
+
+    # L-shaped track
+    file_data = open(homedir+'/paper_data/L_shaped_Option1/ClosedLoopDataZeroStep.obj', 'rb')    
+    ClosedLoopData_Lshape = pickle.load(file_data)
+    LMPController_Lshape = pickle.load(file_data)
+    LMPCOpenLoopData_Lshape = pickle.load(file_data)    
+
+    # Oval-shaped track
+    file_data = open(homedir+'/paper_data/oval_shaped/ClosedLoopDataZeroStep.obj', 'rb')    
+    ClosedLoopData_Oshape = pickle.load(file_data)
+    LMPController_Oshape = pickle.load(file_data)
+    LMPCOpenLoopData_Oshape = pickle.load(file_data)    
     
     file_data.close()
-    map = LMPController.map
-    LapToPlot = range(2,4)
+    plotColors = ['b','g','r','c','y','k','m','b','g','r','c','y','k','m']
 
-    plotComputationalTime(LMPController, LapToPlot, map)
-
-    pdb.set_trace()
-    print "Track length is: ", map.TrackLength
-
-    # Plot Lap Time
+    #  ============================= Fist Plot Lap Time: This is Figure 1 =============================
     plt.figure()
-    plt.plot([i*LMPController.dt for i in LMPController.LapCounter[1:LMPController.it]], '-o', label="Lap Time")
+    # O-shaped track
+    lastLapToPlot = 36 # LMPController_Oshape.it
+    plt.plot([i*LMPController_Oshape.dt for i in LMPController_Oshape.LapCounter[1:lastLapToPlot]], '-o', label="Oval-shaped")
+    # L-shaped track
+    lastLapToPlot = 36 # LMPController_Lshape.it
+    plt.plot([i*LMPController_Lshape.dt for i in LMPController_Lshape.LapCounter[1:lastLapToPlot]], '-s', label="L-shaped")
+    plt.xlabel("Lap Number")
+    plt.ylabel("Lap Time [s]")
     plt.legend()
+    plt.show()    
+
+    # ============================= Plot evolution closed-loop trajectory through iterations: Figure 2 and 3 =============================
+    # O-shaped track
+    LapToPlotLearningProcessOval = [2, 5, 15,30,31,32,33,34]
+    print "Oval Lap Plotted: ", LapToPlotLearningProcessOval, " Lap Time: ", LMPController_Oshape.LapCounter[LapToPlotLearningProcessOval]
+    plotClosedLoopLMPC(LMPController_Oshape, LMPController_Oshape.map, LapToPlotLearningProcessOval)
+    plt.show()
+    # L-shaped track
+    LapToPlotLearningProcessLshaped = [2, 5, 15,30,31,32, 33,34]
+    print "L-shaped Lap Plotted: ", LapToPlotLearningProcessLshaped, " Lap Time: ", LMPController_Lshape.LapCounter[LapToPlotLearningProcessLshaped]
+    plotClosedLoopLMPC(LMPController_Lshape, LMPController_Lshape.map, LapToPlotLearningProcessLshaped)
+    plt.show()
+    
+    LapToPlotFirst       = [2, 7, 15] 
+    LapToPlotConvergence = [30,31,32, 33,34]
+    plotBigFigure(LMPController_Oshape, LMPController_Lshape, LMPController_Oshape.map, LMPController_Lshape.map, LapToPlotFirst, LapToPlotConvergence)
+    plt.show()
+    # ============================= Plot accelerations and velocies =============================
+    # O-shaped track
+    s_Oshaped, ay_Oshaped, ax_Oshaped, pitch_Oshaped, roll_Oshaped, LapCounter_Oshaped = plotAccelerations(LMPController_Oshape, LapToPlotConvergence, LMPController_Oshape.map, O_shapedPath)
+    # L-shaped track
+    s_Lshaped, ay_Lshaped, ax_Lshaped, pitch_Lshaped, roll_Lshaped, LapCounter_Lshaped = plotAccelerations(LMPController_Lshape, LapToPlotConvergence, LMPController_Lshape.map, L_shapedPath)
+
+    plt.figure()
+    LapToPlot = LapToPlotConvergence
+
+    plt.subplot(211)
+    counter = 0
+    plt.ylabel('ay [m/s^2]')
+    for i in LapToPlot:
+        plt.plot(s_Oshaped[0:LapCounter_Oshaped[i], 0, i], ay_Oshaped[0:LapCounter_Oshaped[i], 0, i], '-o', label=i, color=plotColors[counter])
+        counter += 1
+    plt.xlim([0, LMPController_Oshape.map.TrackLength])
+    plt.legend(bbox_to_anchor=(0,1.02,1,0.2), borderaxespad=0, ncol=len(LapToPlot))
+    
+
+    plt.subplot(212)
+    plt.ylabel('ay [m/s^2]')
+    counter = 0
+    for i in LapToPlot:
+        plt.plot(s_Lshaped[0:LapCounter_Lshaped[i], 0, i], ay_Lshaped[0:LapCounter_Lshaped[i], 0, i], '-o', label=i, color=plotColors[counter])
+        counter += 1
+    plt.legend(bbox_to_anchor=(0,1.02,1,0.2), borderaxespad=0, ncol=len(LapToPlot))
+    plt.xlim([0, LMPController_Lshape.map.TrackLength])
+    plt.xlabel('s [m]')
     plt.show()
 
-    # Plot First Path Following Lap and Learning laps
-    LapToPlotLearningProcess = [2, 4, 7, 15, 24]
-    # LapToPlotLearningProcess = [1]
+    plt.figure()
+    plt.subplot(211)
+    counter = 0
+    plt.ylabel('roll [rad]')
+    for i in LapToPlot:
+        plt.plot(s_Oshaped[0:LapCounter_Oshaped[i], 0, i], roll_Oshaped[0:LapCounter_Oshaped[i], 0, i], '-o', label=i, color=plotColors[counter])
+        counter += 1
+    plt.xlim([0, LMPController_Oshape.map.TrackLength])
+    plt.legend(bbox_to_anchor=(0,1.02,1,0.2), borderaxespad=0, ncol=len(LapToPlot))
     
-    plotClosedLoopLMPC(LMPController, map, LapToPlotLearningProcess)
-    plt.show()
-    
-    LapToPlot = range(30,37)
-    plotClosedLoopLMPC(LMPController, map, LapToPlotLearningProcess)
+    plt.subplot(212)
+    plt.ylabel('roll [rad]')
+    counter = 0
+    for i in LapToPlot:
+        plt.plot(s_Lshaped[0:LapCounter_Lshaped[i], 0, i], roll_Lshaped[0:LapCounter_Lshaped[i], 0, i], '-o', label=i, color=plotColors[counter])
+        counter += 1
+    plt.legend(bbox_to_anchor=(0,1.02,1,0.2), borderaxespad=0, ncol=len(LapToPlot))
+    plt.xlim([0, LMPController_Lshape.map.TrackLength])
+    plt.xlabel('s [m]')
     plt.show()
 
-    plotMeasuredAndAppliedSteering(LMPController, map, LapToPlotLearningProcess)
+    plt.figure()
+    plt.subplot(211)
+    counter = 0
+    plt.ylabel('pitch [rad]')
+    for i in LapToPlot:
+        plt.plot(s_Oshaped[0:LapCounter_Oshaped[i], 0, i], pitch_Oshaped[0:LapCounter_Oshaped[i], 0, i], '-o', label=i, color=plotColors[counter])
+        counter += 1
+    plt.legend(bbox_to_anchor=(0,1.02,1,0.2), borderaxespad=0, ncol=len(LapToPlot))
+    
+    plt.subplot(212)
+    plt.ylabel('pitch [rad]')
+    counter = 0
+    for i in LapToPlot:
+        plt.plot(s_Lshaped[0:LapCounter_Lshaped[i], 0, i], pitch_Lshaped[0:LapCounter_Lshaped[i], 0, i], '-o', label=i, color=plotColors[counter])
+        counter += 1
+    plt.legend(bbox_to_anchor=(0,1.02,1,0.2), borderaxespad=0, ncol=len(LapToPlot))
+    plt.xlabel('s [m]')
     plt.show()
-    # Plot Best Laps
-    # LapToPlot      = range(0, LMPController.it)
-    BestNunberLaps = 5
-    SortedTimes    = np.sort(LMPController.LapCounter[1:LMPController.it])
-    LapToPlot      = np.argsort(LMPController.LapCounter[1:LMPController.it])[0:BestNunberLaps]
-    # LapToPlot = range(15,19)
-    LapToPlot = range(30,37)
-    LapToPlot = range(30,37)
+
+    # ============================= Plot computational time =============================
+    plotComputationalTime(LMPController_Oshape, LapToPlotConvergence, LMPController_Oshape.map)
+    plotComputationalTime(LMPController_Lshape, LapToPlotConvergence, LMPController_Lshape.map)
+
     
-    print SortedTimes
-    print "Lap Plotted: ", LapToPlot, " Lap Time: ", LMPController.LapCounter[LapToPlot]
-    LapToPlot = [30, 34]
-    plotClosedLoopColorLMPC(LMPController, map, LapToPlot)
-    
+    # Color Plot
+    plt.figure()
+    plt.subplot(221)
+    plotClosedLoopColorLMPCFirstLap(LMPController_Oshape, LMPController_Oshape.map, LapToPlotFirst)
+    plt.subplot(222)
+    plotClosedLoopColorLMPCFirstLap(LMPController_Lshape, LMPController_Lshape.map, LapToPlotFirst)
+    cbar = plt.colorbar(label = 'Velocity [m/s]')
+    # cbar.set_label('Velocity [m/s]', rotation=270)
+    plt.subplot(223)
+    plotClosedLoopColorLMPCConvergence(LMPController_Oshape, LMPController_Oshape.map, LapToPlotConvergence)
+    plt.subplot(224)
+    plotClosedLoopColorLMPCConvergence(LMPController_Lshape, LMPController_Lshape.map, LapToPlotConvergence)
+    cbar = plt.colorbar(label = 'Velocity [m/s]')
+    # cbar.set_label('Velocity [m/s]', rotation=270)
+    plt.show()
     pdb.set_trace()
+    # print "Track length is: ", map.TrackLength
 
-    plotClosedLoopLMPC(LMPController, map, LapToPlot)
-    # Plot Acceleration
-    plotAccelerations(LMPController, LapToPlot, map)
+    # # Plot Lap Time
+    # plt.figure()
+    # plt.plot([i*LMPController.dt for i in LMPController.LapCounter[1:LMPController.it]], '-o', label="Lap Time")
+    # plt.legend()
+    # plt.show()
+
+    # # Plot First Path Following Lap and Learning laps
+    # LapToPlotLearningProcess = [2, 4, 7, 15, 24]
+    # # LapToPlotLearningProcess = [1]
+    # plotClosedLoopLMPC(LMPController, map, LapToPlotLearningProcess)
+    # plt.show()
     
-    plt.show()
+    # LapToPlot = range(20,28)
 
-    # Plot One Step Prediction Error
-    plotOneStepPreditionError(LMPController, LMPCOpenLoopData, LapToPlotLearningProcess)
-    plt.show()
+    # plotMeasuredAndAppliedSteering(LMPController, map, LapToPlotLearningProcess)
+    # plt.show()
+    # # Plot Best Laps
+    # # LapToPlot      = range(0, LMPController.it)
+    # BestNunberLaps = 5
+    # SortedTimes    = np.sort(LMPController.LapCounter[1:LMPController.it])
+    # LapToPlot      = np.argsort(LMPController.LapCounter[1:LMPController.it])[0:BestNunberLaps]
+    # # LapToPlot = range(15,19)
+    # LapToPlot = range(23,28)
+    
+    # print SortedTimes
+    # print "Lap Plotted: ", LapToPlot, " Lap Time: ", LMPController.LapCounter[LapToPlot]
+    # plotClosedLoopColorLMPC(LMPController, map, LapToPlot)
+    
+    # plotClosedLoopLMPC(LMPController, map, LapToPlot)
+    # # Plot Acceleration
+    # plotAccelerations(LMPController, LapToPlot, map)
+    
+    # plt.show()
 
-    # Computational Time    
-    plotComputationalTime(LMPController, LapToPlot, map)
-    plt.show()
+    # # Plot One Step Prediction Error
+    # plotOneStepPreditionError(LMPController, LMPCOpenLoopData, LapToPlotLearningProcess)
+    # plt.show()
 
-    print "Do you wanna create xy gif? [Lap #/n]"
-    inputKeyBoard = raw_input()
-    if inputKeyBoard != "n":
-        saveGif_xyResults(map, LMPCOpenLoopData, LMPController, int(inputKeyBoard))
+    # # Computational Time    
+    # plotComputationalTime(LMPController, LapToPlot, map)
+    # plt.show()
 
-    print "Do you wanna create state gif? [Lap #/n]"
-    inputKeyBoard = raw_input()
-    if inputKeyBoard != "n":
-        Save_statesAnimation(map, LMPCOpenLoopData, LMPController, int(inputKeyBoard))
-    # pdb.set_trace()
-    # animation_states(map, LMPCOpenLoopData, LMPController, 10)
+    # print "Do you wanna create xy gif? [Lap #/n]"
+    # inputKeyBoard = raw_input()
+    # if inputKeyBoard != "n":
+    #     saveGif_xyResults(map, LMPCOpenLoopData, LMPController, int(inputKeyBoard))
 
-    print "Do you wanna create xy gif for sys ID? [Lap #/n]"
-    inputKeyBoard = raw_input()
-    if inputKeyBoard != "n":
-        saveGif_xyResultsSysID(map, LMPCOpenLoopData, LMPController, int(inputKeyBoard))
+    # print "Do you wanna create state gif? [Lap #/n]"
+    # inputKeyBoard = raw_input()
+    # if inputKeyBoard != "n":
+    #     Save_statesAnimation(map, LMPCOpenLoopData, LMPController, int(inputKeyBoard))
+    # # pdb.set_trace()
+    # # animation_states(map, LMPCOpenLoopData, LMPController, 10)
+
+    # print "Do you wanna create xy gif for sys ID? [Lap #/n]"
+    # inputKeyBoard = raw_input()
+    # if inputKeyBoard != "n":
+    #     saveGif_xyResultsSysID(map, LMPCOpenLoopData, LMPController, int(inputKeyBoard))
 
     # plt.show()
     
-def plotAccelerations(LMPController, LapToPlot, map):
+def plotAccelerations(LMPController, LapToPlot, map, path):
     n = LMPController.n
     x = np.zeros((10000, 1, LMPController.it+2))
     s = np.zeros((10000, 1, LMPController.it+2))
@@ -130,7 +239,8 @@ def plotAccelerations(LMPController, LapToPlot, map):
     LapCounter = np.zeros(LMPController.it+2).astype(int)
 
     homedir = os.path.expanduser("~")
-    pathSave = os.path.join(homedir,"barc_data/estimator_output.npz")
+    string = path + "estimator_output.npz"
+    pathSave = homedir+ path + "estimator_output.npz"
     npz_output = np.load(pathSave)
     x_est_his           = npz_output["x_est_his"]
     y_est_his           = npz_output["y_est_his"]
@@ -192,7 +302,7 @@ def plotAccelerations(LMPController, LapToPlot, map):
         TimeCounter += 1
 
 
-    plotColors = ['b','g','r','c','y','m','k','b','g','r','c','y','k','m']
+    plotColors = ['b','g','r','c','y','k','m','b','g','r','c','y','k','m']
 
     plt.figure()
     plt.subplot(511)
@@ -200,6 +310,7 @@ def plotAccelerations(LMPController, LapToPlot, map):
     for i in LapToPlot:
         plt.plot(s[0:LapCounter[i], 0, i], ax[0:LapCounter[i], 0, i], '-o', label=i, color=plotColors[counter])
         counter += 1
+    plt.xlim([0, map.TrackLength])
     plt.legend(bbox_to_anchor=(0,1.02,1,0.2), borderaxespad=0, ncol=len(LapToPlot))
 
     plt.axvline(map.TrackLength, linewidth=4, color='g')
@@ -235,43 +346,8 @@ def plotAccelerations(LMPController, LapToPlot, map):
     plt.axvline(map.TrackLength, linewidth=4, color='g')
     plt.ylabel('psiDot [rad/s]')
 
-    plt.figure()
-    plt.subplot(211)
-    counter = 0
-    for i in LapToPlot:
-        plt.plot(s[0:LapCounter[i], 0, i], ay[0:LapCounter[i], 0, i], '-o', color=plotColors[counter])
-        counter += 1
-    plt.ylabel('ay [m/s^2]')
-    plt.xlim([0, map.TrackLength])
-
-    plt.subplot(212)
-    counter = 0
-    for i in LapToPlot:
-        plt.plot(s[0:LapCounter[i], 0, i], roll[0:LapCounter[i], 0, i], '-o', color=plotColors[counter])
-        counter += 1
-    plt.xlim([0, map.TrackLength])
-    plt.ylabel('roll [rad]')    
-    plt.xlabel('s [m]')    
-
-    plt.show()
-
-    pdb.set_trace
-    plt.figure()
-    ax = plt.subplot(111)
-    # LapToPlot = [2, 15, 20, 30, 35]
-    LapToPlot = [35, 34, 33, 20, 10, 2]
-    counter = 0
-    for i in LapToPlot:
-        plt.plot(s[0:LapCounter[i], 0, i], ay[0:LapCounter[i], 0, i], '-o', color=plotColors[counter], label=i)
-        counter += 1
-    plt.xlim([0, map.TrackLength])
-    # ax.legend(loc='upper center', bbox_to_anchor=(0.5, 1.05),
-    #       ncol=6, fancybox=True, shadow=True)
-    ax.legend(bbox_to_anchor=(1.1, 1.05))
-    plt.ylabel('ay [m/s^2]')
-    plt.xlabel('s [m]')    
-
-
+    return s, ay, ax, pitch, roll, LapCounter
+    
     
 
 def plotComputationalTime(LMPController, LapToPlot, map):
@@ -292,25 +368,26 @@ def plotComputationalTime(LMPController, LapToPlot, map):
     for i in LapToPlot:
         plt.plot(SS[0:LapCounter[i], 4, i], qpTime[0:LapCounter[i], i], '-o', label=i, color=plotColors[counter])
         counter += 1
+    plt.xlim([0, map.TrackLength])
     plt.legend(bbox_to_anchor=(0,1.02,1,0.2), borderaxespad=0, ncol=len(LapToPlot))
 
-    plt.axvline(map.TrackLength, linewidth=4, color='g')
     plt.ylabel('QP solver time [s]')
     plt.subplot(312)
     counter = 0
     for i in LapToPlot:
         plt.plot(SS[0:LapCounter[i], 4, i], sysIDTime[0:LapCounter[i], i], '-o', color=plotColors[counter])
         counter += 1
-    plt.axvline(map.TrackLength, linewidth=4, color='g')
+    plt.xlim([0, map.TrackLength])
     plt.ylabel('Sys ID time [s]')
     plt.subplot(313)
     counter = 0
     for i in LapToPlot:
         plt.plot(SS[0:LapCounter[i], 4, i], qpTime[0:LapCounter[i], i] + sysIDTime[0:LapCounter[i], i], '-o', color=plotColors[counter])
-        plt.plot(SS[0:LapCounter[i], 4, i], contrTime[0:LapCounter[i], i], '-*', color=plotColors[counter])
+        # plt.plot(SS[0:LapCounter[i], 4, i], contrTime[0:LapCounter[i], i], '-*', color=plotColors[counter])
         counter += 1
-    plt.axvline(map.TrackLength, linewidth=4, color='g')
+    plt.xlim([0, map.TrackLength])
     plt.ylabel('Total [s]')
+    plt.show()
 
 
 def plotOneStepPreditionError(LMPController, LMPCOpenLoopData, LapToPlot):
@@ -410,6 +487,80 @@ def plotTrajectory(map, ClosedLoop):
     plt.ylabel('acc')
     plt.show()
 
+def plotClosedLoopColorLMPCFirstLap(LMPController, map, LapToPlot):
+    SS_glob = LMPController.SS_glob
+    LapCounter  = LMPController.LapCounter
+    SS      = LMPController.SS
+    uSS     = LMPController.uSS
+
+    TotNumberIt = LMPController.it
+
+    print "Number iterations: ", TotNumberIt
+    Points = np.floor(10 * (map.PointAndTangent[-1, 3] + map.PointAndTangent[-1, 4]))
+    Points1 = np.zeros((int(Points), 2))
+    Points2 = np.zeros((int(Points), 2))
+    Points0 = np.zeros((int(Points), 2))
+    for i in range(0, int(Points)):
+        Points1[i, :] = map.getGlobalPosition(i * 0.1, map.halfWidth)
+        Points2[i, :] = map.getGlobalPosition(i * 0.1, -map.halfWidth)
+        Points0[i, :] = map.getGlobalPosition(i * 0.1, 0)
+
+    plt.plot(map.PointAndTangent[:, 0], map.PointAndTangent[:, 1], 'o')
+    plt.plot(Points0[:, 0], Points0[:, 1], '--')
+    plt.plot(Points1[:, 0], Points1[:, 1], '-b')
+    plt.plot(Points2[:, 0], Points2[:, 1], '-b')
+
+    xPlot = []
+    yPlot = []
+    Color = []
+    for i in LapToPlot:
+        for j in range(0, len(SS_glob[0:LapCounter[i], 4, i].tolist())):
+            xPlot.append(SS_glob[0:LapCounter[i], 4, i].tolist()[j])
+            yPlot.append(SS_glob[0:LapCounter[i], 5, i].tolist()[j])
+            Color.append(np.sqrt( (SS_glob[0:LapCounter[i], 0, i].tolist()[j])**2 +  (SS_glob[0:LapCounter[i], 0, i].tolist()[j]) ) )
+
+    plt.scatter(xPlot, yPlot, alpha=1.0, c = Color, s = 50, vmin=1.2, vmax=3.2)
+    plt.xlabel("x [m]")
+    plt.ylabel("y [m]")
+
+def plotClosedLoopColorLMPCConvergence(LMPController, map, LapToPlot):
+    SS_glob = LMPController.SS_glob
+    LapCounter  = LMPController.LapCounter
+    SS      = LMPController.SS
+    uSS     = LMPController.uSS
+
+    TotNumberIt = LMPController.it
+
+    print "Number iterations: ", TotNumberIt
+    Points = np.floor(10 * (map.PointAndTangent[-1, 3] + map.PointAndTangent[-1, 4]))
+    Points1 = np.zeros((int(Points), 2))
+    Points2 = np.zeros((int(Points), 2))
+    Points0 = np.zeros((int(Points), 2))
+    for i in range(0, int(Points)):
+        Points1[i, :] = map.getGlobalPosition(i * 0.1, map.halfWidth)
+        Points2[i, :] = map.getGlobalPosition(i * 0.1, -map.halfWidth)
+        Points0[i, :] = map.getGlobalPosition(i * 0.1, 0)
+
+    plt.plot(map.PointAndTangent[:, 0], map.PointAndTangent[:, 1], 'o')
+    plt.plot(Points0[:, 0], Points0[:, 1], '--')
+    plt.plot(Points1[:, 0], Points1[:, 1], '-b')
+    plt.plot(Points2[:, 0], Points2[:, 1], '-b')
+
+    xPlot = []
+    yPlot = []
+    Color = []
+    for i in LapToPlot:
+        for j in range(0, len(SS_glob[0:LapCounter[i], 4, i].tolist())):
+            xPlot.append(SS_glob[0:LapCounter[i], 4, i].tolist()[j])
+            yPlot.append(SS_glob[0:LapCounter[i], 5, i].tolist()[j])
+            Color.append(np.sqrt( (SS_glob[0:LapCounter[i], 0, i].tolist()[j])**2 +  (SS_glob[0:LapCounter[i], 0, i].tolist()[j]) ) )
+
+    plt.scatter(xPlot, yPlot, alpha=1.0, c = Color, s = 50, vmin=3.1, vmax=4.0)
+    plt.xlabel("x [m]")
+    plt.ylabel("y [m]")
+
+    # plt.scatter(SS_glob[0:LapCounter[i], 4, i], SS_glob[0:LapCounter[i], 5, i], alpha=0.8, c = SS_glob[0:LapCounter[i], 0, i])
+
 
 def plotClosedLoopColorLMPC(LMPController, map, LapToPlot):
     SS_glob = LMPController.SS_glob
@@ -429,7 +580,6 @@ def plotClosedLoopColorLMPC(LMPController, map, LapToPlot):
         Points2[i, :] = map.getGlobalPosition(i * 0.1, -map.halfWidth)
         Points0[i, :] = map.getGlobalPosition(i * 0.1, 0)
 
-    plt.figure()
     plt.plot(map.PointAndTangent[:, 0], map.PointAndTangent[:, 1], 'o')
     plt.plot(Points0[:, 0], Points0[:, 1], '--')
     plt.plot(Points1[:, 0], Points1[:, 1], '-b')
@@ -444,14 +594,103 @@ def plotClosedLoopColorLMPC(LMPController, map, LapToPlot):
             yPlot.append(SS_glob[0:LapCounter[i], 5, i].tolist()[j])
             Color.append(np.sqrt( (SS_glob[0:LapCounter[i], 0, i].tolist()[j])**2 +  (SS_glob[0:LapCounter[i], 0, i].tolist()[j]) ) )
 
-    pdb.set_trace()
-    plt.scatter(xPlot, yPlot, alpha=1.0, c = Color, s = 100)
+    plt.scatter(xPlot, yPlot, alpha=1.0, c = Color, s = 50, vmin=1, vmax=4)
     plt.xlabel("x [m]")
     plt.ylabel("y [m]")
 
     # plt.scatter(SS_glob[0:LapCounter[i], 4, i], SS_glob[0:LapCounter[i], 5, i], alpha=0.8, c = SS_glob[0:LapCounter[i], 0, i])
     plt.colorbar()
-    plt.show()
+
+def plotBigFigure(LMPController_Oshape, LMPController_Lshape, map_Oshape, map_Lshape, LapToPlotNew, LapToPlot):
+    SS_glob_Oshape    = LMPController_Oshape.SS_glob
+    LapCounter_Oshape = LMPController_Oshape.LapCounter
+
+    SS_glob_Lshape    = LMPController_Lshape.SS_glob
+    LapCounter_Lshape = LMPController_Lshape.LapCounter
+
+    plotColors = ['b','g','r','c','y','k','m','b','g','r','c','y','k','m']
+
+    Points  = np.floor(10 * (map_Oshape.PointAndTangent[-1, 3] + map_Oshape.PointAndTangent[-1, 4]))
+    Points1 = np.zeros((int(Points), 2))
+    Points2 = np.zeros((int(Points), 2))
+    Points0 = np.zeros((int(Points), 2))
+    for i in range(0, int(Points)):
+        Points2[i, :] = map_Oshape.getGlobalPosition(i * 0.1, -map_Oshape.halfWidth)
+        Points1[i, :] = map_Oshape.getGlobalPosition(i * 0.1,  map_Oshape.halfWidth)
+        Points0[i, :] = map_Oshape.getGlobalPosition(i * 0.1, 0)
+
+    # ======================== Plot the Oval-shaped =====================================
+    plt.figure()
+    plt.subplot(221)
+    plt.plot(map_Oshape.PointAndTangent[:, 0], map_Oshape.PointAndTangent[:, 1], 'o')
+    plt.plot(Points0[:, 0], Points0[:, 1], '--')
+    plt.plot(Points1[:, 0], Points1[:, 1], '-b')
+    plt.plot(Points2[:, 0], Points2[:, 1], '-b')
+
+    LapCounter = LMPController_Oshape.LapCounter
+    counter = 0
+    for i in LapToPlotNew:
+        plt.plot(SS_glob_Oshape[0:LapCounter[i], 4, i], SS_glob_Oshape[0:LapCounter_Oshape[i], 5, i], '-o', color=plotColors[counter], label=i)
+        counter += 1
+    plt.legend()
+    plt.xlabel("x [m]")
+    plt.ylabel("y [m]")
+
+    plt.subplot(223)
+    plt.plot(map_Oshape.PointAndTangent[:, 0], map_Oshape.PointAndTangent[:, 1], 'o')
+    plt.plot(Points0[:, 0], Points0[:, 1], '--')
+    plt.plot(Points1[:, 0], Points1[:, 1], '-b')
+    plt.plot(Points2[:, 0], Points2[:, 1], '-b')
+
+    counter = 0
+    for i in LapToPlot:
+        plt.plot(SS_glob_Oshape[0:LapCounter[i], 4, i], SS_glob_Oshape[0:LapCounter_Oshape[i], 5, i], '-o', color=plotColors[counter], label=i)
+        counter += 1
+    plt.legend()
+    plt.xlabel("x [m]")
+    plt.ylabel("y [m]")
+
+ 
+    # ======================== Plot the L-shaped =====================================
+    plt.subplot(222)
+    Points  = np.floor(10 * (map_Lshape.PointAndTangent[-1, 3] + map_Lshape.PointAndTangent[-1, 4]))
+    Points1 = np.zeros((int(Points), 2))
+    Points2 = np.zeros((int(Points), 2))
+    Points0 = np.zeros((int(Points), 2))
+
+    for i in range(0, int(Points)):
+        Points1[i, :] = map_Lshape.getGlobalPosition(i * 0.1, map_Lshape.halfWidth)
+        Points2[i, :] = map_Lshape.getGlobalPosition(i * 0.1, -map_Lshape.halfWidth)
+        Points0[i, :] = map_Lshape.getGlobalPosition(i * 0.1, 0)
+
+
+    plt.plot(map_Lshape.PointAndTangent[:, 0], map_Lshape.PointAndTangent[:, 1], 'o')
+    plt.plot(Points0[:, 0], Points0[:, 1], '--')
+    plt.plot(Points1[:, 0], Points1[:, 1], '-b')
+    plt.plot(Points2[:, 0], Points2[:, 1], '-b')
+
+    LapCounter = LMPController_Lshape.LapCounter
+    counter = 0
+    for i in LapToPlotNew:
+        plt.plot(SS_glob_Lshape[0:LapCounter[i], 4, i], SS_glob_Lshape[0:LapCounter_Lshape[i], 5, i], '-o', color=plotColors[counter], label=i)
+        counter += 1
+    plt.legend()
+    plt.xlabel("x [m]")
+    plt.ylabel("y [m]")
+
+    plt.subplot(224)
+    plt.plot(map_Lshape.PointAndTangent[:, 0], map_Lshape.PointAndTangent[:, 1], 'o')
+    plt.plot(Points0[:, 0], Points0[:, 1], '--')
+    plt.plot(Points1[:, 0], Points1[:, 1], '-b')
+    plt.plot(Points2[:, 0], Points2[:, 1], '-b')
+
+    counter = 0
+    for i in LapToPlot:
+        plt.plot(SS_glob_Lshape[0:LapCounter[i], 4, i], SS_glob_Lshape[0:LapCounter_Lshape[i], 5, i], '-o', color=plotColors[counter], label=i)
+        counter += 1
+    plt.legend()
+    plt.xlabel("x [m]")
+    plt.ylabel("y [m]")
 
 
 def plotClosedLoopLMPC(LMPController, map, LapToPlot):
