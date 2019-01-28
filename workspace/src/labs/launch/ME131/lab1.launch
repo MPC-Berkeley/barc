@@ -21,7 +21,7 @@
 	/>
 	
 	<node
-		pkg = "package_name"
+		pkg = "labs"
 		type = "remapping.py"
 		name = "remapped_movements"
 	/>
