@@ -1,0 +1,29 @@
+<launch>
+
+	<node
+		pkg = "turtlesim"
+		type = "turtlesim_node"
+		name = "Michael"
+		respawn = "true"
+	>
+	<remap
+		from="turtle1/cmd_vel"
+		to="remapped_topic_name"
+	/>
+	</node>
+
+	<node
+		pkg = "turtlesim"
+		type = "turtle_teleop_key"
+		name = "keyboard_moving"
+		required = "true"
+		launch-prefix = "xterm -e"
+	/>
+	
+	<node
+		pkg = "package_name"
+		type = "remapping.py"
+		name = "remapped_movements"
+	/>
+
+</launch>
