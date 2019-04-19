@@ -123,7 +123,7 @@ def main():
 
         if (HalfTrack==1) and LocalState[4] >= 2*map.TrackLength/3 and OldLapUpdate != LapNumber:
             OldLapUpdate = LapNumber 
-            base = 40
+            base = 10
             if (LapNumber == 6):
                 Controller.numSS_it = 4
                 # Controller.itUsedSysID = 4
@@ -470,9 +470,9 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
         Controller = PID(vt, PIDnoise, mode)
                                         # PID controller
     elif PickController == "TI_MPC":
-        # file_data = open(homedir+'/barc_data/'+'/ClosedLoopDataPID.obj', 'rb')
+        file_data = open(homedir+'/barc_data/'+'/ClosedLoopDataPID.obj', 'rb')
         # file_data = open(homedir+'/barc_data/'+'/ClosedLoopDataPIDforLMPC.obj', 'rb')
-        file_data = open(homedir+'/barc_data/'+'/ClosedLoopDataPID_Exp.obj', 'rb')
+        # file_data = open(homedir+'/barc_data/'+'/ClosedLoopDataPID_Exp.obj', 'rb')
         ClosedLoopDataPID = pickle.load(file_data)
         file_data.close()     
         Controller = PathFollowingLTI_MPC(A, B, Q, R, N, vt, TI_Qlane)

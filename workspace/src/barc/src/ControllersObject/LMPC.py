@@ -7,6 +7,7 @@ from scipy import sparse
 from cvxopt.solvers import qp
 import datetime
 from utilities import Curvature
+from utilities import ConvexSafeSet
 from numpy import hstack, inf, ones
 from scipy.sparse import vstack
 from osqp import OSQP
@@ -108,6 +109,8 @@ class ControllerLMPC():
         self.linearizationTime = deltaTimer
 
         self.inputPrediction = np.zeros(4)
+
+        self.FailProb = 0
 
     def setTime(self, time):
         self.LapTime = time
@@ -221,6 +224,11 @@ class ControllerLMPC():
         
         # self.OldSteering.append(uPred.T[0,0])
         # self.OldAccelera.append(uPred.T[0,1])
+
+        #Calculate "Model-Free probability of failure of terminal State": 
+        CS = ConvexSafeSet(self.SS_PointSelectedTot, self.Qfun_SelectedTot, lambd)
+        self.FailProb = CS.estimate_failprob(self.xPred[-1,:])
+        print("prob of success = {}".format(self.FailProb))
 
 
     def addTrajectory(self, ClosedLoopData):

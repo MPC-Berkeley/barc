@@ -1,5 +1,8 @@
 import numpy as np
 import pdb
+import scipy.optimize as optimize
+import scipy.spatial
+
 def Regression(x, u, lamb):
     """Estimates linear system dynamics
     x, u: date used in the regression
@@ -44,3 +47,50 @@ def Curvature(s, PointAndTangent):
     curvature = PointAndTangent[i, 5]
 
     return curvature
+
+class ConvexSafeSet:
+    def __init__(self, SS, Q_SS, lambdas, disturbance_covariance = 0.002*np.identity(6).astype(float), n=10):
+        self.SS = SS
+        self.Q_SS = Q_SS
+        self.lambdas = lambdas
+        self.disturbance_covariance = disturbance_covariance
+        self.n = n
+        CS = scipy.spatial.ConvexHull(self.SS.T)
+        self.Hcs =  CS.equations[:,:-1]
+        self.hcs =  -CS.equations[:,-1]
+        self.hcs = self.hcs.reshape((len(self.hcs), 1))
+        self.inCS = lambda pt: np.all(np.dot(Hcs, pt) <= hcs)
+        
+
+    def get_lambdas(self, x):
+        x=x.reshape((len(x),1))
+        nStates = self.SS.shape[1]
+        A = np.vstack((np.ones((1,nStates)), self.SS))
+        b = np.vstack((1,x))
+        result = optimize.linprog(self.Q_SS, A_eq=A, b_eq=b)
+        return result.x
+
+    def estimate_failprob(self, x):
+        #lambdas = self.get_lambdas(x)
+        lambdas = self.lambdas
+        lambdas = np.roll(lambdas,1)
+        lambdas[-1] = lambdas[-1] + lambdas[0]
+        lambdas[0] = 0
+        xhat = np.dot(self.SS, lambdas.reshape(len(lambdas),1))
+        num_states = len(xhat)
+        const = np.dot(self.Hcs, xhat)
+        sigma = 0.0005
+        phat = 0
+        for _ in range(self.n):
+            sample = sigma * np.random.randn(num_states,1) - sigma*np.dot(np.random.randn(num_states, self.SS.shape[1]), lambdas)# np.random.multivariate_normal(mean=np.zeros(num_states), cov= (1 + np.dot(lambdas, lambdas)) *self.disturbance_covariance)
+            phat += np.all(np.dot(self.Hcs, sample) < self.hcs - const)
+
+        return phat/np.float(self.n)
+
+
+
+
+
+        
+
+

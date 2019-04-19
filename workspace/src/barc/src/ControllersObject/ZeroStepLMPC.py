@@ -7,6 +7,7 @@ from scipy import sparse
 from cvxopt.solvers import qp
 import datetime
 from utilities import Curvature
+from utilities import ConvexSafeSet
 from numpy import hstack, inf, ones
 from scipy.sparse import vstack
 from osqp import OSQP
@@ -271,6 +272,9 @@ class ControllerZeroStepLMPC():
         # print np.sum(lambdaVar)
         # print np.dot(uSS_PointSelectedTot, lambdaVar)
         # print np.dot(SS_PointSelectedTot, lambdaVar), x0
+        CS = ConvexSafeSet(self.SS_PointSelectedTot, self.Qfun_SelectedTot, lambdaVar)
+        self.FailProb = CS.estimate_failprob(x0.reshape((6,1)))
+        print("prob of success = {}".format(self.FailProb))
 
 
 
