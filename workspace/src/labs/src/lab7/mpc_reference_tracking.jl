@@ -1,5 +1,4 @@
 #!/usr/bin/env julia
-# Author: Joseph Sahyoun
 # This node uses MPC algorithms to calculate the optimal inputs that minimizes 
 # the distance between the BARC and the reference trajectory. For this demonstration
 # a dummy reference trajectory is fed into this node which then publishes the optimal
@@ -89,7 +88,7 @@ m = Model(solver = IpoptSolver(print_level=0))
 # Objective Function
 
 if version == 1
-    @NLobjective(m, :Min, sum(Q[1,1]*(z[1,i+1]-xref[i])^2 + Q[2,2]*(z[2,i+1]-yref[i])^2 for i in 1:n) + sum(R[1,1]*(u[1,i]-vref)^2 for i in 1:n))
+    @NLobjective(m, :Min, sum(Q[1,1]*(xref[i]-z[1,i+1])^2 + Q[2,2]*(yref[i]-z[2,i+1])^2 for i in 1:n) + sum(R[1,1]*(vref-u[1,i])^2 for i in 1:n))
 end
 
 
