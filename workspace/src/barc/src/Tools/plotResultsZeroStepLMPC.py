@@ -105,11 +105,13 @@ def main():
     plt.xlabel("Lap Number", fontsize = 16)
     plt.ylabel("Lap Time [s]", fontsize = 16)
 
+    print("LMPC LapTime: ", lapTimeLMPC)
+    print("ZeroStep LapTime: ", lapTimeZS)
     plt.show()
 
-    # For LMPC_1 Oval New Car # Used in ACC paper
-    LapToPlot = [26, 24, 29] 
-    LapToPlot.append(33); LapToPlot.append(39)
+    # # For LMPC_1 Oval New Car # Used in ACC paper
+    # LapToPlot = [26, 24, 29] 
+    # LapToPlot.append(33); LapToPlot.append(39)
 
     # For LMPC_2 Oval New Car
     # LapToPlot = [24,25, 26] 
@@ -140,18 +142,13 @@ def main():
     # LapToPlot.append(35); LapToPlot.append(32) 
 
     # L_shape 6_LMPC_42LapsNiceVideo # Used in ACC paper
-    LapToPlot = [21, 26, 27, 33]
+    LapToPlot = [21, 26, 27]
     LapToPlot.append(35); LapToPlot.append(33) 
 
-    # New
-    LapToPlot = []
-    LapToPlot.append(38); LapToPlot.append(39)
-    LapToPlot.append(40); LapToPlot.append(41)
-    LapToPlot.append(42); LapToPlot.append(43) 
  
     print LapToPlot
 
-    groupFlag = 0
+    groupFlag = 2
     print "Lap Time: ", LMPController.LapCounter[LapToPlot]
     plotClosedLoopLMPC(LMPController, map, LapToPlot, groupFlag)
 
@@ -346,13 +343,14 @@ def plotComputationalTime(LMPController, LapToPlot, map, groupFlag):
         plt.figure()
         counter = 0
         for i in LapToPlot:
+            vecTime = qpTime[0:LapCounter[i], i] + sysIDTime[0:LapCounter[i], i]
+            print("Lap: ",i," Min: ", min(vecTime), " Max: ",max(vecTime), " Avg: ", np.mean(vecTime), " Std: ", np.std(vecTime))
             if counter != 0 and (Label[counter-1] == Label[counter]):
-                plt.plot(SS[0:LapCounter[i], 4, i], qpTime[0:LapCounter[i], i] + sysIDTime[0:LapCounter[i], i], plotPoint[counter], color=plotColors[counter%len(plotColors)])
+                plt.semilogy(SS[0:LapCounter[i], 4, i], qpTime[0:LapCounter[i], i] + sysIDTime[0:LapCounter[i], i], plotPoint[counter], color=plotColors[counter%len(plotColors)])
             else:
-                plt.plot(SS[0:LapCounter[i], 4, i], qpTime[0:LapCounter[i], i] + sysIDTime[0:LapCounter[i], i], plotPoint[counter], label=Label[counter], color=plotColors[counter%len(plotColors)])
+                plt.semilogy(SS[0:LapCounter[i], 4, i], qpTime[0:LapCounter[i], i] + sysIDTime[0:LapCounter[i], i], plotPoint[counter], label=Label[counter], color=plotColors[counter%len(plotColors)])
 
             counter += 1
-
 
         plt.legend(prop={'size': 16})
         plt.ylabel('Computational Time [s]', fontsize = 16)
@@ -538,7 +536,7 @@ def plotClosedLoopLMPC(LMPController, map, LapToPlot, groupFlag):
         Points0[i, :] = map.getGlobalPosition(i * 0.1, 0)
 
     plt.figure()
-    plt.plot(map.PointAndTangent[:, 0], map.PointAndTangent[:, 1], 'o')
+    # plt.plot(map.PointAndTangent[:, 0], map.PointAndTangent[:, 1], 'o')
     plt.plot(Points0[:, 0], Points0[:, 1], '--')
     plt.plot(Points1[:, 0], Points1[:, 1], '-b')
     plt.plot(Points2[:, 0], Points2[:, 1], '-b')
@@ -580,47 +578,53 @@ def plotClosedLoopLMPC(LMPController, map, LapToPlot, groupFlag):
         counter += 1
     plt.legend(bbox_to_anchor=(0,1.02,1,0.2), borderaxespad=0, ncol=len(LapToPlot), prop={'size': 18})
 
-    plt.axvline(map.TrackLength, linewidth=4, color='g')
+    # plt.axvline(map.TrackLength, linewidth=4, color='g')
+    plt.xlim([0, map.TrackLength])
     plt.ylabel('vx [m/s]', fontsize = 18)
     plt.subplot(712)
     counter = 0
     for i in LapToPlot:
         plt.plot(SS[0:LapCounter[i], 4, i], SS[0:LapCounter[i], 1, i], plotPoint[counter], color=plotColors[counter%len(plotColors)])
         counter += 1
-    plt.axvline(map.TrackLength, linewidth=4, color='g')
+    # plt.axvline(map.TrackLength, linewidth=4, color='g')
     plt.ylabel('vy [m/s]', fontsize = 18)
     plt.subplot(713)
     counter = 0
     for i in LapToPlot:
         plt.plot(SS[0:LapCounter[i], 4, i], SS[0:LapCounter[i], 2, i], plotPoint[counter], color=plotColors[counter%len(plotColors)])
         counter += 1
-    plt.axvline(map.TrackLength, linewidth=4, color='g')
+    # plt.axvline(map.TrackLength, linewidth=4, color='g')
+    plt.xlim([0, map.TrackLength])
     plt.ylabel('wz [rad/s]', fontsize = 18)
     plt.subplot(714)
     counter = 0
     for i in LapToPlot:
         plt.plot(SS[0:LapCounter[i], 4, i], SS[0:LapCounter[i], 3, i], plotPoint[counter], color=plotColors[counter%len(plotColors)])
         counter += 1
-    plt.axvline(map.TrackLength, linewidth=4, color='g')
+    # plt.axvline(map.TrackLength, linewidth=4, color='g')
+    plt.xlim([0, map.TrackLength])
     plt.ylabel('epsi [rad]', fontsize = 18)
     plt.subplot(715)
     counter = 0
     for i in LapToPlot:
         plt.plot(SS[0:LapCounter[i], 4, i], SS[0:LapCounter[i], 5, i], plotPoint[counter], color=plotColors[counter%len(plotColors)])
         counter += 1
-    plt.axvline(map.TrackLength, linewidth=4, color='g')
+    # plt.axvline(map.TrackLength, linewidth=4, color='g')
+    plt.xlim([0, map.TrackLength])
     plt.ylabel('ey [m]', fontsize = 18)
     plt.subplot(716)
     counter = 0
     for i in LapToPlot:
         plt.plot(SS[0:LapCounter[i]-1, 4, i], uSS[0:LapCounter[i] - 1, 0, i], plotPoint[counter], color=plotColors[counter%len(plotColors)])
         counter += 1
+    plt.xlim([0, map.TrackLength])
     plt.ylabel('delta [rad]', fontsize = 18)
     plt.subplot(717)
     counter = 0
     for i in LapToPlot:
         plt.plot(SS[0:LapCounter[i]-1, 4, i], uSS[0:LapCounter[i] - 1, 1, i], plotPoint[counter], color=plotColors[counter%len(plotColors)])
         counter += 1
+    plt.xlim([0, map.TrackLength])
     plt.ylabel('a [m/s^2]', fontsize = 18)
     plt.xlabel('s [m]', fontsize = 18)
 

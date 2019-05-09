@@ -69,8 +69,13 @@ class ControllerLMPC():
         self.OldSteering = [0.0]*int(1 + steeringDelay)
         self.OldAccelera = [0.0]*int(1)
 
-        self.MaxNumPoint = 40
-        self.itUsedSysID = 4
+        if N > 1:
+            self.MaxNumPoint = 10
+            self.itUsedSysID = 6
+        else:
+            self.MaxNumPoint = 100
+            self.itUsedSysID = 10
+
 
         self.lapSelected = []
 
@@ -86,7 +91,10 @@ class ControllerLMPC():
         self.sysIDTime     = -10000 * np.ones((NumPoints, Laps))    # Input associated with the points in SS
         self.contrTime     = -10000 * np.ones((NumPoints, Laps))    # Input associated with the points in SS
         self.measSteering  = -10000 * np.ones((NumPoints, 1, Laps))    # Input associated with the points in SS
-        self.steeringGain  = -10000 * np.ones((NumPoints, 2, Laps))    # Input associated with the points in SS
+        
+        self.steeringGain_vy  = -10000 * np.ones((NumPoints, 5, Laps))    # Input associated with the points in SS
+        self.steeringGain_vx  = -10000 * np.ones((NumPoints, 5, Laps))    # Input associated with the points in SS
+        self.steeringGain_psiDot  = -10000 * np.ones((NumPoints, 5, Laps))    # Input associated with the points in SS
 
         # Initialize the controller iteration
         self.it      = 0
@@ -163,6 +171,7 @@ class ControllerLMPC():
         self.SS_glob_PointSelectedTot = SS_glob_PointSelectedTot
         self.Qfun_SelectedTot         = Qfun_SelectedTot
 
+
         # Run System ID
         startTimer = datetime.datetime.now()
         self.A, self.B, self.C, indexUsed_list = _LMPC_EstimateABC(self)
@@ -232,12 +241,12 @@ class ControllerLMPC():
 
         self.TimeSS[it] = ClosedLoopData.SimTime
         self.LapCounter[it] = ClosedLoopData.SimTime
-        # print self.TimeSS[it], it 
         self.SS[0:(self.TimeSS[it] + 1), :, it] = ClosedLoopData.x[0:(self.TimeSS[it] + 1), :]
+
         self.SS_glob[0:(self.TimeSS[it] + 1), :, it] = ClosedLoopData.x_glob[0:(self.TimeSS[it] + 1), :]
-        self.uSS[0:(self.TimeSS[it]), :, it]      = ClosedLoopData.u[0:(self.TimeSS[it]), :]
+        self.uSS[0:(self.TimeSS[it] + 1), :, it]         = ClosedLoopData.u[0:(self.TimeSS[it] + 1), :]
         self.Qfun[0:(self.TimeSS[it] + 1), it]  = _ComputeCost(ClosedLoopData.x[0:(self.TimeSS[it] + 1), :],
-                                                               ClosedLoopData.u[0:(self.TimeSS[it]), :], self.map.TrackLength)
+                                                               ClosedLoopData.u[0:(self.TimeSS[it] + 1), :], self.map.TrackLength)
         for i in np.arange(0, self.Qfun.shape[0]):
             if self.Qfun[i, it] == 0:
                 self.Qfun[i, it] = self.Qfun[i - 1, it] - 1
@@ -250,7 +259,9 @@ class ControllerLMPC():
         self.sysIDTime[0:(self.TimeSS[it] + 1), it]  = np.squeeze(ClosedLoopData.sysIDTime[0:(self.TimeSS[it] + 1), :])
         self.contrTime[0:(self.TimeSS[it] + 1), it]  = np.squeeze(ClosedLoopData.contrTime[0:(self.TimeSS[it] + 1), :])
         self.measSteering[0:(self.TimeSS[it] + 1),:, it] = ClosedLoopData.measSteering[0:(self.TimeSS[it] + 1), :]
-        self.steeringGain[0:(self.TimeSS[it] + 1),:, it] = ClosedLoopData.steeringGain[0:(self.TimeSS[it] + 1), :]
+        self.steeringGain_vy[0:(self.TimeSS[it] + 1),:, it] = ClosedLoopData.steeringGain_vy[0:(self.TimeSS[it] + 1), :]
+        self.steeringGain_vx[0:(self.TimeSS[it] + 1),:, it] = ClosedLoopData.steeringGain_vx[0:(self.TimeSS[it] + 1), :]
+        self.steeringGain_psiDot[0:(self.TimeSS[it] + 1),:, it] = ClosedLoopData.steeringGain_psiDot[0:(self.TimeSS[it] + 1), :]
         self.it = self.it + 1
 
     def addPoint(self, x, x_glob, u, i):
@@ -260,13 +271,16 @@ class ControllerLMPC():
             u: current input
             i: at the j-th iteration i is the time at which (x,u) are recorded
         """
+
+        self.TimeSS[self.it - 1] = self.TimeSS[self.it - 1] + 1
         Counter = self.TimeSS[self.it - 1]
         self.SS[Counter, :, self.it - 1] = x + np.array([0, 0, 0, 0, self.map.TrackLength, 0])
+
         self.SS_glob[Counter, :, self.it - 1] = x_glob
         self.uSS[Counter, :, self.it - 1] = u
         if self.Qfun[Counter, self.it - 1] == 0:
-            self.Qfun[Counter, self.it - 1] = self.Qfun[Counter + i - 1, self.it - 1] - 1        
-        self.TimeSS[self.it - 1] = self.TimeSS[self.it - 1] + 1
+            self.Qfun[Counter, self.it - 1] = self.Qfun[Counter + i - 1, self.it - 1] - 1
+
 
     def update(self, SS, uSS, Qfun, TimeSS, it, LinPoints, LinInput):
         """update controller parameters. This function is useful to transfer information among LMPC controller
@@ -463,8 +477,8 @@ def _LMPC_BuildMatIneqConst(LMPC):
                    [ 0.,  1.],
                    [ 0., -1.]])
 
-    bu = np.array([[0.25],  # Max Steering
-                   [0.25],  # Max Steering
+    bu = np.array([[0.35],  # Max Steering
+                   [0.35],  # Max Steering
                    [LMPC.aConstr[1]],  # Max Acceleration
                    [LMPC.aConstr[0]]])  # Min Acceleration
 
@@ -823,11 +837,15 @@ def RegressionAndLinearization(ControllerLMPC, i):
     acceleraDelay   = ControllerLMPC.acceleraDelay
     idDelay         = ControllerLMPC.idDelay
 
-    usedIt = sortedLapTime[0:ControllerLMPC.itUsedSysID] # range(ControllerLMPC.it-ControllerLMPC.itUsedSysID, ControllerLMPC.it)
+    if N == 1:
+        usedIt = [0,1,2,3]
+    else:
+        usedIt = sortedLapTime[0:ControllerLMPC.itUsedSysID] # range(ControllerLMPC.it-ControllerLMPC.itUsedSysID, ControllerLMPC.it)
 
 
     x0 = LinPoints[i, :]
 
+    
     Ai = np.zeros((n, n))
     Bi = np.zeros((n, d + d*idDelay))
     Ci = np.zeros((n, 1))
@@ -853,6 +871,8 @@ def RegressionAndLinearization(ControllerLMPC, i):
 
     indexSelected = []
     K = []
+    
+    
     for i in usedIt:
         indexSelected_i, K_i = ComputeIndex(h, SS, uSS, LapCounter, i, xLin, stateFeatures, scaling, MaxNumPoint,
                                             ConsiderInput, steeringDelay, idDelay)

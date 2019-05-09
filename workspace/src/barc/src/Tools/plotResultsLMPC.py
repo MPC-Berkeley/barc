@@ -42,7 +42,7 @@ def main():
     
     file_data.close()
     map = LMPController.map
-    LapToPlot = range(2,4)
+    LapToPlot = range(4,8)
 
     plotComputationalTime(LMPController, LapToPlot, map)
 
@@ -56,7 +56,7 @@ def main():
     plt.show()
 
     # Plot First Path Following Lap and Learning laps
-    LapToPlotLearningProcess = [2, 4, 7, 15, 24]
+    LapToPlotLearningProcess = [4, 5,6,7]
     # LapToPlotLearningProcess = [1]
     
     plotClosedLoopLMPC(LMPController, map, LapToPlotLearningProcess)
@@ -75,11 +75,11 @@ def main():
     LapToPlot      = np.argsort(LMPController.LapCounter[1:LMPController.it])[0:BestNunberLaps]
     # LapToPlot = range(15,19)
     LapToPlot = range(30,37)
-    LapToPlot = range(30,37)
+    LapToPlot = range(43,49)
     
     print SortedTimes
     print "Lap Plotted: ", LapToPlot, " Lap Time: ", LMPController.LapCounter[LapToPlot]
-    LapToPlot = [30, 34]
+    LapToPlot = [48, 49, 50]
     plotClosedLoopColorLMPC(LMPController, map, LapToPlot)
     
     pdb.set_trace()
@@ -491,7 +491,8 @@ def plotClosedLoopLMPC(LMPController, map, LapToPlot):
     sio.savemat('States.mat', {'globalStates':SS_glob[0:LapCounter[i], :, i], 'localStates':SS[0:LapCounter[i], :, i]})
     sio.savemat('Input.mat', {'input':uSS[0:LapCounter[i], :, i]})
 
-
+    pdb.set_trace()
+    
     plt.figure()
     plt.subplot(711)
     counter = 0

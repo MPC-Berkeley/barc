@@ -123,7 +123,7 @@ def main():
 
         if (HalfTrack==1) and LocalState[4] >= 2*map.TrackLength/3 and OldLapUpdate != LapNumber:
             OldLapUpdate = LapNumber 
-            base = 40
+            base = 50
             if (LapNumber == 6):
                 Controller.numSS_it = 4
                 # Controller.itUsedSysID = 4
@@ -291,48 +291,78 @@ def main():
             else:                                     # Else use the selected controller
                 if LocalState[0] < 0.5 and cmd.motor < 0.5:
                     cmd.motor = 0.5
+    
+                if Controller.N < 1.5:
+                    Controller.solve(LocalState)
 
-                oldU = uApplied
-                uApplied = np.array([cmd.servo, cmd.motor])
-
-                Controller.OldInput = uApplied
-
-                if PickController == "LMPC":
-                    Controller.OldSteering.append(cmd.servo)
-                    Controller.OldAccelera.append(cmd.motor)
-
-                    Controller.OldSteering.pop(0)
-                    Controller.OldAccelera.pop(0)    
-                    # print Controller.OldAccelera, Controller.OldSteering
-
-                # Publish input
-                input_commands.publish(cmd)
-
-                oneStepPredictionError = LocalState - oneStepPrediction # Subtract the local measurement to the previously predicted one step
-
-                if PickController == "LMPC":
-                    uAppliedDelay = [Controller.OldSteering[-1 - Controller.steeringDelay], Controller.OldAccelera[-1]]
-                else:
-                    uAppliedDelay = uApplied
-
-                # print uAppliedDelay, Controller.OldSteering
-                oneStepPrediction, oneStepPredictionTime = Controller.oneStepPrediction(LocalState, uAppliedDelay, 0)
-                
-                startTimer = datetime.datetime.now()
-                Controller.solve(oneStepPrediction)
-                endTimer = datetime.datetime.now(); deltaTimer = endTimer - startTimer
-                if PickController == "LMPC":
                     cmd.servo = Controller.uPred[0 + Controller.steeringDelay, 0]
                     cmd.motor = Controller.uPred[0, 1]
+                    input_commands.publish(cmd)
+
+                    
+                    if PickController == "LMPC":
+                        uAppliedDelay = [cmd.servo, cmd.motor]
+                    else:
+                        uAppliedDelay = uApplied
+
+                    oneStepPredictionError = LocalState - oneStepPrediction # Subtract the local measurement to the previously predicted one step
+                    oneStepPrediction, oneStepPredictionTime = Controller.oneStepPrediction(LocalState, uAppliedDelay, 0)
+
+                    if PickController == "LMPC":
+                        Controller.OldSteering.append(cmd.servo)
+                        Controller.OldAccelera.append(cmd.motor)
+
+                        Controller.OldSteering.pop(0)
+                        Controller.OldAccelera.pop(0)    
+                        # print Controller.OldAccelera, Controller.OldSteering
+
+                    oldU = uAppliedDelay
 
                 else:
-                    cmd.servo = Controller.uPred[0,0]
-                    cmd.motor = Controller.uPred[0,1]
+                    oldU = uApplied
+                    uApplied = np.array([cmd.servo, cmd.motor])
 
-                if (Controller.solverTime.total_seconds() + Controller.linearizationTime.total_seconds() + oneStepPredictionTime.total_seconds() > dt):
-                    print "NOT REAL-TIME FEASIBLE!!!"
-                    print "Solver time: ", Controller.solverTime.total_seconds(), " Linearization Time: ", Controller.linearizationTime.total_seconds() + oneStepPredictionTime.total_seconds()
-            
+                    Controller.OldInput = uApplied
+
+                    if PickController == "LMPC":
+                        Controller.OldSteering.append(cmd.servo)
+                        Controller.OldAccelera.append(cmd.motor)
+
+                        Controller.OldSteering.pop(0)
+                        Controller.OldAccelera.pop(0)    
+                        # print Controller.OldAccelera, Controller.OldSteering
+
+                    # Publish input
+                    input_commands.publish(cmd)
+
+                    oneStepPredictionError = LocalState - oneStepPrediction # Subtract the local measurement to the previously predicted one step
+
+                    if PickController == "LMPC":
+                        uAppliedDelay = [Controller.OldSteering[-1 - Controller.steeringDelay], Controller.OldAccelera[-1]]
+                    else:
+                        uAppliedDelay = uApplied
+
+                    # print uAppliedDelay, Controller.OldSteering
+                    oneStepPrediction, oneStepPredictionTime = Controller.oneStepPrediction(LocalState, uAppliedDelay, 0)
+                    
+                    startTimer = datetime.datetime.now()
+                    Controller.solve(oneStepPrediction)
+
+
+                    endTimer = datetime.datetime.now(); deltaTimer = endTimer - startTimer
+                    if PickController == "LMPC":
+                        cmd.servo = Controller.uPred[0 + Controller.steeringDelay, 0]
+                        cmd.motor = Controller.uPred[0, 1]
+
+                    else:
+                        cmd.servo = Controller.uPred[0,0]
+                        cmd.motor = Controller.uPred[0,1]
+                    # # =========================================================
+
+                    if (Controller.solverTime.total_seconds() + Controller.linearizationTime.total_seconds() + oneStepPredictionTime.total_seconds() > dt):
+                        print "NOT REAL-TIME FEASIBLE!!!"
+                        print "Solver time: ", Controller.solverTime.total_seconds(), " Linearization Time: ", Controller.linearizationTime.total_seconds() + oneStepPredictionTime.total_seconds()
+                
             
             # print "Tot Solver Time: ", deltaTimer.total_seconds()
             
@@ -341,21 +371,25 @@ def main():
             # == Start: Record data
             if (LapNumber >= PathFollowingLaps) and (PickController=="LMPC"):
                 # print Controller.B[0].shape
-                steeringGain = np.array([Controller.B[0][1, 0], Controller.A[0][1, 1]])
+                steeringGain_vx     = np.concatenate( (Controller.B[0][0, 1], Controller.A[0][0, 0:3], Controller.C[0][0]), axis=None)
+                steeringGain_vy     = np.concatenate( (Controller.B[0][1, 0], Controller.A[0][1, 0:3], Controller.C[0][1]), axis=None)
+                steeringGain_psiDot = np.concatenate( (Controller.B[0][2, 0], Controller.A[0][2, 0:3], Controller.C[0][2]), axis=None)
             else:
-                steeringGain = np.zeros((1,2))
+                steeringGain_vx = np.zeros((1,5))
+                steeringGain_vy = np.zeros((1,5))
+                steeringGain_psiDot = np.zeros((1,5))
 
             if ((PickController != "LMPC") and (PickController != "ZeroStep")) and (LapNumber >= 1):
                 LocalState[4] = LocalState[4] + (LapNumber - 1)*map.TrackLength
                 ClosedLoopData.addMeasurement(GlobalState, LocalState, uApplied, 
                                               Controller.solverTime.total_seconds(), 
                                               Controller.linearizationTime.total_seconds() + oneStepPredictionTime.total_seconds(),
-                                              deltaTimer.total_seconds(), estimatorData.CurrentAppliedSteeringInput, steeringGain)
+                                              deltaTimer.total_seconds(), estimatorData.CurrentAppliedSteeringInput, steeringGain_vy, steeringGain_psiDot, steeringGain_vx)
             elif LapNumber >= 1:
                 ClosedLoopData.addMeasurement(GlobalState, LocalState, uApplied, 
                                               Controller.solverTime.total_seconds(), 
                                               Controller.linearizationTime.total_seconds() + oneStepPredictionTime.total_seconds(),
-                                              deltaTimer.total_seconds(), estimatorData.CurrentAppliedSteeringInput, steeringGain)
+                                              deltaTimer.total_seconds(), estimatorData.CurrentAppliedSteeringInput, steeringGain_vy, steeringGain_psiDot, steeringGain_vx)
             # Add data to SS and Record Prediction                    
 
             if (PickController == "LMPC") and (LapNumber >= PathFollowingLaps):
@@ -499,19 +533,31 @@ def ControllerInitialization(PickController, NumberOfLaps, dt, vt, map, mode, PI
         Laps       = NumberOfLaps+2   # Total LMPC laps
         # Safe Set Parameters
         flag_LTV = True
-        TimeLMPC   = 70              # Simulation time
+        TimeLMPC   = 80              # Simulation time
         LMPC_Solver = "OSQP"          # Can pick CVX for cvxopt or OSQP. For OSQP uncomment line 14 in LMPC.py
         SysID_Solver = "scipy"        # Can pick CVX, OSQP or scipy. For OSQP uncomment line 14 in LMPC.py  
         numSS_it = 4                  # Number of trajectories used at each iteration to build the safe set
         # Tuning Parameters
         if mode == "simulations":
             numSS_Points = 40#42 + N         # Number of points to select from each trajectory to build the safe set
-            N = 11
-            Qslack  =  2 * 5 * np.diag([10, 0.1, 1, 0.1, 10, 1])          # Cost on the slack variable for the terminal constraint
+            settings = 0
+            if settings == 0:
+                N = 12
+                Qslack  =  2 * 5 * np.diag([10, 0.1, 1, 0.1, 10, 1])          # Cost on the slack variable for the terminal constraint
+                # Qslack  =  2 * 5 * np.diag([0*10, 0.1, 1, 0.1, 10, 1])          # Cost on the slack variable for the terminal constraint
+            elif settings == 1:
+                N = 1
+                Qslack  =  100000 * 2 * 5 * np.diag([1, 1, 1,1, 1, 1])          # Cost on the slack variable for the terminal constraint
+            else:
+                N = 2
+                Qslack  =  100000 * 2 * 5 * np.diag([1, 1, 1,1, 1, 1])          # Cost on the slack variable for the terminal constraint
+            
+
             Qlane   = 0.1 * 0.5 * 10 * np.array([50, 10]) # Quadratic slack lane cost
             Q_LMPC  =  0 * np.diag([0.0, 0.0, 10.0, 0.0, 0.0, 0.0])  # State cost x = [vx, vy, wz, epsi, s, ey]
             R_LMPC  =  0.0 * np.diag([1.0, 1.0])                      # Input cost u = [delta, a]
             dR_LMPC =  2 * 0.5 * 2* 1 * np.array([ 5 * 0.5 * 10.0, 0.25 * 8 * 20.0]) # Input rate cost u
+            dR_LMPC =  2 * 0.5 * 2* 1 * np.array([ 0.5 * 5 * 0.5 * 10.0, 0.75 * 0.25 * 8 * 20.0]) # Input rate cost u
             aConstr = np.array([0.7, 2.0]) # aConstr = [amin, amax]
             steeringDelay = 0
             idDelay       = 0

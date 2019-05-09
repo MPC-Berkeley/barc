@@ -206,10 +206,10 @@ class Simulator(object):
 
 		self.x 		+= self.dt*(cos(yaw)*vx - sin(yaw)*vy)
 		self.y 		+= self.dt*(sin(yaw)*vx + cos(yaw)*vy)
-		self.vx 	+= self.dt*(ax + psiDot*vy)
-		self.vy 	+= self.dt*(ay - psiDot*vx)
 		self.ax 	 = u[0] - self.c_f*vx - FyF/self.m*sin(u[1])
 		self.ay 	 = 1.0/self.m*(FyF*cos(u[1])+FyR)
+		self.vx 	+= self.dt*(ax + psiDot*vy)
+		self.vy 	+= self.dt*(ay - psiDot*vx)
 		self.yaw 	+= self.dt*(psiDot)                                        
 		self.psiDot += self.dt*(1.0/self.I_z*(self.L_f*FyF*cos(u[1]) - self.L_r*FyR))
 

@@ -163,6 +163,75 @@ def main():
     # cbar.set_label('Velocity [m/s]', rotation=270)
     plt.show()
     pdb.set_trace()
+
+    # =============================== Plots for presentation ==========================================
+    # laps on L-track
+    LapToPlotFirst       = [15,7,2] 
+    LapToPlotConvergence = [30,31,32, 33,34]
+
+    plt.figure()
+    plt.subplot(121)
+    plotClosedLoopColorLMPCFirstLap(LMPController_Lshape, LMPController_Lshape.map, LapToPlotFirst)
+    cbar = plt.colorbar(label = 'Velocity [m/s]')
+    # cbar.set_label('Velocity [m/s]', rotation=270)
+    plt.subplot(122)
+    plotClosedLoopColorLMPCConvergence(LMPController_Lshape, LMPController_Lshape.map, LapToPlotConvergence)
+    cbar = plt.colorbar(label = 'Velocity [m/s]')
+
+    # Velocity and accelerations LapToPlotFirst
+    plotColors = ['c','y','m','k','b','g','r','c','y','k','m']
+
+    plt.figure()
+    plt.subplot(121)
+
+    plt.ylabel('ay [m/s^2]')
+    counter = 0
+    for i in LapToPlotFirst:
+        plt.plot(s_Lshaped[0:LapCounter_Lshaped[i], 0, i], ay_Lshaped[0:LapCounter_Lshaped[i], 0, i], '-o', label=i, color=plotColors[counter])
+        counter += 1
+    plt.xlim([0, LMPController_Lshape.map.TrackLength])
+    plt.ylim([-6, 12])
+    plt.xlabel('s [m]')
+
+    plt.subplot(122)
+    SS = LMPController_Lshape.SS
+    LapCounter = LMPController_Lshape.LapCounter
+    counter = 0
+    for i in LapToPlotFirst:
+        plt.plot(SS[0:LapCounter[i], 4, i], SS[0:LapCounter[i], 0, i], '-o', label=i, color=plotColors[counter])
+        counter += 1
+    plt.legend()
+    plt.ylim([0.5, 3.5])
+    plt.ylabel('vx [m/s]')
+    plt.xlabel('s [m]')
+
+    # Velocity and accelerations LapToPlotConvergence
+    plotColors = ['b','g','r','c','y','m','k','b','g','r','c','y','k','m']
+
+    plt.figure()
+    plt.subplot(121)
+
+    plt.ylabel('ay [m/s^2]')
+    counter = 0
+    LapToPlot = [35,33,34, 15, 7, 2]
+    for i in LapToPlot:
+        plt.plot(s_Lshaped[0:LapCounter_Lshaped[i], 0, i], ay_Lshaped[0:LapCounter_Lshaped[i], 0, i], '-o', label=i, color=plotColors[counter])
+        counter += 1
+    plt.xlim([0, LMPController_Lshape.map.TrackLength])
+    plt.xlabel('s [m]')
+    plt.subplot(122)
+    counter = 0
+    for i in LapToPlot:
+        plt.plot(SS[0:LapCounter[i], 4, i], SS[0:LapCounter[i], 0, i], '-o', label=i, color=plotColors[counter])
+        counter += 1
+    plt.legend()
+    plt.ylabel('vx [m/s]')
+    plt.xlabel('s [m]')
+
+    plt.show()
+    pdb.set_trace()
+
+
     # print "Track length is: ", map.TrackLength
 
     # # Plot Lap Time
