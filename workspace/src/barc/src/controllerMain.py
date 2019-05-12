@@ -23,6 +23,7 @@ from dataStructures import LMPCprediction, EstimatorData, ClosedLoopDataObj
 from PathFollowingLTI_MPC import PathFollowingLTI_MPC
 from PathFollowingLTVMPC import PathFollowingLTV_MPC
 from dataStructures import LMPCprediction, EstimatorData, ClosedLoopDataObj
+from std_msgs.msg import Float64MultiArray
 from LMPC import ControllerLMPC
 from ZeroStepLMPC import ControllerZeroStepLMPC
 import time
@@ -37,6 +38,8 @@ def main():
 
     pred_treajecto = rospy.Publisher('OL_predictions', prediction, queue_size=1)
     sel_safe_set   = rospy.Publisher('SS', SafeSetGlob, queue_size=1)
+    covHolder = CovHolder()
+    rospy.Subscriber("state_covariance", Float64MultiArray, covHolder.cov_callback)
 
     mode = rospy.get_param("/control/mode")
     saveData = rospy.get_param("/control/saveData")
@@ -66,7 +69,7 @@ def main():
     # Choose Controller and Number of Laps
 
     PickController = "LMPC"
-    NumberOfLaps   = 50
+    NumberOfLaps   = 20
     vt = 1.2
     PathFollowingLaps = 2
     
@@ -270,6 +273,7 @@ def main():
                 # Publish input
                 input_commands.publish(cmd)
             elif PickController == "ZeroStep":
+                Controller.disturbance_cov = covHolder.cov
                 Controller.solve(LocalState)
                 # print "Solution is: ", Controller.uPred
                 # print "Solver time: ", Controller.solverTime.total_seconds()
@@ -319,6 +323,7 @@ def main():
                 oneStepPrediction, oneStepPredictionTime = Controller.oneStepPrediction(LocalState, uAppliedDelay, 0)
                 
                 startTimer = datetime.datetime.now()
+                Controller.disturbance_cov = covHolder.cov
                 Controller.solve(oneStepPrediction)
                 endTimer = datetime.datetime.now(); deltaTimer = endTimer - startTimer
                 if PickController == "LMPC":
@@ -409,6 +414,14 @@ def main():
 # ===============================================================================================================================
 # ==================================================== END OF MAIN ==============================================================
 # ===============================================================================================================================
+class CovHolder(object):
+    """docstring CovHolder"""
+    def __init__(self):
+        self.cov = np.zeros(6)
+
+    def cov_callback(self, msg):
+        self.cov = np.array(msg.data).reshape(6,6)
+
 def initializeFigure():
     xdata = []; ydata = []
     fig = plt.figure(figsize=(12,8))

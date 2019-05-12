@@ -55,12 +55,13 @@ class ConvexSafeSet:
         self.lambdas = lambdas
         self.disturbance_covariance = disturbance_covariance
         self.n = n
+        self.mu = np.zeros(6)
         CS = scipy.spatial.ConvexHull(self.SS.T)
         self.Hcs =  CS.equations[:,:-1]
         self.hcs =  -CS.equations[:,-1]
         self.hcs = self.hcs.reshape((len(self.hcs), 1))
         self.inCS = lambda pt: np.all(np.dot(Hcs, pt) <= hcs)
-        
+
 
     def get_lambdas(self, x):
         x=x.reshape((len(x),1))
@@ -83,6 +84,8 @@ class ConvexSafeSet:
         phat = 0
         for _ in range(self.n):
             sample = sigma * np.random.randn(num_states,1) - sigma*np.dot(np.random.randn(num_states, self.SS.shape[1]), lambdas)# np.random.multivariate_normal(mean=np.zeros(num_states), cov= (1 + np.dot(lambdas, lambdas)) *self.disturbance_covariance)
+            #sample_combination = np.hstack((1,-lambdas))
+            #sample = np.dot(np.random.multivariate_normal(self.mu, self.disturbance_covariance, size = len(sample_combination)).T, sample_combination) 
             phat += np.all(np.dot(self.Hcs, sample) < self.hcs - const)
 
         return phat/np.float(self.n)

@@ -42,6 +42,7 @@ class ControllerZeroStepLMPC():
         self.it      = LMPC.it
         self.itLMPC  = LMPC.it
         self.dt      = LMPC.dt
+        self.disturbance_cov = np.zeros(6)
 
         NumPoints = LMPC.SS.shape[0]
 
@@ -272,7 +273,7 @@ class ControllerZeroStepLMPC():
         # print np.sum(lambdaVar)
         # print np.dot(uSS_PointSelectedTot, lambdaVar)
         # print np.dot(SS_PointSelectedTot, lambdaVar), x0
-        CS = ConvexSafeSet(self.SS_PointSelectedTot, self.Qfun_SelectedTot, lambdaVar)
+        CS = ConvexSafeSet(self.SS_PointSelectedTot, self.Qfun_SelectedTot, lambdaVar, disturbance_covariance = self.disturbance_cov)
         self.FailProb = CS.estimate_failprob(x0.reshape((6,1)))
         print("prob of success = {}".format(self.FailProb))
 

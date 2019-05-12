@@ -37,6 +37,7 @@ class ControllerLMPC():
             TimeLMPC: maximum time [s] that an lap can last (used to avoid dynamic allocation)
             Solver: solver used in the reformulation of the LMPC as QP
         """
+        self.disturbance_cov = np.zeros(6)
         self.numSS_Points = numSS_Points
         self.numSS_it     = numSS_it
         self.N = N
@@ -226,7 +227,7 @@ class ControllerLMPC():
         # self.OldAccelera.append(uPred.T[0,1])
 
         #Calculate "Model-Free probability of failure of terminal State": 
-        CS = ConvexSafeSet(self.SS_PointSelectedTot, self.Qfun_SelectedTot, lambd)
+        CS = ConvexSafeSet(self.SS_PointSelectedTot, self.Qfun_SelectedTot, lambd, disturbance_covariance = self.disturbance_cov)
         self.FailProb = CS.estimate_failprob(self.xPred[-1,:])
         print("prob of success = {}".format(self.FailProb))
 

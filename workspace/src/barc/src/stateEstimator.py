@@ -27,7 +27,7 @@ sys.path.append(os.path.join(homedir,"barc/workspace/src/barc/src/library"))
 from barc.msg import ECU, pos_info, Vel_est
 from sensor_msgs.msg import Imu
 from marvelmind_nav.msg import hedge_imu_fusion, hedge_pos
-from std_msgs.msg import Header
+from std_msgs.msg import Header, Float64MultiArray
 from numpy import eye, zeros, diag, tan, cos, sin, vstack, linalg, pi
 from numpy import ones, polyval, size, dot, add
 from scipy.linalg import inv, cholesky
@@ -40,11 +40,23 @@ def srvOutput2Angle(fbk_srv):
     angle_rad =  -0.0034462155644454794 *fbk_srv +  1.138918034535559
     return angle_rad
 
+def getP(P):
+    P_new = np.zeros((6,6))
+    P_new[0,0] = P[2,2]
+    P_new[1,1] = P[3,3]
+    P_new[2,2] = 0.1*P[6,6]
+    P_new[3,3] = P[6,6]
+    P_new[4,4] = P[0,0]
+    P_new[5,5] = P[1,1]
+    return P_new * 1e-6
+
 
 
 def main():
     # node initialization
     rospy.init_node("state_estimation")
+    covPub = rospy.Publisher("state_covariance", Float64MultiArray)
+
     a_delay     = 0.0
     df_delay    = 0.0
     loop_rate   = 100.0
@@ -118,7 +130,7 @@ def main():
     fbk_srv = fbServoClass()
 
     estMsg = pos_info()
-    
+    covMsg = Float64MultiArray()
     saved_x_est      = []
     saved_y_est      = []
     saved_vx_est     = []
@@ -160,7 +172,8 @@ def main():
         estMsg.u_df     = srvOutput2Angle(fbk_srv.value)
         est.state_pub_pos.publish(estMsg)
 
-
+        covMsg.data = getP(est.P).flatten()
+        covPub.publish(covMsg)
         est.rate.sleep()
 
 
