@@ -94,7 +94,7 @@ python-dateutil==2.4.2
 python-mimeparse==0.1.4
 python-qt-binding==0.3.3
 pytz==2017.3
-PyYAML==3.12
+PyYAML==5.1
 qt-dotgraph==0.3.7
 qt-gui==0.3.7
 qt-gui-cpp==0.3.7
