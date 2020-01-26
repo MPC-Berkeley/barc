@@ -99,7 +99,7 @@ qt-dotgraph==0.3.7
 qt-gui==0.3.7
 qt-gui-cpp==0.3.7
 qt-gui-py-common==0.3.7
-requests==2.18.4
+requests==2.20.0
 resource-retriever==1.12.3
 rosbag==1.12.7
 rosboost-cfg==1.13.5
