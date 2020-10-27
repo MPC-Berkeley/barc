@@ -16,7 +16,7 @@ chardet==3.0.4
 Cheetah==2.4.4
 colorama==0.3.3
 configobj==4.7.2
-cryptography==2.1.3
+cryptography==3.2
 cv-bridge==1.12.4
 cycler==0.9.0
 decorator==4.1.2
