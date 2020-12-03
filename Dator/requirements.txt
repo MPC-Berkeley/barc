@@ -42,7 +42,7 @@ genmsg==0.5.8
 gennodejs==2.0.1
 genpy==0.6.5
 html5lib==0.999
-httplib2==0.8
+httplib2==0.18.0
 humanize==0.5.1
 idna==2.6
 interactive-markers==1.11.3
