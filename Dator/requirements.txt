@@ -180,7 +180,7 @@ tf2-ros==0.5.16
 topic-tools==1.12.7
 traitlets==4.3.2
 tzlocal==1.4
-urllib3==1.22
+urllib3==1.24.2
 wadllib==1.3.2
 wcwidth==0.1.7
 wsgi-intercept==1.0.1
