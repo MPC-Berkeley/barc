@@ -85,7 +85,7 @@ pyasn1==0.3.7
 pycparser==2.14
 pycrypto==2.6.1
 pycurl==7.19.3
-Pygments==2.2.0
+Pygments==2.7.4
 pyOpenSSL==17.5.0
 pyparsing==2.2.0
 pyroute2==0.3.15
