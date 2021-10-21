@@ -2,7 +2,7 @@ actionlib==1.11.9
 algopy==0.5.5
 angles==1.9.11
 asn1crypto==0.23.0
-Babel==2.2.0
+Babel==2.9.1
 backports.shutil-get-terminal-size==1.0.0
 bondpy==1.7.19
 boto3==1.4.7
